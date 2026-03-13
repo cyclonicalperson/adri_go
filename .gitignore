@@ -1,0 +1,33 @@
+# Build folderi
+bin/
+build/
+target/
+out/
+
+# IDE fajlovi
+.idea/
+.vscode/
+*.iml
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.csproj.user
+
+# Log fajlovi
+*.log
+
+# Temporary fajlovi
+*.tmp
+*.temp
+
+# OS fajlovi
+.DS_Store
+Thumbs.db
+
+# Node modules (ako imate frontend)
+node_modules/
+
+# Environment fajlovi
+.env
