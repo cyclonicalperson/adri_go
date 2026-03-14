@@ -1,0 +1,32 @@
+<div class="container">
+  <h1>Recepti</h1>
+
+  <!-- Lista recepata -->
+  <div class="lista">
+    <div class="recept-kartica" *ngFor="let recept of recepti" (click)="odaberiRecept(recept)">
+      <h3>{{ recept.naziv }}</h3>
+      <p>{{ recept.opis }}</p>
+      <button class="btn-obrisi" (click)="obrisiRecept(recept.id); $event.stopPropagation()">Obriši</button>
+    </div>
+  </div>
+
+  <!-- Detalji odabranog recepta -->
+  <div class="detalji" *ngIf="odabraniRecept">
+    <h2>{{ odabraniRecept.naziv }}</h2>
+    <p><strong>Opis:</strong> {{ odabraniRecept.opis }}</p>
+    <p><strong>Sastojci:</strong> {{ odabraniRecept.sastojci }}</p>
+    <p><strong>Koraci:</strong> {{ odabraniRecept.koraci }}</p>
+    <p><strong>Kreirano:</strong> {{ odabraniRecept.kreirano | date:'dd.MM.yyyy' }}</p>
+    <button (click)="zatvoriDetalje()">Zatvori</button>
+  </div>
+
+  <!-- Forma za novi recept -->
+  <div class="forma">
+    <h2>Dodaj novi recept</h2>
+    <input placeholder="Naziv" [(ngModel)]="noviRecept.naziv" />
+    <input placeholder="Opis" [(ngModel)]="noviRecept.opis" />
+    <input placeholder="Sastojci" [(ngModel)]="noviRecept.sastojci" />
+    <input placeholder="Koraci" [(ngModel)]="noviRecept.koraci" />
+    <button (click)="dodajRecept()">Dodaj</button>
+  </div>
+</div>
