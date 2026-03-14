@@ -1,0 +1,8 @@
+# .NET - obj/ nije pokriven u root .gitignore
+backend/obj/
+
+# Angular cache
+frontend/.angular/
+
+# Secrets - ne komitovati lokalnu konfiguraciju
+backend/appsettings.Development.json
