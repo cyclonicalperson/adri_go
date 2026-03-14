@@ -1,1 +1,126 @@
-/* You can add global styles to this file, and also import other style files */
+.container {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+h1 {
+  text-align: center;
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  border-bottom: 3px solid #e67e22;
+  display: inline-block;
+  width: 100%;
+}
+
+/* Kartice */
+.lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.recept-kartica {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #eee;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+}
+
+  .recept-kartica:hover {
+    border-color: #e67e22;
+    transform: translateY(-5px);
+  }
+
+  .recept-kartica h3 {
+    color: #e67e22;
+    margin-bottom: 10px;
+  }
+
+/* Detalji */
+.detalji {
+  background: #fff;
+  border: 2px solid #e67e22;
+  border-radius: 15px;
+  padding: 30px;
+  margin: 40px 0;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.tekst-blok {
+  background: #fdf2e9;
+  padding: 15px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  margin-bottom: 15px;
+}
+
+/* Forma za dodavanje */
+.forma {
+  background: #fdf2e9;
+  padding: 40px;
+  border-radius: 15px;
+  margin-top: 60px;
+  border: 1px dashed #e67e22;
+}
+
+  .forma h2 {
+    color: #d35400;
+    margin-bottom: 25px;
+    text-align: center;
+  }
+
+  .forma input, .forma textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 2px solid #ffe5d0;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s;
+    resize: none;
+  }
+
+    .forma input:focus, .forma textarea:focus {
+      border-color: #e67e22;
+    }
+
+/* Dugmici */
+.btn-dodaj {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 15px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.3s;
+}
+
+  .btn-dodaj:hover {
+    background-color: #219150;
+  }
+
+.btn-obrisi {
+  background: transparent;
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+  padding: 5px 10px;
+  border-radius: 5px;
+  align-self: flex-end;
+  cursor: pointer;
+}
+
+  .btn-obrisi:hover {
+    background: #e74c3c;
+    color: white;
+  }

@@ -1,6 +1,5 @@
-import { Component, OnInit, PLATFORM_ID, inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, inject, ChangeDetectorRef } from '@angular/core';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReceptService, Recept } from '../recept.service';
 
@@ -15,11 +14,17 @@ export class ReceptiComponent implements OnInit {
   odabraniRecept: Recept | null = null;
   private platformId = inject(PLATFORM_ID);
 
+  // Stavljamo odmah validan datum da izbegnemo 400 gresku
   noviRecept: Recept = {
-    id: 0, naziv: '', opis: '', sastojci: '', koraci: '', kreirano: ''
+    id: 0, naziv: '', opis: '', sastojci: '', koraci: '',
+    kreirano: new Date().toISOString()
   };
 
-  constructor(private receptService: ReceptService) { }
+  // Dodajemo ChangeDetectorRef ovde
+  constructor(
+    private receptService: ReceptService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -30,6 +35,7 @@ export class ReceptiComponent implements OnInit {
   ucitajRecepte(): void {
     this.receptService.getSvi().subscribe(data => {
       this.recepti = data;
+      this.cdr.detectChanges(); // Forsira osvezavanje HTML-a
     });
   }
 
@@ -42,9 +48,19 @@ export class ReceptiComponent implements OnInit {
   }
 
   dodajRecept(): void {
+    // Generisemo siguran datum pre slanja
+    this.noviRecept.kreirano = new Date().toISOString();
+
     this.receptService.kreiraj(this.noviRecept).subscribe(() => {
       this.ucitajRecepte();
-      this.noviRecept = { id: 0, naziv: '', opis: '', sastojci: '', koraci: '', kreirano: '' };
+
+      // Resetujemo formu
+      this.noviRecept = {
+        id: 0, naziv: '', opis: '', sastojci: '', koraci: '',
+        kreirano: new Date().toISOString()
+      };
+
+      this.cdr.detectChanges();
     });
   }
 
@@ -52,6 +68,7 @@ export class ReceptiComponent implements OnInit {
     this.receptService.obrisi(id).subscribe(() => {
       this.ucitajRecepte();
       if (this.odabraniRecept?.id === id) this.odabraniRecept = null;
+      this.cdr.detectChanges();
     });
   }
 }
