@@ -5,20 +5,20 @@
 CREATE DATABASE IF NOT EXISTS recipe_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
-
+ 
 USE recipe_db;
-
-CREATE TABLE IF NOT EXISTS Recipes (
-    Id          INT AUTO_INCREMENT PRIMARY KEY,
-    Title       VARCHAR(100)  NOT NULL,
-    Description TEXT          NOT NULL,
-    Ingredients TEXT          NOT NULL,
-    Steps       TEXT          NOT NULL,
-    CreatedAt   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+ 
+CREATE TABLE IF NOT EXISTS Recepti (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    Naziv     VARCHAR(100) NOT NULL,
+    Opis      TEXT         NOT NULL,
+    Sastojci  TEXT         NOT NULL,
+    Koraci    TEXT         NOT NULL,
+    Kreirano  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Podaci
-INSERT INTO Recipes (Title, Description, Ingredients, Steps) VALUES
+INSERT INTO Recepti (Naziv, Opis, Sastojci, Koraci) VALUES
 (
     'Spaghetti Carbonara',
     'Klasicna italijanska pasta sa jajima i slaninom.',
