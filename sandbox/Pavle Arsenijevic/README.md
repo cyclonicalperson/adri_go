@@ -1,15 +1,19 @@
 # ReceptiAplikacija
 
-Pisem uputsto za pokretanje ovde jer znam da cu ga zaboraviti:
+**Uputstvo za pokretanje:**
+
+Pokrenuti StartAplikacije.bat iz roota foldera
 
 ---
 
-Pokrenuti `database/init.sql` na MySQL serveru
+U slucaju da **.bat ne radi** (ili ne postoji tabela/SQL server):
 
-Pokrenuti backend (sln fajl iz Backend foldera)
-API je dostupan na: `http://localhost:5000/api/receptkontroler`
+1. Pokrenuti `database/init.sql` na MySQL serveru
 
-Pokrenuti frontend sa 'ng serve' iz terminala koji je cd-ovan Frontend folder
+2. Pokrenuti backend (sln fajl iz Backend foldera)
+<br> API je dostupan na: `http://localhost:5000/api/receptkontroler`
+
+3. Pokrenuti frontend sa 'ng serve' iz terminala koji je cd-ovan u Frontend folder
 
 ---
 
