@@ -1,6 +1,6 @@
 # Angular – Struktura projekta i osnovni koncepti
 
-> **Cilj:** Ovaj dokument opisuje osnovnu arhitekturu Angular aplikacije i najvažnije koncepte koje svaki član tima treba da poznaje radi efikasnog razvoja frontend dela projekta.
+Ovaj dokument će opisati osnovnu arhitekturu Angular aplikacije i najvažnije koncepte koje svaki član tima treba da poznaje radi efikasnog razvoja frontend dela projekta
 
 ---
 
@@ -32,7 +32,7 @@ naziv-projekta/
 │   │   └── app-routing.module.ts   # Routing konfiguracija
 │   ├── assets/                     # Statički resursi (slike, fontovi...)
 │   ├── environments/               # Konfiguracija okruženja (dev/prod)
-│   │   ├── environment.ts
+│   │   ├── environment.ts          # Kod mene se enviroments nije napravio, ali kaže da treba
 │   │   └── environment.prod.ts
 │   ├── index.html                  # Ulazna HTML stranica
 │   ├── main.ts                     # Ulazna tačka aplikacije
@@ -41,21 +41,6 @@ naziv-projekta/
 ├── package.json                    # Zavisnosti projekta (npm)
 ├── tsconfig.json                   # TypeScript konfiguracija
 └── README.md
-```
-
-### Preporučena organizacija `app/` foldera po features
-
-Radi preglednosti, funkcionalne celine se grupišu u posebne foldere:
-
-```
-app/
-├── core/               # Singleton servisi, interceptori, guard-ovi
-├── shared/             # Deljene komponente, direktive, pajpovi
-├── features/
-│   ├── auth/           # Autentifikacija (login, register...)
-│   ├── dashboard/      # Nadzorna tabla
-│   └── korisnici/      # Feature modul za korisnike
-└── app.module.ts
 ```
 
 ---
@@ -76,14 +61,16 @@ ng generate component naziv-komponente
 ng g c naziv-komponente
 ```
 
-### Anatomija komponente
+> Moguće je i ručno pravljenje potrebnih fajlova
+
+### Struktura koda komponente
 
 ```typescript
 // korisnik.component.ts
 import { Component, OnInit } from '@angular/core';
 
 @Component({
-  selector: 'app-korisnik',         // HTML tag kojim se komponenta koristi
+  selector: 'app-korisnik',   // HTML tag kojim se komponenta koristi
   templateUrl: './korisnik.component.html',
   styleUrls: ['./korisnik.component.scss']
 })
@@ -110,18 +97,20 @@ export class KorisnikComponent implements OnInit {
 </div>
 ```
 
-### Lifecycle Hooks (Životni ciklus komponente)
+> Angular koristi defaultne HTML i CSS fajlove, ne menja način na koji se pišu
 
-| Hook | Kada se poziva |
+### Lifecycle funkcije (Životni ciklus komponente)
+
+| Funkcija | Kada se poziva |
 |---|---|
 | `ngOnInit()` | Jednom, nakon inicijalizacije komponente |
 | `ngOnChanges()` | Kada se promeni vrednost `@Input` propertija |
 | `ngOnDestroy()` | Neposredno pre uklanjanja komponente iz DOM-a |
 | `ngAfterViewInit()` | Nakon što je view komponente inicijalizovan |
 
-### Komunikacija između komponenti
+### Komunikacija izmedju komponenti
 
-**Parent → Child** (prosleđivanje podataka dole):
+**Parent → Child** (prosledjivanje podataka dole):
 ```typescript
 // Child komponenta prima podatak
 @Input() korisnikIme: string = '';
@@ -131,7 +120,7 @@ export class KorisnikComponent implements OnInit {
 <app-child [korisnikIme]="'Ana'"></app-child>
 ```
 
-**Child → Parent** (slanje događaja gore):
+**Child → Parent** (slanje dogadjaja gore):
 ```typescript
 // Child emituje događaj
 @Output() kliknutoDugme = new EventEmitter<string>();
@@ -149,7 +138,7 @@ onKlik() {
 
 ## 3. Moduli (Modules)
 
-Modul je kontejner koji grupiše povezane komponente, direktive, pajpove i servise. Svaka Angular aplikacija ima barem jedan modul – **AppModule** (root modul).
+Modul je kontejner koji grupiše povezane komponente, direktive, pipe-ove i servise. Svaka Angular aplikacija ima barem jedan modul – **AppModule** (root modul)
 
 ### Struktura modula
 
@@ -181,7 +170,7 @@ export class AppModule {}
 
 ### Feature moduli
 
-Za veće aplikacije, preporučuje se kreiranje zasebnih feature modula:
+Za veće aplikacije je preporučeno kreiranje zasebnih feature modula:
 
 ```bash
 ng generate module features/korisnici --routing
@@ -196,13 +185,13 @@ ng generate module features/korisnici --routing
 export class KorisniciModule {}
 ```
 
-Feature moduli se uvode u `AppModule` ili se učitavaju **lazy load** metodom putem rutiranja (videti sekciju Routing).
+Feature moduli se uvode u `AppModule` ili se učitavaju **lazy load** metodom putem rutiranja (videti sekciju [Routing](#5-routing-u-angular-u))
 
 ---
 
 ## 4. Servisi (Services)
 
-Servis je klasa koja enkapsulira poslovnu logiku, deljeno stanje ili komunikaciju sa API-jem. Servisi se dele između komponenti putem **Dependency Injection (DI)** mehanizma.
+Servis je klasa koja enkapsulira poslovnu logiku, deljeno stanje ili komunikaciju sa API-jem. Servisi se dele između komponenti putem **Dependency Injection (DI)** mehanizma
 
 ### Kreiranje servisa
 
@@ -211,6 +200,8 @@ ng generate service services/korisnik
 # ili skraćeno:
 ng g s services/korisnik
 ```
+
+> Moguće je i ručno pravljenje potrebnog fajla
 
 ### Primer servisa
 
@@ -261,13 +252,14 @@ export class KorisniciComponent implements OnInit {
 }
 ```
 
-> **Napomena:** `providedIn: 'root'` znači da Angular kreira jednu instancu servisa (singleton) za celu aplikaciju. Alternativno, servis se može registrovati u konkretnom modulu ako je potreban samo u njemu.
+> **Napomena:** `providedIn: 'root'` znači da Angular kreira jednu instancu servisa (singleton) za celu aplikaciju 
+<br> Alternativno, servis se može registrovati u konkretnom modulu ako je potreban samo u njemu
 
 ---
 
 ## 5. Routing u Angular-u
 
-Angular Router omogućava navigaciju između različitih "pogleda" (views) unutar Single Page Application (SPA).
+Angular Router omogućava navigaciju izmedju različitih "pogleda" (views) unutar Single Page Application-a (SPA)
 
 ### Osnovna konfiguracija ruta
 
@@ -355,7 +347,7 @@ ngOnInit(): void {
 
 ### Route Guards (zaštita ruta)
 
-Guards kontrolišu da li korisnik sme da pristupi određenoj ruti (npr. samo ulogovani korisnici):
+Čuvari kontrolišu da li korisnik sme da pristupi odredjenoj ruti (npr. samo ulogovani korisnici):
 
 ```typescript
 // auth.guard.ts
@@ -380,7 +372,8 @@ export class AuthGuard implements CanActivate {
 
 ## 6. Komunikacija sa backend API-jem
 
-Angular koristi `HttpClient` modul za slanje HTTP zahteva ka backend API-ju.
+Angular koristi `HttpClient` modul za slanje HTTP zahteva ka backend API-ju <br>
+IntelliSense kaže da je modul deprecated, ali ga i dalje koristimo
 
 ### Podešavanje
 
@@ -484,7 +477,7 @@ getKorisnici(): Observable<Korisnik[]> {
 
 ## 7. Primer jednostavne komponente
 
-Kompletan primer komponente za prikaz liste korisnika sa dohvatanjem podataka sa API-ja.
+Kompletan primer komponente za prikaz liste korisnika sa dohvatanjem podataka sa API-ja:
 
 ### Servis
 
@@ -502,7 +495,7 @@ export interface Korisnik {
 
 @Injectable({ providedIn: 'root' })
 export class KorisniciService {
-  private url = 'https://jsonplaceholder.typicode.com/users';
+  private url = 'https://placeholder.com/users';
 
   constructor(private http: HttpClient) {}
 
@@ -575,13 +568,13 @@ export class KorisniciListaComponent implements OnInit {
 </div>
 ```
 
-### SCSS stilovi
+### CSS stilovi
 
-```scss
+```css
 /* korisnici-lista.component.scss */
 .korisnici-container {
   max-width: 600px;
-  margin: 2rem auto;
+  margin: 20px auto;
   font-family: sans-serif;
 
   h1 {
@@ -592,7 +585,7 @@ export class KorisniciListaComponent implements OnInit {
 .korisnik-stavka {
   display: flex;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 8px 12px;
   border-bottom: 1px solid #eee;
 
   &:hover {
@@ -635,7 +628,3 @@ export class AppModule {}
 | `ng g m ime --routing` | Generiše novi modul sa rutiranjem |
 | `ng g guard ime` | Generiše route guard |
 | `ng test` | Pokreće unit testove |
-
----
-
-*Dokumentacija pripremljena za interni tim. Za dodatna pitanja ili sugestije, kontaktirajte tehničkog lidera projekta.*
