@@ -1,82 +1,198 @@
-1. MySQL je najpopularniji open-source sistem za upravljanje relacionim bazama podataka (RDBMS).
- Koristi SQL (Structured Query Language) za definisanje, manipulaciju i upite nad podacima.
+MySQL – Osnove rada sa bazom podataka
+1. Šta je MySQL
 
-Njegova namena je sigurno skladištenje informacija u strukturiranom formatu (tabele sa redovima i kolonama) koje su međusobno povezane ključevima.
+MySQL je jedan od najpopularnijih open-source sistema za upravljanje relacionim bazama podataka (RDBMS).
 
----------------------------------------------------------------------------------------------------------------------------------------------
+Njegova glavna funkcija je čuvanje, organizovanje i upravljanje velikim količinama podataka na efikasan i siguran način.
 
-2. Izabran je zbog : Pouzdanost: Dokazan u industriji decenijama (koriste ga Facebook, YouTube, itd.).
+MySQL koristi standardni jezik za rad sa bazama podataka –
+SQL (Structured Query Language).
 
-Performanse: Izuzetno brz kod čitanja podataka i rada sa velikim brojem korisnika.
+SQL omogućava:
 
-Kompatibilnost: Odlično se integriše sa .NET (Entity Framework), Node.js, Python i PHP okruženjima.
+definisanje strukture baze podataka
 
-Zajednica: Ogromna baza tutorijala i rešenja za potencijalne probleme.
+dodavanje novih podataka
 
-----------------------------------------------------------------------------------------------------------------------------------------------
+izmenu postojećih podataka
 
-3.Instalacija alata i okruženja: 
+pretragu i filtriranje podataka
 
-Da biste počeli sa radom, potrebne su vam dve stvari: Server (koji drži podatke) i Klijent (preko kojeg upravljate podacima).
+brisanje podataka
 
-MySQL Server: Preuzmite "MySQL Community Server" sa zvaničnog sajta.
+Podaci u MySQL-u su organizovani u tabele koje se sastoje od:
 
-Alternativa (Preporučeno za lokalni razvoj): XAMPP ili Docker (MySQL image).
+redova (rows) – pojedinačni zapisi
 
-MySQL Workbench: Grafički alat (GUI) koji olakšava rad sa tabelama i upitima.
+kolona (columns) – atributi zapisa
 
-Podešavanje: Tokom instalacije, obavezno zapamtite lozinku za root korisnika (podrazumevani administrator).
+Relacione baze podataka omogućavaju povezivanje tabela pomoću ključeva (keys), čime se izbegava dupliranje podataka i omogućava efikasnije upravljanje informacijama.
 
-----------------------------------------------------------------------------------------------------------------------------------------------
+2. Zašto je izabran MySQL
+
+MySQL je izabran zbog više važnih karakteristika:
+
+Pouzdanost
+
+MySQL je stabilan i dugo prisutan u industriji. Koriste ga velike kompanije poput
+Facebook i YouTube za obradu ogromnih količina podataka.
+
+Performanse
+
+MySQL je optimizovan za brzo čitanje podataka i može efikasno da radi sa velikim brojem korisnika istovremeno.
+
+Kompatibilnost
+
+Odlično se integriše sa različitim programskim jezicima i framework-ovima kao što su:
+
+Node.js
+
+Python
+
+PHP
+
+Entity Framework
+
+To omogućava jednostavno povezivanje baze sa web aplikacijama i softverskim sistemima.
+
+Velika zajednica
+
+Pošto je MySQL veoma popularan, postoji veliki broj tutorijala, dokumentacije i primera, što znatno olakšava učenje i rešavanje problema.
+
+3. Instalacija alata i okruženja
+
+Za rad sa MySQL bazom potrebne su dve glavne komponente:
+
+1. Server
+
+Server je program koji čuva bazu podataka i upravlja pristupom podacima.
+
+Najčešće se koristi:
+
+MySQL Community Server – zvanična besplatna verzija MySQL-a.
+
+Alternativno rešenje za lokalni razvoj:
+
+XAMPP – paket koji sadrži MySQL, Apache i PHP.
+
+Docker – omogućava pokretanje MySQL-a u kontejneru.
+
+2. Klijent (Client)
+
+Klijent je alat pomoću kojeg upravljamo bazom podataka.
+
+Najčešće korišćen alat je:
+
+MySQL Workbench
+
+MySQL Workbench omogućava:
+
+grafičko kreiranje tabela
+
+pisanje SQL upita
+
+pregled podataka
+
+administraciju baze
+
+Važna napomena tokom instalacije
+
+Tokom instalacije potrebno je definisati root lozinku.
+
+Root korisnik je glavni administrator baze podataka i ima pristup svim operacijama.
 
 4. Kreiranje nove baze podataka
 
-Kada pokrenete MySQL Workbench ili terminal, novu bazu (šemu) kreirate sledećom komandom:
+Nakon pokretanja MySQL Workbench-a ili terminala, nova baza podataka se kreira SQL komandom:
 
 CREATE DATABASE ime_projekta_db;
+
+Ova komanda pravi novu bazu podataka sa zadatim imenom.
+
+Da bismo počeli da radimo u toj bazi, koristimo komandu:
+
 USE ime_projekta_db;
 
-----------------------------------------------------------------------------------------------------------------------------------------------
+Ova komanda govori MySQL serveru da sve naredne operacije izvršava u toj bazi.
 
 5. Struktura osnovnog projekta
 
-MySQL baza se ne sastoji od fajlova koje direktno editujete, već od logičkih celina:
+MySQL baza se sastoji od nekoliko logičkih celina:
 
-Database (Schema): Kontejner za sve tabele.
+Database (Schema)
 
-Tables: Gde se podaci zapravo nalaze (npr. Korisnici, Narudzbine).
+Predstavlja kontejner koji sadrži sve tabele, indekse i druge objekte baze podataka.
 
-Columns: Definišu tip podatka (npr. INT, VARCHAR za tekst, DATETIME).
+Tables (Tabele)
 
-Indexes: Specijalne strukture koje ubrzavaju pretragu.
+Tabele su mesto gde se stvarni podaci čuvaju.
 
+Primer tabela:
 
-----------------------------------------------------------------------------------------------------------------------------------------------
+Korisnici
+
+Proizvodi
+
+Narudžbine
+
+Columns (Kolone)
+
+Kolone definišu tip podataka koji se čuva u tabeli.
+
+Najčešći tipovi podataka:
+
+INT – ceo broj
+
+VARCHAR – tekst promenljive dužine
+
+DATE / DATETIME – datum i vreme
+
+BOOLEAN – logička vrednost
+
+Indexes (Indeksi)
+
+Indeksi su specijalne strukture podataka koje ubrzavaju pretragu u tabelama.
+
+Bez indeksa, baza mora da pregleda svaki red u tabeli, dok indeks omogućava brže pronalaženje podataka.
 
 6. Pokretanje i povezivanje
 
-MySQL server obično radi u pozadini kao servis na portu 3306.
+MySQL server obično radi kao servis u pozadini.
 
-Za povezivanje aplikacije sa bazom koristi se Connection String. Primer formata:
-Server=localhost; Port=3306; Database=ime_projekta_db; Uid=root; Pwd=vasha_lozinka;
+Podrazumevani port za MySQL je:
 
-----------------------------------------------------------------------------------------------------------------------------------------------
+3306
 
-7. Osnovne operacije
+Aplikacije se povezuju sa bazom pomoću connection string-a.
 
-CREATE TABLE	Pravljenje nove tabele
-INSERT INTO	Dodavanje novih podataka
-SELECT * FROM	Čitanje podataka iz baze
-UPDATE	Izmena postojećih podataka
-DELETE	Brisanje podataka
-DROP TABLE	Brisanje cele tabele
+Primer:
 
+Server=localhost; Port=3306; Database=ime_projekta_db; Uid=root; Pwd=vasa_lozinka;
 
----------------------------------------------------------------------------------------------------------------------------------------------
+Objašnjenje:
 
-8. Primer: Jednostavna aplikacija "Korisnici"
+Parametar	Značenje
+Server	adresa servera
+Port	mrežni port
+Database	ime baze
+Uid	korisničko ime
+Pwd	lozinka
+7. Osnovne operacije u MySQL-u
 
--- 1. Kreiranje tabele
+Najvažnije SQL komande su:
+
+Komanda	Opis
+CREATE TABLE	Kreira novu tabelu
+INSERT INTO	Dodaje nove podatke
+SELECT	Čita podatke iz baze
+UPDATE	Menja postojeće podatke
+DELETE	Briše podatke
+DROP TABLE	Briše celu tabelu
+
+Ove operacije čine osnovu rada sa bazama podataka.
+
+8. Primer – Jednostavna aplikacija "Korisnici"
+1. Kreiranje tabele
 CREATE TABLE Korisnici (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ime VARCHAR(50) NOT NULL,
@@ -84,9 +200,27 @@ CREATE TABLE Korisnici (
     datum_registracije TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Unos podataka
+Objašnjenje:
+
+id – jedinstveni identifikator korisnika
+
+AUTO_INCREMENT – automatski povećava vrednost ID-a
+
+PRIMARY KEY – primarni ključ tabele
+
+NOT NULL – kolona mora imati vrednost
+
+UNIQUE – vrednost mora biti jedinstvena
+
+DEFAULT CURRENT_TIMESTAMP – automatski postavlja trenutni datum
+
+2. Dodavanje podataka
 INSERT INTO Korisnici (ime, email) 
 VALUES ('Marko Markovic', 'marko@example.com');
 
--- 3. Provera podataka
+Ova komanda dodaje novog korisnika u tabelu.
+
+3. Pregled podataka
 SELECT * FROM Korisnici;
+
+Ova komanda prikazuje sve podatke iz tabele Korisnici.
