@@ -1,0 +1,42 @@
+:host {
+  display: block;
+}
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 40px;
+}
+header {
+  margin-bottom: 24px;
+}
+header h1 {
+  margin: 0 0 8px;
+  font-size: 40px;
+}
+header p {
+  margin: 0;
+  color: #475569;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 24px;
+}
+.card-lite {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+select {
+  margin-left: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

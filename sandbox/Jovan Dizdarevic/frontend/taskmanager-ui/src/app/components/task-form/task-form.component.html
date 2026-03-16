@@ -1,0 +1,31 @@
+<div class="card">
+  <h2>{{ editTask ? 'Izmeni zadatak' : 'Novi zadatak' }}</h2>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+    <label>
+      Naslov
+      <input type="text" formControlName="title" placeholder="Npr. Napraviti login stranu" />
+    </label>
+
+    <label>
+      Opis
+      <textarea rows="4" formControlName="description" placeholder="Kratak opis zadatka"></textarea>
+    </label>
+
+    <label>
+      Status
+      <select formControlName="status">
+        <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+      </select>
+    </label>
+
+    <label>
+      Rok
+      <input type="date" formControlName="dueDateUtc" />
+    </label>
+
+    <div class="actions">
+      <button type="submit">{{ editTask ? 'Sačuvaj izmene' : 'Dodaj zadatak' }}</button>
+      <button *ngIf="editTask" type="button" class="secondary" (click)="cancel.emit()">Otkaži</button>
+    </div>
+  </form>
+</div>
