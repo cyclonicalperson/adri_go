@@ -1,0 +1,54 @@
+<section class="hero">
+  <div class="hero__content">
+    <div class="hero__copy">
+      <span class="eyebrow">Your next event starts here</span>
+      <h1>Discover events worth leaving the house for.</h1>
+      <p>Find talks, workshops, and local gatherings with open seats and simple sign-up.</p>
+
+      <div class="hero__actions">
+        <a class="button button--primary hero__button" routerLink="/events">Browse Events</a>
+      </div>
+    </div>
+
+    <div class="hero__panel">
+      <div class="hero__metric">
+        <strong>Handpicked picks</strong>
+        <span>Browse upcoming sessions, special talks, and community favorites.</span>
+      </div>
+      <div class="hero__metric">
+        <strong>Clear availability</strong>
+        <span>See open seats at a glance before you decide where to go.</span>
+      </div>
+      <div class="hero__metric">
+        <strong>Quick booking</strong>
+        <span>Open an event, check the details, and reserve your place in moments.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section__header">
+    <div>
+      <span class="eyebrow">Upcoming events</span>
+      <h2>Explore what is coming up next</h2>
+      <p>Fresh picks with open spots, easy to scan and ready to book.</p>
+    </div>
+
+    <a class="button button--ghost section__link" routerLink="/events">View All Events</a>
+  </div>
+
+  @if (isLoading()) {
+    <div class="state-card">Loading upcoming events...</div>
+  } @else if (errorMessage()) {
+    <div class="state-card state-card--error">{{ errorMessage() }}</div>
+  } @else if (featuredEvents().length === 0) {
+    <div class="state-card">No upcoming events are live right now. Check back soon.</div>
+  } @else {
+    <div class="event-grid">
+      @for (event of featuredEvents(); track event.id) {
+        <app-event-card [event]="event" />
+      }
+    </div>
+  }
+</section>

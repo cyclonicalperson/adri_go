@@ -1,0 +1,21 @@
+<section class="events-page">
+  <header class="page-header">
+    <span class="eyebrow">Explore events</span>
+    <h1>Find your next workshop, meetup, or live session.</h1>
+    <p>Browse upcoming events, compare availability, and open any listing for full details.</p>
+  </header>
+
+  @if (isLoading()) {
+    <div class="state-card">Loading events...</div>
+  } @else if (errorMessage()) {
+    <div class="state-card state-card--error">{{ errorMessage() }}</div>
+  } @else if (events().length === 0) {
+    <div class="state-card">No events are available right now. Please check back soon.</div>
+  } @else {
+    <div class="event-grid">
+      @for (event of events(); track event.id) {
+        <app-event-card [event]="event" />
+      }
+    </div>
+  }
+</section>

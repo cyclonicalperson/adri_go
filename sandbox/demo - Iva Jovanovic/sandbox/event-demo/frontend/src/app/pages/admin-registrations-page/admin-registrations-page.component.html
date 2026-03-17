@@ -1,0 +1,59 @@
+<section class="admin-page">
+  <header class="admin-page__header">
+    <div>
+      <span class="eyebrow">Registrations</span>
+      <h1>{{ event()?.title ?? 'Event registrations' }}</h1>
+      @if (event(); as event) {
+        <p>{{ formatDate(event.eventDate) }} · {{ event.location }} · {{ event.registeredCount }} registered</p>
+      }
+    </div>
+    <a routerLink="/admin/events" class="button button--ghost">Back to events</a>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="alert alert--error">{{ errorMessage() }}</div>
+  }
+
+  @if (actionErrorMessage()) {
+    <div class="alert alert--error">{{ actionErrorMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="state-card">Loading registrations...</div>
+  } @else if (!hasRegistrations()) {
+    <div class="state-card">No registrations exist for this event yet.</div>
+  } @else {
+    <section class="panel">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Full Name</th>
+              <th>Email</th>
+              <th>Registration Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (registration of registrations(); track registration.id) {
+              <tr>
+                <td>{{ registration.fullName }}</td>
+                <td>{{ registration.email }}</td>
+                <td>{{ formatRegistration(registration.registrationDate) }}</td>
+                <td>
+                  <button
+                    class="button button--table button--danger"
+                    type="button"
+                    [disabled]="deletingRegistrationId() === registration.id"
+                    (click)="deleteRegistration(registration)">
+                    {{ deletingRegistrationId() === registration.id ? 'Removing...' : 'Remove' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</section>

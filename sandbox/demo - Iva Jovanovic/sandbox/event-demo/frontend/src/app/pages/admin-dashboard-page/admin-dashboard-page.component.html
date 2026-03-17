@@ -1,0 +1,53 @@
+<section class="admin-page">
+  <header class="admin-page__header">
+    <div>
+      <span class="eyebrow">Overview</span>
+      <h1>Dashboard</h1>
+    </div>
+    <a routerLink="/admin/events" class="button button--primary">Manage events</a>
+  </header>
+
+  @if (isLoading()) {
+    <div class="state-card">Loading dashboard...</div>
+  } @else if (errorMessage()) {
+    <div class="state-card state-card--error">{{ errorMessage() }}</div>
+  } @else if (events().length === 0) {
+    <div class="state-card">No admin event data is available yet.</div>
+  } @else {
+    <div class="stats-grid">
+      <app-stat-card label="Total events" [value]="events().length" description="All events currently stored in MySQL." />
+      <app-stat-card label="Total registrations" [value]="totalRegistrations()" description="Combined registrations across every event." />
+      <app-stat-card label="Upcoming events" [value]="upcomingEvents()" description="Events scheduled for today or later." />
+    </div>
+
+    <section class="panel">
+      <div class="panel__header">
+        <h2>Recent event overview</h2>
+        <span>{{ events().length }} entries</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Date</th>
+              <th>Location</th>
+              <th>Registrations</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (event of events(); track event.id) {
+              <tr>
+                <td>{{ event.title }}</td>
+                <td>{{ event.eventDate }}</td>
+                <td>{{ event.location }}</td>
+                <td>{{ event.registeredCount }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</section>
