@@ -1,0 +1,50 @@
+# Angular / Node
+**/node_modules/
+**/dist/
+**/.angular/
+**/.cache/
+**/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# .NET
+**/bin/
+**/obj/
+**/TestResults/
+*.user
+*.suo
+*.userosscache
+*.rsuser
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+**/.vs/
+**/.vscode/
+*.code-workspace
+
+# Local tooling state
+.dotnet/
+.nuget/
+.templateengine/
+**/.dotnet/
+**/.nuget/
+**/.templateengine/
+
+# Logs
+*.log
+logs/
+log/
+
+# OS / editor temp files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.orig
+Thumbs.db
+Desktop.ini
+.DS_Store

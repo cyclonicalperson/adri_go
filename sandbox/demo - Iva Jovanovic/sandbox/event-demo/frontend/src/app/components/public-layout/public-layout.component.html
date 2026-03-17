@@ -1,0 +1,32 @@
+<div class="public-shell">
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" routerLink="/">
+        <span class="brand__mark">EH</span>
+        <span class="brand__text">
+          <strong>EventHub</strong>
+          <small>Find something worth attending</small>
+        </span>
+      </a>
+
+      <nav class="nav">
+        <a routerLink="/" routerLinkActive="nav__link--active" [routerLinkActiveOptions]="{ exact: true }" class="nav__link">
+          Home
+        </a>
+        <a routerLink="/events" routerLinkActive="nav__link--active" class="nav__link">Events</a>
+        <a routerLink="/admin" class="nav__link nav__link--subtle">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="public-content">
+    <router-outlet />
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <span>Discover upcoming events, save your spot, and stay in the loop.</span>
+      <a routerLink="/events" class="footer__link">Browse Events</a>
+    </div>
+  </footer>
+</div>
