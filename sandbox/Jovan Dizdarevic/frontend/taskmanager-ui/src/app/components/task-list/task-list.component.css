@@ -1,0 +1,50 @@
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+.task-item:last-child {
+  border-bottom: none;
+}
+.task-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.badge {
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.badge.progress { background: #fde68a; }
+.badge.done { background: #86efac; }
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+}
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+}
+button.danger {
+  background: #dc2626;
+}
+.empty-state {
+  padding: 24px 0;
+  color: #64748b;
+}

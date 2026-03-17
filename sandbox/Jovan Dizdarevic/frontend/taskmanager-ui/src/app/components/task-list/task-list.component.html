@@ -1,0 +1,27 @@
+<div class="card">
+  <h2>Lista zadataka</h2>
+
+  <div *ngIf="tasks.length === 0" class="empty-state">
+    Trenutno nema zadataka za prikaz.
+  </div>
+
+  <div *ngFor="let task of tasks" class="task-item">
+    <div>
+      <div class="task-header">
+        <strong>{{ task.title }}</strong>
+        <span class="badge" [class.done]="task.status === 'Done'" [class.progress]="task.status === 'InProgress'">
+          {{ task.status }}
+        </span>
+      </div>
+      <p>{{ task.description || 'Bez opisa.' }}</p>
+      <small>Kreirano: {{ task.createdAtUtc | date:'dd.MM.yyyy HH:mm' }}</small>
+      <br />
+      <small *ngIf="task.dueDateUtc">Rok: {{ task.dueDateUtc | date:'dd.MM.yyyy' }}</small>
+    </div>
+
+    <div class="actions">
+      <button (click)="edit.emit(task)">Izmeni</button>
+      <button class="danger" (click)="delete.emit(task.id)">Obriši</button>
+    </div>
+  </div>
+</div>
