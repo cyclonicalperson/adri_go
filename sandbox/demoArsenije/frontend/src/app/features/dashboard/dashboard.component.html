@@ -1,0 +1,121 @@
+<div class="dashboard">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">LoginApp</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active">
+        <span class="nav-icon">👥</span> Korisnici
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-avatar-sm">{{ getInitials(currentUser()?.fullName || 'U') }}</div>
+      <div class="user-info-sm">
+        <span class="user-name-sm">{{ currentUser()?.fullName }}</span>
+        <span class="user-role-sm">{{ currentUser()?.role }}</span>
+      </div>
+      <button class="btn-logout" (click)="logout()" title="Odjavi se">↩</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <!-- Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <h1 class="page-title">Korisnici</h1>
+        <p class="page-sub">Pregled svih registrovanih korisnika</p>
+      </div>
+      <div class="date-card">
+        <span class="date-day">{{ getDayName() }}</span>
+        <span class="date-full">{{ today | date:'d. MMMM yyyy.' }}</span>
+        <span class="date-time">{{ today | date:'HH:mm' }}</span>
+      </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-icon">👥</span>
+        <div>
+          <span class="stat-num">{{ users().length }}</span>
+          <span class="stat-label">Ukupno korisnika</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🛡️</span>
+        <div>
+          <span class="stat-num">{{ users() | adminCount }}</span>
+          <span class="stat-label">Administratori</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">✅</span>
+        <div>
+          <span class="stat-num">{{ users().length }}</span>
+          <span class="stat-label">Aktivni</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="table-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Pretraži korisnike..." (input)="onSearch($event)" />
+      </div>
+      <span class="result-count">{{ filteredUsers().length }} rezultata</span>
+    </div>
+
+    <!-- Table -->
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner-lg"></div>
+        <p>Učitavanje korisnika...</p>
+      </div>
+    } @else if (error()) {
+      <div class="error-state">{{ error() }}</div>
+    } @else {
+      <div class="table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Korisnik</th>
+              <th>Korisničko ime</th>
+              <th>Email</th>
+              <th>Uloga</th>
+              <th>Kreiran</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of filteredUsers(); track user.id; let i = $index) {
+              <tr class="table-row">
+                <td class="td-num">{{ i + 1 }}</td>
+                <td class="td-user">
+                  <div class="avatar">{{ getInitials(user.fullName) }}</div>
+                  <span>{{ user.fullName }}</span>
+                </td>
+                <td class="td-mono">{{ user.username }}</td>
+                <td class="td-email">{{ user.email }}</td>
+                <td>
+                  <span class="badge" [ngClass]="getRoleBadge(user.role)">{{ user.role }}</span>
+                </td>
+                <td class="td-date">{{ formatDate(user.createdAt) }}</td>
+                <td>
+                  <span class="status-dot active"></span> Aktivan
+                </td>
+              </tr>
+            }
+            @empty {
+              <tr><td colspan="7" class="empty-row">Nema rezultata pretrage.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </main>
+</div>
