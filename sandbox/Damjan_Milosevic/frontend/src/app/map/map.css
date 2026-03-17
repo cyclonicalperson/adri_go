@@ -1,0 +1,62 @@
+:host {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+#map {
+    height: 100%;
+    width: 100%;
+    border: none !important;
+    outline: none !important;
+    background: transparent;
+}
+.leaflet-container {
+    border: none !important;
+    outline: none !important;
+    overflow: hidden;
+}
+.add-location-card {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    z-index: 1000;
+    background: rgba(255,255,255,0.95);
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    box-shadow: 0 0 12px rgba(0,0,0,0.1);
+    width: 260px;
+    padding: 10px;
+    font-size: 13px;
+}
+.add-location-card h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.add-location-card label {
+    display: block;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    font-weight: 600;
+    font-size: 12px;
+}
+.add-location-card input {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+.add-location-card .buttons {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+.add-location-card button {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
