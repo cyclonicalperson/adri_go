@@ -1,0 +1,42 @@
+<div id="cb">
+    
+    <div class="search">
+            <input class="input" placeholder="Search name" [(ngModel)]="nameQuery" />
+            <button class="btn primary" (click)="searchByName()">Search</button>
+    </div>
+    <div class="left">
+            <button class="btn" (click)="loadTopLocations()">Top locations</button>
+        <select name="categories" id="cat" *ngIf="categories.length > 0" [(ngModel)]="selected" (ngModelChange)="loadLocationsByCategory()" aria-label="Category selector">
+            <option  Value=0 >categories</option>
+            <option *ngFor="let val of categories" [ngValue]="val.id">{{ val.name }}</option>
+        </select>
+    </div>
+</div>
+
+
+<app-map [locations]="locations" (newLocationSelected)="onMapLocationSelected($event)" (deleteLocationSelected)="onMapDeleteLocationSelected($event)" ></app-map>
+<div class="modal-backdrop" *ngIf="showNewLocationForm">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Create new location</h3>
+      <button class="close-btn" (click)="showNewLocationForm=false">✕</button>
+    </div>
+    <div class="form-row"><label>Name</label><input [(ngModel)]="newLocation.name" name="newLocationName" /></div>
+    <div class="form-row"><label>Description</label><input [(ngModel)]="newLocation.description" name="newLocationDescription" /></div>
+    <div class="form-row"><label>City</label><input [(ngModel)]="newLocation.city" name="newLocationCity" /></div>
+    
+    <div class="form-row">
+        <label>Category</label>
+        <select name="categories"  [(ngModel)]="newLocation.categoryId" aria-label="Category selector">
+            <option  Value=0 >categories</option>
+            <option *ngFor="let val of categories" [ngValue]="val.id">{{ val.name }}</option>
+        </select>
+    </div>
+
+    <div class="form-row"><label>Rating</label><input type="number" step="0.1" [(ngModel)]="newLocation.rating" name="newLocationRating" /></div>
+    <div class="modal-actions">
+      <button class="btn primary" (click)="createLocation()">Create</button>
+      <button class="btn" (click)="showNewLocationForm=false">Cancel</button>
+    </div>
+  </div>
+</div>
