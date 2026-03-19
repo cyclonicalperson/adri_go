@@ -1,14 +1,14 @@
-<div style="padding: 20px;">
-  <h2>Moja Mala Aplikacija</h2>
-  
-  <input [(ngModel)]="noviZadatak" placeholder="Unesi tekst...">
-  <button (click)="dodaj()">Dodaj u bazu</button>
+<div class="app-container">
+  <h1>🚀 Moja Todo Lista</h1>
 
-  <hr>
+  <nav>
+    <a routerLink="/">Početna</a>
+    <a routerLink="/o-projektu">O projektu</a>
+  </nav>
 
-  <ul>
-    <li *ngFor="let t of lista">
-      {{ t.title }}
-    </li>
-  </ul>
+  <router-outlet></router-outlet>
+
+  <footer>
+    Povezano sa .NET Bekendom (Port: 5114)
+  </footer>
 </div>
