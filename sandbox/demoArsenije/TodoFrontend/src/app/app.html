@@ -1,0 +1,14 @@
+<div style="padding: 20px;">
+  <h2>Moja Mala Aplikacija</h2>
+  
+  <input [(ngModel)]="noviZadatak" placeholder="Unesi tekst...">
+  <button (click)="dodaj()">Dodaj u bazu</button>
+
+  <hr>
+
+  <ul>
+    <li *ngFor="let t of lista">
+      {{ t.title }}
+    </li>
+  </ul>
+</div>
