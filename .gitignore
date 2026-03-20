@@ -1,33 +1,169 @@
-# Build folderi
+# .NET / C#
+
+
+## Build rezultati
 bin/
-build/
-target/
+obj/
 out/
 
-# IDE fajlovi
-.idea/
-.vscode/
-*.iml
-
-# Visual Studio
+## Visual Studio
 .vs/
 *.user
 *.suo
+*.userosscache
+*.rsuser
+*.sln.docstates
 *.csproj.user
+*.vcxproj.filters
+*.pidb
+*.svclog
+*.scc
 
-# Log fajlovi
+## Lokalni tooling state
+.dotnet/
+.nuget/
+.templateengine/
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Publish profili
+PublishProfiles/
+*.pubxml
+*.pubxml.user
+
+## Runtime & logovi
 *.log
+*.trace
+logs/
+Logs/
 
-# Temporary fajlovi
-*.tmp
-*.temp
+## Testovi
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResult.xml
+coverage.xml
+*.coverage
+*.coveragexml
+
+## Roslyn cache
+*.roslyn.ide
+
+## Generisani fajlovi
+*.generated.cs
+
+
+# Angular / Node.js
+
+
+## Zavisnosti
+node_modules/
+.pnp
+.pnp.js
+
+## Build output
+dist/
+tmp/
+out-tsc/
+bazel-out/
+.angular/
+
+## Angular test & debug
+testem.log
+/libpeerconnection.log
+/connect.lock
+/typings
+__screenshots__/
+
+## Editor history
+.history/
+
+## Cache
+.sass-cache/
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+## TypeScript
+*.tsbuildinfo
+
+
+
+# Environment & konfiguracija
+
+
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+
+# MySQL / Baze podataka
+
+
+*.sql.bak
+*.mdf
+*.ldf
+*.db
+*.db-shm
+*.db-wal
+dump.sql
+*.dump
+
+
+# IDE & editori
+
+
+## Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+
+## JetBrains (Rider)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+## Ostali editori
+*.sublime-workspace
+*.launch
+.settings/
+
 
 # OS fajlovi
+
+
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Node modules (ako imate frontend)
-node_modules/
 
-# Environment fajlovi
-.env
+# Ostalo
+
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
