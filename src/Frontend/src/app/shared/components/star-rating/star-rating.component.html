@@ -1,0 +1,13 @@
+<div class="stars">
+  @for (star of stars; track star) {
+  <span class="star"
+        [class.filled]="star <= (hovered ?? value)"
+        [class.interactive]="!readonly"
+        (mouseenter)="!readonly && (hovered = star)"
+        (mouseleave)="!readonly && (hovered = null)"
+        (click)="!readonly && select(star)">★</span>
+  }
+  @if (showValue && value) {
+  <span class="value">{{ value.toFixed(1) }}</span>
+  }
+</div>

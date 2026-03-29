@@ -1,0 +1,29 @@
+@use 'variables' as *;
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star {
+  font-size: 18px;
+  color: $gray-300;
+  line-height: 1;
+  transition: color 0.15s;
+
+  &.filled {
+    color: #F59E0B;
+  }
+
+  &.interactive {
+    cursor: pointer;
+  }
+}
+
+.value {
+  font-size: 13px;
+  font-weight: 500;
+  color: $gray-500;
+  margin-left: 4px;
+}
