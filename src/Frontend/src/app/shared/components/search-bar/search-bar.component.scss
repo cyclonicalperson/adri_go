@@ -15,23 +15,26 @@
 }
 
 .input {
-  width: 100%;
-  height: 38px;
-  padding: 0 36px;
+  padding: 9px 36px 9px 36px;
   border: 1px solid $gray-200;
-  border-radius: $radius-sm;
-  font-size: 14px;
+  border-radius: $radius-md;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 500;
+  background: $gray-50;
   color: $gray-900;
-  background: $white;
   outline: none;
-  transition: border-color 0.15s;
-
-  &:focus {
-    border-color: $primary;
-  }
+  transition: all .2s;
+  min-width: 240px;
 
   &::placeholder {
     color: $gray-400;
+  }
+
+  &:focus {
+    border-color: $primary;
+    background: $white;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .1);
   }
 }
 
@@ -41,11 +44,14 @@
   background: none;
   border: none;
   color: $gray-400;
+  font-size: 14px;
   cursor: pointer;
-  font-size: 12px;
-  padding: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
 
   &:hover {
-    color: $gray-600;
+    color: $gray-700;
+    background: $gray-100;
   }
 }

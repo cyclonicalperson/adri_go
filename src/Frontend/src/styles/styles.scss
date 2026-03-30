@@ -2,6 +2,9 @@
 @use 'typography' as *;
 @use 'mixins' as *;
 
+// Google Font import — Plus Jakarta Sans
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -10,9 +13,376 @@
 
 html, body {
   height: 100%;
+  font-family: $font-sans;
+  font-size: $font-size-base;
+  background: $gray-50;
+  color: $gray-900;
+  -webkit-font-smoothing: antialiased;
 }
 
-// Utility klase
+// ── Scrollbar ────────────────────────────────────────────────────────────
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: $gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $gray-300;
+  border-radius: 3px;
+}
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: $gray-400;
+  }
+
+// ── Global badge system ──────────────────────────────────────────────────
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: $radius-sm;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &-green {
+    background: $primary-soft;
+    color: $primary-dark;
+  }
+
+  &-amber {
+    background: $warning-soft;
+    color: #92400e;
+  }
+
+  &-red {
+    background: $danger-soft;
+    color: #991b1b;
+  }
+
+  &-blue {
+    background: $info-soft;
+    color: #1e40af;
+  }
+
+  &-purple {
+    background: $purple-soft;
+    color: #5b21b6;
+  }
+
+  &-gray {
+    background: $gray-100;
+    color: $gray-500;
+  }
+}
+
+// ── Global button base ───────────────────────────────────────────────────
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: $radius-md;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-900;
+  text-decoration: none;
+
+  &-primary {
+    background: $primary;
+    color: $white;
+    border-color: $primary;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, .2);
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+
+  &-outline {
+    background: $white;
+    color: $gray-900;
+    border-color: $gray-200;
+
+    &:hover {
+      border-color: $primary;
+      color: $primary-dark;
+      background: $surface-green;
+    }
+  }
+
+  &-xs {
+    padding: 5px 12px;
+    font-size: 12px;
+    border-radius: $radius-sm;
+  }
+
+  &-approve {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $primary-soft;
+  }
+
+  &-reject {
+    border-color: $gray-200;
+    color: $gray-500;
+    background: $white;
+  }
+}
+
+// ── Panel / Card ─────────────────────────────────────────────────────────
+.panel {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+
+  &-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &-title {
+    font-weight: 800;
+    font-size: 15px;
+    color: $gray-900;
+  }
+
+  &-sub {
+    font-size: 12px;
+    color: $gray-500;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  &-body {
+    padding: 24px;
+  }
+}
+
+// ── Stat card (shared) ───────────────────────────────────────────────────
+.stat-card {
+  background: $white;
+  padding: 22px 24px;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: $gray-500;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: $gray-900;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .stat-trend {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    &.up {
+      color: $primary-dark;
+    }
+
+    &.down {
+      color: $danger;
+    }
+
+    &.neutral {
+      color: $gray-500;
+    }
+  }
+}
+
+// ── Table ────────────────────────────────────────────────────────────────
+.table-wrap {
+  overflow-x: auto;
+}
+
+table.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    background: #fdfdfd;
+    padding: 12px 20px;
+    text-align: left;
+    font-size: 11px;
+    color: $gray-500;
+    text-transform: uppercase;
+    font-weight: 800;
+    border-bottom: 1px solid $gray-200;
+    letter-spacing: .5px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+
+    &:hover {
+      color: $primary-dark;
+    }
+
+    .sort-icon {
+      margin-left: 4px;
+      opacity: .4;
+      font-size: 10px;
+    }
+  }
+
+  td {
+    padding: 16px 20px;
+    border-bottom: 1px solid $gray-200;
+    vertical-align: middle;
+    font-size: 13px;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: $surface-green;
+    cursor: pointer;
+  }
+}
+
+// ── Toolbar ──────────────────────────────────────────────────────────────
+.toolbar {
+  background: $white;
+  padding: 16px 20px;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 360px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: $gray-400;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 14px 10px 36px;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-family: $font-sans;
+    font-size: 13px;
+    outline: none;
+    background: $gray-50;
+    transition: .2s;
+
+    &:focus {
+      border-color: $primary;
+      background: $white;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, .1);
+    }
+  }
+
+  .filter-select {
+    padding: 10px 14px;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-family: $font-sans;
+    font-size: 13px;
+    font-weight: 600;
+    background: $white;
+    cursor: pointer;
+    outline: none;
+    min-width: 140px;
+
+    &:focus {
+      border-color: $primary;
+    }
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+// ── Filter tabs ──────────────────────────────────────────────────────────
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .ftab {
+    padding: 7px 14px;
+    border-radius: $radius-sm;
+    border: 1px solid $gray-200;
+    background: $white;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: .15s;
+    color: $gray-500;
+
+    &:hover {
+      border-color: $primary;
+      color: $primary-dark;
+      background: $surface-green;
+    }
+
+    &.active {
+      background: $primary;
+      color: $white;
+      border-color: $primary;
+    }
+  }
+}
+
+// ── Utility classes ──────────────────────────────────────────────────────
 .text-muted {
   color: $gray-500;
 }
@@ -22,7 +392,7 @@ html, body {
 }
 
 .text-success {
-  color: $success;
+  color: $primary;
 }
 
 .text-primary {
@@ -41,21 +411,47 @@ html, body {
   margin-top: $spacing-lg;
 }
 
-// Scrollbar
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-::-webkit-scrollbar-track {
-  background: $gray-100;
+// ── Page content wrapper ─────────────────────────────────────────────────
+.page-content {
+  padding: $spacing-xl $spacing-xl;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
 }
 
-::-webkit-scrollbar-thumb {
-  background: $gray-300;
-  border-radius: 3px;
+// ── Grid helpers ─────────────────────────────────────────────────────────
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
 }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: $gray-400;
-  }
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: $spacing-md;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+}
+
+.grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: $spacing-md;
+}
+
+.grid-3-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: $spacing-md;
+}

@@ -3,20 +3,21 @@
 .spinner-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  backdrop-filter: blur(2px);
 }
 
 .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid #E5E7EB;
+  width: 40px;
+  height: 40px;
+  border: 3px solid $gray-200;
   border-top-color: $primary;
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  animation: spin 0.65s linear infinite;
 }
 
 @keyframes spin {

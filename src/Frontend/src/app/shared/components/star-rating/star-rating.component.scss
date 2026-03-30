@@ -7,23 +7,26 @@
 }
 
 .star {
-  font-size: 18px;
-  color: $gray-300;
-  line-height: 1;
-  transition: color 0.15s;
+  font-size: 16px;
+  color: $gray-200;
+  transition: color .1s;
 
   &.filled {
-    color: #F59E0B;
+    color: #f59e0b;
   }
 
   &.interactive {
     cursor: pointer;
+
+    &:hover {
+      transform: scale(1.15);
+    }
   }
 }
 
 .value {
   font-size: 13px;
-  font-weight: 500;
-  color: $gray-500;
+  font-weight: 700;
+  color: $gray-700;
   margin-left: 4px;
 }

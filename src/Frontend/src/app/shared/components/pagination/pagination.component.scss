@@ -4,23 +4,30 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .btn {
   min-width: 32px;
   height: 32px;
-  padding: 0 8px;
+  padding: 0 10px;
+  border-radius: $radius-sm;
   border: 1px solid $gray-200;
-  border-radius: 6px;
   background: $white;
   color: $gray-700;
   font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  font-family: $font-sans;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
 
-  &:hover:not(:disabled) {
+  &:hover:not(:disabled):not(.active) {
     border-color: $primary;
-    color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
   }
 
   &.active {
@@ -36,12 +43,14 @@
 }
 
 .dots {
-  padding: 0 4px;
+  padding: 0 6px;
   color: $gray-400;
+  font-weight: 700;
 }
 
 .info {
   font-size: 12px;
-  color: $gray-400;
+  color: $gray-500;
+  font-weight: 500;
   margin-left: 8px;
 }

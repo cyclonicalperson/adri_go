@@ -3,62 +3,85 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(2px);
 }
 
 .dialog {
   background: $white;
-  border-radius: $radius-lg;
-  padding: 28px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: $shadow-lg;
+  border-radius: $radius-xl;
+  border: 1px solid $gray-200;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
 }
 
 .title {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 800;
   color: $gray-900;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .message {
   font-size: 14px;
   color: $gray-500;
+  line-height: 1.6;
   margin-bottom: 24px;
 }
 
 .actions {
   display: flex;
-  justify-content: flex-end;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .btn-cancel {
-  padding: 8px 18px;
+  padding: 10px 20px;
+  border-radius: $radius-md;
   border: 1px solid $gray-200;
-  border-radius: $radius-sm;
   background: $white;
   color: $gray-700;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $gray-400;
+  }
 }
 
 .btn-confirm {
-  padding: 8px 18px;
-  border: none;
-  border-radius: $radius-sm;
+  padding: 10px 20px;
+  border-radius: $radius-md;
+  border: 1px solid $primary;
   background: $primary;
   color: $white;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
+  font-family: $font-sans;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, .2);
+  transition: all .15s;
+
+  &:hover {
+    background: $primary-hover;
+  }
 
   &.danger {
     background: $danger;
+    border-color: $danger;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, .2);
+
+    &:hover {
+      background: darken(#ef4444, 8%);
+    }
   }
 }
