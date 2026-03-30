@@ -1,0 +1,11 @@
+<div class="search-wrap">
+  <span class="icon">&#128269;</span>
+  <input class="input"
+         type="text"
+         [placeholder]="placeholder"
+         [(ngModel)]="query"
+         (ngModelChange)="term$.next($event)" />
+  @if (query) {
+  <button class="clear" (click)="clear()">&#10005;</button>
+  }
+</div>

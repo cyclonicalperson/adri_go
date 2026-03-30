@@ -1,0 +1,64 @@
+@use 'variables' as *;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: $white;
+  border-radius: $radius-lg;
+  padding: 28px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: $shadow-lg;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: $gray-900;
+  margin-bottom: 8px;
+}
+
+.message {
+  font-size: 14px;
+  color: $gray-500;
+  margin-bottom: 24px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  padding: 8px 18px;
+  border: 1px solid $gray-200;
+  border-radius: $radius-sm;
+  background: $white;
+  color: $gray-700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-confirm {
+  padding: 8px 18px;
+  border: none;
+  border-radius: $radius-sm;
+  background: $primary;
+  color: $white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &.danger {
+    background: $danger;
+  }
+}
