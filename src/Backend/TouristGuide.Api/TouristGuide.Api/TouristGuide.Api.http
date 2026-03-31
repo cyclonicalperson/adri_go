@@ -1,6 +1,0 @@
-@TouristGuide.Api_HostAddress = http://localhost:5125
-
-GET {{TouristGuide.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
