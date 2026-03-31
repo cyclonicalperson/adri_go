@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11612.150 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TouristGuide.Api", "TouristGuide.Api.csproj", "{FBEC1E5C-CDD2-C86E-D24C-EAC52289B78E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FBEC1E5C-CDD2-C86E-D24C-EAC52289B78E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBEC1E5C-CDD2-C86E-D24C-EAC52289B78E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBEC1E5C-CDD2-C86E-D24C-EAC52289B78E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBEC1E5C-CDD2-C86E-D24C-EAC52289B78E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B8E93875-B985-44DA-B81A-206606A3A3EC}
+	EndGlobalSection
+EndGlobal
