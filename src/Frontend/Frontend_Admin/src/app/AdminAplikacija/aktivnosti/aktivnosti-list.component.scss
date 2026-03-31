@@ -1,0 +1,13 @@
+@use 'variables' as *;
+@use 'list-page' as *;
+
+// Wellness type badge (not in list-page)
+.type-wellness {
+  background: #f3e8ff;
+  color: #5b21b6;
+}
+
+.type-shopping {
+  background: #fef3c7;
+  color: #92400e;
+}

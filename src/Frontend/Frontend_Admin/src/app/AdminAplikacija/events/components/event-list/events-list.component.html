@@ -1,0 +1,189 @@
+<div class="page-content">
+
+  <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
+  <div class="stats-strip">
+    <div class="stat-chip">
+      <div class="num">{{ total }}</div>
+      <div class="lbl">Ukupno dogadjaja</div>
+      <div class="trend">Sve vreme</div>
+    </div>
+    <div class="stat-chip">
+      <div class="num" style="color:#15803d">{{ upcomingCount }}</div>
+      <div class="lbl">Predstojeći</div>
+      <div class="trend up">↑ 8 ove nedelje</div>
+    </div>
+    <div class="stat-chip">
+      <div class="num" style="color:#1d4ed8">{{ ongoingCount }}</div>
+      <div class="lbl">U toku</div>
+      <div class="trend">Aktivni trenutno</div>
+    </div>
+    <div class="stat-chip">
+      <div class="num" style="color:#d97706">3</div>
+      <div class="lbl">Na čekanju</div>
+      <div class="trend warn">⚠ Traži pregled</div>
+    </div>
+    <div class="stat-chip">
+      <div class="num" style="color:#6b7280">{{ pastCount }}</div>
+      <div class="lbl">Završeni</div>
+      <div class="trend">Istorijat</div>
+    </div>
+  </div>
+
+  <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!req.category" (click)="onCategoryChange('')">
+      Svi
+    </button>
+    @for (opt of categoryOptions.slice(1); track opt.value) {
+    <button class="ftab" [class.active]="req.category === opt.value"
+            (click)="onCategoryChange(opt.value)">
+      {{ opt.label }}
+    </button>
+    }
+  </div>
+
+  <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input"
+             type="text"
+             placeholder="Pretraži dogadjaje po nazivu…"
+             [value]="req.search ?? ''"
+             (input)="onSearch($any($event.target).value)" />
+    </div>
+
+    <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
+      <option value="">Sve destinacije</option>
+      @for (d of destinations; track d.destinationId) {
+      <option [value]="d.destinationId">{{ d.name }}</option>
+      }
+    </select>
+
+    <select class="filter-select" (change)="onStatusFilter($any($event.target).value)">
+      <option value="">Svi statusi</option>
+      <option value="upcoming">📅 Predstojeći</option>
+      <option value="ongoing">🟢 U toku</option>
+      <option value="past">✔ Završeni</option>
+    </select>
+
+    <div class="view-toggle-tabs">
+      <button class="vtab" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'">
+        ☰ Tabela
+      </button>
+      <button class="vtab" [class.active]="viewMode === 'calendar'" (click)="viewMode = 'calendar'">
+        📅 Kalendar
+      </button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="btn-group">
+      <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
+      <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
+      <button class="btn btn-primary" (click)="goNew()">➕ Novi dogadjaj</button>
+    </div>
+  </div>
+
+  <!-- ── TABLE / CALENDAR VIEW ────────────────────────────────────────── -->
+  @if (loading) {
+  <div class="state-msg">Učitavanje...</div>
+  } @else if (events.length === 0) {
+  <div class="state-msg">Nema rezultata.</div>
+  } @else {
+
+  @if (viewMode === 'calendar') {
+  <app-event-calendar [events]="events" (editEvent)="goEdit($event)" />
+  } @else {
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Svi dogadjaji</div>
+        <div class="panel-sub">{{ total }} rezultata · stranica {{ req.page }} od {{ totalPages }}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th (click)="onSortCol('name')">Dogadjaj <span class="sort">↕</span></th>
+          <th>Kategorija</th>
+          <th>Status</th>
+          <th (click)="onSortCol('startAt')">Početak <span class="sort">↕</span></th>
+          <th (click)="onSortCol('endAt')">Kraj <span class="sort">↕</span></th>
+          <th>Lokacija</th>
+          <th>Admin</th>
+          <th>Akcije</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of events; track e.eventId) {
+        <tr>
+          <td>
+            <div class="item-cell">
+              <div class="item-thumb">{{ categoryIcon(e.category) }}</div>
+              <div>
+                <div class="item-name">{{ e.name }}</div>
+                <div class="item-desc">{{ e.description | truncate:55 }}</div>
+                @if (e.ticketUrl) {
+                <div style="font-size:11px;color:#1d4ed8;margin-top:3px">🎟 Karte dostupne</div>
+                }
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="type-badge" [class]="catBadgeClass(e.category)">
+              {{ categoryIcon(e.category) }} {{ categoryLabel(e.category) }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [class]="statusBadge(e)">{{ statusLabel(e) }}</span>
+          </td>
+          <td style="font-size:12px;color:#374151;font-weight:600">
+            {{ e.startAt | dateLocal:'datetime' }}
+          </td>
+          <td style="font-size:12px;color:#374151;font-weight:600">
+            {{ e.endAt | dateLocal:'datetime' }}
+          </td>
+          <td style="font-size:12px;color:#6b7280">
+            {{ e.destination?.name ?? e.object?.name ?? '—' }}
+          </td>
+          <td style="font-size:12px;font-weight:600">—</td>
+          <td (click)="$event.stopPropagation()">
+            <div class="actions">
+              <button class="btn-icon map-btn" title="Mapa">🗺️</button>
+              <button class="btn-icon" title="Detalji">👁️</button>
+              <button class="btn-icon" title="Izmeni" (click)="goEdit(e)">✏️</button>
+              <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(e)">🗑️</button>
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} dogadjaja</div>
+      <div class="pg-btns">
+        <button class="pg-btn" [disabled]="req.page === 1" (click)="onPage(req.page - 1)">←</button>
+        @for (p of pageNumbers; track p) {
+        <button class="pg-btn" [class.active]="p === req.page" (click)="onPage(p)">{{ p }}</button>
+        }
+        <button class="pg-btn" [disabled]="req.page === totalPages" (click)="onPage(req.page + 1)">→</button>
+      </div>
+    </div>
+  </div>
+
+  }
+  }
+
+</div>
+
+<app-confirm-dialog [visible]="!!deleteTarget"
+                    title="Obriši dogadjaj"
+                    [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
+                    confirmLabel="Obriši"
+                    [danger]="true"
+                    (confirmed)="doDelete()"
+                    (cancelled)="cancelDelete()" />

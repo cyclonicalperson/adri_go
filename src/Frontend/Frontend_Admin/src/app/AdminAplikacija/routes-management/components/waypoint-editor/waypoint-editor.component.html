@@ -1,0 +1,50 @@
+<div class="editor">
+
+  <div class="toolbar">
+    <span class="count">
+      {{ waypoints.length }} tačaka
+      @if (waypoints.length >= 2) {
+      <span class="ok">✓ ruta definisana</span>
+      }
+    </span>
+    <div class="actions">
+      <button type="button" class="btn-undo" (click)="removeLast()"
+              [disabled]="waypoints.length === 0">
+        ← Ukloni poslednju
+      </button>
+      <button type="button" class="btn-clear" (click)="clearAll()"
+              [disabled]="waypoints.length === 0">
+        Obriši sve
+      </button>
+    </div>
+  </div>
+
+  <app-map [markers]="markers"
+           [centerLat]="centerLat"
+           [centerLng]="centerLng"
+           [zoom]="10"
+           [clickable]="true"
+           height="320px"
+           (mapClicked)="onMapClick($event)" />
+
+  <p class="hint">Kliknite na mapu da dodajete tačke rute redom. Prva tačka je start, poslednja je kraj.</p>
+
+  @if (waypoints.length > 0) {
+  <div class="list">
+    @for (w of waypoints; track $index) {
+    <div class="wp-item">
+      <span class="wp-num">{{ $index + 1 }}</span>
+      <span class="wp-coords">
+        {{ w.latitude.toFixed(5) }}°N, {{ w.longitude.toFixed(5) }}°E
+      </span>
+      @if ($index === 0) {
+      <span class="wp-label start">Start</span>
+      } @else if ($index === waypoints.length - 1) {
+      <span class="wp-label end">Kraj</span>
+      }
+    </div>
+    }
+  </div>
+  }
+
+</div>

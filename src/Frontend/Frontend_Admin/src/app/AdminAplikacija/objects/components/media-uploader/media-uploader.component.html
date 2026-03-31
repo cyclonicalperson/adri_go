@@ -1,0 +1,30 @@
+<div class="uploader">
+
+  <div class="thumbs">
+    @for (m of media; track m.mediaId) {
+    <div class="thumb-wrap">
+      <img class="thumb" [src]="m.url" [alt]="m.caption ?? 'Slika'" />
+      <button class="btn-remove" (click)="remove(m.mediaId)">✕</button>
+    </div>
+    }
+
+    <label class="add-btn" [class.disabled]="uploading">
+      @if (uploading) {
+      <span class="progress">{{ progress }}%</span>
+      } @else {
+      <span class="plus">+</span>
+      <span class="add-label">Dodaj sliku</span>
+      }
+      <input type="file"
+             accept="image/*"
+             style="display:none"
+             [disabled]="uploading"
+             (change)="onFileSelected($event)" />
+    </label>
+  </div>
+
+  @if (error) {
+  <div class="upload-error">{{ error }}</div>
+  }
+
+</div>

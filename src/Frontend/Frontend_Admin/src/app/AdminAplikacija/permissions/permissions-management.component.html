@@ -1,0 +1,116 @@
+<div class="page-content">
+
+  <div class="page-intro">
+    <div class="page-intro-title">Upravljanje dozvolama</div>
+    <div class="page-intro-sub">Odaberite korisnika → entitet → dozvole</div>
+  </div>
+
+  <div class="perm-layout">
+
+    <!-- ── COL 1: User selection ──────────────────────────────────────── -->
+    <div class="perm-panel">
+      <div class="perm-panel-header">
+        <span>1. Korisnik</span>
+        <div class="step-badge">1</div>
+      </div>
+      <div class="perm-panel-body">
+        <div class="user-search-wrap">
+          <span class="user-search-icon">🔍</span>
+          <input class="user-search-input"
+                 type="text"
+                 placeholder="Pretraži admina…"
+                 [(ngModel)]="userSearch" />
+        </div>
+
+        @for (u of filteredUsers; track u.userId) {
+        <div class="user-select-item"
+             [class.selected]="selectedUser?.userId === u.userId"
+             (click)="selectUser(u)">
+          <div class="user-av-sm" [style.background]="avatarBg(u.fullName)" [style.color]="avatarColor(u.fullName)">
+            {{ initials(u.fullName) }}
+          </div>
+          <div>
+            <div class="user-nm">{{ u.fullName }}</div>
+            <div class="user-sc">{{ u.organization?.name ?? 'Fizičko lice' }} · {{ permCount(u) }} dozvola</div>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- ── COL 2: Entity + permissions ────────────────────────────────── -->
+    <div class="perm-panel">
+      <div class="perm-panel-header">
+        <span>2. Entitet i dozvole{{ selectedUser ? ' — ' + selectedUser.fullName : '' }}</span>
+        <div class="step-badge">2</div>
+      </div>
+      <div class="perm-panel-body">
+
+        @if (!selectedUser) {
+        <div class="empty-hint">← Odaberite admina</div>
+        } @else {
+
+        <div class="entity-section-label">Odaberite entitet</div>
+
+        @for (entity of availableEntities; track entity.id) {
+        <div class="entity-item"
+             [class.selected]="selectedEntity?.id === entity.id"
+             (click)="selectEntity(entity)">
+          <div class="entity-icon" [style.background]="entity.iconBg">{{ entity.icon }}</div>
+          <div>
+            <div class="entity-nm">{{ entity.name }}</div>
+            <div class="entity-path">{{ entity.type }} · {{ entity.location }}</div>
+          </div>
+        </div>
+        }
+
+        @if (selectedEntity) {
+        <div class="perm-section-label">
+          Dozvole nad {{ selectedEntity.name }}
+        </div>
+
+        @for (perm of allPermissions; track perm.key) {
+        <div class="perm-toggle-row">
+          <div>
+            <div class="perm-key">{{ perm.key }}</div>
+            <div class="perm-desc">{{ perm.desc }}</div>
+          </div>
+          <button class="toggle"
+                  [class.on]="hasPermission(perm.key)"
+                  [class.off]="!hasPermission(perm.key)"
+                  (click)="togglePermission(perm.key)"
+                  [attr.aria-label]="(hasPermission(perm.key) ? 'Ukloni' : 'Dodaj') + ' dozvolu ' + perm.key"
+                  [attr.aria-pressed]="hasPermission(perm.key)">
+          </button>
+        </div>
+        }
+
+        <button class="save-btn" (click)="savePermissions()" [disabled]="saving">
+          {{ saving ? 'Čuvanje...' : 'Sačuvaj dozvole' }}
+        </button>
+        }
+        }
+      </div>
+    </div>
+
+    <!-- ── COL 3: Change log ───────────────────────────────────────────── -->
+    <div class="perm-panel">
+      <div class="perm-panel-header">
+        <span>Log izmena dozvola</span>
+      </div>
+      <div class="perm-panel-body">
+        @for (entry of changeLog; track entry.time) {
+        <div class="log-entry">
+          <div class="log-action" [class]="entry.type">{{ entry.actionLabel }}</div>
+          <div class="log-detail">
+            <strong>{{ entry.user }}</strong> → {{ entry.permission }}
+          </div>
+          <div class="log-meta">{{ entry.entity }} · {{ entry.time }}</div>
+        </div>
+        }
+      </div>
+    </div>
+
+  </div>
+
+</div>

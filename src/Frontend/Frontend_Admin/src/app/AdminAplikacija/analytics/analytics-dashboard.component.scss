@@ -1,0 +1,408 @@
+@use 'variables' as *;
+
+.page-content {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+// ── KPI Cards ─────────────────────────────────────────────────────────────
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.kpi-card {
+  background: $white;
+  padding: 22px 24px;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+}
+
+.kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 14px;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: $gray-500;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  color: $gray-900;
+}
+
+.kpi-change {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 6px;
+
+  &.up {
+    color: $primary-dark;
+  }
+
+  &.down {
+    color: $danger;
+  }
+}
+
+// ── Grids ─────────────────────────────────────────────────────────────────
+.grid-3-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+// ── Panel ─────────────────────────────────────────────────────────────────
+.panel {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid $gray-200;
+}
+
+.panel-title {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: $gray-500;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.panel-body {
+  padding: 24px;
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────
+.chart-select {
+  border: 1px solid $gray-200;
+  border-radius: $radius-sm;
+  padding: 6px 10px;
+  font-family: $font-sans;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  color: $gray-700;
+}
+
+.chart-area {
+  background: $gray-50;
+  border-radius: 10px;
+  padding: 16px 16px 0;
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 160px;
+}
+
+.bar {
+  flex: 1;
+  border-radius: 5px 5px 0 0;
+  min-height: 8px;
+  transition: opacity .2s;
+
+  &:hover {
+    opacity: .8;
+  }
+
+  &.bar-green {
+    background: linear-gradient(180deg, #22c55e 0%, #86efac 100%);
+  }
+
+  &.bar-blue {
+    background: linear-gradient(180deg, #3b82f6 0%, #93c5fd 100%);
+  }
+
+  &.bar-amber {
+    background: linear-gradient(180deg, #f59e0b 0%, #fcd34d 100%);
+  }
+
+  &.bar-primary {
+    background: linear-gradient(180deg, #22c55e 0%, #86efac 100%);
+  }
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0 0;
+  font-size: 10px;
+  color: $gray-400;
+  font-weight: 700;
+}
+
+// ── Donut ─────────────────────────────────────────────────────────────────
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.donut {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+
+  &-1 {
+    background: conic-gradient( #22c55e 0% 38%, #3b82f6 38% 61%, #f59e0b 61% 76%, #8b5cf6 76% 89%, #ef4444 89% 100% );
+  }
+}
+
+.donut-center {
+  position: absolute;
+  inset: 20px;
+  background: $white;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: $gray-900;
+}
+
+.donut-lbl {
+  font-size: 10px;
+  color: $gray-500;
+  font-weight: 600;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $gray-700;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-val {
+  margin-left: auto;
+  color: $gray-400;
+  font-size: 11px;
+}
+
+// ── Ranking ───────────────────────────────────────────────────────────────
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid $gray-100;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.rank-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  background: $gray-100;
+  color: $gray-500;
+  flex-shrink: 0;
+
+  &.gold {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  &.silver {
+    background: $gray-100;
+    color: $gray-600;
+  }
+
+  &.bronze {
+    background: #fff7ed;
+    color: #9a3412;
+  }
+}
+
+.rank-name {
+  font-size: 13px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.rank-sub {
+  font-size: 11px;
+  color: $gray-500;
+  margin-top: 1px;
+}
+
+.rank-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: $gray-900;
+  white-space: nowrap;
+}
+
+// ── Top items bar list ────────────────────────────────────────────────────
+.top-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid $gray-100;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.top-rank {
+  width: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  color: $gray-400;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.top-name {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-bar-wrap {
+  width: 80px;
+  height: 6px;
+  background: $gray-100;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.top-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .3s ease;
+}
+
+.top-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: $gray-700;
+  width: 44px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+// ── Preference bars ───────────────────────────────────────────────────────
+.pref-item {
+  margin-bottom: 12px;
+}
+
+.pref-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.pref-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: $gray-800;
+}
+
+.pref-pct {
+  font-size: 13px;
+  font-weight: 800;
+  color: $primary-dark;
+}
+
+.pref-bar {
+  height: 8px;
+  background: $gray-100;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pref-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .3s ease;
+}
+
+.state-msg {
+  padding: 60px;
+  text-align: center;
+  color: $gray-400;
+  font-weight: 600;
+}

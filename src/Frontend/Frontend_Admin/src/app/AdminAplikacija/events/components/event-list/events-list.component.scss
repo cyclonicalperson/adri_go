@@ -1,0 +1,32 @@
+@use 'variables' as *;
+@use 'list-page' as *;
+
+// View mode tabs
+.view-toggle-tabs {
+  display: flex;
+  border: 1px solid $gray-200;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.vtab {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: $gray-500;
+  background: $white;
+  border: none;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    color: $gray-900;
+    background: $gray-50;
+  }
+
+  &.active {
+    background: $primary;
+    color: $white;
+  }
+}
