@@ -1,0 +1,76 @@
+<div class="main-layout">
+  <div class="phone-container">
+    
+    <div class="hero-image">
+      <img src="assets/Budva.jpg" alt="Stay Image">
+      <button class="icon-btn back" (click)="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <button class="icon-btn heart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+      </button>
+      <div class="pagination-dots">
+        <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </div>
+    </div>
+
+    <div class="content">
+      <section class="main-info">
+        <h1>{{ stay.naziv }}</h1>
+        <div class="rating-row">
+          <span class="stars">★★★★★</span>
+          <span class="score">{{ stay.ocena }}</span>
+          <span class="count">{{ stay.recenzije }} reviews</span>
+        </div>
+        <p class="loc">📍 {{ stay.lokacija }}</p>
+        <p class="address">🛣️ {{ stay.adresa }}</p>
+      </section>
+
+      <div class="map-box">
+        <img src="assets/map-placeholder.png" alt="Map">
+      </div>
+
+      <section class="description">
+        <h3>Apartment Info</h3>
+        <div class="amenities-icons">
+          <span>📶</span><span>🏊</span><span>❄️</span><span>🖥️</span><span>🛏️</span><span>🚗</span><span>🏦</span>
+        </div>
+        <p>Modern, fully equipped apartment with amazing sea view. Sleeps up to 4 guests. Features a spacious living room, 2 bedrooms, a full kitchen, and a large balcony with a private pool.</p>
+      </section>
+
+      <div class="price-book-row">
+        <div class="price">From <strong>{{ stay.cena }}€</strong> /night</div>
+        <button class="book-btn" (click)="onBookNow()">Book now</button>
+      </div>
+
+      <section class="owner-info">
+        <h3>Owner info</h3>
+        <div class="owner-card">
+          <div class="owner-main">
+            <img [src]="stay.vlasnik.slika" class="avatar">
+            <div class="owner-text">
+              <h4>{{ stay.vlasnik.ime }}</h4>
+              <p class="phone">{{ stay.vlasnik.telefon }}</p>
+            </div>
+            <button class="call-btn" (click)="onCall()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              Call now >
+            </button>
+          </div>
+          <hr>
+          <div class="owner-links">
+            <div class="link" (click)="onEmail()">
+              <div class="icon-circle mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></div>
+              <span>{{ stay.vlasnik.email }}</span>
+            </div>
+            <div class="link">
+              <span class="booking-text">Booking.com 🔗</span>
+              <span class="arrow">></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+  </div>
+</div>

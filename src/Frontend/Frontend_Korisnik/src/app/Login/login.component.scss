@@ -1,0 +1,88 @@
+// Centriranje cele stranice
+.login-page-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+// ANIMIRANA POZADINA
+.animated-bg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: -1;
+  background: linear-gradient(135deg, #101c31 0%, #162a4a 50%, #209c91 100%);
+  background-size: 400% 400%;
+  animation: gradientTransition 15s ease infinite;
+}
+
+@keyframes gradientTransition {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+// KARTICA
+.login-card {
+  background: #ffffff;
+  padding: 40px 35px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  width: 420px;
+  height: 455px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1f948f 0%, #3bbdb6 100%);
+    border-radius: 8px;
+    display: flex; justify-content: center; align-items: center;
+    color: white;
+    svg { width: 20px; height: 20px; }
+  }
+
+  .brand-name { font-size: 16px; font-weight: 600; color: #333; }
+}
+
+.welcome-text { font-size: 26px; font-weight: 500; color: #111; margin: 0 0 8px 0; }
+.instruction-text { font-size: 14px; color: #777; margin: 0 0 35px 0; }
+
+.form-field {
+  margin-bottom: 20px;
+  label { display: block; font-size: 13px; color: #555; margin-bottom: 8px; font-weight: 500; }
+  input {
+    width: 100%; padding: 12px 15px;
+    border: 1px solid #e0e6ed; border-radius: 10px;
+    background-color: #f8fafc; font-size: 14px;
+    box-sizing: border-box;
+    &:focus { border-color: #209c91; outline: none; }
+  }
+}
+
+.submit-btn {
+  width: 100%; height: 50px; margin-top: 15px;
+  background: linear-gradient(90deg, #3c64b1 0%, #209c91 100%);
+  border: none; border-radius: 12px;
+  color: white; font-size: 15px; font-weight: 600;
+  cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) { box-shadow: 0 5px 15px rgba(32, 156, 145, 0.3); }
+  &:disabled { background: #ccc; cursor: not-allowed; }
+}
+
+.arrow-icon { width: 18px; height: 18px; }
+.global-error { color: #e74c3c; font-size: 13px; text-align: center; margin-top: 15px; }
