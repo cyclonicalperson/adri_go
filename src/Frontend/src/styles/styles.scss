@@ -1,0 +1,61 @@
+@use 'variables' as *;
+@use 'typography' as *;
+@use 'mixins' as *;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+// Utility klase
+.text-muted {
+  color: $gray-500;
+}
+
+.text-danger {
+  color: $danger;
+}
+
+.text-success {
+  color: $success;
+}
+
+.text-primary {
+  color: $primary;
+}
+
+.mt-sm {
+  margin-top: $spacing-sm;
+}
+
+.mt-md {
+  margin-top: $spacing-md;
+}
+
+.mt-lg {
+  margin-top: $spacing-lg;
+}
+
+// Scrollbar
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: $gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $gray-300;
+  border-radius: 3px;
+}
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: $gray-400;
+  }
