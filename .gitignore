@@ -167,3 +167,4 @@ desktop.ini
 *.swo
 *.bak
 *.orig
+/src/Frontend/.vscode

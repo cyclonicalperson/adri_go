@@ -1,0 +1,99 @@
+@if (loading) {
+<div class="state-msg">Učitavanje...</div>
+} @else if (!object) {
+<div class="state-msg">Objekat nije pronađen.</div>
+} @else {
+<div class="page">
+
+  <div class="header">
+    <button class="btn-back" (click)="goBack()">← Nazad</button>
+    <div class="header-actions">
+      <button class="btn-edit" (click)="goEdit()">Izmeni</button>
+      <button class="btn-delete" (click)="confirmDelete()">Obriši</button>
+    </div>
+  </div>
+
+  <div class="top-grid">
+
+    <div class="card info-card">
+      <div class="info-header">
+        <h2 class="obj-name">{{ object.name }}</h2>
+        <app-badge [variant]="categoryBadge">{{ object.category }}</app-badge>
+      </div>
+
+      @if (object.averageRating) {
+      <div class="rating-row">
+        <app-star-rating [value]="object.averageRating" [showValue]="true" [readonly]="true" />
+        <span class="review-count">({{ object.reviewCount }} recenzija)</span>
+      </div>
+      }
+
+      <div class="meta-list">
+        @if (object.destination) {
+        <div class="meta-item">&#128205; {{ object.destination.name }}</div>
+        }
+        @if (object.address) {
+        <div class="meta-item">&#127968; {{ object.address }}</div>
+        }
+        @if (object.phone) {
+        <div class="meta-item">&#128222; {{ object.phone }}</div>
+        }
+        @if (object.website) {
+        <div class="meta-item">
+          &#127760; <a [href]="object.website" target="_blank">{{ object.website }}</a>
+        </div>
+        }
+        @if (object.workingHours) {
+        <div class="meta-item">&#128336; {{ object.workingHours }}</div>
+        }
+      </div>
+
+      <p class="description">{{ object.description }}</p>
+
+      @if (object.activities && object.activities.length > 0) {
+      <div class="activities">
+        @for (a of object.activities; track a.activityId) {
+        <span class="activity-chip">{{ a.name }}</span>
+        }
+      </div>
+      }
+    </div>
+
+    <div class="card">
+      <app-map [markers]="marker"
+               [centerLat]="object.latitude"
+               [centerLng]="object.longitude"
+               [zoom]="15"
+               height="300px" />
+    </div>
+
+  </div>
+
+  @if (object.media && object.media.length > 0) {
+  <div class="card">
+    <h3 class="section-title">Galerija</h3>
+    <app-image-gallery [media]="object.media" />
+  </div>
+  }
+
+  @if (reviews.length > 0) {
+  <div class="reviews-section">
+    <h3 class="section-title">Recenzije</h3>
+    <div class="reviews-list">
+      @for (r of reviews; track r.reviewId) {
+      <app-review-card [review]="r" [showStatus]="true" />
+      }
+    </div>
+  </div>
+  }
+
+</div>
+}
+
+<app-confirm-dialog [visible]="showDeleteDialog"
+                    title="Obriši objekat"
+                    [message]="'Da li ste sigurni da želite da obrišete &quot;' + (object?.name ?? '') + '&quot;?'"
+                    confirmLabel="Obriši"
+                    [danger]="true"
+                    (confirmed)="doDelete()"
+                    (cancelled)="cancelDelete()" />

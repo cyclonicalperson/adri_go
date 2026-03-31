@@ -1,0 +1,14 @@
+<div class="layout">
+
+  <app-sidebar />
+
+  <div class="main">
+    <app-topbar (toggleSidebar)="toggleSidebar()" />
+    <div class="content">
+      <router-outlet />
+    </div>
+  </div>
+
+</div>
+
+<app-loading-spinner />

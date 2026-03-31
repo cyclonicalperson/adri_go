@@ -1,0 +1,53 @@
+@if (media.length === 0) {
+<div class="placeholder">
+  <img [src]="fallback" alt="Nema slike" class="placeholder-img" />
+</div>
+} @else {
+<div class="gallery">
+
+  <!-- Glavna slika -->
+  <div class="main-wrap">
+    <img class="main-img"
+         [src]="current!.url"
+         [alt]="current!.caption ?? 'Slika'"
+         (error)="onImgError($event)"
+         (click)="openLightbox()" />
+    @if (media.length > 1) {
+    <button class="nav prev" (click)="prev()">&#8592;</button>
+    <button class="nav next" (click)="next()">&#8594;</button>
+    }
+    @if (current!.caption) {
+    <div class="caption">{{ current!.caption }}</div>
+    }
+  </div>
+
+  <!-- Thumbnailovi -->
+  @if (media.length > 1) {
+  <div class="thumbs">
+    @for (item of media; track item.mediaId; let i = $index) {
+    <img class="thumb"
+         [class.active]="i === active"
+         [src]="item.url"
+         [alt]="item.caption ?? 'Slika ' + (i + 1)"
+         (error)="onImgError($event)"
+         (click)="select(i)" />
+    }
+  </div>
+  }
+</div>
+}
+
+<!-- Lightbox -->
+@if (lightboxOpen) {
+<div class="lightbox-overlay" (click)="closeLightbox()">
+  <div class="lightbox-inner" (click)="$event.stopPropagation()">
+    <button class="lb-close" (click)="closeLightbox()">&#10005;</button>
+    <button class="lb-nav lb-prev" (click)="prev()">&#8592;</button>
+    <img class="lb-img"
+         [src]="current!.url"
+         [alt]="current!.caption ?? 'Slika'"
+         (error)="onImgError($event)" />
+    <button class="lb-nav lb-next" (click)="next()">&#8594;</button>
+  </div>
+</div>
+}

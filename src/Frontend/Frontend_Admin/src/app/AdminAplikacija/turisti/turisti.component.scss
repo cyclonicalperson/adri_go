@@ -1,0 +1,375 @@
+@use 'variables' as *;
+
+.page-content {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+// ── Stats strip ───────────────────────────────────────────────────────────
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.stat-chip {
+  background: $white;
+  padding: 16px 18px;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+
+  .num {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: $gray-900;
+  }
+
+  .lbl {
+    font-size: 11px;
+    color: $gray-500;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 3px;
+  }
+
+  .trend {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+    color: $gray-500;
+
+    &.up {
+      color: $primary-dark;
+    }
+
+    &.down {
+      color: $danger;
+    }
+  }
+}
+
+// ── Grid ──────────────────────────────────────────────────────────────────
+.grid-3-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+// ── Panel ─────────────────────────────────────────────────────────────────
+.panel {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid $gray-200;
+}
+
+.panel-title {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: $gray-500;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.panel-body {
+  padding: 22px;
+}
+
+// ── Range buttons ─────────────────────────────────────────────────────────
+.range-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.rbtn {
+  padding: 6px 11px;
+  border-radius: $radius-sm;
+  border: 1px solid $gray-200;
+  background: $white;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  color: $gray-500;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
+  }
+
+  &.active {
+    background: $primary;
+    color: $white;
+    border-color: $primary;
+  }
+}
+
+// ── Map heat ─────────────────────────────────────────────────────────────
+.map-heat {
+  height: 300px;
+  background: linear-gradient(135deg, #bbf7d0, #6ee7b7 40%, #a7f3d0 80%, #d1fae5);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.heat-spot {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.map-pin {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2.5px solid $white;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  transform: translate(-50%, -50%);
+}
+
+.map-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: $white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: $shadow-md;
+  color: $gray-900;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: $white;
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: $shadow-md;
+}
+
+.map-legend-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: $gray-700;
+  margin-bottom: 6px;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: $gray-700;
+  margin-top: 3px;
+}
+
+.mlp {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid $white;
+  flex-shrink: 0;
+}
+
+// ── Side stack ────────────────────────────────────────────────────────────
+.side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ── Preferences ───────────────────────────────────────────────────────────
+.pref-item {
+  margin-bottom: 11px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.pref-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.pref-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: $gray-800;
+}
+
+.pref-pct {
+  font-size: 13px;
+  font-weight: 800;
+  color: $primary-dark;
+}
+
+.pref-bar {
+  height: 8px;
+  background: $gray-100;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pref-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .3s ease;
+}
+
+// ── Profile rows ──────────────────────────────────────────────────────────
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid $gray-50;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.profile-label {
+  color: $gray-500;
+  font-weight: 600;
+}
+
+.profile-val {
+  font-weight: 800;
+  color: $gray-900;
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────
+.tourists-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    background: #fdfdfd;
+    padding: 11px 20px;
+    text-align: left;
+    font-size: 11px;
+    color: $gray-400;
+    text-transform: uppercase;
+    font-weight: 800;
+    border-bottom: 1px solid $gray-200;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: 13px 20px;
+    border-bottom: 1px solid $gray-100;
+    vertical-align: middle;
+    font-size: 13px;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: $surface-green;
+  }
+}
+
+.rank-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  background: $gray-100;
+  color: $gray-500;
+
+  &.gold {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  &.silver {
+    background: $gray-200;
+    color: $gray-600;
+  }
+
+  &.bronze {
+    background: #fff7ed;
+    color: #9a3412;
+  }
+}
+
+.share-bar-wrap {
+  width: 100px;
+  height: 6px;
+  background: $gray-100;
+  border-radius: 3px;
+  overflow: hidden;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.share-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &-green {
+    background: $primary-soft;
+    color: $primary-dark;
+  }
+}
+
+.state-msg {
+  padding: 60px;
+  text-align: center;
+  color: $gray-400;
+  font-weight: 600;
+}

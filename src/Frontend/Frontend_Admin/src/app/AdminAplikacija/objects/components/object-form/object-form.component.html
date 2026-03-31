@@ -1,0 +1,119 @@
+<div class="page">
+
+  <div class="header">
+    <h2 class="title">{{ isEdit ? 'Izmeni objekat' : 'Novi objekat' }}</h2>
+    <button class="btn-back" (click)="cancel()">← Nazad</button>
+  </div>
+
+  @if (error) {
+  <div class="alert-error">{{ error }}</div>
+  }
+
+  <form class="layout" [formGroup]="form" (ngSubmit)="submit()">
+
+    <div class="left-col">
+
+      <div class="card">
+        <h3 class="card-title">Osnovni podaci</h3>
+
+        <div class="field">
+          <label class="label">Naziv *</label>
+          <input class="input" [class.invalid]="f('name').invalid && f('name').touched"
+                 formControlName="name" placeholder="npr. Hotel Kopaonik" />
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label class="label">Kategorija *</label>
+            <select class="input" formControlName="category">
+              @for (opt of categoryOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Destinacija *</label>
+            <select class="input" [class.invalid]="f('destinationId').invalid && f('destinationId').touched"
+                    formControlName="destinationId">
+              <option [ngValue]="null">— Izaberite —</option>
+              @for (d of destinations; track d.destinationId) {
+              <option [value]="d.destinationId">{{ d.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Adresa *</label>
+          <input class="input" formControlName="address" placeholder="npr. Bulevar Zorana Đinđića 1" />
+        </div>
+
+        <div class="field">
+          <label class="label">Opis *</label>
+          <textarea class="input textarea" formControlName="description"
+                    placeholder="Kratak opis objekta..." rows="4"></textarea>
+        </div>
+
+        <div class="row-3">
+          <div class="field">
+            <label class="label">Telefon</label>
+            <input class="input" formControlName="phone" placeholder="+381..." />
+          </div>
+          <div class="field">
+            <label class="label">Website</label>
+            <input class="input" formControlName="website" placeholder="https://..." />
+          </div>
+          <div class="field">
+            <label class="label">Radno vreme</label>
+            <input class="input" formControlName="workingHours" placeholder="08:00–22:00" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Aktivnosti</h3>
+        <app-activities-selector [selectedIds]="selectedActivityIds"
+                                 (selectedIdsChange)="selectedActivityIds = $event" />
+      </div>
+
+      @if (isEdit) {
+      <div class="card">
+        <h3 class="card-title">Galerija slika</h3>
+        <app-media-uploader entityType="object"
+                            [entityId]="id!"
+                            [media]="media"
+                            (mediaChange)="media = $event" />
+      </div>
+      }
+
+    </div>
+
+    <div class="right-col">
+      <div class="card">
+        <h3 class="card-title">Lokacija</h3>
+        <app-object-map-picker [lat]="lat"
+                               [lng]="lng"
+                               (locationPicked)="onLocationPicked($event)" />
+        <div class="row-2" style="margin-top: 12px;">
+          <div class="field">
+            <label class="label">Geografska širina *</label>
+            <input class="input" type="number" step="0.0001" formControlName="latitude" />
+          </div>
+          <div class="field">
+            <label class="label">Geografska dužina *</label>
+            <input class="input" type="number" step="0.0001" formControlName="longitude" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
+        <button type="submit" class="btn-save" [disabled]="saving">
+          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj objekat') }}
+        </button>
+      </div>
+    </div>
+
+  </form>
+
+</div>

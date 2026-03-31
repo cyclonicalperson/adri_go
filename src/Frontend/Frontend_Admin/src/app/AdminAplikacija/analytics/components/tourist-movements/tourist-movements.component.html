@@ -1,0 +1,21 @@
+@if (movements.length === 0) {
+<div class="empty">Nema podataka o kretanju.</div>
+} @else {
+<div class="layout">
+  <app-map [markers]="markers"
+           [centerLat]="43.85"
+           [centerLng]="18.41"
+           [zoom]="6"
+           height="320px" />
+  <div class="ranking">
+    <div class="ranking-title">Top 5 destinacija</div>
+    @for (m of topMovements; track m.destinationId; let i = $index) {
+    <div class="ranking-item">
+      <span class="rank">{{ i + 1 }}</span>
+      <span class="dest-name">{{ m.destinationName }}</span>
+      <span class="visit-count">{{ m.visitCount }}</span>
+    </div>
+    }
+  </div>
+</div>
+}

@@ -1,0 +1,64 @@
+// ── TouristHub design tokens ──────────────────────────────────────────────
+// Light theme matching tourist app: white bg, #22c55e green accent
+
+// Primary green palette
+$primary: #22c55e;
+$primary-hover: #16a34a;
+$primary-dark: #15803d;
+$primary-soft: #dcfce7;
+$primary-mid: #86efac;
+
+// Semantic colors
+$danger: #ef4444;
+$danger-soft: #fef2f2;
+$warning: #f59e0b;
+$warning-soft: #fffbeb;
+$info: #3b82f6;
+$info-soft: #eff6ff;
+$purple: #8b5cf6;
+$purple-soft: #f5f3ff;
+$success: $primary;
+
+// Grays
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$gray-900: #111827;
+$white: #ffffff;
+
+// Surface colors
+$surface-green: #f0fdf4;
+
+// Layout
+$sidebar-width: 260px;
+$sidebar-bg: $white;
+$topbar-height: 70px;
+
+// Typography
+$font-sans: 'Plus Jakarta Sans', sans-serif;
+$font-size-base: 14px;
+$line-height: 1.6;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Border radius
+$radius-sm: 8px;
+$radius-md: 10px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+
+// Shadows
+$shadow-sm: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
+$shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+$shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);

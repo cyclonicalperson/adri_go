@@ -1,0 +1,64 @@
+@use 'variables' as *;
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 16px;
+  align-items: start;
+}
+
+.ranking {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  padding: 16px;
+}
+
+.ranking-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: $gray-900;
+  margin-bottom: 12px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid $gray-100;
+  font-size: 13px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: $gray-100;
+  color: $gray-500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.dest-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.visit-count {
+  font-weight: 800;
+  color: $gray-900;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: $gray-400;
+}

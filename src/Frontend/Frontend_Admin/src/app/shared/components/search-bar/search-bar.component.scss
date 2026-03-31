@@ -1,0 +1,57 @@
+@use 'variables' as *;
+
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: $gray-400;
+  pointer-events: none;
+}
+
+.input {
+  padding: 9px 36px 9px 36px;
+  border: 1px solid $gray-200;
+  border-radius: $radius-md;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 500;
+  background: $gray-50;
+  color: $gray-900;
+  outline: none;
+  transition: all .2s;
+  min-width: 240px;
+
+  &::placeholder {
+    color: $gray-400;
+  }
+
+  &:focus {
+    border-color: $primary;
+    background: $white;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .1);
+  }
+}
+
+.clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: $gray-400;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+
+  &:hover {
+    color: $gray-700;
+    background: $gray-100;
+  }
+}

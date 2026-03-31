@@ -1,0 +1,20 @@
+<div class="roles">
+  @for (role of roles; track role.roleId) {
+  @let info = getInfo(role.roleName);
+  @if (info) {
+  <div class="role-card"
+       [class.selected]="selectedRoleId === role.roleId"
+       (click)="select(role.roleId)">
+    <div class="role-header">
+      <app-badge [variant]="info.badge">{{ role.roleName }}</app-badge>
+      <span class="role-name">{{ info.roleName }}</span>
+    </div>
+    <ul class="perm-list">
+      @for (perm of info.permissions; track perm) {
+      <li class="perm-item">{{ perm }}</li>
+      }
+    </ul>
+  </div>
+  }
+  }
+</div>
