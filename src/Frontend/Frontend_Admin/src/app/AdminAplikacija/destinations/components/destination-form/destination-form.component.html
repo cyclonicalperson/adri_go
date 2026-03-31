@@ -1,0 +1,82 @@
+<div class="page">
+
+  <div class="header">
+    <h2 class="title">{{ isEdit ? 'Izmeni destinaciju' : 'Nova destinacija' }}</h2>
+    <button class="btn-back" (click)="cancel()">← Nazad</button>
+  </div>
+
+  @if (error) {
+  <div class="alert-error">{{ error }}</div>
+  }
+
+  <form class="form-grid" [formGroup]="form" (ngSubmit)="submit()">
+
+    <div class="card fields-card">
+      <h3 class="card-title">Osnovni podaci</h3>
+
+      <div class="field">
+        <label class="label">Naziv *</label>
+        <input class="input" [class.invalid]="form.get('name')!.invalid && form.get('name')!.touched"
+               formControlName="name" placeholder="npr. Kopaonik" />
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label class="label">Tip *</label>
+          <select class="input" formControlName="type">
+            @for (opt of typeOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label class="label">Region *</label>
+          <input class="input" formControlName="region" placeholder="npr. Raška oblast" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Grad *</label>
+        <input class="input" formControlName="city" placeholder="npr. Raška" />
+      </div>
+
+      <div class="field">
+        <label class="label">Opis *</label>
+        <textarea class="input textarea" formControlName="description"
+                  placeholder="Kratak opis destinacije..." rows="4"></textarea>
+      </div>
+    </div>
+
+    <div class="card map-card">
+      <h3 class="card-title">Lokacija</h3>
+      <p class="map-hint">Kliknite na mapu da postavite koordinate.</p>
+
+      <app-map [centerLat]="lat"
+               [centerLng]="lng"
+               [zoom]="7"
+               [clickable]="true"
+               height="280px"
+               (mapClicked)="onMapClick($event)" />
+
+      <div class="row-2" style="margin-top: 12px;">
+        <div class="field">
+          <label class="label">Geografska širina *</label>
+          <input class="input" type="number" step="0.0001" formControlName="latitude" />
+        </div>
+        <div class="field">
+          <label class="label">Geografska dužina *</label>
+          <input class="input" type="number" step="0.0001" formControlName="longitude" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
+      <button type="submit" class="btn-save" [disabled]="saving">
+        {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj destinaciju') }}
+      </button>
+    </div>
+
+  </form>
+
+</div>

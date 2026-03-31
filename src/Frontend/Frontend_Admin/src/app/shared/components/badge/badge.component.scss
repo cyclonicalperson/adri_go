@@ -1,0 +1,47 @@
+@use 'variables' as *;
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: $radius-sm;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  // New design system variants (matching tourist app palette)
+  &.green,
+  &.success {
+    background: $primary-soft;
+    color: $primary-dark;
+  }
+
+  &.amber,
+  &.warning {
+    background: $warning-soft;
+    color: #92400e;
+  }
+
+  &.red,
+  &.danger {
+    background: $danger-soft;
+    color: #991b1b;
+  }
+
+  &.blue,
+  &.info {
+    background: $info-soft;
+    color: #1e40af;
+  }
+
+  &.purple {
+    background: $purple-soft;
+    color: #5b21b6;
+  }
+
+  &.default,
+  &.gray {
+    background: $gray-100;
+    color: $gray-500;
+  }
+}

@@ -1,0 +1,9 @@
+<div class="grid">
+  @for (card of cards; track card.label) {
+  <div class="card">
+    <div class="indicator" [style.background]="card.color"></div>
+    <div class="value">{{ card.value | number }}</div>
+    <div class="label">{{ card.label }}</div>
+  </div>
+  }
+</div>

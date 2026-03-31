@@ -1,0 +1,240 @@
+<div class="page-content">
+
+  @if (loading) {
+  <div class="loading-state">Učitavanje...</div>
+  } @else {
+
+  <!-- ── STAT CARDS ──────────────────────────────────────────────────── -->
+  <div class="stats-grid">
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#f0fdf4">🏢</div>
+      <div class="stat-label">Ukupno lokacija</div>
+      <div class="stat-value">{{ stats?.totalObjects ?? 0 }}</div>
+      <div class="stat-trend up">↑ +8 ovog meseca</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#eff6ff">🎯</div>
+      <div class="stat-label">Aktivnosti</div>
+      <div class="stat-value">{{ stats?.totalRoutes ?? 0 }}</div>
+      <div class="stat-trend up">↑ +4 ove nedelje</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#fffbeb">🎟️</div>
+      <div class="stat-label">Aktivnih dogadjaja</div>
+      <div class="stat-value">{{ stats?.totalEvents ?? 0 }}</div>
+      <div class="stat-trend neutral">→ 5 ove nedelje</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#fef2f2">⭐</div>
+      <div class="stat-label">Recenzije na čekanju</div>
+      <div class="stat-value">{{ stats?.pendingReviews ?? 0 }}</div>
+      <div class="stat-trend down">↑ Treba pregled</div>
+    </div>
+
+  </div>
+
+  <!-- ── ROW 2: VISITS CHART + PENDING REQUESTS ─────────────────────── -->
+  <div class="grid-3-1">
+
+    <!-- Visits chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Posete po kategoriji (30 dana)</div>
+          <div class="panel-sub">Lokacije · Aktivnosti · Dogadjaji</div>
+        </div>
+        <select class="chart-select">
+          <option>Poslednjih 30 dana</option>
+          <option>7 dana</option>
+          <option>90 dana</option>
+        </select>
+      </div>
+      <div class="panel-body">
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <div class="val" style="color:#22c55e">4.2k</div>
+            <div class="lbl">Lokacije</div>
+          </div>
+          <div class="mini-stat">
+            <div class="val" style="color:#3b82f6">2.1k</div>
+            <div class="lbl">Aktivnosti</div>
+          </div>
+          <div class="mini-stat">
+            <div class="val" style="color:#f59e0b">1.9k</div>
+            <div class="lbl">Dogadjaji</div>
+          </div>
+        </div>
+
+        <div class="chart-area">
+          @for (v of visits; track v.date; let i = $index) {
+          <div class="bar"
+               [class]="barColor(i)"
+               [style.height.%]="barHeight(v.count)">
+          </div>
+          }
+          <!-- Fallback placeholder bars when no data -->
+          @if (visits.length === 0) {
+          @for (h of [60,80,45,100,70,55,85,65,90,75,50,95]; track $index; let i = $index) {
+          <div class="bar" [class]="barColor(i)" [style.height.%]="h"></div>
+          }
+          }
+        </div>
+
+        <div class="chart-labels">
+          <span>1.3</span><span>5.3</span><span>10.3</span>
+          <span>15.3</span><span>20.3</span><span>25.3</span><span>29.3</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending requests -->
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Zahtevi</div>
+          <div class="panel-sub">{{ pendingCount }} na čekanju</div>
+        </div>
+        <a routerLink="/admin/permissions" class="panel-link">Svi →</a>
+      </div>
+      <div class="panel-body">
+        @for (req of pendingRequests; track req.id) {
+        <div class="request-item">
+          <div class="req-icon" [style.background]="req.iconBg">{{ req.icon }}</div>
+          <div class="req-info">
+            <div class="req-title">{{ req.title }}</div>
+            <div class="req-meta">{{ req.meta }}</div>
+          </div>
+          <div class="req-actions">
+            <button class="btn btn-xs btn-approve">✓</button>
+            <button class="btn btn-xs btn-reject">✗</button>
+          </div>
+        </div>
+        }
+        @if (pendingRequests.length === 0) {
+        <p class="empty-state">Nema zahteva na čekanju.</p>
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── ROW 3: CATEGORY BREAKDOWN + ACTIVITY LOG + MAP ─────────────── -->
+  <div class="grid-3">
+
+    <!-- Category breakdown -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Po kategoriji</div>
+      </div>
+      <div class="panel-body">
+        <div class="donut-wrap" style="margin-bottom:20px">
+          <div class="donut"></div>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#22c55e"></div>Smeštaj (45%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#3b82f6"></div>Kultura (23%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#f59e0b"></div>Sport (15%)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#8b5cf6"></div>Ostalo (17%)
+            </div>
+          </div>
+        </div>
+
+        <div class="breakdown-list">
+          <div class="breakdown-item">
+            <span class="breakdown-label">Hoteli</span>
+            <span class="breakdown-val">84</span>
+          </div>
+          <div class="breakdown-bar"><div class="breakdown-fill" style="width:64%;background:#22c55e"></div></div>
+
+          <div class="breakdown-item">
+            <span class="breakdown-label">Restorani</span>
+            <span class="breakdown-val">61</span>
+          </div>
+          <div class="breakdown-bar"><div class="breakdown-fill" style="width:46%;background:#3b82f6"></div></div>
+
+          <div class="breakdown-item">
+            <span class="breakdown-label">Kulturni obj.</span>
+            <span class="breakdown-val">38</span>
+          </div>
+          <div class="breakdown-bar"><div class="breakdown-fill" style="width:29%;background:#f59e0b"></div></div>
+
+          <div class="breakdown-item">
+            <span class="breakdown-label">Sportski</span>
+            <span class="breakdown-val">29</span>
+          </div>
+          <div class="breakdown-bar"><div class="breakdown-fill" style="width:22%;background:#8b5cf6"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Nedavne aktivnosti</div>
+      </div>
+      <div class="panel-body">
+        @for (item of activityLog; track item.text) {
+        <div class="activity-item">
+          <div class="activity-dot" [style.background]="item.bg">{{ item.icon }}</div>
+          <div class="activity-text">
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.text }}</p>
+          </div>
+          <div class="activity-time">{{ item.time }}</div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Map preview -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Mapa aktivnosti</div>
+        <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
+      </div>
+      <div class="panel-body">
+        <div class="map-preview">
+          <div class="map-grid"></div>
+          <div class="map-pin" style="background:#22c55e;left:42%;top:38%"></div>
+          <div class="map-pin" style="background:#3b82f6;left:58%;top:25%"></div>
+          <div class="map-pin" style="background:#f59e0b;left:35%;top:55%"></div>
+          <div class="map-pin" style="background:#22c55e;left:65%;top:48%"></div>
+          <div class="map-pin" style="background:#8b5cf6;left:50%;top:30%"></div>
+          <div class="map-count">{{ (stats?.totalObjects ?? 0) }} lokacija na mapi</div>
+        </div>
+
+        <div class="map-legend">
+          <div class="map-legend-item">
+            <span class="map-legend-dot" style="background:#22c55e"></span>
+            <span>Lokacije</span>
+            <span class="map-legend-val">{{ stats?.totalObjects ?? 0 }}</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="map-legend-dot" style="background:#3b82f6"></span>
+            <span>Aktivnosti</span>
+            <span class="map-legend-val">{{ stats?.totalRoutes ?? 0 }}</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="map-legend-dot" style="background:#f59e0b"></span>
+            <span>Dogadjaji</span>
+            <span class="map-legend-val">{{ stats?.totalEvents ?? 0 }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  } <!-- end @if loading -->
+
+</div>

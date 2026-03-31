@@ -1,0 +1,582 @@
+// _list-page.scss — shared by all list/table pages
+// Import in each component's SCSS: @use 'list-page' as *;
+
+@use 'variables' as *;
+
+// ── Page wrapper ──────────────────────────────────────────────────────────
+.page-content {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+// ── Stats strip (5 narrow chips) ──────────────────────────────────────────
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.stat-chip {
+  background: $white;
+  padding: 16px 18px;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+
+  .num {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: $gray-900;
+  }
+
+  .lbl {
+    font-size: 11px;
+    color: $gray-500;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 3px;
+  }
+
+  .trend {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+    color: $gray-500;
+
+    &.up {
+      color: $primary-dark;
+    }
+
+    &.warn {
+      color: #d97706;
+    }
+
+    &.down {
+      color: $danger;
+    }
+  }
+}
+
+// ── Filter tabs ───────────────────────────────────────────────────────────
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ftab {
+  padding: 7px 14px;
+  border-radius: $radius-sm;
+  border: 1px solid $gray-200;
+  background: $white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  color: $gray-500;
+  font-family: $font-sans;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
+  }
+
+  &.active {
+    background: $primary;
+    color: $white;
+    border-color: $primary;
+  }
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────
+.toolbar {
+  background: $white;
+  padding: 14px 18px;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 340px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13px;
+    color: $gray-400;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 9px 12px 9px 34px;
+    border: 1px solid $gray-200;
+    border-radius: 10px;
+    font-family: $font-sans;
+    font-size: 13px;
+    outline: none;
+    background: $gray-50;
+    transition: .2s;
+    color: $gray-900;
+
+    &::placeholder {
+      color: $gray-400;
+    }
+
+    &:focus {
+      border-color: $primary;
+      background: $white;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, .1);
+    }
+  }
+
+  .filter-select {
+    padding: 9px 12px;
+    border: 1px solid $gray-200;
+    border-radius: 10px;
+    font-family: $font-sans;
+    font-size: 13px;
+    font-weight: 600;
+    background: $white;
+    cursor: pointer;
+    outline: none;
+    min-width: 130px;
+    color: $gray-900;
+
+    &:focus {
+      border-color: $primary;
+    }
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    font-family: $font-sans;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid;
+    transition: .2s;
+
+    &-primary {
+      background: $primary;
+      color: $white;
+      border-color: $primary;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, .2);
+
+      &:hover {
+        background: $primary-hover;
+      }
+    }
+
+    &-outline {
+      background: $white;
+      color: $gray-700;
+      border-color: $gray-200;
+
+      &:hover {
+        border-color: $primary;
+        color: $primary-dark;
+        background: $surface-green;
+      }
+    }
+  }
+}
+
+// ── Panel ─────────────────────────────────────────────────────────────────
+.panel {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid $gray-200;
+}
+
+.panel-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: $gray-900;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: $gray-500;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: #fdfdfd;
+  padding: 11px 18px;
+  text-align: left;
+  font-size: 11px;
+  color: $gray-400;
+  text-transform: uppercase;
+  font-weight: 800;
+  border-bottom: 1px solid $gray-200;
+  letter-spacing: .5px;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+
+  &:hover {
+    color: $primary-dark;
+  }
+
+  .sort {
+    margin-left: 4px;
+    opacity: .5;
+    font-size: 10px;
+  }
+}
+
+td {
+  padding: 15px 18px;
+  border-bottom: 1px solid $gray-200;
+  vertical-align: middle;
+  font-size: 13px;
+  color: $gray-900;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover td {
+  background: $surface-green;
+  cursor: pointer;
+}
+
+// ── Item cell (thumb + name + desc) ──────────────────────────────────────
+.item-cell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.item-thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: $gray-50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  border: 1px solid $gray-100;
+}
+
+.item-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: $gray-900;
+}
+
+.item-desc {
+  font-size: 12px;
+  color: $gray-500;
+  margin-top: 2px;
+}
+
+.item-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  background: $gray-100;
+  color: $gray-500;
+  border: 1px solid $gray-200;
+
+  &.tag-green {
+    background: $primary-soft;
+    color: $primary-dark;
+    border-color: transparent;
+  }
+}
+
+// ── Type badges ───────────────────────────────────────────────────────────
+.type-badge {
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.type-hotel {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.type-soba {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.type-restoran {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.type-kultura {
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.type-sport {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.type-priroda {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.type-noćni {
+  background: #1e1b4b;
+  color: #a5b4fc;
+}
+
+.type-ostalo {
+  background: $gray-100;
+  color: $gray-500;
+}
+
+// ── Rating ────────────────────────────────────────────────────────────────
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stars {
+  color: #f59e0b;
+  font-size: 13px;
+}
+
+.rating-val {
+  font-weight: 800;
+  font-size: 13px;
+  color: $gray-900;
+}
+
+// ── Badges ────────────────────────────────────────────────────────────────
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &-green {
+    background: $primary-soft;
+    color: $primary-dark;
+  }
+
+  &-amber {
+    background: $warning-soft;
+    color: #92400e;
+  }
+
+  &-red {
+    background: $danger-soft;
+    color: #991b1b;
+  }
+
+  &-blue {
+    background: $info-soft;
+    color: #1e40af;
+  }
+
+  &-purple {
+    background: $purple-soft;
+    color: #5b21b6;
+  }
+
+  &-gray {
+    background: $gray-100;
+    color: $gray-500;
+  }
+}
+
+// ── Action buttons ────────────────────────────────────────────────────────
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid $gray-200;
+  background: $white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: $gray-400;
+  transition: all .15s;
+  text-decoration: none;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
+  }
+
+  &.map-btn {
+    color: #0284c7;
+    border-color: #bae6fd;
+
+    &:hover {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+  }
+
+  &.danger:hover {
+    border-color: $danger;
+    color: $danger;
+    background: $danger-soft;
+  }
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  border-top: 1px solid $gray-200;
+}
+
+.pg-info {
+  font-size: 13px;
+  color: $gray-500;
+  font-weight: 500;
+}
+
+.pg-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.pg-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid $gray-200;
+  background: $white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: $font-sans;
+  color: $gray-700;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+  }
+
+  &.active {
+    background: $primary;
+    color: $white;
+    border-color: $primary;
+  }
+}
+
+// ── View toggle (table/grid) ──────────────────────────────────────────────
+.view-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.view-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid $gray-200;
+  background: $white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: $gray-400;
+  transition: all .15s;
+
+  &.active {
+    background: $surface-green;
+    border-color: $primary;
+    color: $primary-dark;
+  }
+}
+
+// ── Empty & loading states ────────────────────────────────────────────────
+.state-msg {
+  padding: 60px;
+  text-align: center;
+  color: $gray-400;
+  font-weight: 600;
+  font-size: 14px;
+}

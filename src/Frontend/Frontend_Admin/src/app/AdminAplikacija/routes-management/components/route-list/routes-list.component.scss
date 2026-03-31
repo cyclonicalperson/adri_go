@@ -1,0 +1,10 @@
+@use 'variables' as *;
+@use 'list-page' as *;
+
+.num {
+  text-align: right;
+}
+
+.name-cell {
+  font-weight: 600;
+}
