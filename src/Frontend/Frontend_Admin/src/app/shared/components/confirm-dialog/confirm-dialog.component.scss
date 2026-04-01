@@ -1,4 +1,5 @@
 @use 'variables' as *;
+@use 'sass:color'; // FIXED: Added sass:color module
 
 .overlay {
   position: fixed;
@@ -81,7 +82,7 @@
     box-shadow: 0 4px 12px rgba(239, 68, 68, .2);
 
     &:hover {
-      background: darken(#ef4444, 8%);
+      background: color.adjust(#ef4444, $lightness: -8%);
     }
   }
 }
