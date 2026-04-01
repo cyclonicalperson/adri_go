@@ -1,37 +1,56 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms'; // <-- 1. Dodaj ReactiveFormsModule
+import { Router } from '@angular/router';// Dodat import za rute
 
 @Component({
   selector: 'app-login',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
-  templateUrl: './login.component.html', // Povezuje HTML fajl
-  styleUrls: ['./login.component.scss']  // Povezuje SCSS fajl
+  standalone: true, // Ovo verovatno već imaš
+  imports: [ReactiveFormsModule], // <-- 2. DODAJ OVO DA BI FORMA RADILA
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.scss']
 })
-export class LoginComponent {
-  loginForm: FormGroup;
-  errorMessage: string = '';
+export class LoginComponent implements OnInit {
+  loginForm!: FormGroup;
 
-  constructor(private fb: FormBuilder, private router: Router) {
+  // Ubačen Router u konstruktor
+  constructor(private fb: FormBuilder, private router: Router) {}
+
+  ngOnInit(): void {
+    // Inicijalizacija forme sa osnovnim poljima
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+      emailOrPhone: ['', Validators.required],
+      password: ['', Validators.required]
     });
   }
 
-  onSubmit() {
+  // Funkcija koja će se pozvati na klik dugmeta "Log In"
+  onLogin(): void {
     if (this.loginForm.valid) {
-      const { email, password } = this.loginForm.value;
-      
-      // Privremena provera (dok ne povežemo .NET API)
-      if (email === 'admin@globecode.com' && password === 'password123') {
-        this.router.navigate(['/admin']);
-      } else {
-        this.errorMessage = 'Pogrešan email ili lozinka.';
-        this.loginForm.get('password')?.reset();
-      }
+      console.log('Podaci sa forme:', this.loginForm.value);
+      // Preusmeravanje na mapu kada je forma popunjena
+      this.router.navigate(['/map-home']);
+    } else {
+      console.log('Forma nije validna.');
     }
+  }
+
+  onGuestLogin(): void {
+    console.log('Nastavi kao gost');
+    // Gosta takođe šaljemo na mapu da istraži lokacije
+    this.router.navigate(['/map-home']);
+  }
+
+  onGoogleLogin(): void {
+    console.log('Google login pokrenut');
+  }
+
+  onAppleLogin(): void {
+    console.log('Apple login pokrenut');
+  }
+
+  // Nova funkcija za prelazak na ekran za izbor uloge/registraciju
+  goToRegister(): void {
+    console.log('Preusmeravanje na izbor uloge');
+    this.router.navigate(['/choose-role']);
   }
 }

@@ -1,0 +1,189 @@
+/* Kontejner koji omogućava da kartica lebdi iznad mape i UI-ja */
+.bottom-sheet-overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: auto; /* Zauzima visinu sadržaja */
+  max-height: 80vh; /* Da ne prekrije ceo ekran na malim telefonima */
+  z-index: 10; /* Mora biti veći od top-ui-layer (koji je z-index 2) */
+  pointer-events: none; /* Propustamo klikove ... */
+}
+
+/* Bela kartica sa zaobljenim uglovima */
+.location-details-card {
+  pointer-events: auto; /* ... ali vraćamo klikove na samu karticu */
+  background-color: #ffffff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15); /* Senka na vrhu */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden; /* Da slika ne izlazi van zaobljenih uglova */
+  width: 100%;
+  padding-bottom: 20px; /* Padding na dnu za siguran touch */
+}
+
+/* Zaglavlje kartice */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Zelena labela kategorije (npr. Culture) */
+.category-label {
+  background-color: #e6f7ed; /* Blaga zelena pozadina */
+  color: #22c55e; /* Zelena boja teksta */
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #22c55e;
+  border-radius: 50%;
+}
+
+/* Dugme za zatvaranje (X) */
+.close-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.close-icon {
+  font-size: 26px;
+  color: #333;
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* Slika */
+.image-container {
+  width: 100%;
+  height: 200px; /* Fiksna visina slike za mobilni */
+  overflow: hidden;
+}
+
+.main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Slika popunjava kontejner bez razvlačenja */
+}
+
+/* Telo kartice sa podacima */
+.card-body {
+  padding: 20px;
+}
+
+/* Naslov i rejting */
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.location-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a1a;
+  flex: 1;
+  padding-right: 15px;
+}
+
+.rating-box {
+  background-color: #fef9c3; /* Blaga žuta pozadina */
+  border-radius: 10px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rating-value {
+  color: #f59e0b; /* Žuta boja za broj */
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.star-icon {
+  color: #f59e0b;
+  font-size: 14px;
+}
+
+/* Recenzije tekst */
+.reviews-text {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: #777;
+  text-align: right; /* Poravnanje desno kao na slici */
+}
+
+/* Info red (distanca, status) */
+.info-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 5px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-icon {
+  font-size: 14px;
+  color: #555;
+}
+
+.info-text {
+  font-size: 13px;
+  color: #555;
+}
+
+.status-open {
+  color: #22c55e; /* Zelena boja za Open status */
+  font-weight: 600;
+}
+
+/* Dugme View Details */
+.btn-details {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #22c55e; /* Zelena boja kao na slici */
+  color: #ffffff;
+  margin-top: 10px;
+  transition: opacity 0.2s ease;
+}
+
+.btn-details:active {
+  opacity: 0.8;
+}
+
+.btn-details .arrow {
+  margin-left: 8px;
+  font-size: 18px;
+}

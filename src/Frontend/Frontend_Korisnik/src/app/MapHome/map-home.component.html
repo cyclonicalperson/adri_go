@@ -1,0 +1,47 @@
+<div class="map-wrapper">
+  
+  <div class="map-placeholder">
+    <div class="mock-pin hotel-pin" style="top: 30%; left: 70%;">🏨</div>
+    <div class="mock-pin restaurant-pin" style="top: 45%; left: 40%;">🍴</div>
+    <div class="mock-pin beach-pin" style="top: 70%; left: 20%;">🏖️</div>
+
+    <div 
+      class="mock-pin location-pin location-pin-active" 
+      style="top: 55%; left: 60%; cursor: pointer;"
+      (click)="openOldTownBudva()"
+    >
+      📍
+    </div>
+  </div>
+
+  <div class="top-ui-layer">
+    
+    <div class="search-container">
+      <span class="search-icon">🔍</span>
+      <input 
+        type="text" 
+        class="search-input" 
+        placeholder="Locations..." 
+        (keyup.enter)="onSearch($event)"
+      >
+      <button class="filter-btn" (click)="openFilters()">
+        <span class="filter-icon">⚲</span>
+      </button>
+    </div>
+
+    <button class="list-view-btn" (click)="toggleListView()">
+      <span class="list-icon">☰</span>
+    </button>
+    
+  </div>
+
+  <app-location-details-card 
+    *ngIf="selectedLocation" 
+    [locationData]="selectedLocation"
+    (onClose)="closeLocationDetails()"
+    (click)="viewFullDetails()"
+    style="cursor: pointer;"
+  >
+  </app-location-details-card>
+
+</div>

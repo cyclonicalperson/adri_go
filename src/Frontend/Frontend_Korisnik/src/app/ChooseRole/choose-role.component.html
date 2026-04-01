@@ -1,0 +1,48 @@
+<div class="page-container">
+  <div class="content-wrapper">
+    <h1 class="title">Welcome to the digital guide</h1>
+    <p class="subtitle">Choose the account type that best suits yours needs to customize your experience.</p>
+
+    <div 
+      class="role-card" 
+      [class.active]="selectedRole === 'tourist'"
+      (click)="selectRole('tourist')"
+    >
+      <div class="icon-wrapper tourist-icon">
+        <span class="inner-circle"></span>
+      </div>
+      <div class="card-text">
+        <h3>A tourist</h3>
+        <p>Explore the most beautiful beaches, mountains and cultural monuments. Plan trips and save favorites</p>
+      </div>
+      <div class="check-mark" *ngIf="selectedRole === 'tourist'">
+        <span>✓</span>
+      </div>
+    </div>
+
+    <div 
+      class="role-card" 
+      [class.active]="selectedRole === 'admin'"
+      (click)="selectRole('admin')"
+    >
+      <div class="icon-wrapper admin-icon">
+        <span>🛡️</span> </div>
+      <div class="card-text">
+        <h3 [class.text-dark]="selectedRole !== 'admin'">Administrator</h3>
+        <p>Manage tourism by offering your city, add locations, events and communicate with visitors.</p>
+      </div>
+      <div class="check-mark" *ngIf="selectedRole === 'admin'">
+        <span>✓</span>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="green-dot"></div>
+      <p>* Note: Administrator accounts require additional verification by Ministries of Tourism before they become active.</p>
+    </div>
+
+    <button class="btn btn-primary" (click)="onContinue()">
+      Continue <span class="arrow">→</span>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,185 @@
+.page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tipografija */
+.title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 10px 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 30px 0;
+  line-height: 1.5;
+}
+
+/* Kartice za uloge */
+.role-card {
+  display: flex;
+  align-items: flex-start;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  background-color: #ffffff;
+}
+
+/* Stil kada je kartica izabrana (Aktivna) */
+.role-card.active {
+  border: 2px solid #22c55e; /* Zeleni okvir */
+  background-color: #eefaf2; /* Blaga zelena pozadina */
+}
+
+/* Ikonice sa leve strane */
+.icon-wrapper {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.tourist-icon {
+  background-color: #22c55e;
+}
+
+.tourist-icon .inner-circle {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+.admin-icon {
+  background-color: #f0f0f0;
+  font-size: 20px;
+}
+
+/* Tekst unutar kartice */
+.card-text {
+  flex: 1;
+}
+
+.card-text h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #22c55e; /* Zelena za aktivan naslov */
+}
+
+.card-text h3.text-dark {
+  color: #1a1a1a; /* Crna za neaktivan naslov */
+}
+
+.card-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #777;
+  line-height: 1.4;
+}
+
+/* Zelena kvačica (Checkmark) gore desno */
+.check-mark {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+  border: 1px solid #22c55e;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.check-mark span {
+  color: #22c55e;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Napomena (Info box) */
+.info-box {
+  display: flex;
+  align-items: flex-start;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  margin-top: 10px;
+  margin-bottom: 30px;
+  background-color: #fafafa;
+}
+
+.green-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #22c55e;
+  border-radius: 50%;
+  margin-top: 5px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.info-box p {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* Dugme Continue */
+.btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.2s ease;
+}
+
+.btn:active {
+  opacity: 0.8;
+}
+
+.btn-primary {
+  background-color: #22c55e;
+  color: #ffffff;
+  margin-top: auto; /* Gura dugme na dno ako ima prostora */
+}
+
+.btn-primary .arrow {
+  margin-left: 8px;
+  font-size: 18px;
+}

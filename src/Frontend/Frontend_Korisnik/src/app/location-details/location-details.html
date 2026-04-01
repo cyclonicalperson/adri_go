@@ -1,0 +1,59 @@
+<div class="details-container">
+  <div class="hero-section" [style.backgroundImage]="'url(' + locationData.image + ')'">
+    <button class="back-btn" (click)="goBack()">←</button>
+  </div>
+
+  <div class="content-card">
+    <div class="header-info">
+      <div class="badges">
+        <span class="badge category">{{locationData.category}}</span>
+        <span class="badge rating">⭐ {{locationData.rating}} ({{locationData.reviews}})</span>
+      </div>
+      <h1>{{locationData.title}}</h1>
+      <p class="address">📍 {{locationData.address}}</p>
+    </div>
+
+    <button class="directions-btn" (click)="getDirections()">
+      <span class="icon">➤</span> Directions
+    </button>
+
+    <section class="about">
+      <h3>About</h3>
+      <p>{{locationData.description}} <span class="read-more">Read more</span></p>
+    </section>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="item-icon">🕒</span>
+        <div>
+          <label>WORKING HOURS</label>
+          <strong>Open {{locationData.workingHours}}</strong>
+        </div>
+      </div>
+      <div class="info-item">
+        <span class="item-icon heart">❤</span>
+        <div>
+          <label>PASS</label>
+          <strong>{{locationData.pass}}</strong>
+        </div>
+      </div>
+    </div>
+
+    <section class="reviews">
+      <div class="section-header">
+        <h3>Reviews</h3>
+        <span class="see-all">See all</span>
+      </div>
+      <div class="review-card">
+        <div class="user-meta">
+          <img src="assets/avatar.jpg" class="avatar">
+          <div>
+            <strong>Marko Jovanović</strong>
+            <span class="date">2 DAYS AGO</span>
+          </div>
+        </div>
+        <p>"An incredible place with a rich history. The streets are beautiful to walk..."</p>
+      </div>
+    </section>
+  </div>
+</div>

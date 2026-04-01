@@ -1,0 +1,62 @@
+<div class="list-container">
+  <div class="header-bar">
+    <div class="logo">
+      <span class="logo-icon">🌍</span> AdriGo
+    </div>
+    <button class="menu-btn" (click)="toggleMenu()">☰</button>
+  </div>
+
+  <div class="search-section">
+    <div class="search-row">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Location...">
+        <button class="filter-icon-btn" (click)="openFilters()">
+          <span class="filter-icon">⚲</span>
+        </button>
+      </div>
+      <button class="map-view-btn" (click)="goToMap()">
+        🗺️
+      </button>
+    </div>
+    <button class="main-search-btn">Search</button>
+  </div>
+
+  <h2 class="section-title">Near you</h2>
+
+  <div class="scroll-area">
+    <div class="location-card" *ngFor="let loc of locations">
+      <div class="image-wrapper">
+        <img [src]="loc.imageUrl" [alt]="loc.title">
+        <span class="category-badge">{{ loc.category }}</span>
+        <button class="favorite-btn">📍</button>
+      </div>
+      
+      <div class="card-content">
+        <div class="title-row">
+          <h3>{{ loc.title }}</h3>
+          <div class="rating-badge">
+            ⭐ {{ loc.rating }}
+          </div>
+        </div>
+
+        <div class="info-row">
+          <span>📍 {{ loc.distance }} km from you</span>
+          <span [class.closed]="!loc.isOpen">🕒 {{ loc.status }}</span>
+        </div>
+        <p class="reviews-count">({{ loc.reviews }} reviews)</p>
+
+        <div class="divider"></div>
+
+        <button class="view-details-btn" (click)="viewDetails(loc.id)">
+          VIEW DETAILS <span class="arrow">→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <app-side-menu 
+    *ngIf="isMenuOpen" 
+    (onClose)="isMenuOpen = false">
+  </app-side-menu>
+</div>
