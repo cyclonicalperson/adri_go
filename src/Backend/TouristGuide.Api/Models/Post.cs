@@ -87,5 +87,9 @@ namespace TouristGuide.Api.Models
         // Navigation
         public AdminUser Admin { get; set; } = null!;
         public Region? Region { get; set; }
+        public ICollection<PostReview> Reviews { get; set; } = new List<PostReview>();
+        public ICollection<PostLike> Likes { get; set; } = new List<PostLike>();
+        public ICollection<SavedPost> SavedPosts { get; set; } = new List<SavedPost>();
+        public ICollection<PostView> Views { get; set; } = new List<PostView>();
     }
 }
