@@ -1,0 +1,45 @@
+<div class="bottom-sheet-overlay">
+  <div class="location-details-card">
+    
+    <div class="card-header">
+      <div class="category-label">
+        <span class="label-dot"></span>
+        {{ locationData.category }}
+      </div>
+      <button class="close-btn" (click)="onCloseClick()">
+        <span class="close-icon">×</span> </button>
+    </div>
+
+    <div class="image-container">
+      <img [src]="locationData.imageUrl" alt="Location photo" class="main-image">
+    </div>
+
+    <div class="card-body">
+      <div class="title-row">
+        <h2 class="location-title">{{ locationData.title }}</h2>
+        <div class="rating-box">
+          <span class="rating-value">{{ locationData.rating }}</span>
+          <span class="star-icon">★</span>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-item distance-info">
+          <span class="info-icon">📍</span>
+          <span class="info-text">{{ locationData.distance }} km from you</span>
+        </div>
+        <div class="info-item status-info">
+          <span class="info-icon">🕒</span>
+          <span class="info-text status-open">{{ locationData.status }}</span>
+        </div>
+      </div>
+      
+      <p class="reviews-text">({{ locationData.reviews }} reviews)</p>
+
+      <button class="btn btn-details">
+        View details <span class="arrow">→</span>
+      </button>
+    </div>
+
+  </div>
+</div>

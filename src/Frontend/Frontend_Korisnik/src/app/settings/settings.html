@@ -1,0 +1,119 @@
+<div class="settings-container">
+  <div class="header">
+    <button class="back-btn" (click)="goBack()">‹</button>
+    <h1>Settings</h1>
+  </div>
+
+  <div class="scroll-content">
+    
+    <div class="section">
+      <h3 class="section-title">ACCOUNT & SECURITY</h3>
+      <div class="card">
+        <button class="row">
+          <span class="icon edit-bg">👤</span>
+          <span class="text">Edit Profile</span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="row border-top">
+          <span class="icon pass-bg">🔒</span>
+          <span class="text">Change Password</span>
+          <span class="arrow">›</span>
+        </button>
+        <button class="row border-top">
+          <span class="icon connect-bg">📱</span>
+          <span class="text">Connected Accounts</span>
+          <span class="arrow">›</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section-title">LANGUAGE & CONTENT</h3>
+      <div class="card">
+        <button class="row">
+          <span class="icon lang-bg">🌐</span>
+          <span class="text">App Language</span>
+          <span class="val">{{settings.language}} ›</span>
+        </button>
+        <button class="row border-top">
+          <span class="icon content-bg">🔤</span>
+          <span class="text">Content Preferences</span>
+          <span class="arrow">›</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section-title">PRIVACY & TRACKING</h3>
+      <div class="card">
+        <div class="row-toggle">
+          <div class="info">
+            <span class="icon loc-bg">📍</span>
+            <div>
+              <strong>Location Sharing</strong>
+              <p>Allow AdriGo to access your live location.</p>
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="settings.locationSharing">
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="row-toggle border-top">
+          <div class="info">
+            <span class="icon anal-bg">📊</span>
+            <div>
+              <strong>Anonymous Analytics</strong>
+              <p>Help us improve by sharing usage data.</p>
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="settings.anonymousAnalytics">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section-title">NOTIFICATIONS</h3>
+      <div class="card">
+        <div class="row-toggle">
+          <div class="info">
+            <span class="icon push-bg">🔔</span>
+            <div>
+              <strong>Push Notifications</strong>
+              <p>Real-time alerts for bookings and tickets.</p>
+            </div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="settings.pushNotifications">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3 class="section-title">ABOUT & SUPPORT</h3>
+      <div class="card">
+        <button class="row">
+          <span class="icon help-bg">❓</span>
+          <span class="text">Help & Support Center</span>
+          <span class="arrow">›</span>
+        </button>
+        <div class="row border-top no-btn">
+          <span class="icon version-bg">ℹ️</span>
+          <span class="text">App Version</span>
+          <span class="val">{{appVersion}}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="save-btn" (click)="saveChanges()">Save Changes</button>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+  </div>
+</div>

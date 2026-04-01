@@ -1,0 +1,100 @@
+<div class="filters-container">
+  <div class="header">
+    <button class="icon-btn" (click)="closeFilters()">✕</button>
+    <h1>Filters</h1>
+    <button class="clear-btn" (click)="clearAll()">
+      <span class="refresh-icon">↺</span> Clear All
+    </button>
+  </div>
+
+  <div class="scroll-content">
+    <section>
+      <div class="section-header">
+        <span class="section-icon category-bg">☂️</span>
+        <h2>Category</h2>
+      </div>
+      <div class="chips-grid">
+        <div *ngFor="let cat of categories" 
+             class="chip" 
+             [class.active]="cat.selected"
+             (click)="toggleCategory(cat)">
+          <span class="chip-icon">{{cat.icon}}</span>
+          {{cat.label}}
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <span class="section-icon distance-bg">📍</span>
+        <h2>Distance</h2>
+      </div>
+      <div class="slider-box">
+        <div class="slider-labels">
+          <span>Radius</span>
+          <span class="highlight">{{radius}} km</span>
+        </div>
+        <input type="range" min="1" max="50" [(ngModel)]="radius" class="custom-slider">
+        <div class="range-markers">
+          <span>1 KM</span>
+          <span>25 KM</span>
+          <span>50 KM</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <span class="section-icon rating-bg">⭐</span>
+        <h2>Minimal rating</h2>
+      </div>
+      <div class="rating-grid">
+        <div *ngFor="let r of [1,2,3,4,5]" 
+             class="rating-card" 
+             [class.active]="minRating === r"
+             (click)="setRating(r)">
+          <span class="star">⭐</span>
+          {{r}}+
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <span class="section-icon availability-bg">🌗</span>
+        <h2>Availability</h2>
+      </div>
+      <div class="toggle-card">
+        <div class="toggle-text">
+          <h3>Open Now</h3>
+          <p>Show only objects open now</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" [(ngModel)]="openNow">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <span class="section-icon period-bg">🗓️</span>
+        <h2>Period for events</h2>
+      </div>
+      <div class="date-picker-row">
+        <div class="date-input">
+          <label>FROM</label>
+          <input type="text" placeholder="Choose date" [(ngModel)]="fromDate">
+        </div>
+        <div class="date-input">
+          <label>TO</label>
+          <input type="text" placeholder="Choose date" [(ngModel)]="toDate">
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <button class="apply-btn" (click)="applyFilters()">Apply Filters</button>
+  </div>
+</div>

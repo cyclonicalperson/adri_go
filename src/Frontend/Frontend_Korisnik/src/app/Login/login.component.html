@@ -1,53 +1,66 @@
-<div class="login-page-wrapper">
-  <div class="animated-bg"></div>
-
+<div class="page-container">
   <div class="login-card">
-    <div class="card-header">
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-        </svg>
-      </div>
-      <span class="brand-name">GlobeCode </span>
-    </div>
+    <h1 class="title">Welcome!</h1>
+    <p class="subtitle">Sign in to continue exploring Montenegro</p>
 
-    <h1 class="welcome-text">Dobrodošli nazad</h1>
-    
-
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <div class="form-field">
-        <label for="email">Email adresa</label>
-        <input 
-          type="email" 
-          id="email" 
-          formControlName="email" 
-          placeholder="admin@globecode.com"
-        />
+    <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
+      <div class="form-group">
+        <label for="emailOrPhone">Email or phone</label>
+        <div class="input-wrapper">
+          <span class="icon">✉</span>
+          <input 
+            type="text" 
+            id="emailOrPhone" 
+            formControlName="emailOrPhone" 
+            placeholder="example@mail.com"
+          >
+        </div>
       </div>
 
-      <div class="form-field">
-        <label for="password">Lozinka</label>
-        <input 
-          type="password" 
-          id="password" 
-          formControlName="password" 
-          placeholder="••••••••"
-        />
+      <div class="form-group">
+        <div class="label-row">
+          <label for="password">Password</label>
+          <a href="#" class="forgot-link">Forgot?</a>
+        </div>
+        <div class="input-wrapper">
+          <span class="icon">🔒</span>
+          <input 
+            type="password" 
+            id="password" 
+            formControlName="password" 
+            placeholder="••••••••"
+          >
+        </div>
       </div>
 
-      <button type="submit" class="submit-btn" [disabled]="loginForm.invalid">
-        Prijavi se
-        <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
+      <button type="submit" class="btn btn-primary">
+        Log In <span class="arrow">→</span>
       </button>
       
-      <div *ngIf="errorMessage" class="global-error">
-        {{ errorMessage }}
-      </div>
+      <button type="button" class="btn btn-primary btn-guest" (click)="onGuestLogin()">
+        Explore as Guest
+      </button>
     </form>
+
+    <div class="divider">
+      <span>OR CONTINUE AS</span>
+    </div>
+
+    <div class="social-buttons">
+      <button type="button" class="btn btn-outline" (click)="onGoogleLogin()">
+        <span class="social-icon google">🌐</span> Google
+      </button>
+      <button type="button" class="btn btn-outline" (click)="onAppleLogin()">
+        <span class="social-icon apple">🍏</span> Apple
+      </button>
+    </div>
+
+   <p class="register-text">
+      Don't have an account? <a (click)="goToRegister()" style="cursor: pointer;">Register</a>
+    </p>
   </div>
+
+  <p class="terms-text">
+    By continuing to use, you accept our Terms<br>of use and Privacy Policy.
+  </p>
 </div>
