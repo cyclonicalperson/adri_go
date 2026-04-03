@@ -1,0 +1,154 @@
+<div class="page">
+
+  <div class="header">
+    <h2 class="title">{{ isEdit ? 'Izmeni aktivnost' : 'Nova aktivnost' }}</h2>
+    <button class="btn-back" (click)="cancel()">← Nazad</button>
+  </div>
+
+  @if (error) {
+  <div class="alert-error">{{ error }}</div>
+  }
+
+  <form class="layout" [formGroup]="form" (ngSubmit)="submit()">
+
+    <div class="left-col">
+
+      <!-- Basic info -->
+      <div class="card">
+        <h3 class="card-title">Osnovni podaci</h3>
+
+        <div class="field">
+          <label class="label">Naziv *</label>
+          <input class="input"
+                 [class.invalid]="f('name').invalid && f('name').touched"
+                 formControlName="name"
+                 placeholder="npr. Teniski kamp 2026" />
+          @if (f('name').invalid && f('name').touched) {
+          <span class="field-error">Naziv je obavezan.</span>
+          }
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label class="label">Kategorija *</label>
+            <select class="input" formControlName="category">
+              @for (opt of categoryOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Trajanje</label>
+            <input class="input" formControlName="duration"
+                   placeholder="npr. 2 sata, 5 dana" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Opis *</label>
+          <textarea class="input textarea"
+                    [class.invalid]="f('description').invalid && f('description').touched"
+                    formControlName="description"
+                    placeholder="Kratak opis aktivnosti..."
+                    rows="4"></textarea>
+          @if (f('description').invalid && f('description').touched) {
+          <span class="field-error">Opis je obavezan.</span>
+          }
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label class="label">Težina / Nivo</label>
+            <select class="input" formControlName="difficulty">
+              <option value="">— Nije primenjivo —</option>
+              <option value="EASY">Lako</option>
+              <option value="MEDIUM">Srednje</option>
+              <option value="HARD">Teško</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Maks. kapacitet</label>
+            <input class="input" type="number" min="1"
+                   formControlName="maxCapacity"
+                   placeholder="npr. 20" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Tagovi (razdvoji zarezom)</label>
+          <input class="input" formControlName="tags"
+                 placeholder="npr. Grupno, Sertifikat, Vodič uključen" />
+        </div>
+      </div>
+
+      <!-- Link to object (optional) -->
+      <div class="card">
+        <h3 class="card-title">Vezivanje za lokaciju</h3>
+        <p class="hint">Aktivnost može biti samostalna (standalone) ili vezana za konkretnu lokaciju.</p>
+
+        <div class="field">
+          <label class="label">Lokacija (opcionalno)</label>
+          <select class="input" formControlName="objectId">
+            <option [ngValue]="null">— Standalone (bez vezane lokacije) —</option>
+            @for (o of objects; track o.objectId) {
+            <option [value]="o.objectId">{{ o.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="right-col">
+
+      <!-- GPS location -->
+      <div class="card">
+        <h3 class="card-title">Lokacija na mapi</h3>
+        <p class="hint">Kliknite na mapu ili unesite koordinate ručno.</p>
+
+        <div class="map-placeholder">
+          🗺️
+          <span>Interaktivna mapa</span>
+        </div>
+
+        <div class="row-2" style="margin-top:14px">
+          <div class="field">
+            <label class="label">Geografska širina</label>
+            <input class="input" type="number" step="0.0001"
+                   formControlName="latitude"
+                   placeholder="43.8000" />
+          </div>
+          <div class="field">
+            <label class="label">Geografska dužina</label>
+            <input class="input" type="number" step="0.0001"
+                   formControlName="longitude"
+                   placeholder="20.5000" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="card">
+        <h3 class="card-title">Status</h3>
+        <div class="field">
+          <label class="label">Status aktivnosti</label>
+          <select class="input" formControlName="status">
+            <option value="PENDING">⏳ Na čekanju (čeka odobrenje)</option>
+            <option value="APPROVED">✅ Odobreno</option>
+            <option value="INACTIVE">❌ Neaktivno</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
+        <button type="submit" class="btn-save" [disabled]="saving">
+          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj aktivnost') }}
+        </button>
+      </div>
+
+    </div>
+
+  </form>
+
+</div>

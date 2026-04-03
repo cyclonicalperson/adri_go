@@ -1,0 +1,228 @@
+@use 'variables' as *;
+
+// Shared form layout — duplicated here instead of @use-ing the component file
+// (Angular component SCSS files are not importable SCSS modules)
+.page {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 800;
+  color: $gray-900;
+}
+
+.btn-back {
+  padding: 9px 16px;
+  border-radius: $radius-md;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-700;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $gray-400;
+  }
+}
+
+.alert-error {
+  background: $danger-soft;
+  border: 1px solid rgba(239,68,68,.3);
+  border-radius: $radius-md;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+.left-col,
+.right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: $radius-lg;
+  padding: 22px 24px;
+  box-shadow: $shadow-sm;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: $gray-900;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid $gray-100;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 700;
+  color: $gray-600;
+}
+
+.input {
+  padding: 10px 14px;
+  border: 1.5px solid $gray-200;
+  border-radius: $radius-md;
+  font-family: $font-sans;
+  font-size: 13px;
+  color: $gray-900;
+  background: $white;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s;
+
+  &::placeholder {
+    color: $gray-400;
+  }
+
+  &:focus {
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(34,197,94,.1);
+  }
+
+  &.invalid {
+    border-color: $danger;
+  }
+
+  &.textarea {
+    resize: vertical;
+    min-height: 90px;
+    line-height: 1.6;
+  }
+}
+
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.field-error {
+  font-size: 12px;
+  color: $danger;
+  font-weight: 600;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  padding: 11px 20px;
+  border-radius: $radius-md;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-700;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $gray-400;
+  }
+}
+
+.btn-save {
+  padding: 11px 24px;
+  border-radius: $radius-md;
+  border: none;
+  background: $primary;
+  color: $white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  box-shadow: 0 4px 12px rgba(34,197,94,.2);
+  transition: background .15s;
+
+  &:hover:not(:disabled) {
+    background: $primary-hover;
+  }
+
+  &:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+  }
+}
+
+.hint {
+  font-size: 12px;
+  color: $gray-500;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.map-placeholder {
+  height: 180px;
+  background: linear-gradient(135deg, #bbf7d0, #6ee7b7 50%, #a7f3d0);
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 36px;
+  color: $primary-dark;
+  border: 1px solid $primary-mid;
+
+  span {
+    font-size: 13px;
+    font-weight: 700;
+    opacity: .7;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .row-2 {
+    grid-template-columns: 1fr;
+  }
+}
