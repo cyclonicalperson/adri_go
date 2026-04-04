@@ -13,16 +13,17 @@ export const routes: Routes = [
       import('./login/login.routes').then(m => m.LOGIN_ROUTES),
   },
   {
+    // Registration page — public, no guard
+    path: 'register',
+    loadChildren: () =>
+      import('./register/register.routes').then(m => m.REGISTER_ROUTES),
+  },
+  {
     path: 'admin',
     canActivate: [AuthGuard],
     loadChildren: () =>
       import('./AdminAplikacija/admin.routes').then(m => m.ADMIN_ROUTES),
   },
-  /*{
-    path: 'app',
-    loadChildren: () =>
-      import('./TuristiAplikacija/tourist.routes').then(m => m.TOURIST_ROUTES),
-  },*/
   {
     path: '**',
     redirectTo: 'login',
