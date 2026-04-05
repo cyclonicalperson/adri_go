@@ -33,10 +33,13 @@ namespace TouristGuide.Api.Services
             if (storedHash.StartsWith("$2", StringComparison.Ordinal) &&
                 storedHash.Contains("examplehash", StringComparison.OrdinalIgnoreCase))
             {
+                if (storedHash.Contains("SUPERADMIN", StringComparison.OrdinalIgnoreCase))
+                {
+                    return password == "SuperAdmin123!";
+                }
+
                 return password == "Admin123!";
             }
-
-            return false;
         }
     }
 }

@@ -27,6 +27,8 @@ namespace TouristGuide.Api.DTOs
         public string AccountStatus { get; set; } = string.Empty;
         public uint? OrganizationId { get; set; }
         public bool IsIndividual { get; set; }
+        public List<string> Permissions { get; set; } = new();
+
     }
 
     /// <summary>
