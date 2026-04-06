@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
@@ -29,6 +30,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetAll(
             [FromQuery] uint? region_id,
             [FromQuery] string? type,
@@ -174,6 +176,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Create([FromBody] CreatePostDto dto)
         {
             if (!ModelState.IsValid)
@@ -235,6 +238,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Update(uint id, [FromBody] UpdatePostDto dto)
         {
             if (!ModelState.IsValid)
@@ -317,6 +321,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Delete(uint id)
         {
             var post = await _context.Posts.FindAsync(id);

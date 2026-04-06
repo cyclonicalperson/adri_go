@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
@@ -8,6 +9,7 @@ namespace TouristGuide.Api.Controllers
 {
     [ApiController]
     [Route("api/admin-registration")]
+    [Authorize(Roles = "superadmin")]
     public class AdminRegistrationController : ControllerBase
     {
         private readonly AppDbContext _dbContext;
@@ -48,9 +50,9 @@ namespace TouristGuide.Api.Controllers
         // POST /admin-registration/{id}/approve
         // Odobrava registration request i kreira/aktivira admin nalog
         // ============================================================
-        [HttpPost("{id:uint}/approve")]
+        [HttpPost("{id:int}/approve")]
         public async Task<ActionResult<AdminRegistrationActionResponseDto>> Approve(
-            uint id,
+            int id,
             [FromBody] AdminRegistrationDecisionDto? decision)
         {
             var request = await _dbContext.AdminRegistrationRequests
@@ -126,9 +128,9 @@ namespace TouristGuide.Api.Controllers
         // POST /admin-registration/{id}/reject
         // Odbija registration request
         // ============================================================
-        [HttpPost("{id:uint}/reject")]
+        [HttpPost("{id:int}/reject")]
         public async Task<ActionResult<AdminRegistrationActionResponseDto>> Reject(
-            uint id,
+            int id,
             [FromBody] AdminRegistrationDecisionDto? decision)
         {
             var request = await _dbContext.AdminRegistrationRequests
