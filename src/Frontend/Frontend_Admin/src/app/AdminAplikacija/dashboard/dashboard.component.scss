@@ -1,76 +1,477 @@
 @use 'variables' as *;
 
-// ── Stats grid ────────────────────────────────────────────────────────────
-.stats-grid {
+// ── Root ──────────────────────────────────────────────────────────────────
+.dash-root {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100%;
+}
+
+// ── Page header ───────────────────────────────────────────────────────────
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dash-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: $gray-900;
+  letter-spacing: -0.3px;
+}
+
+.dash-sub {
+  font-size: 13px;
+  color: $gray-500;
+  margin-top: 2px;
+}
+
+.dash-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: $radius-md;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid $gray-200;
+  transition: all .15s;
+
+  &-primary {
+    background: $primary;
+    color: $white;
+    border-color: $primary;
+    box-shadow: 0 4px 12px rgba(34,197,94,.2);
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+
+  &-outline {
+    background: $white;
+    color: $gray-700;
+
+    &:hover {
+      border-color: $primary;
+      color: $primary-dark;
+      background: $surface-green;
+    }
+  }
+
+  &-ghost {
+    background: transparent;
+    color: $gray-500;
+    border-color: transparent;
+
+    &:hover {
+      color: $gray-900;
+      background: $gray-100;
+      border-color: $gray-200;
+    }
+  }
+
+  &-xs {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: $radius-sm;
+  }
+
+  &-approve {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $primary-soft;
+  }
+
+  &-reject {
+    border-color: $gray-200;
+    color: $gray-400;
+    background: $white;
+  }
+}
+
+// ── Loading ────────────────────────────────────────────────────────────────
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 80px 40px;
+  font-size: 14px;
+  color: $gray-500;
+  font-weight: 600;
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid $gray-200;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ── Widget grid ────────────────────────────────────────────────────────────
+// 2-column grid; each widget can occupy 1 or 2 columns
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+// ── Widget slot ────────────────────────────────────────────────────────────
+.widget-slot {
+  position: relative;
+  grid-column: span 1;
+
+  &.span-2 {
+    grid-column: span 2;
+  }
+}
+
+// ── Customise mode ─────────────────────────────────────────────────────────
+.customise-active .widget-slot {
+  .panel {
+    outline: 2px dashed $primary-mid;
+    outline-offset: 2px;
+  }
+
+  &:hover .panel {
+    outline-color: $primary;
+  }
+}
+
+// Drag handle overlay
+.widget-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,.95);
+  border-bottom: 1px solid $gray-200;
+  border-radius: $radius-lg $radius-lg 0 0;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.drag-handle {
+  font-size: 18px;
+  color: $gray-400;
+  padding: 2px 6px;
+  border-radius: $radius-sm;
+  transition: color .15s;
+  user-select: none;
+  line-height: 1;
+  letter-spacing: 1px;
+
+  &:hover {
+    color: $gray-700;
+    background: $gray-100;
+  }
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.oa-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: $radius-sm;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-600;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
+  }
+
+  &.oa-remove {
+    font-size: 18px;
+    font-weight: 700;
+
+    &:hover {
+      border-color: $danger;
+      color: $danger;
+      background: $danger-soft;
+    }
+  }
+}
+
+// Push widget content below overlay when customising
+.customise-active .widget-slot .widget {
+  padding-top: 48px !important;
+}
+
+// ── CDK drag-and-drop ─────────────────────────────────────────────────────
+
+// Drag handle (the ⠿ grip)
+.drag-grip {
+  font-size: 18px;
+  color: $gray-400;
+  cursor: grab;
+  padding: 2px 6px;
+  border-radius: $radius-sm;
+  transition: color .15s;
+  user-select: none;
+  line-height: 1;
+  letter-spacing: 2px;
+  flex-shrink: 0;
+
+  &:hover {
+    color: $gray-700;
+    background: $gray-100;
+  }
+}
+
+// Placeholder shown at drop target during drag
+.drag-placeholder {
+  min-height: 80px;
+  background: $primary-soft;
+  border: 2px dashed $primary;
+  border-radius: $radius-lg;
+  opacity: .6;
+}
+
+// The widget being dragged
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+// While list is being dragged, animate non-dragged items
+.widget-grid.cdk-drop-list-dragging .widget-slot:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+// The dragged item preview (floating clone)
+.cdk-drag-preview {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 2px solid $primary;
+  box-shadow: 0 16px 48px rgba(0,0,0,.2);
+  opacity: .95;
+  // Prevent layout issues with the preview clone
+  max-width: 480px;
+  overflow: hidden;
+}
+
+// ── Overlay layout ─────────────────────────────────────────────────────────
+.overlay-move {
+  display: flex;
+  gap: 4px;
+}
+
+.oa-move {
+  font-size: 12px !important;
+
+  &:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.overlay-label {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: $gray-600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  padding: 0 4px;
+}
+
+// ── Panel base ─────────────────────────────────────────────────────────────
+.panel {
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $gray-200;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+
+  &.widget {
+    height: 100%;
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid $gray-200;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: $gray-900;
+}
+
+.panel-sub {
+  font-size: 12px;
+  color: $gray-500;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.panel-link {
+  font-size: 12px;
+  font-weight: 700;
+  color: $primary-dark;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.panel-body {
+  padding: 18px 20px;
+}
+
+// ── KPI Row ────────────────────────────────────────────────────────────────
+.kpi-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: $spacing-md;
+  padding: 16px 20px;
+  gap: 12px;
 }
 
-// ── Chart panel ──────────────────────────────────────────────────────────
-.chart-select {
-  border: 1px solid $gray-200;
-  border-radius: $radius-sm;
-  padding: 6px 10px;
-  font-family: $font-sans;
-  font-size: 12px;
-  font-weight: 600;
-  outline: none;
-  cursor: pointer;
-  color: $gray-700;
+.kpi-tile {
+  background: var(--accent-bg, #f9fafb);
+  border-radius: $radius-md;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-  &:focus {
-    border-color: $primary;
+.kpi-icon-wrap {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+
+.kpi-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: $gray-900;
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+
+.kpi-lbl {
+  font-size: 11px;
+  color: $gray-500;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.kpi-trend {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 4px;
+  color: $gray-400;
+
+  &.up {
+    color: $primary-dark;
+  }
+
+  &.down {
+    color: $danger;
+  }
+
+  &.neutral {
+    color: $gray-400;
   }
 }
 
-.mini-stats {
+// ── Chart ──────────────────────────────────────────────────────────────────
+.chart-legend {
   display: flex;
   gap: 12px;
-  margin-bottom: $spacing-md;
+  align-items: center;
 }
 
-.mini-stat {
-  flex: 1;
-  background: $gray-50;
-  border-radius: 10px;
-  padding: 12px 16px;
+.cleg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $gray-500;
+}
 
-  .val {
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-  }
-
-  .lbl {
-    font-size: 11px;
-    color: $gray-500;
-    font-weight: 600;
-    margin-top: 2px;
-  }
+.cleg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .chart-area {
   background: $gray-50;
-  border-radius: 10px;
-  height: 160px;
+  border-radius: $radius-md;
+  padding: 14px 14px 0;
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  padding: 16px 16px 0;
+  gap: 4px;
+  height: 150px;
+  margin-bottom: 6px;
 }
 
 .bar {
   flex: 1;
-  border-radius: 6px 6px 0 0;
+  border-radius: 4px 4px 0 0;
   min-height: 8px;
   transition: opacity .2s;
 
   &:hover {
-    opacity: .8;
+    opacity: .75;
   }
 
-  &.bar-primary {
+  &.bar-green {
     background: linear-gradient(180deg, #22c55e 0%, #86efac 100%);
   }
 
@@ -86,46 +487,177 @@
 .chart-labels {
   display: flex;
   justify-content: space-between;
-  padding: 8px 16px 0;
   font-size: 10px;
   color: $gray-400;
   font-weight: 600;
+  padding: 0 14px;
+  margin-top: 4px;
 }
 
-// ── Requests ─────────────────────────────────────────────────────────────
-.panel-link {
-  font-size: 12px;
-  font-weight: 700;
-  color: $primary-dark;
-  text-decoration: none;
+// ── Donut ──────────────────────────────────────────────────────────────────
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 
-  &:hover {
-    text-decoration: underline;
+.donut {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: conic-gradient(#22c55e 0% 45%, #3b82f6 45% 68%, #f59e0b 68% 83%, #8b5cf6 83% 100%);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.donut-center {
+  position: absolute;
+  inset: 20px;
+  background: $white;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-num {
+  font-size: 17px;
+  font-weight: 800;
+  color: $gray-900;
+}
+
+.donut-lbl {
+  font-size: 9px;
+  color: $gray-500;
+  font-weight: 600;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $gray-700;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-val {
+  margin-left: auto;
+  font-size: 11px;
+  color: $gray-400;
+  padding-left: 8px;
+}
+
+// ── Rank items ─────────────────────────────────────────────────────────────
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid $gray-100;
+
+  &:last-child {
+    border-bottom: none;
   }
 }
 
+.rank-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: $gray-100;
+  color: $gray-500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+
+  &.gold {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  &.silver {
+    background: $gray-200;
+    color: $gray-600;
+  }
+
+  &.bronze {
+    background: #fff7ed;
+    color: #9a3412;
+  }
+}
+
+.rank-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: $gray-800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-bar {
+  width: 70px;
+  height: 5px;
+  background: $gray-100;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rank-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.rank-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: $gray-700;
+  width: 38px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+// ── Pending requests ───────────────────────────────────────────────────────
 .request-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  background: $gray-50;
-  border-radius: 10px;
-  margin-bottom: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid $gray-100;
 
   &:last-child {
-    margin-bottom: 0;
+    border-bottom: none;
   }
 }
 
 .req-icon {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 17px;
   flex-shrink: 0;
 }
 
@@ -142,108 +674,27 @@
 .req-meta {
   font-size: 11px;
   color: $gray-500;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .req-actions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
 
 .empty-state {
   font-size: 13px;
   color: $gray-400;
   text-align: center;
-  padding: $spacing-lg;
+  padding: 16px;
 }
 
-// ── Category breakdown ───────────────────────────────────────────────────
-.donut-wrap {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.donut {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: conic-gradient(#22c55e 0% 45%, #3b82f6 45% 68%, #f59e0b 68% 83%, #8b5cf6 83% 100%);
-  position: relative;
-  flex-shrink: 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 22px;
-    background: $white;
-    border-radius: 50%;
-  }
-}
-
-.legend {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: $gray-700;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.breakdown-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.breakdown-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.breakdown-label {
-  font-weight: 600;
-  color: $gray-700;
-}
-
-.breakdown-val {
-  font-weight: 800;
-  color: $gray-900;
-}
-
-.breakdown-bar {
-  height: 6px;
-  background: $gray-100;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.breakdown-fill {
-  height: 100%;
-  border-radius: 3px;
-}
-
-// ── Activity log ─────────────────────────────────────────────────────────
+// ── Activity log ───────────────────────────────────────────────────────────
 .activity-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 10px;
+  padding: 10px 0;
   border-bottom: 1px solid $gray-100;
 
   &:last-child {
@@ -252,13 +703,13 @@
 }
 
 .activity-dot {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
@@ -267,7 +718,7 @@
 
   strong {
     font-weight: 700;
-    font-size: 13.5px;
+    font-size: 13px;
     color: $gray-900;
     display: block;
   }
@@ -275,8 +726,7 @@
   p {
     font-size: 12px;
     color: $gray-500;
-    margin-top: 2px;
-    line-height: 1.4;
+    margin-top: 1px;
   }
 }
 
@@ -285,79 +735,367 @@
   color: $gray-400;
   font-weight: 600;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-// ── Map preview ──────────────────────────────────────────────────────────
+// ── Map widgets ────────────────────────────────────────────────────────────
 .map-preview {
-  height: 200px;
-  background: linear-gradient(135deg, #bbf7d0 0%, #6ee7b7 40%, #a7f3d0 100%);
-  border-radius: 12px;
+  height: 180px;
+  background: linear-gradient(135deg, #bbf7d0, #6ee7b7 50%, #a7f3d0);
+  border-radius: $radius-md;
   position: relative;
   overflow: hidden;
-  margin-bottom: $spacing-md;
+}
+
+.map-heat {
+  height: 260px;
+  background: linear-gradient(135deg, #bbf7d0, #6ee7b7 40%, #a7f3d0 80%, #d1fae5);
+  border-radius: $radius-md;
+  position: relative;
+  overflow: hidden;
 }
 
 .map-grid {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(rgba(0,0,0,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.05) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+.heat-spot {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .map-pin {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 3px solid $white;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  border: 2.5px solid $white;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
   transform: translate(-50%, -50%);
 }
 
 .map-count {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  bottom: 10px;
+  right: 10px;
+  background: $white;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: $shadow-md;
+}
+
+.map-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
   background: $white;
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
   box-shadow: $shadow-md;
-  color: $gray-900;
 }
 
-.map-legend {
+// ── Preferences bars ───────────────────────────────────────────────────────
+.pref-item {
+  margin-bottom: 10px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.pref-header {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
-.map-legend-item {
+.pref-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: $gray-800;
+}
+
+.pref-pct {
+  font-size: 13px;
+  font-weight: 800;
+  color: $primary-dark;
+}
+
+.pref-bar {
+  height: 7px;
+  background: $gray-100;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pref-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .3s ease;
+}
+
+// ── Recent reviews ─────────────────────────────────────────────────────────
+.review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid $gray-100;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.rev-av {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: $primary-soft;
+  color: $primary-dark;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: $gray-700;
-}
-
-.map-legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
   flex-shrink: 0;
 }
 
-.map-legend-val {
-  margin-left: auto;
+.rev-body {
+  flex: 1;
+}
+
+.rev-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: $gray-900;
+}
+
+.rev-comment {
+  font-size: 12px;
+  color: $gray-500;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.rev-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rev-stars {
+  font-size: 12px;
+  color: #f59e0b;
+  letter-spacing: 1px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &-amber {
+    background: $warning-soft;
+    color: #92400e;
+  }
+}
+
+// ── Empty dashboard ────────────────────────────────────────────────────────
+.empty-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 40px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 52px;
+}
+
+.empty-title {
+  font-size: 20px;
   font-weight: 800;
   color: $gray-900;
 }
 
-.loading-state {
-  padding: 60px;
-  text-align: center;
+.empty-sub {
+  font-size: 14px;
   color: $gray-500;
-  font-weight: 600;
+}
+
+// ── Picker drawer ──────────────────────────────────────────────────────────
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.3);
+  z-index: 200;
+  backdrop-filter: blur(2px);
+}
+
+.picker-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background: $white;
+  border-left: 1px solid $gray-200;
+  box-shadow: -8px 0 40px rgba(0,0,0,.12);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 22px;
+  border-bottom: 1px solid $gray-200;
+}
+
+.picker-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: $gray-900;
+}
+
+.picker-close {
+  width: 32px;
+  height: 32px;
+  border-radius: $radius-sm;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-500;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $danger;
+    color: $danger;
+    background: $danger-soft;
+  }
+}
+
+.picker-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker-empty {
+  font-size: 13px;
+  color: $gray-400;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid $gray-200;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: all .15s;
+  background: $white;
+
+  &:hover {
+    border-color: $primary;
+    background: $surface-green;
+  }
+}
+
+.picker-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: $gray-50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.picker-info {
+  flex: 1;
+}
+
+.picker-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: $gray-900;
+}
+
+.picker-desc {
+  font-size: 11px;
+  color: $gray-500;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.picker-add {
+  font-size: 20px;
+  font-weight: 700;
+  color: $primary-dark;
+  flex-shrink: 0;
+}
+
+// ── Mobile ─────────────────────────────────────────────────────────────────
+@media (max-width: 768px) {
+  .dash-root {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .widget-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .widget-slot,
+  .widget-slot.span-2 {
+    grid-column: span 1 !important;
+  }
+
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+
+  .picker-drawer {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid $gray-200;
+    top: auto;
+    height: 70vh;
+    border-radius: $radius-xl $radius-xl 0 0;
+  }
 }
