@@ -1,0 +1,41 @@
+<div class="notif-container">
+  <div class="header">
+    <button class="back-btn" (click)="goBack()">‹</button>
+    <h1>Notifications</h1>
+    <button class="mark-read" (click)="markAllRead()">Mark all read</button>
+  </div>
+
+  <div class="filter-bar">
+    <button *ngFor="let f of ['All', 'Alerts', 'Recommendations', 'Messages']"
+            class="filter-chip"
+            [class.active]="activeFilter === f"
+            (click)="activeFilter = f">
+      {{f}}
+    </button>
+  </div>
+
+  <div class="scroll-area">
+    <div class="notif-card" *ngFor="let n of notifications" [class.unread]="n.isNew">
+      <div class="card-header">
+        <div class="icon-box" [ngClass]="n.type">
+          {{n.icon}}
+        </div>
+        <div class="title-meta">
+          <div class="title-row">
+            <h3>{{n.title}}</h3>
+            <span class="new-badge" *ngIf="n.isNew">NEW</span>
+          </div>
+          <span class="time">🕒 {{n.time}}</span>
+        </div>
+      </div>
+      
+      <p class="notif-text">{{n.text}}</p>
+      
+      <div class="divider"></div>
+      
+      <button class="view-btn">
+        <span class="dot">●</span> View
+      </button>
+    </div>
+  </div>
+</div>

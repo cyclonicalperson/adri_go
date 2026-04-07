@@ -1,0 +1,67 @@
+<div class="account-container">
+  
+  <div class="header-bar">
+    <button class="back-btn" (click)="goBack()">
+      <span class="arrow">←</span>
+    </button>
+    <h1>Account</h1>
+  </div>
+
+  <div class="scroll-content">
+    
+    <div class="user-card">
+      <div class="profile-pic-wrapper">
+        <img [src]="userData.profilePic" alt="Profile Picture" class="profile-pic">
+      </div>
+      <div class="user-text">
+        <h2>{{userData.name}}</h2>
+        <p>{{userData.email}}</p>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value saved">{{userData.stats.saved}}</span>
+        <span class="stat-label">SAVED</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value tickets">{{userData.stats.tickets}}</span>
+        <span class="stat-label">TICKETS</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value upcoming">{{userData.stats.upcoming}}</span>
+        <span class="stat-label">UPCOMING</span>
+      </div>
+    </div>
+
+    <section class="menu-section">
+      <h3 class="section-title">MANAGEMENT</h3>
+      <button class="menu-link" (click)="goToPersonalInfo()">
+        <span class="link-icon personal-bg">👤</span>
+        <span class="link-text">Personal Information</span>
+        <span class="link-arrow">›</span>
+      </button>
+    </section>
+
+    <section class="menu-section">
+      <h3 class="section-title">SUPPORT & PRIVACY</h3>
+      <button class="menu-link" (click)="goToHelp()">
+        <span class="link-icon help-bg">❓</span>
+        <span class="link-text">Help & Support</span>
+        <span class="link-arrow">›</span>
+      </button>
+      <button class="menu-link top-border" (click)="goToPrivacy()">
+        <span class="link-icon privacy-bg">🛡️</span>
+        <span class="link-text">Privacy & Terms</span>
+        <span class="link-arrow">›</span>
+      </button>
+    </section>
+
+  </div>
+
+  <div class="footer">
+    <button class="logout-btn" (click)="logout()">
+      <span class="logout-icon">↩</span> Logout
+    </button>
+  </div>
+</div>

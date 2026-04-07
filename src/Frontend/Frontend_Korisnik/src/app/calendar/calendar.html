@@ -1,0 +1,43 @@
+<div class="calendar-container">
+  <div class="header">
+    <button class="back-btn" (click)="goBack()">‹</button>
+    <h1>Calendar</h1>
+  </div>
+
+  <div class="scroll-content">
+    
+    <section>
+      <h2 class="section-title">UPCOMING EVENTS</h2>
+      <div class="event-card" *ngFor="let event of upcomingEvents" (click)="viewEventDetails(event.id)">
+        <div class="date-badge">
+          <span class="day">{{event.date.split(' ')[1].replace(',', '')}}</span>
+          <span class="month">{{event.date.split(' ')[0].substring(0,3)}}</span>
+        </div>
+        <div class="event-info">
+          <h3>{{event.title}}</h3>
+          <p class="time">🕒 {{event.time}}</p>
+          <p class="loc">📍 {{event.location}}</p>
+        </div>
+        <div class="event-img" [style.backgroundImage]="'url(' + event.image + ')'"></div>
+      </div>
+    </section>
+
+    <section class="past-section">
+      <h2 class="section-title">PAST EVENTS</h2>
+      <div class="event-card past" *ngFor="let event of pastEvents">
+        <div class="date-badge grey">
+          <span class="day">{{event.date.split(' ')[1].replace(',', '')}}</span>
+          <span class="month">{{event.date.split(' ')[0].substring(0,3)}}</span>
+        </div>
+        <div class="event-info">
+          <h3>{{event.title}}</h3>
+          <p class="time">Completed</p>
+        </div>
+        <div class="event-img grayscale" [style.backgroundImage]="'url(' + event.image + ')'"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <button class="add-btn">+</button>
+</div>

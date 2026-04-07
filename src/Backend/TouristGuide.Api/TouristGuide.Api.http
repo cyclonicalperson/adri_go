@@ -1,6 +1,49 @@
 @TouristGuide.Api_HostAddress = http://localhost:5125
 
-GET {{TouristGuide.Api_HostAddress}}/weatherforecast/
+GET {{TouristGuide.Api_HostAddress}}/api/test/ping
 Accept: application/json
+
+###
+
+GET {{TouristGuide.Api_HostAddress}}/api/posts/1/reviews
+Accept: application/json
+
+###
+
+POST {{TouristGuide.Api_HostAddress}}/api/posts/1/reviews
+Content-Type: application/json
+
+{
+  "touristId": 1,
+  "rating": 5,
+  "comment": "Odlično mesto za posetu."
+}
+
+###
+
+POST {{TouristGuide.Api_HostAddress}}/api/posts/1/like
+Content-Type: application/json
+
+{
+  "touristId": 1
+}
+
+###
+
+POST {{TouristGuide.Api_HostAddress}}/api/posts/1/save
+Content-Type: application/json
+
+{
+  "touristId": 1
+}
+
+###
+
+POST {{TouristGuide.Api_HostAddress}}/api/posts/1/view
+Content-Type: application/json
+
+{
+  "touristId": 1
+}
 
 ###

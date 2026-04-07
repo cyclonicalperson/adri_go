@@ -1,0 +1,173 @@
+.account-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f7f7f7; /* Blago siva pozadina */
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+}
+
+/* Header */
+.header-bar {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #eee;
+}
+
+.header-bar h1 {
+  font-size: 20px;
+  margin: 0;
+  font-weight: 800;
+  color: #1a1a1a;
+  flex: 1;
+  text-align: center; /* Centriran naslov */
+  margin-right: 40px; /* Da kompenzuje širinu back dugmeta */
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+}
+
+/* Content */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* User Card */
+.user-card {
+  background-color: #22c55e; /* Glavna zelena boja */
+  border-radius: 20px;
+  padding: 25px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: white;
+  margin-bottom: 25px;
+  box-shadow: 0 5px 15px rgba(34, 197, 94, 0.2);
+}
+
+.profile-pic-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.3); /* Beli providni okvir */
+  overflow: hidden;
+}
+
+.profile-pic {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-text h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.user-text p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px 10px;
+  border-radius: 15px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.stat-value { font-size: 24px; font-weight: 800; display: block; margin-bottom: 5px; }
+.stat-label { font-size: 10px; font-weight: 700; color: #aaa; letter-spacing: 1px; }
+
+/* Boje za statistiku */
+.stat-value.saved { color: #22c55e; }
+.stat-value.tickets { color: #22c55e; }
+.stat-value.upcoming { color: #22c55e; }
+
+/* Menu Sections */
+.menu-section { margin-bottom: 25px; }
+
+.section-title {
+  font-size: 11px;
+  color: #bbb;
+  font-weight: 800;
+  margin: 0 0 10px 5px;
+  letter-spacing: 1px;
+}
+
+.menu-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Zaobljene ivice za kontejnere linkova */
+.menu-section:first-of-type .menu-link { border-radius: 15px; }
+.menu-section:last-of-type .menu-link:first-of-type { border-radius: 15px 15px 0 0; }
+.menu-section:last-of-type .menu-link:last-of-type { border-radius: 0 0 15px 15px; }
+
+.menu-link.top-border { border-top: 1px solid #f0f0f0; }
+
+.link-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 14px;
+}
+
+/* Boje ikona */
+.personal-bg { background-color: #ecfdf5; color: #22c55e; }
+.help-bg { background-color: #f9fafb; color: #888; }
+.privacy-bg { background-color: #fdf2f2; color: #ef4444; }
+
+.link-text { flex: 1; font-weight: 600; color: #333; font-size: 15px; }
+.link-arrow { color: #ccc; font-size: 20px; font-weight: 300; }
+
+/* Footer & Logout */
+.footer { padding: 20px; background: white; border-top: 1px solid #eee; }
+
+.logout-btn {
+  width: 100%;
+  padding: 16px;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.2);
+}
+
+.logout-icon { font-size: 18px; transform: rotate(180deg); }

@@ -1,0 +1,128 @@
+/* Kontejner koji drži sve i zauzima ceo ekran telefona */
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #a3d9eb; /* Boja mora na tvojoj slici kao osnovna pozadina */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Simulacija mape (Kasnije se menja sa pravom mapom) */
+.map-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Blagi gradijent da imitira obalu i more sa tvoje slike */
+  background: linear-gradient(160deg, #f4f4f4 50%, #80d4ea 50%);
+  z-index: 1;
+}
+
+/* Stilovi za lažne pinove */
+.mock-pin {
+  position: absolute;
+  font-size: 24px;
+  background-color: white;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  transform: translate(-50%, -50%); /* Centriranje pina tačno na koordinatu */
+}
+
+/* UI Sloj koji lebdi na vrhu */
+.top-ui-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 40px 15px 15px 15px; /* Top padding je veći zbog status bara na telefonu (baterija, sat) */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 2; /* Mora biti iznad mape */
+  pointer-events: none; /* Propustamo klikove kroz kontejner do mape... */
+}
+
+/* ...ali vracamo pointer-events na konkretne elemente da bi mogli da se kliknu */
+.search-container, .list-view-btn {
+  pointer-events: auto; 
+}
+
+/* Search Bar dizajn */
+.search-container {
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border-radius: 25px; /* Zaobljene ivice (pill oblik) */
+  padding: 8px 15px;
+  flex: 1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.search-icon {
+  font-size: 16px;
+  color: #666;
+  margin-right: 10px;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #333;
+  background: transparent;
+}
+
+.search-input::placeholder {
+  color: #999;
+}
+
+.filter-btn {
+  background: none;
+  border: none;
+  border-left: 1px solid #eee; /* Linija koja odvaja unos od filtera */
+  padding-left: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-icon {
+  font-size: 20px;
+  color: #555;
+  transform: rotate(90deg); /* Malo rotiramo unicode simbol da liči na filter levak sa slike */
+}
+
+/* Dugme za List View na desnoj strani */
+.list-view-btn {
+  background-color: #ffffff;
+  border: none;
+  border-radius: 50%; /* Okruglo dugme */
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.list-icon {
+  font-size: 20px;
+  color: #333;
+}
+.location-pin-active {
+  font-size: 32px; /* Veći eomdži */
+  background-color: transparent; /* Da ne bude u belom krugu */
+  box-shadow: none;
+}
