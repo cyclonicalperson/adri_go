@@ -12,7 +12,6 @@ import { ActivitiesSelectorComponent } from '../activities-selector/activities-s
 
 @Component({
   selector: 'app-object-form',
-  standalone: true,
   imports: [
     ReactiveFormsModule,
     ObjectMapPickerComponent,
@@ -22,7 +21,6 @@ import { ActivitiesSelectorComponent } from '../activities-selector/activities-s
   templateUrl: './object-form.component.html',
   styleUrl: './object-form.component.scss',
 })
-
 export class ObjectFormComponent implements OnInit {
   form!: FormGroup;
   isEdit = false;
@@ -35,17 +33,17 @@ export class ObjectFormComponent implements OnInit {
   media: Media[] = [];
 
   readonly categoryOptions: { value: ObjectCategory; label: string }[] = [
-    { value: 'HOTEL', label: 'Hotel' },
-    { value: 'APARTMENT', label: 'Apartman' },
-    { value: 'RESTAURANT', label: 'Restoran' },
-    { value: 'CAFE', label: 'Kafić' },
-    { value: 'CLUB', label: 'Klub' },
-    { value: 'SHOP', label: 'Prodavnica' },
-    { value: 'CULTURAL', label: 'Kulturni' },
-    { value: 'MONUMENT', label: 'Spomenik' },
-    { value: 'SPORT', label: 'Sport' },
-    { value: 'NATURE', label: 'Priroda' },
-    { value: 'OTHER', label: 'Ostalo' },
+    { value: 'HOTEL', label: '🏔️ Hotel' },
+    { value: 'APARTMENT', label: '🏠 Apartman / Smeštaj' },
+    { value: 'RESTAURANT', label: '🍽️ Restoran' },
+    { value: 'CAFE', label: '☕ Kafić' },
+    { value: 'CLUB', label: '🎵 Klub' },
+    { value: 'SHOP', label: '🛍️ Prodavnica' },
+    { value: 'CULTURAL', label: '🎭 Kulturni objekat' },
+    { value: 'MONUMENT', label: '🗿 Spomenik' },
+    { value: 'SPORT', label: '⚽ Sportski objekat' },
+    { value: 'NATURE', label: '🌿 Priroda' },
+    { value: 'OTHER', label: '📍 Ostalo' },
   ];
 
   constructor(
@@ -70,7 +68,7 @@ export class ObjectFormComponent implements OnInit {
       workingHours: [''],
     });
 
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Destination[]; }) => {
+    this.destService.getAll({ page: 1, pageSize: 200 }).subscribe(res => {
       this.destinations = res.data;
     });
 
@@ -78,7 +76,7 @@ export class ObjectFormComponent implements OnInit {
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
-      this.service.getById(this.id!).subscribe((res: { data: any; }) => {
+      this.service.getById(this.id!).subscribe(res => {
         const o = res.data;
         this.form.patchValue({
           destinationId: o.destinationId,
@@ -92,7 +90,7 @@ export class ObjectFormComponent implements OnInit {
           website: o.website,
           workingHours: o.workingHours,
         });
-        this.selectedActivityIds = o.activities?.map((a: { activityId: any; }) => a.activityId) ?? [];
+        this.selectedActivityIds = o.activities?.map((a: any) => a.activityId) ?? [];
         this.media = o.media ?? [];
       });
     }
@@ -103,7 +101,7 @@ export class ObjectFormComponent implements OnInit {
   }
 
   get lat(): number { return this.form.get('latitude')?.value ?? 43.85; }
-  get lng(): number { return this.form.get('longitude')?.value ?? 18.41; }
+  get lng(): number { return this.form.get('longitude')?.value ?? 20.45; }
 
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
@@ -117,12 +115,11 @@ export class ObjectFormComponent implements OnInit {
       : this.service.create(payload);
 
     req$.subscribe({
-      next: () => this.router.navigate(['/admin/objects']),
-      error: (err: { message: string | null; }) => { this.error = err.message; this.saving = false; },
+      next: () => this.router.navigate(['/admin/lokacije']),
+      error: (err: any) => { this.error = err.message ?? 'Greška pri čuvanju.'; this.saving = false; },
     });
   }
 
-  cancel(): void { this.router.navigate(['/admin/objects']); }
-
+  cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
 }

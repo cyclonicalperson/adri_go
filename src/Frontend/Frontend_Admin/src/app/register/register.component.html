@@ -1,0 +1,126 @@
+<div class="page">
+  <div class="card">
+
+    <div class="brand">
+      <div class="logo-mark">🌿</div>
+      <span class="logo-text">TouristHub</span>
+    </div>
+
+    <h1 class="title">Kreiraj nalog</h1>
+    <p class="subtitle">Unesite podatke da biste kreirali admin nalog. Poslaćemo vam email za verifikaciju.</p>
+
+    @if (successMsg) {
+      <div class="alert-success">
+        📧 {{ successMsg }}
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert-error">{{ error }}</div>
+    }
+
+    @if (!successMsg) {
+      <form class="form" [formGroup]="form" (ngSubmit)="submit()">
+
+        <div class="row-2">
+          <div class="field">
+            <label class="label" for="firstName">Ime</label>
+            <input id="firstName" class="input"
+                   [class.invalid]="firstName.invalid && firstName.touched"
+                   type="text" placeholder="Marko"
+                   formControlName="firstName" />
+            @if (firstName.invalid && firstName.touched) {
+              <span class="hint error">Ime je obavezno.</span>
+            }
+          </div>
+          <div class="field">
+            <label class="label" for="lastName">Prezime</label>
+            <input id="lastName" class="input"
+                   [class.invalid]="lastName.invalid && lastName.touched"
+                   type="text" placeholder="Petrović"
+                   formControlName="lastName" />
+            @if (lastName.invalid && lastName.touched) {
+              <span class="hint error">Prezime je obavezno.</span>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="email">Email adresa</label>
+          <input id="email" class="input"
+                 [class.invalid]="email.invalid && email.touched"
+                 type="email" placeholder="ime@kompanija.com"
+                 formControlName="email" autocomplete="email" />
+          @if (email.invalid && email.touched) {
+            <span class="hint error">
+              {{ email.hasError('required') ? 'Email je obavezan.' : 'Unesite ispravan email.' }}
+            </span>
+          }
+        </div>
+
+        <div class="field">
+          <label class="label" for="orgName">Naziv organizacije / preduzeća</label>
+          <input id="orgName" class="input"
+                 [class.invalid]="orgName.invalid && orgName.touched"
+                 type="text" placeholder="npr. Hotel Kopaonik d.o.o."
+                 formControlName="orgName" />
+          @if (orgName.invalid && orgName.touched) {
+            <span class="hint error">Naziv je obavezan.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Lozinka</label>
+          <div class="input-wrap">
+            <input id="password" class="input"
+                   [class.invalid]="password.invalid && password.touched"
+                   [type]="showPassword ? 'text' : 'password'"
+                   placeholder="min. 8 karaktera"
+                   formControlName="password" />
+            <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
+              {{ showPassword ? 'Sakrij' : 'Prikaži' }}
+            </button>
+          </div>
+          @if (password.invalid && password.touched) {
+            <span class="hint error">Lozinka mora imati najmanje 8 karaktera.</span>
+          }
+        </div>
+
+        <div class="field">
+          <label class="label" for="confirmPassword">Ponovi lozinku</label>
+          <div class="input-wrap">
+            <input id="confirmPassword" class="input"
+                   [class.invalid]="(confirmPassword.invalid || form.hasError('mismatch')) && confirmPassword.touched"
+                   [type]="showPassword ? 'text' : 'password'"
+                   placeholder="••••••••"
+                   formControlName="confirmPassword" />
+          </div>
+          @if (form.hasError('mismatch') && confirmPassword.touched) {
+            <span class="hint error">Lozinke se ne poklapaju.</span>
+          }
+        </div>
+
+        <div class="terms">
+          Kreiranjem naloga prihvatate naše
+          <a href="#" class="link">uslove korišćenja</a> i
+          <a href="#" class="link">politiku privatnosti</a>.
+        </div>
+
+        <button class="btn-submit" type="submit" [disabled]="loading">
+          @if (loading) {
+            <span class="spinner"></span>
+          } @else {
+            Kreiraj nalog →
+          }
+        </button>
+
+      </form>
+    }
+
+    <div class="footer-link">
+      Već imate nalog?
+      <a routerLink="/login" class="link">Prijavite se</a>
+    </div>
+
+  </div>
+</div>

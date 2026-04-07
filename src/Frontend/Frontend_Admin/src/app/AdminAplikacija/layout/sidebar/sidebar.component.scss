@@ -251,3 +251,90 @@ nav a {
     color: $danger;
   }
 }
+
+// ── User row as link ─────────────────────────────────────────────────────
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-radius: $radius-md;
+  text-decoration: none;
+  transition: background .15s;
+
+  &:hover {
+    background: $surface-green;
+  }
+}
+
+.more-icon {
+  margin-left: auto;
+  color: $gray-400;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+// ── Collapsed logout icon ─────────────────────────────────────────────────
+.btn-logout-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-sm;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $danger;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+
+  &:hover {
+    background: $danger-soft;
+    border-color: $danger;
+  }
+}
+
+// ── Mobile base state: sidebar hidden off-screen ─────────────────────────
+// (Actual show/hide controlled by admin-layout via .mobile-open class)
+@media (max-width: 768px) {
+  .sidebar {
+    // Sidebar is position:fixed and translateX is handled by admin-layout.component.scss
+    // These ensure correct look when it slides in
+    width: 260px !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,.12);
+  }
+
+    // Ensure collapsed styles don't apply on mobile
+    .sidebar.collapsed {
+      width: 260px !important;
+
+      .logo-text,
+      .label,
+      .nav-group-title,
+      .user-info,
+      .more-icon,
+      .btn-logout {
+        display: flex !important;
+      }
+
+      .logo-text {
+        display: block !important;
+      }
+
+      .nav-group-title {
+        display: block !important;
+      }
+
+      .user-info {
+        display: flex !important;
+      }
+
+      nav a {
+        justify-content: flex-start !important;
+        padding: 10px 18px !important;
+      }
+    }
+}
