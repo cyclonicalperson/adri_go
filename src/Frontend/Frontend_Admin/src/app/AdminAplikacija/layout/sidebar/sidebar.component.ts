@@ -31,8 +31,9 @@ export class SidebarComponent {
 
   // Visible ONLY to superadmin (ADMIN role)
   readonly adminItems: NavItem[] = [
-    { label: 'Admini',  route: '/admin/users',       icon: '👥' },
-    { label: 'Dozvole', route: '/admin/permissions', icon: '🔐', badge: 3 },
+    { label: 'Admini',         route: '/admin/users',          icon: '👥' },
+    { label: 'Dozvole',        route: '/admin/permissions',    icon: '🔐', badge: 3 },
+    { label: 'Admin zahtevi', route: '/admin/admin-requests', icon: '📋' },
   ];
 
   // Visible to all — data is scoped server-side

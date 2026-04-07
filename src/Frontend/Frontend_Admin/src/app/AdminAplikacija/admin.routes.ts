@@ -70,6 +70,14 @@ export const ADMIN_ROUTES: Routes = [
         loadChildren: () =>
           import('./map-admin/map-admin.routes').then(m => m.MAP_ADMIN_ROUTES),
       },
+      // ── Superadmin: zahtevi za admin nalog ──────────────────────────
+      {
+        path: 'admin-requests',
+        canActivate: [RoleGuard],
+        data: { roles: ['ADMIN'] },
+        loadChildren: () =>
+          import('./admin-requests/admin-requests.routes').then(m => m.ADMIN_REQUESTS_ROUTES),
+      },
       // ── Legacy redirects ────────────────────────────────────────────
       {
         path: 'destinations',

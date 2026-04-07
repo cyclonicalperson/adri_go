@@ -15,7 +15,7 @@ export interface Recept {
   providedIn: 'root'
 })
 export class ReceptService {
-  private apiUrl = 'http://localhost:5000/api/receptkontroler';
+  private apiUrl = 'http://localhost:5125/api/receptkontroler';
 
   constructor(private http: HttpClient) {}
 
