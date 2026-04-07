@@ -1,0 +1,112 @@
+.notif-container {
+  height: 100vh;
+  background-color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  gap: 10px;
+}
+
+.header h1 { font-size: 18px; font-weight: 800; flex: 1; margin: 0; }
+
+.back-btn { background: none; border: none; font-size: 32px; cursor: pointer; }
+
+.mark-read {
+  background: #f0fdf4;
+  color: #22c55e;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  padding: 15px 20px;
+  background: white;
+  overflow-x: auto;
+  border-bottom: 1px solid #eee;
+}
+
+.filter-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  background: none;
+  color: #666;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.filter-chip.active { background: #22c55e; color: white; }
+
+.scroll-area { flex: 1; overflow-y: auto; padding: 20px; }
+
+.notif-card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.unread { background: #fdfdfd; border-left: 4px solid #22c55e; }
+
+.card-header { display: flex; gap: 15px; margin-bottom: 12px; }
+
+.icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+/* Boje ikona po tipu */
+.booking { background: #fef2f2; }
+.recommendation { background: #f0fdf4; }
+.support { background: #eff6ff; }
+.alert { background: #fffbeb; }
+
+.title-meta { flex: 1; }
+.title-row { display: flex; justify-content: space-between; align-items: center; }
+.title-row h3 { font-size: 15px; font-weight: 700; margin: 0; color: #1a1a1a; }
+
+.new-badge {
+  background: #22c55e;
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.time { font-size: 11px; color: #aaa; font-weight: 600; }
+
+.notif-text { font-size: 13px; color: #666; line-height: 1.5; margin: 0 0 15px; }
+
+.divider { height: 1px; background: #f1f1f1; margin-bottom: 12px; }
+
+.view-btn {
+  background: none;
+  border: none;
+  color: #22c55e;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot { font-size: 8px; }

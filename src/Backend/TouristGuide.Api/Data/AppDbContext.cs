@@ -15,6 +15,10 @@ namespace TouristGuide.Api.Data
         public DbSet<Region> Regions { get; set; }
         public DbSet<Post> Posts { get; set; }
         public DbSet<Tourist> Tourists { get; set; }
+        public DbSet<PostReview> PostReviews { get; set; }
+        public DbSet<PostLike> PostLikes { get; set; }
+        public DbSet<SavedPost> SavedPosts { get; set; }
+        public DbSet<PostView> PostViews { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -23,6 +27,18 @@ namespace TouristGuide.Api.Data
             // AdminUserPermission — kompozitni unique key
             modelBuilder.Entity<AdminUserPermission>()
                 .HasIndex(x => new { x.AdminUserId, x.PermissionId })
+                .IsUnique();
+
+            modelBuilder.Entity<PostReview>()
+                .HasIndex(x => new { x.PostId, x.TouristId })
+                .IsUnique();
+
+            modelBuilder.Entity<PostLike>()
+                .HasIndex(x => new { x.PostId, x.TouristId })
+                .IsUnique();
+
+            modelBuilder.Entity<SavedPost>()
+                .HasIndex(x => new { x.PostId, x.TouristId })
                 .IsUnique();
 
             // AdminUser -> Organization (nullable FK)
@@ -66,6 +82,54 @@ namespace TouristGuide.Api.Data
                 .WithMany(r => r.Posts)
                 .HasForeignKey(p => p.RegionId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PostReview>()
+                .HasOne(x => x.Post)
+                .WithMany(p => p.Reviews)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PostReview>()
+                .HasOne(x => x.Tourist)
+                .WithMany(t => t.Reviews)
+                .HasForeignKey(x => x.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PostLike>()
+                .HasOne(x => x.Post)
+                .WithMany(p => p.Likes)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PostLike>()
+                .HasOne(x => x.Tourist)
+                .WithMany(t => t.Likes)
+                .HasForeignKey(x => x.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SavedPost>()
+                .HasOne(x => x.Post)
+                .WithMany(p => p.SavedPosts)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SavedPost>()
+                .HasOne(x => x.Tourist)
+                .WithMany(t => t.SavedPosts)
+                .HasForeignKey(x => x.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PostView>()
+                .HasOne(x => x.Post)
+                .WithMany(p => p.Views)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PostView>()
+                .HasOne(x => x.Tourist)
+                .WithMany(t => t.Views)
+                .HasForeignKey(x => x.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
