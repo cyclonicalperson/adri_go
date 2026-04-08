@@ -54,40 +54,31 @@ export const ADMIN_ROUTES: Routes = [
           import('./permissions/permissions.routes').then(m => m.PERMISSIONS_ROUTES),
       },
       // ── Analitika ───────────────────────────────────────────────────
-      {
-        path: 'analytics',
-        loadChildren: () =>
-          import('./analytics/analytics.routes').then(m => m.ANALYTICS_ROUTES),
-      },
-      {
-        path: 'turisti',
-        loadChildren: () =>
-          import('./turisti/turisti.routes').then(m => m.TURISTI_ROUTES),
-      },
+      // Analytics and turisti content is now embedded in the dashboard.
+      // These routes redirect there for any bookmarked links.
+      { path: 'analytics', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'turisti', redirectTo: 'dashboard', pathMatch: 'full' },
       // ── Map ─────────────────────────────────────────────────────────
+      {
+        path: 'profile',
+        loadChildren: () =>
+          import('./profile/profile.routes').then(m => m.PROFILE_ROUTES),
+      },
       {
         path: 'map-admin',
         loadChildren: () =>
           import('./map-admin/map-admin.routes').then(m => m.MAP_ADMIN_ROUTES),
       },
-      // ── Superadmin: zahtevi za admin nalog ──────────────────────────
-      {
-        path: 'admin-requests',
-        canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] },
-        loadChildren: () =>
-          import('./admin-requests/admin-requests.routes').then(m => m.ADMIN_REQUESTS_ROUTES),
-      },
-      // ── Legacy redirects ────────────────────────────────────────────
-      {
-        path: 'destinations',
-        redirectTo: 'lokacije',
-        pathMatch: 'full',
-      },
-      {
-        path: 'objects',
-        redirectTo: 'lokacije',
-      },
-    ],
+  // ── Legacy redirects ────────────────────────────────────────────
+  {
+    path: 'destinations',
+    redirectTo: 'lokacije',
+    pathMatch: 'full',
+  },
+  {
+    path: 'objects',
+    redirectTo: 'lokacije',
+  },
+],
   },
 ];

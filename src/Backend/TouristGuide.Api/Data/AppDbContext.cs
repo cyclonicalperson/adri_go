@@ -28,7 +28,7 @@ namespace TouristGuide.Api.Data
             modelBuilder.Entity<AdminUserPermission>()
                 .HasIndex(x => new { x.AdminUserId, x.PermissionId })
                 .IsUnique();
-
+            
             modelBuilder.Entity<PostReview>()
                 .HasIndex(x => new { x.PostId, x.TouristId })
                 .IsUnique();
@@ -39,6 +39,11 @@ namespace TouristGuide.Api.Data
 
             modelBuilder.Entity<SavedPost>()
                 .HasIndex(x => new { x.PostId, x.TouristId })
+                .IsUnique();
+
+            modelBuilder.Entity<Tourist>()
+                // Registracija turista pretpostavlja jedinstven email.
+                .HasIndex(x => x.Email)
                 .IsUnique();
 
             // AdminUser -> Organization (nullable FK)

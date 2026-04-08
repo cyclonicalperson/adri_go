@@ -14,6 +14,7 @@
       @for (item of mainItems; track item.route) {
       <a [routerLink]="item.route"
          routerLinkActive="active"
+         (click)="navClick.emit()"
          [title]="collapsed ? item.label : ''">
         <span class="icon">{{ item.icon }}</span>
         @if (!collapsed) {
@@ -24,6 +25,16 @@
         }
       </a>
       }
+      <!-- Map — always visible for all roles -->
+      <a routerLink="/admin/map-admin"
+         routerLinkActive="active"
+         (click)="navClick.emit()"
+         [title]="collapsed ? 'Mapa' : ''">
+        <span class="icon">🗺️</span>
+        @if (!collapsed) {
+        <span class="label">Mapa</span>
+        }
+      </a>
     </nav>
   </div>
 
@@ -37,6 +48,7 @@
       @for (item of adminItems; track item.route) {
       <a [routerLink]="item.route"
          routerLinkActive="active"
+         (click)="navClick.emit()"
          [title]="collapsed ? item.label : ''">
         <span class="icon">{{ item.icon }}</span>
         @if (!collapsed) {
@@ -51,41 +63,25 @@
   </div>
   }
 
-  <!-- ANALITIKA -->
-  <div class="nav-group">
-    @if (!collapsed) {
-    <div class="nav-group-title">Analitika</div>
-    }
-    <nav>
-      @for (item of analyticsItems; track item.route) {
-      <a [routerLink]="item.route"
-         routerLinkActive="active"
-         [title]="collapsed ? item.label : ''">
-        <span class="icon">{{ item.icon }}</span>
-        @if (!collapsed) {
-        <span class="label">{{ item.label }}</span>
-        }
-      </a>
-      }
-    </nav>
-  </div>
-
-  <!-- USER FOOTER -->
+  <!-- Analytics content is now on the Dashboard -->
+  <!-- USER FOOTER — clicking avatar navigates to profile -->
   <div class="sidebar-footer">
-    <div class="user-row">
+    <a class="user-row" routerLink="/admin/profile" title="Moj profil" (click)="navClick.emit()">
       <div class="avatar">{{ initials }}</div>
       @if (!collapsed) {
       <div class="user-info">
         <div class="name">{{ auth.currentUser?.fullName }}</div>
         <div class="role">{{ roleLabel }}</div>
       </div>
-      <span class="more-icon">⋮</span>
+      <span class="more-icon">›</span>
       }
-    </div>
+    </a>
     @if (!collapsed) {
     <button class="btn-logout" (click)="auth.logout()">
       <span>⏻</span> Odjavi se
     </button>
+    } @else {
+    <button class="btn-logout-icon" (click)="auth.logout()" title="Odjavi se">⏻</button>
     }
   </div>
 

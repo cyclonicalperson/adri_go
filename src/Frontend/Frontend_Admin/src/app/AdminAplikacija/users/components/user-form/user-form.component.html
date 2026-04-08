@@ -1,7 +1,7 @@
 <div class="page">
 
   <div class="header">
-    <h2 class="title">{{ isEdit ? 'Izmeni korisnika' : 'Novi korisnik' }}</h2>
+    <h2 class="title">{{ isEdit ? 'Izmeni admina' : 'Novi admin' }}</h2>
     <button class="btn-back" (click)="cancel()">← Nazad</button>
   </div>
 
@@ -18,20 +18,29 @@
 
         <div class="field">
           <label class="label">Ime i prezime *</label>
-          <input class="input" [class.invalid]="f('fullName').invalid && f('fullName').touched"
-                 formControlName="fullName" placeholder="npr. Marko Jovanović" />
+          <input class="input"
+                 [class.invalid]="f('fullName').invalid && f('fullName').touched"
+                 formControlName="fullName"
+                 placeholder="npr. Marko Jovanović" />
+          @if (f('fullName').invalid && f('fullName').touched) {
+          <span class="field-error">Ime i prezime su obavezni.</span>
+          }
         </div>
 
         <div class="field">
           <label class="label">Email adresa *</label>
           <input class="input" type="email"
                  [class.invalid]="f('email').invalid && f('email').touched"
-                 formControlName="email" placeholder="marko@example.com" />
+                 formControlName="email"
+                 placeholder="marko@example.com" />
+          @if (f('email').invalid && f('email').touched) {
+          <span class="field-error">Unesite ispravan email.</span>
+          }
         </div>
 
         <div class="field">
           <label class="label">
-            {{ isEdit ? 'Nova lozinka (ostavite prazno da zadržite staru)' : 'Lozinka *' }}
+            {{ isEdit ? 'Nova lozinka (ostavite prazno za istu)' : 'Lozinka *' }}
           </label>
           <div class="input-wrap">
             <input class="input"
@@ -39,8 +48,7 @@
                    [class.invalid]="f('password').invalid && f('password').touched"
                    formControlName="password"
                    placeholder="••••••••" />
-            <button type="button" class="toggle-pw"
-                    (click)="showPassword = !showPassword">
+            <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
               {{ showPassword ? 'Sakrij' : 'Prikaži' }}
             </button>
           </div>
@@ -48,7 +56,7 @@
 
         <div class="row-2">
           <div class="field toggle-field">
-            <label class="label">Status</label>
+            <span class="label">Status</span>
             <label class="toggle">
               <input type="checkbox" formControlName="isActive" />
               <span class="toggle-track"></span>
@@ -58,9 +66,10 @@
             </label>
           </div>
 
+          <!-- Admin organizacija — only shown when ORG role selected -->
           @if (selectedRole === 'ORG') {
           <div class="field">
-            <label class="label">Organizacija</label>
+            <label class="label">Admin organizacija</label>
             <select class="input" formControlName="organizationId">
               <option [ngValue]="null">— Izaberite —</option>
               @for (org of organizations; track org.organizationId) {
@@ -77,7 +86,7 @@
     <div class="right-col">
 
       <div class="card">
-        <h3 class="card-title">Rola i permisije *</h3>
+        <h3 class="card-title">Rola *</h3>
         <app-roles-permissions [roles]="roles"
                                [selectedRoleId]="f('roleId').value"
                                (roleSelected)="onRoleSelected($event)" />
@@ -89,7 +98,7 @@
       <div class="form-actions">
         <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
         <button type="submit" class="btn-save" [disabled]="saving">
-          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj korisnika') }}
+          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj admina') }}
         </button>
       </div>
 

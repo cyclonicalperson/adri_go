@@ -1,0 +1,288 @@
+// _mobile.scss
+// Global responsive overrides — included once in styles.scss
+// Covers: layout, list pages, forms, analytics, dashboard, turisti, permissions
+//
+// Breakpoints:
+//   md:  max-width 768px  — tablets and phones
+//   sm:  max-width 480px  — phones only
+
+@use 'variables' as *;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMON PAGE PADDING
+// ─────────────────────────────────────────────────────────────────────────────
+@media (max-width: 768px) {
+
+  .page-content,
+  .page {
+    padding: 16px !important;
+    gap: 14px !important;
+  }
+
+  // ── Stats strips: 2 columns on tablet, 1 on phone ──────────────────────
+  .stats-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  // ── All multi-column grids collapse to single column ───────────────────
+  .grid-3-1,
+  .grid-3,
+  .grid-2,
+  .grid-full,
+  .layout,
+  .perm-layout,
+  .profile-layout,
+  .top-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  // ── Filter tabs: scroll horizontally ───────────────────────────────────
+  .filter-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+    // Hide scrollbar visually
+    &::-webkit-scrollbar {
+      height: 2px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: $gray-200;
+      border-radius: 2px;
+    }
+  }
+
+  // ── Toolbar: stack vertically ───────────────────────────────────────────
+  .toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 12px !important;
+
+    .search-wrap {
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+
+    .filter-select {
+      width: 100%;
+      min-width: unset !important;
+    }
+
+    .spacer {
+      display: none;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .btn {
+        flex: 1;
+        justify-content: center;
+      }
+    }
+  }
+
+  // ── Tables: horizontal scroll ───────────────────────────────────────────
+  .panel {
+    overflow: hidden;
+  }
+
+  // Wrap table in a horizontal-scroll container
+  table {
+    min-width: 600px;
+  }
+
+  // Wrap every .panel that contains a table
+  .panel:has(table) {
+    overflow-x: auto;
+  }
+
+  // ── Pagination: compact ─────────────────────────────────────────────────
+  .pagination {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  // ── Panel headers ───────────────────────────────────────────────────────
+  .panel-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 14px !important;
+  }
+
+  // ── Forms ───────────────────────────────────────────────────────────────
+  .left-col,
+  .right-col {
+    width: 100% !important;
+  }
+
+  .row-2,
+  .row-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-actions {
+    flex-direction: column !important;
+
+    .btn-cancel,
+    .btn-save {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  // ── Dashboard chart area ─────────────────────────────────────────────────
+  .chart-area {
+    height: 120px !important;
+  }
+
+  .mini-stats {
+    gap: 8px !important;
+  }
+
+  // ── Donut chart ─────────────────────────────────────────────────────────
+  .donut-wrap {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  // ── Permissions layout ───────────────────────────────────────────────────
+  .perm-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  // ── Map heat ─────────────────────────────────────────────────────────────
+  .map-heat {
+    height: 220px !important;
+  }
+
+  // ── Analytics rank rows ───────────────────────────────────────────────────
+  .grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  // ── Users list: hide less important columns ───────────────────────────────
+  // Using class-based show/hide — add .hide-mobile in templates if needed
+
+  // ── Card padding ─────────────────────────────────────────────────────────
+  .card {
+    padding: 16px !important;
+  }
+
+  // ── Summary grid ─────────────────────────────────────────────────────────
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHONE ONLY (max 480px)
+// ─────────────────────────────────────────────────────────────────────────────
+@media (max-width: 480px) {
+
+  .stats-strip,
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  // Stats chip: tighter
+  .stat-chip {
+    padding: 12px 10px !important;
+
+    .num {
+      font-size: 20px !important;
+    }
+
+    .lbl {
+      font-size: 10px !important;
+    }
+
+    .trend {
+      font-size: 10px !important;
+    }
+  }
+
+  .kpi-value {
+    font-size: 24px !important;
+  }
+
+  // Panel title smaller
+  .panel-title {
+    font-size: 14px !important;
+  }
+
+  // Page content title
+  .page-intro-title,
+  .page-title {
+    font-size: 16px !important;
+  }
+
+  // Auth pages (login / register)
+  .card {
+    padding: 20px 16px !important;
+    border-radius: $radius-lg !important;
+  }
+
+  // Bar chart labels: fewer
+  .chart-labels span:nth-child(even) {
+    display: none;
+  }
+
+  // Permission layout columns
+  .perm-group-header {
+    flex-wrap: wrap;
+
+    .perm-count {
+      margin-left: 0;
+    }
+  }
+
+  // Top items bar: hide bar, show only value
+  .top-bar-wrap {
+    display: none;
+  }
+
+  // Profile identity card
+  .avatar-large {
+    width: 60px !important;
+    height: 60px !important;
+    font-size: 22px !important;
+  }
+
+  .identity-name {
+    font-size: 16px !important;
+  }
+
+  // Table: force min-width scroll even on smallest screens
+  table {
+    min-width: 480px !important;
+  }
+
+  // Actions column: 3 buttons max, smaller
+  .btn-icon {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 12px !important;
+  }
+
+  // Registration form: single column
+  .row-2 {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -11,6 +11,20 @@ import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/load
   imports: [RouterOutlet, SidebarComponent, TopbarComponent, LoadingSpinnerComponent],
 })
 export class AdminLayoutComponent {
-  // Kept for future use — topbar still emits toggle
-  toggleSidebar(): void { }
+  sidebarCollapsed = false;
+  mobileMenuOpen = false;
+
+  onToggleSidebar(): void {
+    // On mobile: toggle overlay menu
+    // On desktop: collapse to icon-only
+    if (window.innerWidth < 768) {
+      this.mobileMenuOpen = !this.mobileMenuOpen;
+    } else {
+      this.sidebarCollapsed = !this.sidebarCollapsed;
+    }
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen = false;
+  }
 }

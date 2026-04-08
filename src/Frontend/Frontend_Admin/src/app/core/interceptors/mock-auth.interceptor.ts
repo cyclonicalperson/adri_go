@@ -33,6 +33,14 @@ const MOCK_USERS: Record<string, {
 };
 
 export const mockAuthInterceptor: HttpInterceptorFn = (req, next) => {
+  // Mock registration — always succeeds and pretends to send a verification email
+  if (req.url.endsWith('/auth/register') && req.method === 'POST') {
+    return of(new HttpResponse({
+      status: 201,
+      body: { success: true, message: 'Verifikacioni email je poslat.' },
+    }));
+  }
+
   if (req.url.endsWith('/auth/login') && req.method === 'POST') {
     const body = req.body as { email: string; password: string };
     const match = MOCK_USERS[body?.email ?? ''];

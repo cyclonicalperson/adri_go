@@ -1,9 +1,14 @@
 @use 'variables' as *;
 
+// ── Desktop layout ────────────────────────────────────────────────────────
 .layout {
   display: flex;
   min-height: 100vh;
   background: $gray-50;
+
+  &.sidebar-collapsed app-sidebar {
+    width: 64px;
+  }
 }
 
 .main {
@@ -18,4 +23,49 @@
   flex: 1;
   overflow-y: auto;
   background: $gray-50;
+}
+
+// ── Mobile backdrop ────────────────────────────────────────────────────────
+.mobile-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99;
+}
+
+// ── Mobile breakpoint ─────────────────────────────────────────────────────
+@media (max-width: 768px) {
+
+  .layout {
+    flex-direction: column;
+  }
+
+  // Sidebar becomes a slide-in drawer on mobile
+  app-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0,0,0,.12);
+
+    &.mobile-open {
+      transform: translateX(0);
+    }
+  }
+
+  .mobile-backdrop {
+    display: block;
+  }
+
+  .main {
+    width: 100%;
+  }
+
+  .content {
+    padding-bottom: 24px;
+  }
 }

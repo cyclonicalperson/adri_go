@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 
@@ -17,42 +17,36 @@ interface NavItem {
 })
 export class SidebarComponent {
   @Input() collapsed = false;
+  @Output() collapsedChange = new EventEmitter<boolean>();
+  @Output() navClick = new EventEmitter<void>();
 
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService) { }
 
-  // Visible to ALL authenticated users in the admin panel
   readonly mainItems: NavItem[] = [
-    { label: 'Dashboard',  route: '/admin/dashboard',  icon: '📊' },
-    { label: 'Lokacije',   route: '/admin/lokacije',   icon: '🏢' },
+    { label: 'Dashboard', route: '/admin/dashboard', icon: '📊' },
+    { label: 'Lokacije', route: '/admin/lokacije', icon: '🏢' },
     { label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' },
-    { label: 'Dogadjaji',  route: '/admin/events',     icon: '🎟️' },
-    { label: 'Recenzije',  route: '/admin/reviews',    icon: '⭐', badge: 12 },
+    { label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' },
+    { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: 12 },
   ];
 
-  // Visible ONLY to superadmin (ADMIN role)
   readonly adminItems: NavItem[] = [
-    { label: 'Admini',         route: '/admin/users',          icon: '👥' },
-    { label: 'Dozvole',        route: '/admin/permissions',    icon: '🔐', badge: 3 },
-    { label: 'Admin zahtevi', route: '/admin/admin-requests', icon: '📋' },
+    { label: 'Admini', route: '/admin/users', icon: '👥' },
+    { label: 'Dozvole', route: '/admin/permissions', icon: '🔐', badge: 3 },
   ];
 
-  // Visible to all — data is scoped server-side
-  readonly analyticsItems: NavItem[] = [
-    { label: 'Analitika', route: '/admin/analytics', icon: '📈' },
-    { label: 'Turisti',   route: '/admin/turisti',   icon: '👣' },
-  ];
+  // Analytics items removed — analytics is now embedded in the Dashboard.
+  readonly analyticsItems: NavItem[] = [];
 
-  get isSuperAdmin(): boolean {
-    return this.auth.isRole('ADMIN');
-  }
+  get isSuperAdmin(): boolean { return this.auth.isRole('ADMIN'); }
 
   get initials(): string {
-    const name = this.auth.currentUser?.fullName ?? 'U';
-    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    return (this.auth.currentUser?.fullName ?? 'U')
+      .split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
   }
 
   get roleLabel(): string {
-    const role = this.auth.currentUser?.role;
-    return { ADMIN: 'Super Administrator', ORG: 'Administrator' }[role ?? ''] ?? (role ?? '');
+    return { ADMIN: 'Super Administrator', ORG: 'Administrator' }[this.auth.currentUser?.role ?? '']
+      ?? (this.auth.currentUser?.role ?? '');
   }
 }
