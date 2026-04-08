@@ -5,6 +5,16 @@ namespace TouristGuide.Api.Services
 {
     public static class PasswordHelper
     {
+        // Nove lozinke snimamo kao SHA-256 base64 radi kompatibilnosti sa postojećim Verify tokom.
+        public static string Hash(string password)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+                throw new ArgumentException("Password is required.", nameof(password));
+
+            var sha256Bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(sha256Bytes);
+        }
+        
         // Poređenje lozinke sa formatima hash-eva koji trenutno postoje u projektu
         public static bool Verify(string password, string storedHash)
         {

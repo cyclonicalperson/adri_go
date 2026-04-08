@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -87,60 +89,30 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+            var query = BuildFilteredPostsQuery(region_id, type, status, forcePublishedOnly: false, out var error);
+            if (error is not null)
+                return error;
 
-            var query = _context.Posts
-                .Include(p => p.Admin)
-                .Include(p => p.Region)
-                .AsQueryable();
+            return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
+        }
 
-            if (region_id.HasValue)
-                query = query.Where(p => p.RegionId == region_id.Value);
+        [HttpGet("public")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublic(
+            [FromQuery] uint? region_id,
+            [FromQuery] string? type,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var query = BuildFilteredPostsQuery(region_id, type, null, forcePublishedOnly: true, out var error);
+            if (error is not null)
+                return error;
 
-            if (!string.IsNullOrWhiteSpace(type))
-            {
-                var typeLower = type.ToLower().Trim();
-                if (!AllowedPostTypes.Contains(typeLower))
-                    return BadRequest(new { message = $"Nepoznat tip '{type}'. Dozvoljeni: {string.Join(", ", AllowedPostTypes)}" });
-
-                query = query.Where(p => p.PostType == typeLower);
-            }
-
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                var statusLower = status.ToLower().Trim();
-                if (!AllowedStatuses.Contains(statusLower))
-                    return BadRequest(new { message = $"Nepoznat status '{status}'. Dozvoljeni: draft, published, archived" });
-
-                query = query.Where(p => p.Status == statusLower);
-            }
-            else
-            {
-                query = query.Where(p => p.Status == "published");
-            }
-
-            var total = await query.CountAsync();
-
-            var posts = await query
-                .OrderByDescending(p => p.PublishedAt)
-                .ThenByDescending(p => p.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => MapToDto(p))
-                .ToListAsync();
-
-            return Ok(new
-            {
-                total,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)total / pageSize),
-                data = posts
-            });
+            return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(uint id)
         {
             var post = await _context.Posts
@@ -149,27 +121,31 @@ namespace TouristGuide.Api.Controllers
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+
+            if (!IsAdminUser() && !string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase))
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             return Ok(MapToDto(post));
         }
 
         [HttpGet("{id}/reviews")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetReviews(uint id)
         {
-            var postExists = await _context.Posts.AnyAsync(p => p.Id == id);
+            var postExists = await _context.Posts.AnyAsync(p => p.Id == id && p.Status == "published");
             if (!postExists)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             var reviews = await _context.PostReviews
-                .Where(r => r.PostId == id)
+                .Where(r => r.PostId == id && r.IsApproved)
                 .Include(r => r.Tourist)
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new ReviewDto
                 {
                     Id = r.Id,
                     TouristId = r.TouristId,
-                    TouristName = r.Tourist.Name ?? string.Empty,
+                    TouristName = r.Tourist != null ? r.Tourist.Name ?? string.Empty : string.Empty,
                     Rating = r.Rating,
                     Comment = r.Comment,
                     CreatedAt = r.CreatedAt
@@ -184,31 +160,38 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPost("{id}/reviews")]
+        [Authorize(Roles = "tourist")]
         public async Task<IActionResult> CreateReview(uint id, [FromBody] CreateReviewDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
-            if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+            // Identitet turista citamo iz JWT-a, ne iz body-ja zahteva.
+            var touristId = GetRequiredTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var tourist = await _context.Tourists.FirstOrDefaultAsync(t => t.Id == dto.TouristId);
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
+            if (post is null)
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+
+            var tourist = await _context.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value && t.IsActive);
             if (tourist is null)
-                return BadRequest(new { message = $"Turista sa ID={dto.TouristId} ne postoji." });
+                return Unauthorized(new { message = "Turista nije pronadjen ili nije aktivan." });
 
             var reviewExists = await _context.PostReviews
-                .AnyAsync(r => r.PostId == id && r.TouristId == dto.TouristId);
+                .AnyAsync(r => r.PostId == id && r.TouristId == touristId.Value);
 
             if (reviewExists)
-                return Conflict(new { message = "Turista je već ostavio recenziju za ovu objavu." });
+                return Conflict(new { message = "Turista je vec ostavio recenziju za ovu objavu." });
 
             var review = new PostReview
             {
                 PostId = id,
-                TouristId = dto.TouristId,
+                TouristId = touristId.Value,
                 Rating = dto.Rating,
                 Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
+                IsApproved = true,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -251,7 +234,6 @@ namespace TouristGuide.Api.Controllers
             }
 
             var now = DateTime.UtcNow;
-
             var post = new Post
             {
                 AdminId = dto.AdminId,
@@ -299,7 +281,7 @@ namespace TouristGuide.Api.Controllers
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             if (dto.RegionId.HasValue)
             {
@@ -360,7 +342,6 @@ namespace TouristGuide.Api.Controllers
             }
 
             post.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
 
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
@@ -374,156 +355,261 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> Delete(uint id)
         {
             var post = await _context.Posts.FindAsync(id);
-
             if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             _context.Posts.Remove(post);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = $"Objava '{post.Title}' (ID={id}) je uspešno obrisana." });
+            return Ok(new { message = $"Objava '{post.Title}' (ID={id}) je uspesno obrisana." });
         }
 
         [HttpPost("{id}/like")]
-        public async Task<IActionResult> Like(uint id, [FromBody] PostInteractionDto dto)
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> Like(uint id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            var touristId = GetRequiredTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
             if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var touristExists = await _context.Tourists.AnyAsync(t => t.Id == dto.TouristId);
-            if (!touristExists)
-                return BadRequest(new { message = $"Turista sa ID={dto.TouristId} ne postoji." });
-
-            var likeExists = await _context.PostLikes
-                .AnyAsync(x => x.PostId == id && x.TouristId == dto.TouristId);
-
+            var likeExists = await _context.PostLikes.AnyAsync(x => x.PostId == id && x.TouristId == touristId.Value);
             if (likeExists)
-                return Ok(new { message = "Objava je već lajkovana.", likeCount = post.LikeCount });
+                return Ok(new { message = "Objava je vec lajkovana.", likeCount = post.LikeCount });
 
             _context.PostLikes.Add(new PostLike
             {
                 PostId = id,
-                TouristId = dto.TouristId,
+                TouristId = touristId.Value,
                 CreatedAt = DateTime.UtcNow
             });
 
             await _context.SaveChangesAsync();
             await RefreshLikeCount(post);
 
-            return Ok(new
-            {
-                message = "Objava je uspešno lajkovana.",
-                likeCount = post.LikeCount
-            });
+            return Ok(new { message = "Objava je uspesno lajkovana.", likeCount = post.LikeCount });
+        }
+
+        [HttpDelete("{id}/like")]
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> Unlike(uint id)
+        {
+            var touristId = GetRequiredTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
+
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
+            if (post is null)
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+
+            var like = await _context.PostLikes.FirstOrDefaultAsync(x => x.PostId == id && x.TouristId == touristId.Value);
+            if (like is null)
+                return Ok(new { message = "Objava nije bila lajkovana.", likeCount = post.LikeCount });
+
+            _context.PostLikes.Remove(like);
+            await _context.SaveChangesAsync();
+            await RefreshLikeCount(post);
+
+            return Ok(new { message = "Lajk je uklonjen.", likeCount = post.LikeCount });
         }
 
         [HttpPost("{id}/save")]
-        public async Task<IActionResult> Save(uint id, [FromBody] PostInteractionDto dto)
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> Save(uint id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            var touristId = GetRequiredTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
             if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var touristExists = await _context.Tourists.AnyAsync(t => t.Id == dto.TouristId);
-            if (!touristExists)
-                return BadRequest(new { message = $"Turista sa ID={dto.TouristId} ne postoji." });
-
-            var saveExists = await _context.SavedPosts
-                .AnyAsync(x => x.PostId == id && x.TouristId == dto.TouristId);
-
+            var saveExists = await _context.SavedPosts.AnyAsync(x => x.PostId == id && x.TouristId == touristId.Value);
             if (saveExists)
-                return Ok(new { message = "Objava je već sačuvana.", saveCount = post.SaveCount });
+                return Ok(new { message = "Objava je vec sacuvana.", saveCount = post.SaveCount });
 
             _context.SavedPosts.Add(new SavedPost
             {
                 PostId = id,
-                TouristId = dto.TouristId,
+                TouristId = touristId.Value,
                 CreatedAt = DateTime.UtcNow
             });
 
             await _context.SaveChangesAsync();
             await RefreshSaveCount(post);
 
-            return Ok(new
-            {
-                message = "Objava je uspešno sačuvana.",
-                saveCount = post.SaveCount
-            });
+            return Ok(new { message = "Objava je uspesno sacuvana.", saveCount = post.SaveCount });
+        }
+
+        [HttpDelete("{id}/save")]
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> Unsave(uint id)
+        {
+            var touristId = GetRequiredTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
+
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
+            if (post is null)
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+
+            var savedPost = await _context.SavedPosts.FirstOrDefaultAsync(x => x.PostId == id && x.TouristId == touristId.Value);
+            if (savedPost is null)
+                return Ok(new { message = "Objava nije bila sacuvana.", saveCount = post.SaveCount });
+
+            _context.SavedPosts.Remove(savedPost);
+            await _context.SaveChangesAsync();
+            await RefreshSaveCount(post);
+
+            return Ok(new { message = "Sacuvana objava je uklonjena.", saveCount = post.SaveCount });
         }
 
         [HttpPost("{id}/view")]
-        public async Task<IActionResult> RegisterView(uint id, [FromBody] PostInteractionDto dto)
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> RegisterView(uint id)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            var touristId = GetRequiredTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id);
+            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
             if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronađena." });
-
-            var touristExists = await _context.Tourists.AnyAsync(t => t.Id == dto.TouristId);
-            if (!touristExists)
-                return BadRequest(new { message = $"Turista sa ID={dto.TouristId} ne postoji." });
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             _context.PostViews.Add(new PostView
             {
                 PostId = id,
-                TouristId = dto.TouristId,
+                TouristId = touristId.Value,
                 CreatedAt = DateTime.UtcNow
             });
 
             post.ViewCount += 1;
             post.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
 
-            return Ok(new
-            {
-                message = "Pregled je evidentiran.",
-                viewCount = post.ViewCount
-            });
+            return Ok(new { message = "Pregled je evidentiran.", viewCount = post.ViewCount });
         }
 
-        private static PostDto MapToDto(Post p) => new()
+        private IQueryable<Post> BuildFilteredPostsQuery(
+            uint? regionId,
+            string? type,
+            string? status,
+            bool forcePublishedOnly,
+            out IActionResult? error)
         {
-            Id = p.Id,
-            AdminId = p.AdminId,
-            AdminName = p.Admin?.FullName ?? string.Empty,
-            RegionId = p.RegionId,
-            RegionName = p.Region?.Name,
-            Title = p.Title,
-            PostType = p.PostType,
-            Description = p.Description,
-            Lat = p.Lat,
-            Lng = p.Lng,
-            Address = p.Address,
-            ExternalUrl = p.ExternalUrl,
-            ExternalUrlLabel = p.ExternalUrlLabel,
-            Images = p.Images,
-            OpeningHours = p.OpeningHours,
-            Details = p.Details,
-            Status = p.Status,
-            ViewCount = p.ViewCount,
-            LikeCount = p.LikeCount,
-            SaveCount = p.SaveCount,
-            ReviewCount = p.ReviewCount,
-            AvgRating = p.AvgRating,
-            PublishedAt = p.PublishedAt,
-            CreatedAt = p.CreatedAt,
-            UpdatedAt = p.UpdatedAt
+            error = null;
+
+            var query = _context.Posts
+                .Include(p => p.Admin)
+                .Include(p => p.Region)
+                .AsQueryable();
+
+            if (regionId.HasValue)
+                query = query.Where(p => p.RegionId == regionId.Value);
+
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                var typeLower = type.ToLower().Trim();
+                if (!AllowedPostTypes.Contains(typeLower))
+                {
+                    error = BadRequest(new { message = $"Nepoznat tip '{type}'. Dozvoljeni: {string.Join(", ", AllowedPostTypes)}" });
+                    return query;
+                }
+
+                query = query.Where(p => p.PostType == typeLower);
+            }
+
+            if (forcePublishedOnly)
+            {
+                query = query.Where(p => p.Status == "published");
+                return query;
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var statusLower = status.ToLower().Trim();
+                if (!AllowedStatuses.Contains(statusLower))
+                {
+                    error = BadRequest(new { message = $"Nepoznat status '{status}'. Dozvoljeni: draft, published, archived" });
+                    return query;
+                }
+
+                query = query.Where(p => p.Status == statusLower);
+            }
+            else
+            {
+                query = query.Where(p => p.Status == "published");
+            }
+
+            return query;
+        }
+
+        private async Task<object> BuildPagedPostsResponse(IQueryable<Post> query, int page, int pageSize)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+            var total = await query.CountAsync();
+            var posts = await query
+                .OrderByDescending(p => p.PublishedAt)
+                .ThenByDescending(p => p.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var data = new List<PostDto>(posts.Count);
+            foreach (var post in posts)
+                data.Add(MapToDto(post));
+
+            return new
+            {
+                total,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling((double)total / pageSize),
+                data
+            };
+        }
+
+        private static PostDto MapToDto(Post post) => new()
+        {
+            Id = post.Id,
+            AdminId = post.AdminId,
+            AdminName = post.Admin?.FullName ?? string.Empty,
+            RegionId = post.RegionId,
+            RegionName = post.Region?.Name,
+            Title = post.Title,
+            PostType = post.PostType,
+            Description = post.Description,
+            Latitude = post.Lat,
+            Longitude = post.Lng,
+            Lat = post.Lat,
+            Lng = post.Lng,
+            Address = post.Address,
+            ExternalUrl = post.ExternalUrl,
+            ExternalUrlLabel = post.ExternalUrlLabel,
+            Images = post.Images,
+            OpeningHours = post.OpeningHours,
+            Details = post.Details,
+            Status = post.Status,
+            ViewCount = post.ViewCount,
+            LikeCount = post.LikeCount,
+            SaveCount = post.SaveCount,
+            ReviewCount = post.ReviewCount,
+            AvgRating = post.AvgRating,
+            PublishedAt = post.PublishedAt,
+            CreatedAt = post.CreatedAt,
+            UpdatedAt = post.UpdatedAt
         };
 
         private static ReviewDto MapToReviewDto(PostReview review, string? touristName = null) => new()
         {
             Id = review.Id,
-            TouristId = review.TouristId,
+            TouristId = r.TouristId,
             TouristName = touristName ?? review.Tourist?.Name ?? string.Empty,
             Rating = review.Rating,
             Comment = review.Comment,
@@ -532,10 +618,10 @@ namespace TouristGuide.Api.Controllers
 
         private async Task RefreshReviewStats(Post post)
         {
-            post.ReviewCount = (uint)await _context.PostReviews.CountAsync(r => r.PostId == post.Id);
             post.AvgRating = await _context.PostReviews
-                .Where(r => r.PostId == post.Id)
+                .Where(r => r.PostId == post.Id && r.IsApproved)
                 .AverageAsync(r => (decimal?)r.Rating);
+            post.ReviewCount = (uint)await _context.PostReviews.CountAsync(r => r.PostId == post.Id && r.IsApproved);
             post.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -555,6 +641,25 @@ namespace TouristGuide.Api.Controllers
             post.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+        }
+
+        private uint? GetAuthorizedTouristId()
+        {
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            if (!string.Equals(role, "tourist", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            return uint.TryParse(value, out var touristId) ? touristId : null;
+        }
+
+        private uint? GetRequiredTouristId() => GetAuthorizedTouristId();
+
+        private bool IsAdminUser()
+        {
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

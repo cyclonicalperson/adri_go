@@ -1,6 +1,35 @@
 @TouristGuide.Api_HostAddress = http://localhost:5125
+@TouristToken = REPLACE_WITH_TOURIST_JWT
 
-GET {{TouristGuide.Api_HostAddress}}/api/test/ping
+GET {{TouristGuide.Api_HostAddress}}/api/posts/public
+Accept: application/json
+
+###
+
+POST {{TouristGuide.Api_HostAddress}}/api/tourist-auth/register
+Content-Type: application/json
+
+{
+  "name": "Petar Petrovic",
+  "email": "petar@example.com",
+  "password": "Turista123!",
+  "language": "sr"
+}
+
+###
+
+POST {{TouristGuide.Api_HostAddress}}/api/tourist-auth/login
+Content-Type: application/json
+
+{
+  "email": "petar@example.com",
+  "password": "Turista123!"
+}
+
+###
+
+GET {{TouristGuide.Api_HostAddress}}/api/tourist-auth/me
+Authorization: Bearer {{TouristToken}}
 Accept: application/json
 
 ###
@@ -11,39 +40,37 @@ Accept: application/json
 ###
 
 POST {{TouristGuide.Api_HostAddress}}/api/posts/1/reviews
+Authorization: Bearer {{TouristToken}}
 Content-Type: application/json
 
 {
-  "touristId": 1,
   "rating": 5,
-  "comment": "Odlično mesto za posetu."
+  "comment": "Odlicno mesto za posetu."
 }
 
 ###
 
 POST {{TouristGuide.Api_HostAddress}}/api/posts/1/like
-Content-Type: application/json
+Authorization: Bearer {{TouristToken}}
 
-{
-  "touristId": 1
-}
+###
+
+DELETE {{TouristGuide.Api_HostAddress}}/api/posts/1/like
+Authorization: Bearer {{TouristToken}}
 
 ###
 
 POST {{TouristGuide.Api_HostAddress}}/api/posts/1/save
-Content-Type: application/json
+Authorization: Bearer {{TouristToken}}
 
-{
-  "touristId": 1
-}
+###
+
+DELETE {{TouristGuide.Api_HostAddress}}/api/posts/1/save
+Authorization: Bearer {{TouristToken}}
 
 ###
 
 POST {{TouristGuide.Api_HostAddress}}/api/posts/1/view
-Content-Type: application/json
-
-{
-  "touristId": 1
-}
+Authorization: Bearer {{TouristToken}}
 
 ###

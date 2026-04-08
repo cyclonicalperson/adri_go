@@ -1,7 +1,7 @@
 namespace TouristGuide.Api.DTOs
 {
     /// <summary>
-    /// DTO koji se vraća turistima i adminima — bez internih polja.
+    /// DTO koji se vraca turistima i adminima bez internih polja.
     /// </summary>
     public class PostDto
     {
@@ -13,6 +13,8 @@ namespace TouristGuide.Api.DTOs
         public string Title { get; set; } = string.Empty;
         public string PostType { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }
         public string? Address { get; set; }
