@@ -40,6 +40,7 @@ namespace TouristGuide.Api.Services
 
                 return password == "Admin123!";
             }
+            return false;
         }
     }
 }
