@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TouristGuide.Api.Models
 {
-    [Table("saved_post")]
+    [Table("post_save")]
     public class SavedPost
     {
         [Key]
@@ -16,7 +16,7 @@ namespace TouristGuide.Api.Models
         [Column("tourist_id")]
         public uint TouristId { get; set; }
 
-        [Column("created_at")]
+        [Column("saved_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Post Post { get; set; } = null!;
