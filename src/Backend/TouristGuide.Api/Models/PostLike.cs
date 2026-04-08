@@ -16,7 +16,7 @@ namespace TouristGuide.Api.Models
         [Column("tourist_id")]
         public uint TouristId { get; set; }
 
-        [Column("created_at")]
+        [Column("liked_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Post Post { get; set; } = null!;
