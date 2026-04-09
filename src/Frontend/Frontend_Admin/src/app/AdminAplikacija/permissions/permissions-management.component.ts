@@ -1,29 +1,30 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { UserService } from '@core/services/user.service';
-import { User } from '@core/models/user.model';
+import { User, Permission, UserPermission, PermissionCode } from '@core/models/user.model';
+import { environment } from '@env/environment';
 
-interface Entity {
-  id: string;
-  name: string;
-  type: string;
-  location: string;
+interface PermissionGroup {
+  category: string;
+  label: string;
   icon: string;
-  iconBg: string;
+  permissions: Permission[];
 }
 
-interface PermDef {
-  key: string;
-  desc: string;
+interface SimpleRegion {
+  regionId: number;
+  name: string;
 }
 
-interface LogEntry {
-  actionLabel: string;
-  type: 'added' | 'removed' | 'approved' | 'pending';
+interface ChangeLogEntry {
+  icon: string;
+  label: string;
   user: string;
-  permission: string;
+  perm: string;
   entity: string;
   time: string;
+  type: 'grant' | 'revoke' | 'approve';
 }
 
 @Component({
@@ -33,45 +34,84 @@ interface LogEntry {
   imports: [FormsModule],
 })
 export class PermissionsManagementComponent implements OnInit {
+
+  // ── Korisnici ─────────────────────────────────────────────────────────
   users: User[] = [];
   selectedUser: User | null = null;
-  selectedEntity: Entity | null = null;
   userSearch = '';
+  usersLoading = true;
+
+  // ── Sve dostupne dozvole ──────────────────────────────────────────────
+  allPermissions: Permission[] = [];
+  permissionGroups: PermissionGroup[] = [];
+
+  // ── Aktivne dozvole selektovanog korisnika ────────────────────────────
+  userPermissions: UserPermission[] = [];
+  activePermCodes = new Set<PermissionCode>();
+  permLoading = false;
+
+  // ── Region scope (opcionalno — null znači globalna dozvola) ───────────
+  regions: SimpleRegion[] = [];
+  selectedRegionId: number | null = null;
+
+  // ── Čuvanje ───────────────────────────────────────────────────────────
   saving = false;
+  saveMsg: string | null = null;
 
-  // Active permissions for the selected user+entity combination
-  activePermissions = new Set<string>(['manage_place', 'create_event', 'add_users', 'view_analytics']);
-
-  readonly allPermissions: PermDef[] = [
-    { key: 'manage_place', desc: 'Izmena podataka, slika, radno vreme' },
-    { key: 'create_event', desc: 'Kreiranje eventa u ovoj lokaciji' },
-    { key: 'add_users', desc: 'Dodavanje zaposlenih i tim dozvole' },
-    { key: 'view_analytics', desc: 'Statistika lokacije' },
-    { key: 'delete_place', desc: 'Brisanje lokacije iz sistema' },
-    { key: 'manage_activity', desc: 'Upravljanje aktivnostima lokacije' },
+  readonly changeLog: ChangeLogEntry[] = [
+    { icon: '✅', label: 'Dozvola dodata', user: 'Marko Petrović', perm: 'create_event', entity: 'Ana Kovačević', time: 'Pre 12 min', type: 'grant' },
+    { icon: '✗', label: 'Dozvola uklonjena', user: 'Marko Petrović', perm: 'delete_place', entity: 'Nikola Đurić', time: 'Pre 1 sat', type: 'revoke' },
+    { icon: '✅', label: 'Dozvola dodata', user: 'Marko Petrović', perm: 'view_analytics', entity: 'Jovana Milić', time: 'Pre 3 sata', type: 'grant' },
+    { icon: '✅', label: 'Admin odobren', user: 'Marko Petrović', perm: '—', entity: 'Stefan Radović', time: 'Pre 1 dan', type: 'approve' },
   ];
 
-  readonly availableEntities: Entity[] = [
-    { id: '1', name: 'Kafić "Centar"', type: 'Lokacija', location: 'Kragujevac', icon: '☕', iconBg: '#f0fdf4' },
-    { id: '2', name: 'Grad Kragujevac', type: 'Grad', location: 'Šumadija', icon: '🏙️', iconBg: '#eff6ff' },
-  ];
-
-  readonly changeLog: LogEntry[] = [
-    { actionLabel: '✅ Dozvola dodata', type: 'added', user: 'Ana P.', permission: 'add_users', entity: 'Kafić Centar', time: 'Pre 12 min' },
-    { actionLabel: '✗ Dozvola uklonjena', type: 'removed', user: 'Marko J.', permission: 'delete_place', entity: 'Grad Novi Sad', time: 'Pre 1 sat' },
-    { actionLabel: '✅ Nova lokacija', type: 'added', user: 'Jelena M.', permission: 'manage_place', entity: 'Spa Vrnjci', time: 'Pre 2 sata' },
-    { actionLabel: '🔐 Zahtev odobren', type: 'approved', user: 'Stefan K.', permission: 'verify_event', entity: 'Beograd', time: 'Pre 5 sati' },
-    { actionLabel: '⏳ Zahtev na čekanju', type: 'pending', user: 'Novi admin', permission: 'manage_place', entity: 'Niš', time: 'Pre 1 dan' },
-  ];
-
-  constructor(private userService: UserService) { }
+  constructor(
+    private userService: UserService,
+    private http: HttpClient,
+  ) { }
 
   ngOnInit(): void {
-    this.userService.getAll({ page: 1, pageSize: 50 }).subscribe(res => {
-      this.users = res.data;
+    // Admini (ne superadmin — superadmin ima sve dozvole automatski)
+    this.userService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
+      this.users = res.data.filter(u => u.role === 'admin');
+      this.usersLoading = false;
     });
+
+    this.userService.getAllPermissions().subscribe(res => {
+      this.allPermissions = res.data;
+      this.permissionGroups = this.buildGroups(res.data);
+    });
+
+    // Regioni za scope — direktan HTTP poziv da ne zavisimo od RegionService
+    this.http.get<{ data: SimpleRegion[] }>(`${environment.apiUrl}/regions?pageSize=50`)
+      .subscribe({
+        next: res => { this.regions = res.data; },
+        error: () => { this.regions = []; },
+      });
   }
 
+  private buildGroups(perms: Permission[]): PermissionGroup[] {
+    const groupMeta: Record<string, { label: string; icon: string }> = {
+      content: { label: 'Sadržaj', icon: '📝' },
+      analytics: { label: 'Analitika', icon: '📊' },
+      users: { label: 'Korisnici', icon: '👥' },
+    };
+
+    const grouped = new Map<string, Permission[]>();
+    for (const p of perms) {
+      if (!grouped.has(p.category)) grouped.set(p.category, []);
+      grouped.get(p.category)!.push(p);
+    }
+
+    return Array.from(grouped.entries()).map(([cat, catPerms]) => ({
+      category: cat,
+      label: groupMeta[cat]?.label ?? cat,
+      icon: groupMeta[cat]?.icon ?? '🔑',
+      permissions: catPerms,
+    }));
+  }
+
+  // ── Selekcija korisnika ──────────────────────────────────────────────
   get filteredUsers(): User[] {
     const q = this.userSearch.toLowerCase();
     return this.users.filter(u =>
@@ -81,36 +121,89 @@ export class PermissionsManagementComponent implements OnInit {
 
   selectUser(u: User): void {
     this.selectedUser = u;
-    this.selectedEntity = null;
-    this.activePermissions = new Set(['manage_place', 'create_event', 'view_analytics']);
+    this.activePermCodes = new Set();
+    this.userPermissions = [];
+    this.saveMsg = null;
+    this.loadUserPerms(u.userId);
   }
 
-  selectEntity(e: Entity): void {
-    this.selectedEntity = e;
+  private loadUserPerms(userId: number): void {
+    this.permLoading = true;
+    this.userService.getUserPermissions(userId).subscribe({
+      next: res => {
+        this.userPermissions = res.data;
+        this.activePermCodes = new Set(res.data.map(up => up.permission.code));
+        this.permLoading = false;
+      },
+      error: () => { this.permLoading = false; },
+    });
   }
 
-  hasPermission(key: string): boolean {
-    return this.activePermissions.has(key);
+  // ── Toggle dozvole ────────────────────────────────────────────────────
+  hasPermission(code: PermissionCode): boolean {
+    return this.activePermCodes.has(code);
   }
 
-  togglePermission(key: string): void {
-    if (this.activePermissions.has(key)) {
-      this.activePermissions.delete(key);
+  /** Called from template with perm.code */
+  togglePermission(permCode: PermissionCode): void {
+    if (!this.selectedUser) return;
+    const perm = this.allPermissions.find(p => p.code === permCode);
+    if (!perm) return;
+
+    if (this.activePermCodes.has(permCode)) {
+      this.activePermCodes.delete(permCode);
+      this.userService.revokePermission(this.selectedUser.userId, perm.id)
+        .subscribe({ error: () => this.activePermCodes.add(permCode) });
     } else {
-      this.activePermissions.add(key);
+      this.activePermCodes.add(permCode);
+      this.userService.grantPermission(
+        this.selectedUser.userId,
+        perm.id,
+        this.selectedRegionId ?? undefined,
+      ).subscribe({ error: () => this.activePermCodes.delete(permCode) });
     }
   }
 
+  // ── Skupno čuvanje ────────────────────────────────────────────────────
   savePermissions(): void {
+    if (!this.selectedUser) return;
     this.saving = true;
-    // TODO: call API to save permissions for selectedUser + selectedEntity
-    setTimeout(() => { this.saving = false; }, 800);
+    this.saveMsg = null;
+
+    const originalCodes = new Set(this.userPermissions.map(up => up.permission.code));
+    const toGrant = this.allPermissions.filter(p => this.activePermCodes.has(p.code) && !originalCodes.has(p.code));
+    const toRevoke = this.userPermissions.filter(up => !this.activePermCodes.has(up.permission.code));
+
+    const userId = this.selectedUser.userId;
+    let pending = toGrant.length + toRevoke.length;
+
+    if (pending === 0) { this.saving = false; this.saveMsg = 'Nema promena.'; return; }
+
+    const done = () => {
+      pending--;
+      if (pending === 0) {
+        this.saving = false;
+        this.saveMsg = 'Dozvole sačuvane.';
+        this.loadUserPerms(userId);
+        setTimeout(() => { this.saveMsg = null; }, 3000);
+      }
+    };
+
+    for (const p of toGrant) {
+      this.userService.grantPermission(userId, p.id, this.selectedRegionId ?? undefined)
+        .subscribe({ next: done, error: done });
+    }
+    for (const up of toRevoke) {
+      this.userService.revokePermission(userId, up.permission.id)
+        .subscribe({ next: done, error: done });
+    }
   }
 
-  permCount(u: User): number {
-    // Placeholder — would come from API
-    return 3;
-  }
+  grantAll(): void { this.activePermCodes = new Set(this.allPermissions.map(p => p.code)); }
+  revokeAll(): void { this.activePermCodes = new Set(); }
+
+  // ── Helperi ────────────────────────────────────────────────────────────
+  permCount(u: User): number { return u.permissionCount ?? 0; }
 
   initials(name: string): string {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();

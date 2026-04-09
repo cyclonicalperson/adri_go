@@ -1,4 +1,9 @@
+// src/environments/environment.ts
+// Ovo je RAZVOJNA konfiguracija — koristi se sa ng serve.
+// angular.json NEMA fileReplacements za development,
+// pa Angular direktno čita ovaj fajl pri ng serve.
+// Mock interceptori se aktiviraju kada je production: false.
 export const environment = {
-  production: true,
-  apiUrl: 'https://your-api-domain.com/api',  // Kada zapravo budemo hostovali ovo, zameniti URL ovde
+  production: false,
+  apiUrl: 'http://localhost:5000/api',
 };

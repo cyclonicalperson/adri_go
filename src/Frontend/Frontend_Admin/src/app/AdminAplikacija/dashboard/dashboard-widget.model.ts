@@ -27,7 +27,7 @@ export interface WidgetDef {
   description: string;       // Short description shown in picker
   icon: string;       // Emoji icon
   defaultSpan: WidgetSpan;   // Default column span
-  adminOnly: boolean;      // Hidden for ORG admins if true
+  adminOnly: boolean;      // Hidden for regular Admins (ORG role) if true
 }
 
 /** Saved per-user configuration for one widget slot */
@@ -190,3 +190,10 @@ export const DEFAULT_LAYOUT_ORG: DashboardConfig = {
     { id: 'recent_reviews', span: 2 },
   ],
 };
+
+// ── Helper — zamjena za @angular/cdk/drag-drop moveItemInArray ───────────
+// Koristiti dok CDK nije instaliran (npm install @angular/cdk)
+export function moveItemInArray<T>(array: T[], from: number, to: number): void {
+  const item = array.splice(from, 1)[0];
+  array.splice(to, 0, item);
+}

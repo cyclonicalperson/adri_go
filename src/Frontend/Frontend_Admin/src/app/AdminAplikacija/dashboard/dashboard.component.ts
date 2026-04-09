@@ -2,15 +2,19 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
+
 import {
-  CdkDragDrop, CdkDrag, CdkDropList, CdkDragHandle,
-  CdkDragPlaceholder, moveItemInArray,
+  CdkDrag,
+  CdkDropList,
+  CdkDragHandle,
+  CdkDragPlaceholder,
+  CdkDragDrop,
 } from '@angular/cdk/drag-drop';
 
 import { AuthService } from '@core/auth/auth.service';
 import {
   AnalyticsService, DashboardStats, DailyVisit,
-  PopularEntity, TouristMovement,
+  PopularPost, TouristMovement,
 } from '@core/services/analytics.service';
 import {
   WidgetId, WidgetSlot, DashboardConfig, WidgetDef,
@@ -28,7 +32,7 @@ interface CityBreakdown { label: string; pct: number; color: string; }
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
-  imports: [RouterLink, DecimalPipe, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder],
+  imports: [RouterLink, DecimalPipe, CdkDrag, CdkDropList, CdkDragHandle, CdkDragPlaceholder],
 })
 export class DashboardComponent implements OnInit {
   loading = true;
@@ -37,8 +41,8 @@ export class DashboardComponent implements OnInit {
 
   stats: DashboardStats | null = null;
   visits: DailyVisit[] = [];
-  popularObjects: PopularEntity[] = [];
-  popularEvents: PopularEntity[] = [];
+  popularObjects: PopularPost[] = [];
+  popularEvents: PopularPost[] = [];
   movements: TouristMovement[] = [];
 
   activeTourists = 8294;
@@ -93,7 +97,7 @@ export class DashboardComponent implements OnInit {
     forkJoin({
       stats: this.analytics.getDashboardStats(),
       visits: this.analytics.getDailyVisits(fmt(from), fmt(today)),
-      objects: this.analytics.getPopularObjects(5),
+      objects: this.analytics.getPopularPosts(5),
       events: this.analytics.getPopularEvents(5),
       movements: this.analytics.getTouristMovements(),
     }).subscribe({
@@ -109,7 +113,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  get isSuperAdmin(): boolean { return this.auth.isRole('ADMIN'); }
+  get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
   get pendingCount(): number { return this.pendingRequests.length; }
 
   // ── Config persistence ────────────────────────────────────────────────
@@ -162,7 +166,6 @@ export class DashboardComponent implements OnInit {
     this.config = { ...this.config, slots: [...this.config.slots] };
   }
 
-  // Arrow-based reorder (reliable fallback / complement to drag)
   moveWidget(index: number, direction: -1 | 1): void {
     const slots = [...this.config.slots];
     const target = index + direction;
@@ -171,11 +174,11 @@ export class DashboardComponent implements OnInit {
     this.config = { ...this.config, slots };
   }
 
-  // CDK drag-drop handler
   onDrop(event: CdkDragDrop<WidgetSlot[]>): void {
     if (event.previousIndex === event.currentIndex) return;
     const slots = [...this.config.slots];
-    moveItemInArray(slots, event.previousIndex, event.currentIndex);
+    const item = slots.splice(event.previousIndex, 1)[0];
+    slots.splice(event.currentIndex, 0, item);
     this.config = { ...this.config, slots };
   }
 
@@ -183,7 +186,6 @@ export class DashboardComponent implements OnInit {
     return WIDGET_CATALOGUE.find(w => w.id === id)?.label ?? id;
   }
 
-  // ── Widget picker ─────────────────────────────────────────────────────
   get availableToAdd(): WidgetDef[] {
     const activeIds = new Set(this.config.slots.map(s => s.id));
     return WIDGET_CATALOGUE.filter(def =>
@@ -200,7 +202,7 @@ export class DashboardComponent implements OnInit {
 
   barColor(i: number): string { return ['bar-green', 'bar-blue', 'bar-amber'][i % 3]; }
 
-  topBarWidth(val: number, list: PopularEntity[]): number {
+  topBarWidth(val: number, list: PopularPost[]): number {
     const max = Math.max(...list.map(e => e.viewCount), 1);
     return Math.round((val / max) * 100);
   }

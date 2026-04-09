@@ -17,7 +17,7 @@ export const ADMIN_ROUTES: Routes = [
         loadChildren: () =>
           import('./dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES),
       },
-      // ── Main menu ───────────────────────────────────────────────────
+      // ── Sadržaj ─────────────────────────────────────────────────────
       {
         path: 'lokacije',
         loadChildren: () =>
@@ -38,47 +38,55 @@ export const ADMIN_ROUTES: Routes = [
         loadChildren: () =>
           import('./reviews/reviews.routes').then(m => m.REVIEWS_ROUTES),
       },
-      // ── Administracija ──────────────────────────────────────────────
+      // ── Rute ────────────────────────────────────────────────────────
+      {
+        path: 'routes-management',
+        loadChildren: () =>
+          import('./routes-management/routes-management.routes').then(m => m.ROUTES_MGMT_ROUTES),
+      },
+      // ── Turisti ──────────────────────────────────────────────────────
+      {
+        path: 'turisti',
+        loadChildren: () =>
+          import('./turisti/turisti.routes').then(m => m.TURISTI_ROUTES),
+      },
+      // ── Destinacije (standalone modul) ───────────────────────────────
+      {
+        path: 'destinations',
+        loadChildren: () =>
+          import('./destinations/destinations.routes').then(m => m.DESTINATIONS_ROUTES),
+      },
+      // ── Administracija (samo superadmin) ─────────────────────────────
       {
         path: 'users',
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] },
+        data: { roles: ['superadmin'] },
         loadChildren: () =>
           import('./users/users.routes').then(m => m.USERS_ROUTES),
       },
       {
         path: 'permissions',
         canActivate: [RoleGuard],
-        data: { roles: ['ADMIN'] },
+        data: { roles: ['superadmin'] },
         loadChildren: () =>
           import('./permissions/permissions.routes').then(m => m.PERMISSIONS_ROUTES),
       },
-      // ── Analitika ───────────────────────────────────────────────────
-      // Analytics and turisti content is now embedded in the dashboard.
-      // These routes redirect there for any bookmarked links.
-      { path: 'analytics', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'turisti', redirectTo: 'dashboard', pathMatch: 'full' },
-      // ── Map ─────────────────────────────────────────────────────────
-      {
-        path: 'profile',
-        loadChildren: () =>
-          import('./profile/profile.routes').then(m => m.PROFILE_ROUTES),
-      },
+      // ── Mapa ────────────────────────────────────────────────────────
       {
         path: 'map-admin',
         loadChildren: () =>
           import('./map-admin/map-admin.routes').then(m => m.MAP_ADMIN_ROUTES),
       },
-  // ── Legacy redirects ────────────────────────────────────────────
-  {
-    path: 'destinations',
-    redirectTo: 'lokacije',
-    pathMatch: 'full',
-  },
-  {
-    path: 'objects',
-    redirectTo: 'lokacije',
-  },
-],
+      // ── Profil ──────────────────────────────────────────────────────
+      {
+        path: 'profile',
+        loadChildren: () =>
+          import('./profile/profile.routes').then(m => m.PROFILE_ROUTES),
+      },
+      // ── Legacy redirecti ─────────────────────────────────────────────
+      { path: 'analytics', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'turisti-list', redirectTo: 'turisti', pathMatch: 'full' },
+      { path: 'objects', redirectTo: 'lokacije' },
+    ],
   },
 ];

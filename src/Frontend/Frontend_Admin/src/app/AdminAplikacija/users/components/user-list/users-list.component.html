@@ -50,9 +50,8 @@
 
     <select class="filter-select" (change)="onRoleChange($any($event.target).value)">
       <option value="">Sve role</option>
-      @for (r of roles; track r.roleId) {
-      <option [value]="r.roleId">{{ r.roleName }}</option>
-      }
+      <option value="superadmin">Super Administrator</option>
+      <option value="admin">Administrator</option>
     </select>
 
     <select class="filter-select" (change)="onActiveChange($any($event.target).value)">
@@ -91,7 +90,6 @@
           <th>Tip</th>
           <th>Email</th>
           <th>Organizacija</th>
-          <th>Dozvole</th>
           <th (click)="onSort('createdAt')">Registrovan <span class="sort">↕</span></th>
           <th>Status</th>
           <th>Akcije</th>
@@ -109,18 +107,13 @@
             </div>
           </td>
           <td>
-            <span class="badge" [class]="roleBadge(u.role?.roleName)">
-              {{ roleLabel(u.role?.roleName) }}
+            <!-- u.role is AdminRole string: 'superadmin' | 'admin' -->
+            <span class="badge" [class]="roleBadge(u.role)">
+              {{ roleLabel(u.role) }}
             </span>
           </td>
           <td style="font-size:12px;color:#6b7280">{{ u.email }}</td>
           <td style="font-size:12px;font-weight:600">{{ u.organization?.name ?? '—' }}</td>
-          <td>
-            <div class="perm-chips">
-              <span class="perm-chip">manage_location</span>
-              <span class="perm-chip">create_event</span>
-            </div>
-          </td>
           <td style="font-size:12px;color:#6b7280">{{ u.createdAt | dateLocal }}</td>
           <td>
             <span class="badge" [class]="u.isActive ? 'badge-green' : 'badge-amber'">
@@ -131,9 +124,9 @@
             <div class="actions">
               <button class="btn-icon" title="Izmeni" (click)="goEdit(u)">✏️</button>
               @if (u.isActive) {
-              <button class="btn-icon" title="Suspenduj">⏸</button>
+              <button class="btn-icon" title="Suspenduj" (click)="toggleSuspend(u)">⏸</button>
               } @else {
-              <button class="btn-icon approve-btn" title="Aktiviraj">▶</button>
+              <button class="btn-icon approve-btn" title="Aktiviraj" (click)="toggleSuspend(u)">▶</button>
               }
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(u)">🗑️</button>
             </div>
