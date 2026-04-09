@@ -1,6 +1,16 @@
 -- ============================================================
---  TURISTIČKA APLIKACIJA — Kompletna MySQL baza podataka
+--  TURISTIČKA APLIKACIJA — Kompletna MySQL baza podataka v2
 --  Opis: Baza za mobilnu turističku aplikaciju i admin panel
+--  Izm0ene v2: usklađivanje sa frontend modelima
+--    - review: + route_id, post_id nullable, + status ENUM
+--    - admin_user: + email_verified_at
+--    - admin_registration_request: + email_verification_token,
+--      email_verified_at, is_individual
+--    - admin_user_permission: + region_id (scope dozvole)
+--    - NOVA TABELA: admin_notification
+--    - NOVI POGLEDI: v_posts_full, v_routes_full, v_reviews_full,
+--      v_admin_users_full, v_superadmin_overview (osvežen)
+--    - NOVI SEED: admin_notification, proširene permisije
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS turisticka_baza;
@@ -30,32 +40,37 @@ CREATE TABLE organization (
 
 -- ============================================================
 --  2. ADMIN KORISNICI
+--  v2: + email_verified_at
+--  (is_individual je vec bio u originalnoj bazi)
 -- ============================================================
 
 CREATE TABLE admin_user (
-    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    organization_id INT UNSIGNED,
-    full_name       VARCHAR(200) NOT NULL,
-    email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
-    role            ENUM('superadmin','admin') NOT NULL DEFAULT 'admin',
-    is_individual   TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=fizicko lice, 0=organizacija',
-    account_status  ENUM('active','suspended','pending') NOT NULL DEFAULT 'pending',
-    profile_image   VARCHAR(500),
-    last_login_at   DATETIME,
-    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    organization_id  INT UNSIGNED,
+    full_name        VARCHAR(200) NOT NULL,
+    email            VARCHAR(255) NOT NULL UNIQUE,
+    email_verified_at DATETIME    COMMENT 'NULL = email nije verifikovan',
+    password_hash    VARCHAR(255) NOT NULL,
+    role             ENUM('superadmin','admin') NOT NULL DEFAULT 'admin',
+    is_individual    TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=fizicko lice, 0=organizacija',
+    account_status   ENUM('active','suspended','pending') NOT NULL DEFAULT 'pending',
+    profile_image    VARCHAR(500),
+    last_login_at    DATETIME,
+    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_admin_org FOREIGN KEY (organization_id) REFERENCES organization(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ============================================================
 --  3. PERMISIJE
+--  v2: admin_user_permission + region_id (scope na regiju)
 -- ============================================================
 
 CREATE TABLE admin_permission (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    code        VARCHAR(100) NOT NULL UNIQUE COMMENT 'create_event, create_route, create_accommodation ...',
+    code        VARCHAR(100) NOT NULL UNIQUE
+                  COMMENT 'create_event, create_route, create_accommodation...',
     label       VARCHAR(200) NOT NULL,
     category    VARCHAR(100) NOT NULL COMMENT 'content, users, analytics',
     description VARCHAR(500)
@@ -66,32 +81,39 @@ CREATE TABLE admin_user_permission (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_user_id   INT UNSIGNED NOT NULL,
     permission_id   INT UNSIGNED NOT NULL,
+    region_id       INT UNSIGNED         COMMENT 'NULL = globalna dozvola; vrijednost = scope na regiju',
     granted_by      INT UNSIGNED NOT NULL COMMENT 'superadmin koji je dao permisiju',
     granted_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_user_perm (admin_user_id, permission_id),
-    CONSTRAINT fk_aup_user FOREIGN KEY (admin_user_id) REFERENCES admin_user(id) ON DELETE CASCADE,
-    CONSTRAINT fk_aup_perm FOREIGN KEY (permission_id) REFERENCES admin_permission(id) ON DELETE CASCADE,
-    CONSTRAINT fk_aup_granted FOREIGN KEY (granted_by) REFERENCES admin_user(id)
+    CONSTRAINT fk_aup_user    FOREIGN KEY (admin_user_id) REFERENCES admin_user(id)       ON DELETE CASCADE,
+    CONSTRAINT fk_aup_perm    FOREIGN KEY (permission_id) REFERENCES admin_permission(id)  ON DELETE CASCADE,
+    CONSTRAINT fk_aup_granted FOREIGN KEY (granted_by)    REFERENCES admin_user(id),
+    CONSTRAINT fk_aup_region  FOREIGN KEY (region_id)     REFERENCES region(id)            ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ============================================================
 --  4. REGISTRACIJA ADMINA
+--  v2: + email_verification_token, email_verified_at, is_individual
 -- ============================================================
 
 CREATE TABLE admin_registration_request (
-    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    full_name           VARCHAR(200) NOT NULL,
-    email               VARCHAR(255) NOT NULL,
-    password_hash       VARCHAR(255) NOT NULL,
-    is_organization     TINYINT(1) NOT NULL DEFAULT 0,
-    organization_name   VARCHAR(200),
-    organization_email  VARCHAR(255),
-    status              ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-    rejection_reason    TEXT,
-    submitted_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at         DATETIME,
-    reviewed_by         INT UNSIGNED COMMENT 'superadmin koji je pregledao',
+    id                         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    full_name                  VARCHAR(200) NOT NULL,
+    email                      VARCHAR(255) NOT NULL,
+    password_hash              VARCHAR(255) NOT NULL,
+    email_verification_token   VARCHAR(100)  COMMENT 'Token poslat na email za verifikaciju',
+    email_verified_at          DATETIME      COMMENT 'Kada je email verifikovan',
+    is_organization            TINYINT(1) NOT NULL DEFAULT 0,
+    is_individual              TINYINT(1) NOT NULL DEFAULT 1
+                                 COMMENT '1=fizicko lice, 0=organizacija (inverse of is_organization)',
+    organization_name          VARCHAR(200),
+    organization_email         VARCHAR(255),
+    status                     ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+    rejection_reason           TEXT,
+    submitted_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at                DATETIME,
+    reviewed_by                INT UNSIGNED COMMENT 'superadmin koji je pregledao',
     CONSTRAINT fk_reg_reviewed FOREIGN KEY (reviewed_by) REFERENCES admin_user(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -104,7 +126,8 @@ CREATE TABLE verification_document (
     file_type               ENUM('pdf','jpg','png') NOT NULL,
     file_size_kb            INT UNSIGNED NOT NULL,
     uploaded_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_vd_request FOREIGN KEY (registration_request_id) REFERENCES admin_registration_request(id) ON DELETE CASCADE
+    CONSTRAINT fk_vd_request FOREIGN KEY (registration_request_id)
+        REFERENCES admin_registration_request(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -115,21 +138,46 @@ CREATE TABLE terms_acceptance (
     terms_version           VARCHAR(20) NOT NULL,
     accepted_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ip_address              VARCHAR(45),
-    CONSTRAINT fk_ta_user FOREIGN KEY (admin_user_id) REFERENCES admin_user(id) ON DELETE SET NULL,
-    CONSTRAINT fk_ta_request FOREIGN KEY (registration_request_id) REFERENCES admin_registration_request(id) ON DELETE SET NULL
+    CONSTRAINT fk_ta_user    FOREIGN KEY (admin_user_id)           REFERENCES admin_user(id)                    ON DELETE SET NULL,
+    CONSTRAINT fk_ta_request FOREIGN KEY (registration_request_id) REFERENCES admin_registration_request(id)  ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ============================================================
---  5. AUDIT LOG
+--  5. ADMIN NOTIFIKACIJE (NOVO v2)
+--  Odvojeno od tourist.notification
+--  Podržava topbar zvono u admin panelu
+-- ============================================================
+
+CREATE TABLE admin_notification (
+    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    admin_user_id INT UNSIGNED NOT NULL,
+    type          VARCHAR(50) NOT NULL
+                    COMMENT 'pending_review, new_registration, post_approved, post_rejected, system',
+    title         VARCHAR(200) NOT NULL,
+    body          TEXT,
+    payload       JSON COMMENT 'post_id, route_id, registration_id, url...',
+    is_read       TINYINT(1) NOT NULL DEFAULT 0,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at       DATETIME,
+    CONSTRAINT fk_an_user FOREIGN KEY (admin_user_id) REFERENCES admin_user(id) ON DELETE CASCADE,
+    INDEX idx_an_admin   (admin_user_id),
+    INDEX idx_an_read    (is_read),
+    INDEX idx_an_type    (type),
+    INDEX idx_an_created (created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+--  6. AUDIT LOG
 -- ============================================================
 
 CREATE TABLE admin_audit_log (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_user_id   INT UNSIGNED COMMENT 'ko je izvrsio akciju',
     performed_by    INT UNSIGNED COMMENT 'superadmin koji je pokrenuo (ako je drugaciji)',
-    action          VARCHAR(100) NOT NULL COMMENT 'create, update, delete, approve, reject ...',
-    entity_type     VARCHAR(100) NOT NULL COMMENT 'post, route, admin_user, event ...',
+    action          VARCHAR(100) NOT NULL COMMENT 'create, update, delete, approve, reject...',
+    entity_type     VARCHAR(100) NOT NULL COMMENT 'post, route, admin_user, event...',
     entity_id       INT UNSIGNED,
     old_value       JSON,
     new_value       JSON,
@@ -141,7 +189,7 @@ CREATE TABLE admin_audit_log (
 
 
 -- ============================================================
---  6. REGIJE / DESTINACIJE
+--  7. REGIJE / DESTINACIJE
 -- ============================================================
 
 CREATE TABLE region (
@@ -159,11 +207,8 @@ CREATE TABLE region (
 
 
 -- ============================================================
---  7. OBJAVE (POSTS)
---     Jedinstven model za sve tipove sadrzaja:
---     accommodation, restaurant, club, cultural_site,
---     monument, sports_facility, event, route_post,
---     attraction, shop
+--  8. OBJAVE (POSTS)
+--     Jedinstven model za sve tipove sadrzaja
 -- ============================================================
 
 CREATE TABLE post (
@@ -203,18 +248,20 @@ CREATE TABLE post (
     updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_post_admin  FOREIGN KEY (admin_id)  REFERENCES admin_user(id),
     CONSTRAINT fk_post_region FOREIGN KEY (region_id) REFERENCES region(id) ON DELETE SET NULL,
-    INDEX idx_post_type   (post_type),
-    INDEX idx_post_status (status),
-    INDEX idx_post_admin  (admin_id),
-    INDEX idx_post_region (region_id),
-    INDEX idx_post_coords (lat, lng)
+    INDEX idx_post_type       (post_type),
+    INDEX idx_post_status     (status),
+    INDEX idx_post_admin      (admin_id),
+    INDEX idx_post_region     (region_id),
+    INDEX idx_post_coords     (lat, lng),
+    INDEX idx_post_published  (published_at),
+    INDEX idx_post_view_count (view_count)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 CREATE TABLE post_translation (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     post_id     INT UNSIGNED NOT NULL,
-    lang_code   VARCHAR(5) NOT NULL COMMENT 'sr, en, de, fr, ru...',
+    lang_code   VARCHAR(5)   NOT NULL COMMENT 'sr, en, de, fr, ru...',
     title       VARCHAR(300) NOT NULL,
     description TEXT,
     UNIQUE KEY uq_post_lang (post_id, lang_code),
@@ -223,14 +270,14 @@ CREATE TABLE post_translation (
 
 
 -- ============================================================
---  8. TAGOVI
+--  9. TAGOVI
 -- ============================================================
 
 CREATE TABLE tag (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,
     category    VARCHAR(100) COMMENT 'aktivnost, amenity, stil...',
-    color       VARCHAR(7) COMMENT 'hex boja za UI'
+    color       VARCHAR(7)   COMMENT 'hex boja za UI'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -244,7 +291,7 @@ CREATE TABLE post_tag (
 
 
 -- ============================================================
---  9. RUTE
+--  10. RUTE
 -- ============================================================
 
 CREATE TABLE route (
@@ -271,7 +318,7 @@ CREATE TABLE route (
 
 
 -- ============================================================
---  10. TURISTI
+--  11. TURISTI
 -- ============================================================
 
 CREATE TABLE tourist (
@@ -291,10 +338,9 @@ CREATE TABLE tourist (
 
 
 -- ============================================================
---  11. INTERAKCIJE TURISTA SA OBJAVAMA
+--  12. INTERAKCIJE TURISTA SA OBJAVAMA
 -- ============================================================
 
--- Lajkovi
 CREATE TABLE post_like (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id  INT UNSIGNED NOT NULL,
@@ -306,7 +352,6 @@ CREATE TABLE post_like (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Sacuvane objave
 CREATE TABLE post_save (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id  INT UNSIGNED NOT NULL,
@@ -318,7 +363,6 @@ CREATE TABLE post_save (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Pregledi objava
 CREATE TABLE post_view (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id      INT UNSIGNED,
@@ -327,12 +371,11 @@ CREATE TABLE post_view (
     duration_sec    INT UNSIGNED,
     CONSTRAINT fk_view_tourist FOREIGN KEY (tourist_id) REFERENCES tourist(id) ON DELETE SET NULL,
     CONSTRAINT fk_view_post    FOREIGN KEY (post_id)    REFERENCES post(id)    ON DELETE CASCADE,
-    INDEX idx_view_post (post_id),
+    INDEX idx_view_post    (post_id),
     INDEX idx_view_tourist (tourist_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Klikovi na link (Booking, Airbnb, itd.)
 CREATE TABLE external_click (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id  INT UNSIGNED,
@@ -344,7 +387,6 @@ CREATE TABLE external_click (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Trazenje direkcija do objave
 CREATE TABLE direction_request (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id      INT UNSIGNED,
@@ -357,7 +399,6 @@ CREATE TABLE direction_request (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Deljenje sadrzaja
 CREATE TABLE content_share (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id  INT UNSIGNED,
@@ -372,25 +413,36 @@ CREATE TABLE content_share (
 
 
 -- ============================================================
---  12. RECENZIJE
+--  13. RECENZIJE
+--  v2: + route_id, post_id nullable, + status ENUM
+--      is_approved zadržan radi kompatibilnosti, ali status
+--      je primarna kolona za moderaciju
 -- ============================================================
 
 CREATE TABLE review (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     tourist_id  INT UNSIGNED,
-    post_id     INT UNSIGNED NOT NULL,
+    post_id     INT UNSIGNED     COMMENT 'NULL ako je recenzija za rutu',
+    route_id    INT UNSIGNED     COMMENT 'NULL ako je recenzija za objavu',
     rating      TINYINT UNSIGNED NOT NULL COMMENT '1-5',
     comment     TEXT,
-    is_approved TINYINT(1) NOT NULL DEFAULT 0,
+    status      ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING'
+                  COMMENT 'Frontend moderacija status',
+    is_approved TINYINT(1) NOT NULL DEFAULT 0
+                  COMMENT 'Legacy kolona; koristi status za moderaciju',
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_rev_tourist FOREIGN KEY (tourist_id) REFERENCES tourist(id) ON DELETE SET NULL,
     CONSTRAINT fk_rev_post    FOREIGN KEY (post_id)    REFERENCES post(id)    ON DELETE CASCADE,
-    INDEX idx_review_post (post_id)
+    CONSTRAINT fk_rev_route   FOREIGN KEY (route_id)   REFERENCES route(id)   ON DELETE CASCADE,
+    INDEX idx_review_post    (post_id),
+    INDEX idx_review_route   (route_id),
+    INDEX idx_review_tourist (tourist_id),
+    INDEX idx_review_status  (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ============================================================
---  13. OMILJENO (FAVORITES)
+--  14. OMILJENO (FAVORITES)
 -- ============================================================
 
 CREATE TABLE tourist_favorite (
@@ -406,7 +458,7 @@ CREATE TABLE tourist_favorite (
 
 
 -- ============================================================
---  14. PLANER POSETE
+--  15. PLANER POSETE
 -- ============================================================
 
 CREATE TABLE visit_planner (
@@ -439,7 +491,7 @@ CREATE TABLE planner_item (
 
 
 -- ============================================================
---  15. DIGITALNE ULAZNICE
+--  16. DIGITALNE ULAZNICE
 -- ============================================================
 
 CREATE TABLE ticket (
@@ -458,7 +510,7 @@ CREATE TABLE ticket (
 
 
 -- ============================================================
---  16. NOTIFIKACIJE
+--  17. NOTIFIKACIJE (za turiste)
 -- ============================================================
 
 CREATE TABLE notification (
@@ -473,12 +525,12 @@ CREATE TABLE notification (
     sent_at     DATETIME,
     CONSTRAINT fk_notif_tourist FOREIGN KEY (tourist_id) REFERENCES tourist(id) ON DELETE CASCADE,
     INDEX idx_notif_tourist (tourist_id),
-    INDEX idx_notif_read (is_read)
+    INDEX idx_notif_read    (is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- ============================================================
---  17. MAILING LISTA
+--  18. MAILING LISTA
 -- ============================================================
 
 CREATE TABLE mailing_list (
@@ -499,7 +551,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 -- ============================================================
 --
---  SEED DATA — Primjeri podataka za testiranje
+--  SEED DATA
 --
 -- ============================================================
 -- ============================================================
@@ -510,18 +562,22 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 
 INSERT INTO admin_permission (code, label, category, description) VALUES
-('create_accommodation',  'Kreiranje smeštaja',        'content',   'Dodavanje hotela, apartmana, privatnog smeštaja'),
+('create_accommodation',  'Kreiranje smještaja',        'content',   'Dodavanje hotela, apartmana, privatnog smještaja'),
 ('create_restaurant',     'Kreiranje restorana',        'content',   'Dodavanje restorana i kafića'),
 ('create_club',           'Kreiranje klubova',          'content',   'Dodavanje noćnih klubova i barova'),
 ('create_event',          'Kreiranje dogadjaja',        'content',   'Dodavanje koncerata, takmičenja, tura'),
-('create_route',          'Kreiranje ruta',             'content',   'Dodavanje pešačkih i biciklističkih ruta'),
-('create_cultural_site',  'Kreiranje kulturnih mesta', 'content',   'Dodavanje muzeja, galerija, kulturnih objekata'),
+('create_route',          'Kreiranje ruta',             'content',   'Dodavanje pješačkih i biciklističkih ruta'),
+('create_cultural_site',  'Kreiranje kulturnih mjesta', 'content',   'Dodavanje muzeja, galerija, kulturnih objekata'),
 ('create_monument',       'Kreiranje spomenika',        'content',   'Dodavanje istorijskih i prirodnih spomenika'),
 ('create_sports',         'Kreiranje sportskih obj.',   'content',   'Dodavanje sportskih terena i objekata'),
 ('create_shop',           'Kreiranje prodavnica',       'content',   'Dodavanje prodavnica i tržnih centara'),
 ('manage_reviews',        'Upravljanje recenzijama',    'content',   'Odobravanje i brisanje recenzija svojih objava'),
 ('view_analytics',        'Pregled analitike',          'analytics', 'Pregled statistika o objavama i turistima'),
-('manage_own_posts',      'Upravljanje vlastitim obj.', 'content',   'Editovanje i brisanje vlastitih objava');
+('manage_own_posts',      'Upravljanje vlastitim obj.', 'content',   'Editovanje i brisanje vlastitih objava'),
+('manage_tags',           'Upravljanje tagovima',       'content',   'Dodavanje i uredjivanje tagova na objavama'),
+('manage_translations',   'Upravljanje prijevodima',    'content',   'Dodavanje prijevoda objava na druge jezike'),
+('view_tourists',         'Pregled turista',            'analytics', 'Pregled podataka o turistima i njihovim kretanjima'),
+('manage_tickets',        'Upravljanje kartama',        'content',   'Pregled i upravljanje digitalnim ulaznicama');
 
 
 -- ============================================================
@@ -541,23 +597,29 @@ INSERT INTO organization (name, type, contact_email, phone, website, is_verified
 -- ============================================================
 
 -- SuperAdmin (password: SuperAdmin123!)
-INSERT INTO admin_user (organization_id, full_name, email, password_hash, role, is_individual, account_status) VALUES
-(NULL, 'Marko Petrović', 'superadmin@touristhub.me', '$2y$12$examplehashSUPERADMIN001', 'superadmin', 1, 'active');
+INSERT INTO admin_user (organization_id, full_name, email, email_verified_at, password_hash, role, is_individual, account_status) VALUES
+(NULL, 'Marko Petrović', 'superadmin@touristhub.me',
+ '2024-01-01 00:00:00', '$2y$12$examplehashSUPERADMIN001', 'superadmin', 1, 'active');
 
 -- Admini (password: Admin123!)
-INSERT INTO admin_user (organization_id, full_name, email, password_hash, role, is_individual, account_status) VALUES
-(1, 'Ana Kovačević',   'ana.kovacevic@zabljak.travel',   '$2y$12$examplehashADMIN001', 'admin', 0, 'active'),
-(2, 'Nikola Đurić',    'nikola.djuric@npdurmitor.me',    '$2y$12$examplehashADMIN002', 'admin', 0, 'active'),
-(3, 'Jovana Milić',    'jovana.milic@mnadv.me',          '$2y$12$examplehashADMIN003', 'admin', 0, 'active'),
-(4, 'Stefan Radović',  'stefan.radovic@hoteljezera.me',  '$2y$12$examplehashADMIN004', 'admin', 0, 'active'),
-(NULL,'Petar Vuković', 'petar.vukovic@gmail.com',        '$2y$12$examplehashADMIN005', 'admin', 1, 'active');
+INSERT INTO admin_user (organization_id, full_name, email, email_verified_at, password_hash, role, is_individual, account_status) VALUES
+(1, 'Ana Kovačević',   'ana.kovacevic@zabljak.travel',
+ '2024-01-15 10:00:00', '$2y$12$examplehashADMIN001', 'admin', 0, 'active'),
+(2, 'Nikola Đurić',    'nikola.djuric@npdurmitor.me',
+ '2024-01-16 10:00:00', '$2y$12$examplehashADMIN002', 'admin', 0, 'active'),
+(3, 'Jovana Milić',    'jovana.milic@mnadv.me',
+ '2024-01-17 10:00:00', '$2y$12$examplehashADMIN003', 'admin', 0, 'active'),
+(4, 'Stefan Radović',  'stefan.radovic@hoteljezera.me',
+ '2024-01-18 10:00:00', '$2y$12$examplehashADMIN004', 'admin', 0, 'active'),
+(NULL, 'Petar Vuković', 'petar.vukovic@gmail.com',
+ '2024-01-19 10:00:00', '$2y$12$examplehashADMIN005', 'admin', 1, 'active');
 
 
 -- ============================================================
---  PERMISIJE PO ADMINIMA  (granted_by = 1 = superadmin)
+--  PERMISIJE PO ADMINIMA (granted_by = 1 = superadmin)
 -- ============================================================
 
--- Ana — turistička org., može sve osim smeštaja i klubova
+-- Ana — turistička org., može sve osim smještaja i klubova
 INSERT INTO admin_user_permission (admin_user_id, permission_id, granted_by) VALUES
 (2, (SELECT id FROM admin_permission WHERE code='create_event'),        1),
 (2, (SELECT id FROM admin_permission WHERE code='create_route'),        1),
@@ -583,14 +645,14 @@ INSERT INTO admin_user_permission (admin_user_id, permission_id, granted_by) VAL
 (4, (SELECT id FROM admin_permission WHERE code='manage_reviews'),      1),
 (4, (SELECT id FROM admin_permission WHERE code='manage_own_posts'),    1);
 
--- Stefan — hotel, samo smeštaj i restoran
+-- Stefan — hotel, samo smještaj i restoran
 INSERT INTO admin_user_permission (admin_user_id, permission_id, granted_by) VALUES
 (5, (SELECT id FROM admin_permission WHERE code='create_accommodation'),1),
 (5, (SELECT id FROM admin_permission WHERE code='create_restaurant'),   1),
 (5, (SELECT id FROM admin_permission WHERE code='manage_reviews'),      1),
 (5, (SELECT id FROM admin_permission WHERE code='manage_own_posts'),    1);
 
--- Petar — fizicko lice, samo rute i sportski objekti
+-- Petar — fizičko lice, samo rute i sportski objekti
 INSERT INTO admin_user_permission (admin_user_id, permission_id, granted_by) VALUES
 (6, (SELECT id FROM admin_permission WHERE code='create_route'),        1),
 (6, (SELECT id FROM admin_permission WHERE code='create_sports'),       1),
@@ -598,18 +660,21 @@ INSERT INTO admin_user_permission (admin_user_id, permission_id, granted_by) VAL
 
 
 -- ============================================================
---  REGISTRACIJA — primer zahteva u toku
+--  REGISTRACIJA — primeri zahteva u toku
 -- ============================================================
 
 INSERT INTO admin_registration_request
-    (full_name, email, password_hash, is_organization, organization_name, organization_email, status)
+    (full_name, email, password_hash, is_organization, is_individual,
+     organization_name, organization_email, status)
 VALUES
-('Milica Stanković', 'milica.s@gmail.com',    '$2y$12$examplehashREQ001', 0, NULL, NULL, 'pending'),
-('Boris Nikolić',    'boris@adventureme.com', '$2y$12$examplehashREQ002', 1,
- 'Adventure Montenegro', 'info@adventureme.com', 'pending');
+('Milica Stanković', 'milica.s@gmail.com',    '$2y$12$examplehashREQ001',
+ 0, 1, NULL, NULL, 'pending'),
+('Boris Nikolić',    'boris@adventureme.com', '$2y$12$examplehashREQ002',
+ 1, 0, 'Adventure Montenegro', 'info@adventureme.com', 'pending');
 
-INSERT INTO verification_document (registration_request_id, file_path, file_name, file_type, file_size_kb) VALUES
-(1, '/uploads/docs/milica_licna.pdf',       'licna_karta.pdf',          'pdf', 320),
+INSERT INTO verification_document
+    (registration_request_id, file_path, file_name, file_type, file_size_kb) VALUES
+(1, '/uploads/docs/milica_licna.pdf',       'licna_karta.pdf',             'pdf', 320),
 (2, '/uploads/docs/boris_registracija.pdf', 'rjesenje_o_registraciji.pdf', 'pdf', 890);
 
 INSERT INTO terms_acceptance (registration_request_id, terms_version, ip_address) VALUES
@@ -622,12 +687,12 @@ INSERT INTO terms_acceptance (registration_request_id, terms_version, ip_address
 -- ============================================================
 
 INSERT INTO region (name, type, description, country, lat, lng, cover_image) VALUES
-('Žabljak',        'city',          'Planinski grad na Durmitoru, najviši grad na Balkanu.',        'Montenegro', 43.1556, 19.1225, '/images/regions/zabljak.jpg'),
-('Durmitor',       'national_park', 'Nacionalni park UNESCO svjetske baštine sa 18 ledničkih jezera.', 'Montenegro', 43.1500, 19.0167, '/images/regions/durmitor.jpg'),
-('Crno jezero',    'lake',          'Najpoznatije jezero Durmitora, simbol crnogorskog turizma.',    'Montenegro', 43.1378, 19.0644, '/images/regions/crnojezero.jpg'),
-('Tara kanjon',    'national_park', 'Najdublji kanjon u Evropi, rijeka Tara bistre vode.',           'Montenegro', 43.2000, 19.2500, '/images/regions/tara.jpg'),
-('Budva',          'city',          'Najpoznatije turističko odredište Crnogorskog primorja.',       'Montenegro', 42.2864, 18.8400, '/images/regions/budva.jpg'),
-('Kotor',          'city',          'UNESCO zaštićeni stari grad sa venetskom arhitekturom.',        'Montenegro', 42.4247, 18.7712, '/images/regions/kotor.jpg');
+('Žabljak',        'city',          'Planinski grad na Durmitoru, najviši grad na Balkanu.',         'Montenegro', 43.1556, 19.1225, '/images/regions/zabljak.jpg'),
+('Durmitor',       'national_park', 'Nacionalni park UNESCO svjetske baštine sa 18 ledničkih jezera.','Montenegro', 43.1500, 19.0167, '/images/regions/durmitor.jpg'),
+('Crno jezero',    'lake',          'Najpoznatije jezero Durmitora, simbol crnogorskog turizma.',     'Montenegro', 43.1378, 19.0644, '/images/regions/crnojezero.jpg'),
+('Tara kanjon',    'national_park', 'Najdublji kanjon u Evropi, rijeka Tara bistre vode.',            'Montenegro', 43.2000, 19.2500, '/images/regions/tara.jpg'),
+('Budva',          'city',          'Najpoznatije turističko odredište Crnogorskog primorja.',        'Montenegro', 42.2864, 18.8400, '/images/regions/budva.jpg'),
+('Kotor',          'city',          'UNESCO zaštićeni stari grad sa venetskom arhitekturom.',         'Montenegro', 42.4247, 18.7712, '/images/regions/kotor.jpg');
 
 
 -- ============================================================
@@ -671,18 +736,18 @@ VALUES (
   'https://www.booking.com/hotel/me/jezera-zabljak.html', 'Rezerviši na Booking',
   JSON_ARRAY('/images/posts/jezera1.jpg', '/images/posts/jezera2.jpg', '/images/posts/jezera3.jpg'),
   JSON_OBJECT('mon','00:00-24:00','tue','00:00-24:00','wed','00:00-24:00','thu','00:00-24:00','fri','00:00-24:00','sat','00:00-24:00','sun','00:00-24:00'),
-  JSON_OBJECT('stars', 4, 'rooms', 86, 'price_from', 85, 'currency', 'EUR', 'amenities', JSON_ARRAY('spa','restaurant','ski_service','parking','wifi','pool')),
+  JSON_OBJECT('stars', 4, 'rooms', 86, 'price_from', 85, 'currency', 'EUR',
+              'amenities', JSON_ARRAY('spa','restaurant','ski_service','parking','wifi','pool')),
   'published', '2024-03-01 09:00:00'
 );
 
 -- Restoran (admin: Stefan, id=5)
 INSERT INTO post (admin_id, region_id, title, post_type, description, lat, lng, address,
-                  external_url, external_url_label, images, opening_hours, details, status, published_at)
+                  images, opening_hours, details, status, published_at)
 VALUES (
   5, 1, 'Restoran Soa', 'restaurant',
   'Tradicionalna crnogorska kuhinja sa lokalno uzgojenim namirnicama. Specijalitet: jagnjetina ispod sača i domaći sir.',
   43.1556, 19.1225, 'Njegoševa 12, Žabljak',
-  NULL, NULL,
   JSON_ARRAY('/images/posts/soa1.jpg', '/images/posts/soa2.jpg'),
   JSON_OBJECT('mon','12:00-22:00','tue','12:00-22:00','wed','12:00-22:00','thu','12:00-22:00','fri','12:00-23:00','sat','12:00-23:00','sun','12:00-21:00'),
   JSON_OBJECT('cuisine', 'Montenegrin', 'price_range', '€€', 'capacity', 60, 'outdoor_seating', true),
@@ -729,7 +794,7 @@ INSERT INTO post (admin_id, region_id, title, post_type, description, lat, lng, 
                   images, opening_hours, details, status, published_at)
 VALUES (
   3, 3, 'Crno jezero', 'attraction',
-  'Simbol Durmitora i cijele Crne Gore. Glacijalnog porijekla, sastoji se od Malog i Velikog jezera spojenih kratkim kanalom. Idealno za šetnju i fotografisanje.',
+  'Simbol Durmitora i cijele Crne Gore. Glacijalnog porijekla, sastoji se od Malog i Velikog jezera spojenih kratkim kanalom.',
   43.1378, 19.0644, 'NP Durmitor, Žabljak',
   JSON_ARRAY('/images/posts/crnojezero1.jpg', '/images/posts/crnojezero2.jpg'),
   JSON_OBJECT('mon','00:00-24:00','tue','00:00-24:00','wed','00:00-24:00','thu','00:00-24:00','fri','00:00-24:00','sat','00:00-24:00','sun','00:00-24:00'),
@@ -737,7 +802,7 @@ VALUES (
   'published', '2024-02-15 08:00:00'
 );
 
--- Smeštaj — Apartmani (admin: Ana, id=2)
+-- Smještaj — Apartmani (admin: Ana, id=2)
 INSERT INTO post (admin_id, region_id, title, post_type, description, lat, lng, address,
                   external_url, external_url_label, images, details, status, published_at)
 VALUES (
@@ -843,7 +908,7 @@ INSERT INTO route (admin_id, region_id, name, difficulty, distance_km, duration_
                    description, waypoints, status)
 VALUES (
   6, 2, 'Vrh Bobotov Kuk', 'hard', 14.0, 360, 900,
-  'Najzahtjevnija tura na najviši vrh Durmitora (2523m). Preporučuje se iskusnim planinarima sa planinskim iskustvom. Spectakularan pogled.',
+  'Najzahtjevnija tura na najviši vrh Durmitora (2523m). Preporučuje se iskusnim planinarima.',
   JSON_ARRAY(
     JSON_OBJECT('lat', 43.1378, 'lng', 19.0644, 'name', 'Polazište — Crno jezero'),
     JSON_OBJECT('lat', 43.1450, 'lng', 19.0500, 'name', 'Ledena pećina'),
@@ -873,15 +938,15 @@ VALUES (
 -- ============================================================
 
 INSERT INTO tourist (name, email, password_hash, language, interests) VALUES
-('Emma Wilson',     'emma.wilson@gmail.com',   '$2y$12$touristHash001', 'en',
+('Emma Wilson',        'emma.wilson@gmail.com',    '$2y$12$touristHash001', 'en',
  JSON_ARRAY('hiking','nature','photography','culture')),
-('Luca Rossi',      'luca.rossi@gmail.com',    '$2y$12$touristHash002', 'en',
+('Luca Rossi',         'luca.rossi@gmail.com',     '$2y$12$touristHash002', 'en',
  JSON_ARRAY('food','nightlife','beach','history')),
-('Jana Novák',      'jana.novak@gmail.com',    '$2y$12$touristHash003', 'de',
+('Jana Novák',         'jana.novak@gmail.com',     '$2y$12$touristHash003', 'de',
  JSON_ARRAY('hiking','skiing','culture','family')),
-('Aleksandra Popović', 'aleksandra.p@gmail.com', '$2y$12$touristHash004', 'sr',
+('Aleksandra Popović', 'aleksandra.p@gmail.com',   '$2y$12$touristHash004', 'sr',
  JSON_ARRAY('nature','culture','food')),
-('Thomas Müller',   'thomas.m@gmail.com',      '$2y$12$touristHash005', 'de',
+('Thomas Müller',      'thomas.m@gmail.com',       '$2y$12$touristHash005', 'de',
  JSON_ARRAY('skiing','adventure','sport'));
 
 
@@ -889,7 +954,6 @@ INSERT INTO tourist (name, email, password_hash, language, interests) VALUES
 --  INTERAKCIJE TURISTA
 -- ============================================================
 
--- Lajkovi
 INSERT INTO post_like (tourist_id, post_id) VALUES
 (1, 5), (1, 1), (1, 3),
 (2, 4), (2, 7), (2, 2),
@@ -897,7 +961,6 @@ INSERT INTO post_like (tourist_id, post_id) VALUES
 (4, 5), (4, 3), (4, 2),
 (5, 8), (5, 1), (5, 5);
 
--- Sacuvane objave
 INSERT INTO post_save (tourist_id, post_id) VALUES
 (1, 1), (1, 5),
 (2, 4), (2, 7),
@@ -905,16 +968,14 @@ INSERT INTO post_save (tourist_id, post_id) VALUES
 (4, 3), (4, 5),
 (5, 8);
 
--- Pregledi
 INSERT INTO post_view (tourist_id, post_id, duration_sec) VALUES
 (1, 5, 125), (1, 1, 87),  (1, 3, 45),
 (2, 4, 210), (2, 7, 95),  (2, 2, 60),
 (3, 1, 180), (3, 5, 140), (3, 8, 320),
 (4, 5, 90),  (4, 3, 55),
 (5, 8, 250), (5, 1, 110),
-(NULL, 5, 30), (NULL, 1, 45);  -- guest korisnici
+(NULL, 5, 30), (NULL, 1, 45);
 
--- Klikovi na link (Booking/Airbnb)
 INSERT INTO external_click (tourist_id, post_id, url) VALUES
 (1, 1, 'https://www.booking.com/hotel/me/jezera-zabljak.html'),
 (3, 1, 'https://www.booking.com/hotel/me/jezera-zabljak.html'),
@@ -922,7 +983,6 @@ INSERT INTO external_click (tourist_id, post_id, url) VALUES
 (4, 6, 'https://www.airbnb.com/rooms/durmitorview'),
 (2, 4, 'https://durmitorsummerfest.me/karte');
 
--- Trazenje direkcija
 INSERT INTO direction_request (tourist_id, post_id, from_lat, from_lng) VALUES
 (1, 5, 43.1500, 19.1100),
 (2, 7, 42.2750, 18.8300),
@@ -932,18 +992,23 @@ INSERT INTO direction_request (tourist_id, post_id, from_lat, from_lng) VALUES
 
 
 -- ============================================================
---  RECENZIJE
+--  RECENZIJE (v2: sa status poljem, post_id nullable)
 -- ============================================================
 
-INSERT INTO review (tourist_id, post_id, rating, comment, is_approved) VALUES
-(1, 5, 5, 'Nevjerovatno ljepoto! Crno jezero je jedno od najljepših mjesta koje sam posjetila. Staza je lijepo uredjena.', 1),
-(2, 5, 4, 'Preljepo, ali malo previše turista u augustu. Preporučujem posjet u jutarnjim satima.', 1),
-(3, 1, 5, 'Odličan hotel, predivna lokacija i ljubazno osoblje. Spa je vrhunski.', 1),
-(4, 3, 4, 'Zanimljiv muzej sa dobrom zbirkom. Vodič je bio informativan.', 1),
-(1, 1, 4, 'Lijepi apartmani, čisti i dobro opremljeni. Domaćini su bili odlični.', 1),
-(5, 8, 5, 'Savin Kuk je fantastičan ski centar! Staze su dobro uredjene, žičare moderne.', 1),
-(2, 4, 5, 'Festival je bio odličan! Atmosfera je neopisiva, muzičari vrhunski!', 1),
-(3, 8, 4, 'Dobro skijalište, ali gužve vikendom. Škola skijanja je odlična za početnike.', 1);
+INSERT INTO review (tourist_id, post_id, route_id, rating, comment, status, is_approved) VALUES
+(1, 5,    NULL, 5, 'Nevjerovatno lijepo! Crno jezero je jedno od najljepših mjesta. Staza je lijepo uredjena.',     'APPROVED', 1),
+(2, 5,    NULL, 4, 'Preljepo, ali malo previše turista u augustu. Preporučujem jutarnje sate.',                       'APPROVED', 1),
+(3, 1,    NULL, 5, 'Odličan hotel, predivna lokacija i ljubazno osoblje. Spa je vrhunski.',                           'APPROVED', 1),
+(4, 3,    NULL, 4, 'Zanimljiv muzej sa dobrom zbirkom. Vodič je bio informativan.',                                   'APPROVED', 1),
+(1, 1,    NULL, 4, 'Lijepi apartmani, čisti i dobro opremljeni. Domaćini su bili odlični.',                           'APPROVED', 1),
+(5, 8,    NULL, 5, 'Savin Kuk je fantastičan ski centar! Staze su dobro uredjene, žičare moderne.',                   'APPROVED', 1),
+(2, 4,    NULL, 5, 'Festival je bio odličan! Atmosfera je neopisiva, muzičari vrhunski!',                             'APPROVED', 1),
+(3, 8,    NULL, 4, 'Dobro skijalište, ali gužve vikendom. Škola skijanja je odlična za početnike.',                   'APPROVED', 1),
+-- Recenzije za rute (novo v2 - route_id)
+(1, NULL, 1,    5, 'Prekrasna staza! Crno jezero je zadivljujuće sa svakog ugla.',                                    'APPROVED', 1),
+(5, NULL, 2,    4, 'Teška tura ali vrijedna svake kapi znoja. Pogled sa vrha je nestvaran.',                          'PENDING',  0),
+-- Recenzija na čekanju moderacije
+(2, 7,    NULL, 2, 'Previše buke, nisam mogla spavati. Razočarana.',                                                  'PENDING',  0);
 
 
 -- ============================================================
@@ -966,18 +1031,14 @@ INSERT INTO visit_planner (tourist_id, title, start_date, end_date, notes) VALUE
  'Skijanje i upoznavanje Crne Gore.');
 
 INSERT INTO planner_item (planner_id, post_id, route_id, day_number, order_in_day, notes, scheduled_time) VALUES
--- Emma: Dan 1
-(1, 1,    NULL, 1, 1, 'Check-in Hotel Jezera', '15:00:00'),
-(1, NULL, 1,    1, 2, 'Popodnevna šetnja oko Crnog jezera', '17:00:00'),
-(1, 2,    NULL, 1, 3, 'Večera u Restauranu Soa', '20:00:00'),
--- Emma: Dan 2
-(1, 3,    NULL, 2, 1, 'Jutarnja posjeta muzeju', '10:00:00'),
-(1, NULL, 2,    2, 2, 'Tura na Bobotov Kuk — cijeli dan', '07:00:00'),
--- Emma: Dan 4 — festival
-(1, 4,    NULL, 4, 1, 'Durmitor Summer Fest — večernji program', '19:00:00'),
--- Jana: Dan 1
-(2, 1,    NULL, 1, 1, 'Check-in Hotel Jezera', '14:00:00'),
-(2, 8,    NULL, 2, 1, 'Ski dan na Savin Kuku', '09:00:00');
+(1, 1,    NULL, 1, 1, 'Check-in Hotel Jezera',                       '15:00:00'),
+(1, NULL, 1,    1, 2, 'Popodnevna šetnja oko Crnog jezera',          '17:00:00'),
+(1, 2,    NULL, 1, 3, 'Večera u Restauranu Soa',                     '20:00:00'),
+(1, 3,    NULL, 2, 1, 'Jutarnja posjeta muzeju',                     '10:00:00'),
+(1, NULL, 2,    2, 2, 'Tura na Bobotov Kuk — cijeli dan',            '07:00:00'),
+(1, 4,    NULL, 4, 1, 'Durmitor Summer Fest — večernji program',     '19:00:00'),
+(2, 1,    NULL, 1, 1, 'Check-in Hotel Jezera',                       '14:00:00'),
+(2, 8,    NULL, 2, 1, 'Ski dan na Savin Kuku',                       '09:00:00');
 
 
 -- ============================================================
@@ -991,26 +1052,53 @@ INSERT INTO ticket (post_id, tourist_id, ticket_code, qr_code, price_paid, statu
 
 
 -- ============================================================
---  NOTIFIKACIJE
+--  NOTIFIKACIJE (za turiste)
 -- ============================================================
 
 INSERT INTO notification (tourist_id, type, title, body, payload, is_read) VALUES
-(1, 'new_event',
- 'Novi dogadjaj u Žabljaku',
+(1, 'new_event',  'Novi dogadjaj u Žabljaku',
  'Durmitor Summer Fest 2025 — 18-20 jul. Karte u prodaji!',
  JSON_OBJECT('post_id', 4, 'url', '/post/4'), 0),
-(3, 'reminder',
- 'Vaš put za Žabljak za 3 dana',
+(3, 'reminder',   'Vaš put za Žabljak za 3 dana',
  'Provjeri planer i upoznaj se sa vremenskom prognozom.',
  JSON_OBJECT('planner_id', 2), 0),
-(5, 'new_event',
- 'Savin Kuk — sezona otvorena',
+(5, 'new_event',  'Savin Kuk — sezona otvorena',
  'Skijaška sezona na Savin Kuku počinje 15. decembra.',
  JSON_OBJECT('post_id', 8, 'url', '/post/8'), 1),
-(2, 'promo',
- 'Posebna ponuda: Hotel Jezera',
+(2, 'promo',      'Posebna ponuda: Hotel Jezera',
  'Rezerviši 3+ noći i dobij 15% popusta. Ponuda važi do kraja aprila.',
  JSON_OBJECT('post_id', 1, 'url', '/post/1'), 0);
+
+
+-- ============================================================
+--  ADMIN NOTIFIKACIJE (NOVO v2) — topbar zvono
+-- ============================================================
+
+INSERT INTO admin_notification (admin_user_id, type, title, body, payload, is_read) VALUES
+(1, 'new_registration',
+ 'Novi zahtjev za registraciju',
+ 'Milica Stanković čeka odobrenje naloga.',
+ JSON_OBJECT('registration_id', 1, 'url', '/admin/users'), 0),
+
+(1, 'pending_review',
+ 'Nova recenzija čeka moderaciju',
+ 'Turist je ostavio recenziju za Hotel Jezera Žabljak.',
+ JSON_OBJECT('review_id', 1, 'post_id', 1, 'url', '/admin/reviews'), 0),
+
+(1, 'pending_review',
+ 'Negativna recenzija',
+ 'Recenzija sa ocjenom 2/5 za Crno jezero.',
+ JSON_OBJECT('review_id', 2, 'post_id', 5, 'url', '/admin/reviews'), 1),
+
+(2, 'post_approved',
+ 'Muzej Žabljaka odobren',
+ 'Vaša objava "Muzej Žabljaka" je odobrena i objavljena.',
+ JSON_OBJECT('post_id', 3, 'url', '/admin/lokacije'), 0),
+
+(3, 'system',
+ 'Dobrodošli na platformu',
+ 'Vaš nalog je aktivan. Možete početi sa kreiranjem sadržaja.',
+ JSON_OBJECT('url', '/admin/dashboard'), 1);
 
 
 -- ============================================================
@@ -1034,19 +1122,58 @@ INSERT INTO admin_audit_log (admin_user_id, performed_by, action, entity_type, e
  JSON_OBJECT('admin_user_id', 2, 'email', 'ana.kovacevic@zabljak.travel', 'status', 'approved')),
 (1, 1, 'approve', 'admin_registration_request', 3,
  JSON_OBJECT('admin_user_id', 3, 'email', 'nikola.djuric@npdurmitor.me',  'status', 'approved')),
-(2, 2, 'create', 'post', 3,
+(2, 2, 'create',  'post', 3,
  JSON_OBJECT('title', 'Muzej Žabljaka', 'post_type', 'cultural_site', 'status', 'published')),
-(3, 3, 'create', 'route', 1,
+(3, 3, 'create',  'route', 1,
  JSON_OBJECT('name', 'Staza oko Crnog jezera', 'difficulty', 'easy')),
-(4, 4, 'create', 'post', 4,
+(4, 4, 'create',  'post', 4,
  JSON_OBJECT('title', 'Durmitor Summer Fest 2025', 'post_type', 'event'));
 
 
 -- ============================================================
---  KORISNI VIEW-OVI za dashboard
+--  VIEWS — za API upite
 -- ============================================================
 
--- Admin dashboard: statistike po objavama
+-- v_posts_full — za /api/posts (NOVO v2, zamjenjuje stari v_post_stats)
+CREATE OR REPLACE VIEW v_posts_full AS
+SELECT
+  p.id                    AS postId,
+  p.admin_id              AS adminId,
+  p.region_id             AS regionId,
+  p.title,
+  p.post_type             AS postType,
+  p.description,
+  p.lat,
+  p.lng,
+  p.address,
+  p.external_url          AS externalUrl,
+  p.external_url_label    AS externalUrlLabel,
+  p.images,
+  p.opening_hours         AS openingHours,
+  p.details,
+  p.status,
+  p.view_count            AS viewCount,
+  p.like_count            AS likeCount,
+  p.save_count            AS saveCount,
+  p.review_count          AS reviewCount,
+  p.avg_rating            AS avgRating,
+  p.published_at          AS publishedAt,
+  p.created_at            AS createdAt,
+  p.updated_at            AS updatedAt,
+  a.full_name             AS adminName,
+  a.role                  AS adminRole,
+  a.organization_id       AS adminOrganizationId,
+  r.name                  AS regionName,
+  r.type                  AS regionType,
+  r.lat                   AS regionLat,
+  r.lng                   AS regionLng,
+  r.country               AS regionCountry
+FROM post p
+JOIN  admin_user a ON p.admin_id  = a.id
+LEFT JOIN region r ON p.region_id = r.id;
+
+
+-- v_post_stats — zadržan za kompatibilnost
 CREATE OR REPLACE VIEW v_post_stats AS
 SELECT
   p.id,
@@ -1060,54 +1187,141 @@ SELECT
   p.save_count,
   p.review_count,
   p.avg_rating,
-  (SELECT COUNT(*) FROM external_click ec WHERE ec.post_id = p.id) AS external_clicks,
+  (SELECT COUNT(*) FROM external_click   ec WHERE ec.post_id = p.id) AS external_clicks,
   (SELECT COUNT(*) FROM direction_request dr WHERE dr.post_id = p.id) AS direction_requests,
   p.published_at,
   p.created_at
 FROM post p
-JOIN admin_user a ON p.admin_id = a.id
-LEFT JOIN region r ON p.region_id = r.id;
+JOIN  admin_user a ON p.admin_id  = a.id
+LEFT JOIN region  r ON p.region_id = r.id;
 
--- SuperAdmin dashboard: globalni pregled
+
+-- v_routes_full — za /api/routes (NOVO v2)
+CREATE OR REPLACE VIEW v_routes_full AS
+SELECT
+  rt.id               AS routeId,
+  rt.admin_id         AS adminId,
+  rt.region_id        AS regionId,
+  rt.name,
+  rt.difficulty,
+  rt.distance_km      AS distanceKm,
+  rt.duration_min     AS durationMin,
+  rt.elevation_gain   AS elevationGainM,
+  rt.description,
+  rt.waypoints,
+  rt.gpx_file_path    AS gpxFilePath,
+  rt.images,
+  rt.status,
+  rt.view_count       AS viewCount,
+  rt.save_count       AS saveCount,
+  rt.created_at       AS createdAt,
+  rt.updated_at       AS updatedAt,
+  a.full_name         AS adminName,
+  r.name              AS regionName,
+  r.lat               AS regionLat,
+  r.lng               AS regionLng
+FROM route rt
+JOIN  admin_user a  ON rt.admin_id  = a.id
+LEFT JOIN region r  ON rt.region_id = r.id;
+
+
+-- v_reviews_full — za /api/reviews (NOVO v2)
+CREATE OR REPLACE VIEW v_reviews_full AS
+SELECT
+  rv.id           AS reviewId,
+  rv.tourist_id   AS touristId,
+  rv.post_id      AS postId,
+  rv.route_id     AS routeId,
+  rv.rating,
+  rv.comment,
+  rv.status,
+  rv.is_approved,
+  rv.created_at   AS createdAt,
+  t.name          AS touristName,
+  p.title         AS postTitle,
+  p.post_type     AS postType,
+  ro.name         AS routeName,
+  CASE
+    WHEN rv.post_id  IS NOT NULL AND p.post_type = 'event' THEN 'EVENT'
+    WHEN rv.route_id IS NOT NULL THEN 'ROUTE'
+    WHEN rv.post_id  IS NOT NULL THEN 'OBJECT'
+    ELSE NULL
+  END             AS entityType,
+  COALESCE(p.title, ro.name) AS entityName
+FROM review rv
+LEFT JOIN tourist    t  ON rv.tourist_id = t.id
+LEFT JOIN post       p  ON rv.post_id    = p.id
+LEFT JOIN route      ro ON rv.route_id   = ro.id;
+
+
+-- v_admin_users_full — za /api/admin-users (NOVO v2)
+CREATE OR REPLACE VIEW v_admin_users_full AS
+SELECT
+  au.id                   AS userId,
+  au.organization_id      AS organizationId,
+  au.full_name            AS fullName,
+  au.email,
+  au.email_verified_at    AS emailVerifiedAt,
+  au.role,
+  au.is_individual        AS isIndividual,
+  au.account_status       AS accountStatus,
+  au.profile_image        AS profileImage,
+  au.last_login_at        AS lastLoginAt,
+  au.created_at           AS createdAt,
+  o.name                  AS organizationName,
+  o.type                  AS organizationType,
+  o.contact_email         AS organizationEmail,
+  o.website               AS organizationWebsite,
+  o.is_verified           AS organizationIsVerified,
+  (SELECT COUNT(*) FROM admin_user_permission aup
+   WHERE aup.admin_user_id = au.id)  AS permissionCount,
+  CASE WHEN au.account_status = 'active' THEN 1 ELSE 0 END AS isActive
+FROM admin_user au
+LEFT JOIN organization o ON au.organization_id = o.id;
+
+
+-- v_superadmin_overview — za dashboard KPI (OSVJEŽEN v2)
 CREATE OR REPLACE VIEW v_superadmin_overview AS
 SELECT
-  (SELECT COUNT(*) FROM tourist WHERE is_active = 1)                         AS total_tourists,
-  (SELECT COUNT(*) FROM admin_user WHERE role = 'admin' AND account_status = 'active') AS total_admins,
-  (SELECT COUNT(*) FROM post WHERE status = 'published')                     AS total_posts,
-  (SELECT COUNT(*) FROM route WHERE status = 'published')                    AS total_routes,
-  (SELECT COUNT(*) FROM admin_registration_request WHERE status = 'pending') AS pending_requests,
-  (SELECT COUNT(*) FROM review WHERE is_approved = 0)                        AS pending_reviews,
-  (SELECT COUNT(*) FROM ticket WHERE status = 'issued')                      AS tickets_issued;
+  (SELECT COUNT(*) FROM tourist WHERE is_active = 1)                                    AS totalTourists,
+  (SELECT COUNT(*) FROM admin_user WHERE role = 'admin' AND account_status = 'active')  AS totalAdmins,
+  (SELECT COUNT(*) FROM post  WHERE status = 'published')                                AS totalPosts,
+  (SELECT COUNT(*) FROM route WHERE status = 'published')                                AS totalRoutes,
+  (SELECT COUNT(*) FROM admin_registration_request WHERE status = 'pending')             AS pendingRegistrations,
+  (SELECT COUNT(*) FROM review WHERE status = 'PENDING')                                 AS pendingReviews,
+  (SELECT COUNT(*) FROM ticket WHERE status = 'issued')                                  AS ticketsIssued,
+  (SELECT COUNT(*) FROM admin_notification WHERE is_read = 0)                            AS unreadNotifications;
 
--- Popularnost regija
+
+-- v_region_popularity — za analytics
 CREATE OR REPLACE VIEW v_region_popularity AS
 SELECT
-  r.id,
+  r.id                    AS regionId,
   r.name,
   r.type,
-  COUNT(DISTINCT p.id)  AS num_posts,
-  SUM(p.view_count)     AS total_views,
-  SUM(p.like_count)     AS total_likes,
-  AVG(p.avg_rating)     AS avg_rating
+  COUNT(DISTINCT p.id)    AS numPosts,
+  COALESCE(SUM(p.view_count), 0) AS totalViews,
+  COALESCE(SUM(p.like_count), 0) AS totalLikes,
+  AVG(p.avg_rating)       AS avgRating
 FROM region r
 LEFT JOIN post p ON p.region_id = r.id AND p.status = 'published'
 GROUP BY r.id, r.name, r.type;
 
+
 -- ============================================================
---  AŽURIRANJE BROJACA (view_count, like_count, itd.)
+--  AŽURIRANJE BROJAČA
 -- ============================================================
 
 UPDATE post p SET
   like_count   = (SELECT COUNT(*) FROM post_like  WHERE post_id = p.id),
   save_count   = (SELECT COUNT(*) FROM post_save  WHERE post_id = p.id),
   view_count   = (SELECT COUNT(*) FROM post_view  WHERE post_id = p.id),
-  review_count = (SELECT COUNT(*) FROM review     WHERE post_id = p.id AND is_approved = 1),
-  avg_rating   = (SELECT AVG(rating) FROM review  WHERE post_id = p.id AND is_approved = 1);
+  review_count = (SELECT COUNT(*) FROM review     WHERE post_id = p.id AND status = 'APPROVED'),
+  avg_rating   = (SELECT AVG(rating) FROM review  WHERE post_id = p.id AND status = 'APPROVED');
 
 UPDATE route r SET
-  view_count = (SELECT COUNT(*) FROM post_view WHERE post_id IS NULL),
   save_count = (SELECT COUNT(*) FROM tourist_favorite WHERE route_id = r.id);
 
 -- ============================================================
---  KRAJ SKRIPTE
+--  KRAJ SKRIPTE v2
 -- ============================================================
