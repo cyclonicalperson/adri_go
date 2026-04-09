@@ -6,15 +6,17 @@ import { ActivatedRoute, Router } from '@angular/router';
   selector: 'app-location-details',
   standalone: true,
   imports: [CommonModule],
-  // IZBRIŠI ".component" iz putanje ispod:
   templateUrl: './location-details.html', 
   styleUrls: ['./location-details.css']
 })
 export class LocationDetailsComponent implements OnInit {
   locationId: string | null = null;
+  
+  // Putanja do default slike
+  defaultImage = 'assets/plaza.jpg';
 
-  // Ovde bi u realnoj aplikaciji išao poziv servisu. Za sada koristimo mock.
-  locationData = {
+  // Mock podaci (ostavio sam image prazan da bi se testirao fallback na plaza.jpg)
+  locationData: any = {
     title: 'Old Town Budva',
     category: 'Culture',
     rating: 4.8,
@@ -23,22 +25,25 @@ export class LocationDetailsComponent implements OnInit {
     description: 'The old town of Budva is one of the oldest urban centers on the Adriatic, more than 2,500 years old. Within its walls he finds a labyrinth of narrow...',
     workingHours: '00-24h',
     pass: 'Free',
-    image: 'assets/Budva.jpg'
+    image: '' // Ako ovde staviš 'assets/Budva.jpg', prikazaće nju
   };
 
   constructor(private route: ActivatedRoute, private router: Router) {}
 
   ngOnInit(): void {
-    // Uzimamo ID iz rute (npr. /location-details/2)
     this.locationId = this.route.snapshot.paramMap.get('id');
   }
 
+  // Pametan getter za sliku
+  get heroImage(): string {
+    return this.locationData?.image ? this.locationData.image : this.defaultImage;
+  }
+
   goBack() {
-    // Vraćamo korisnika na prethodnu stranu
     window.history.back();
   }
 
   getDirections() {
-    console.log('Otvaram Google Maps za:', this.locationData.title);
+    console.log('Otvaram Google Maps rutu za:', this.locationData.title);
   }
 }

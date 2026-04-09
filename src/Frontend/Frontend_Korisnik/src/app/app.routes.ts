@@ -20,8 +20,8 @@ import { NotificationsComponent } from './notifications/notifications';
 import { SettingsComponent } from './settings/settings';
 
 export const routes: Routes = [
-  // POČETNA RUTA: Automatski te šalje na login ako je URL prazan
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  // POČETNA RUTA: Otvara mapu direktno
+  { path: '', redirectTo: '/map-home', pathMatch: 'full' },
 
   // LOGIN & REGISTRACIJA
   { path: 'login', component: LoginComponent },
@@ -32,7 +32,7 @@ export const routes: Routes = [
   { path: 'map-home', component: MapHomeComponent },
   { path: 'location-list', component: LocationListComponent },
   { path: 'filters', component: FiltersComponent },
-  
+
   // DETALJI LOKACIJE (sa parametrom :id)
   { path: 'location-details/:id', component: LocationDetailsComponent },
 
@@ -44,7 +44,6 @@ export const routes: Routes = [
   { path: 'notifications', component: NotificationsComponent },
   { path: 'settings', component: SettingsComponent },
 
-  // WILDCARD RUTA: Mora biti poslednja u nizu! 
-  // Ako korisnik ukuca bilo šta što ne postoji, šalje ga na login.
-  { path: '**', redirectTo: '/login' }
+  // WILDCARD RUTA: Mora biti poslednja
+  { path: '**', redirectTo: '/map-home' }
 ];
