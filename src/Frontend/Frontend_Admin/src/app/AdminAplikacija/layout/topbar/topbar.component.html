@@ -1,25 +1,71 @@
 <header class="topbar">
   <div class="left">
+    <!-- Hamburger: always visible. Toggles sidebar on both desktop and mobile. -->
     <button class="btn-toggle"
             (click)="toggleSidebar.emit()"
             aria-label="Otvori/zatvori meni">
       ☰
     </button>
+
     <div class="header-left">
       <div class="header-title">{{ pageTitle$ | async }}</div>
-      <div class="header-sub">{{ pageSubtitle }}</div>
+      <div class="header-sub header-sub--desktop">{{ pageSubtitle }}</div>
     </div>
   </div>
 
   <div class="right">
-    <div class="notif-btn" role="button" aria-label="Obaveštenja">
+    <!-- Notifications bell -->
+    <div class="notif-btn"
+         role="button"
+         tabindex="0"
+         aria-label="Obaveštenja"
+         [class.has-notifications]="notifications.length > 0"
+         (click)="toggleNotifications()"
+         (keydown.enter)="toggleNotifications()">
       🔔
-      <span class="notif-dot" aria-hidden="true"></span>
+      @if (unreadCount > 0) {
+      <span class="notif-dot" aria-label="{{ unreadCount }} nepročitanih">{{ unreadCount }}</span>
+      }
     </div>
-    <div class="user-meta">
-      <div class="user-name">{{ auth.currentUser?.fullName }}</div>
-      <div class="user-role">{{ roleLabel }}</div>
+
+    <!-- Notification panel -->
+    @if (notifOpen) {
+    <div class="notif-backdrop" (click)="notifOpen = false"></div>
+    <div class="notif-panel">
+      <div class="notif-panel-header">
+        <span class="notif-panel-title">Obaveštenja</span>
+        @if (unreadCount > 0) {
+        <button class="notif-mark-all" (click)="markAllRead()">Označi sve kao pročitano</button>
+        }
+      </div>
+      <div class="notif-list">
+        @if (notifications.length === 0) {
+        <div class="notif-empty">Nema novih obaveštenja.</div>
+        }
+        @for (n of notifications; track n.id) {
+        <div class="notif-item" [class.unread]="!n.read" (click)="openNotification(n)">
+          <div class="notif-icon" [style.background]="n.iconBg">{{ n.icon }}</div>
+          <div class="notif-body">
+            <div class="notif-title">{{ n.title }}</div>
+            <div class="notif-desc">{{ n.description }}</div>
+            <div class="notif-time">{{ n.time }}</div>
+          </div>
+          @if (!n.read) {
+          <div class="notif-unread-dot"></div>
+          }
+        </div>
+        }
+      </div>
     </div>
-    <div class="header-avatar" aria-hidden="true">{{ initials }}</div>
+    }
+
+    <!-- Avatar + name → profile page -->
+    <a class="user-chip" routerLink="/admin/profile" aria-label="Moj profil">
+      <div class="user-meta user-meta--desktop">
+        <div class="user-name">{{ auth.currentUser?.fullName }}</div>
+        <div class="user-role">{{ roleLabel }}</div>
+      </div>
+      <div class="header-avatar">{{ initials }}</div>
+    </a>
   </div>
 </header>

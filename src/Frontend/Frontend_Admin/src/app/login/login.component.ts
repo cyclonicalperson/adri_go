@@ -7,7 +7,7 @@ import { AuthService } from '@core/auth/auth.service';
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule],   // No RouterLink needed — we navigate imperatively
 })
 export class LoginComponent {
   form: FormGroup;
@@ -31,25 +31,26 @@ export class LoginComponent {
 
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-
     this.loading = true;
     this.error = null;
 
     this.auth.login(this.form.value).subscribe({
       next: res => {
         this.loading = false;
-        // Both ADMIN (superadmin) and ORG (regular admin) use the admin panel
         if (res.user.role === 'ADMIN' || res.user.role === 'ORG') {
           this.router.navigate(['/admin/dashboard']);
         } else {
-          // TOURIST role — redirect to tourist app (future)
           this.router.navigate(['/app']);
         }
       },
       error: err => {
         this.loading = false;
-        this.error = err.message ?? 'Pogrešan email ili lozinka.';
+        this.error = err.error?.message ?? 'Pogrešan email ili lozinka.';
       },
     });
+  }
+
+  goToRegister(): void {
+    this.router.navigate(['/register']);
   }
 }

@@ -48,10 +48,10 @@ const ORG_REVIEW_IDS = new Set([1, 5]); // reviews for org's objects
 
 const USERS = [
   { userId: 1, roleId: 1, organizationId: null, fullName: 'Marko Super', email: 'superadmin@touristhub.rs', isActive: true, createdAt: '2026-01-01T00:00:00', role: { roleId: 1, roleName: 'ADMIN', description: 'Super Administrator' }, organization: null },
-  { userId: 2, roleId: 2, organizationId: 1, fullName: 'Ana Petrović', email: 'admin@kopaonik.rs', isActive: true, createdAt: '2026-01-15T08:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Organizacija / Admin' }, organization: { organizationId: 1, name: 'Kopaonik Resort d.o.o.', description: '', contactEmail: 'admin@kopaonik.rs', phone: '', website: '' } },
-  { userId: 3, roleId: 2, organizationId: 2, fullName: 'DraganKović', email: 'dragan@exitfest.org', isActive: true, createdAt: '2026-02-01T09:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Organizacija / Admin' }, organization: { organizationId: 2, name: 'Exit Festival d.o.o.', description: '', contactEmail: '', phone: '', website: '' } },
-  { userId: 4, roleId: 2, organizationId: 3, fullName: 'Ivana Pavlović', email: 'ivana@gmail.com', isActive: true, createdAt: '2026-02-10T10:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Organizacija / Admin' }, organization: { organizationId: 3, name: 'Privatni apartman', description: '', contactEmail: '', phone: '', website: '' } },
-  { userId: 5, roleId: 2, organizationId: 4, fullName: 'Stefan Radović', email: 'stefan@example.com', isActive: false, createdAt: '2026-03-05T11:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Organizacija / Admin' }, organization: { organizationId: 4, name: 'Restoran Šumadija', description: '', contactEmail: '', phone: '', website: '' } },
+  { userId: 2, roleId: 2, organizationId: 1, fullName: 'Ana Petrović', email: 'admin@kopaonik.rs', isActive: true, createdAt: '2026-01-15T08:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Admin' }, organization: { organizationId: 1, name: 'Kopaonik Resort d.o.o.', description: '', contactEmail: 'admin@kopaonik.rs', phone: '', website: '' } },
+  { userId: 3, roleId: 2, organizationId: 2, fullName: 'DraganKović', email: 'dragan@exitfest.org', isActive: true, createdAt: '2026-02-01T09:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Admin' }, organization: { organizationId: 2, name: 'Exit Festival d.o.o.', description: '', contactEmail: '', phone: '', website: '' } },
+  { userId: 4, roleId: 2, organizationId: 3, fullName: 'Ivana Pavlović', email: 'ivana@gmail.com', isActive: true, createdAt: '2026-02-10T10:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Admin' }, organization: { organizationId: 3, name: 'Privatni apartman', description: '', contactEmail: '', phone: '', website: '' } },
+  { userId: 5, roleId: 2, organizationId: 4, fullName: 'Stefan Radović', email: 'stefan@example.com', isActive: false, createdAt: '2026-03-05T11:00:00', role: { roleId: 2, roleName: 'ORG', description: 'Admin' }, organization: { organizationId: 4, name: 'Restoran Šumadija', description: '', contactEmail: '', phone: '', website: '' } },
 ];
 
 const STATS = {
@@ -213,7 +213,7 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     return ok({
       data: [
         { roleId: 1, roleName: 'ADMIN', description: 'Super Administrator' },
-        { roleId: 2, roleName: 'ORG', description: 'Organizacija / Admin' },
+        { roleId: 2, roleName: 'ORG', description: 'Admin' },
         { roleId: 3, roleName: 'TOURIST', description: 'Turist' },
       ], success: true
     });

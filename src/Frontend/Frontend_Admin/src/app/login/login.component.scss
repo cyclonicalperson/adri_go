@@ -195,3 +195,38 @@
     transform: rotate(360deg);
   }
 }
+
+
+// ── Register prompt (below submit button) ────────────────────────────────
+.register-prompt {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 13px;
+  color: $gray-500;
+  line-height: 1.5;
+}
+
+// Styled as a link but implemented as a <button> for reliable navigation
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 700;
+  color: $primary-dark;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

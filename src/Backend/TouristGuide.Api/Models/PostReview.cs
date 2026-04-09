@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TouristGuide.Api.Models
 {
-    [Table("post_review")]
+    [Table("review")]
     public class PostReview
     {
         [Key]
@@ -23,10 +23,13 @@ namespace TouristGuide.Api.Models
         [MaxLength(1000)]
         public string? Comment { get; set; }
 
+        [Column("is_approved")]
+        public bool IsApproved { get; set; } = true;
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public Post Post { get; set; } = null!;
-        public Tourist Tourist { get; set; } = null!;
+        public Tourist? Tourist { get; set; }
     }
 }

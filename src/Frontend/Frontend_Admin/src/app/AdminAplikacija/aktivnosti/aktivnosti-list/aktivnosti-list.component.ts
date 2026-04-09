@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+// already imported
 import { environment } from '@env/environment';
 import { Activity, ActivityCategory } from '@core/models/activity.model';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -42,7 +44,7 @@ export class AktivnostiListComponent implements OnInit {
     { value: 'OTHER', label: '➕ Ostalo' },
   ];
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private router: Router) { }
 
   ngOnInit(): void { this.load(); }
 
@@ -85,9 +87,9 @@ export class AktivnostiListComponent implements OnInit {
   }
   onPage(p: number): void { if (p >= 1 && p <= this.totalPages) { this.page = p; this.load(); } }
 
-  editActivity(a: Activity): void { /* TODO: navigate to edit form */ }
+  editActivity(a: Activity): void { this.router.navigate(['/admin/aktivnosti', a.activityId, 'edit']); }
   deleteActivity(a: Activity): void { /* TODO: confirm + delete */ }
-  openNew(): void { /* TODO: navigate to new activity form */ }
+  openNew(): void { this.router.navigate(['/admin/aktivnosti', 'new']); }
   printReport(): void { window.print(); }
   exportCsv(): void { /* TODO */ }
 

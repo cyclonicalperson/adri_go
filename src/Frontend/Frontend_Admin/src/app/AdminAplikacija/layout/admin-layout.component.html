@@ -1,9 +1,16 @@
-<div class="layout">
+<!-- Mobile overlay backdrop -->
+@if (mobileMenuOpen) {
+<div class="mobile-backdrop" (click)="closeMobileMenu()"></div>
+}
 
-  <app-sidebar />
+<div class="layout" [class.sidebar-collapsed]="sidebarCollapsed">
+
+  <app-sidebar [(collapsed)]="sidebarCollapsed"
+               [class.mobile-open]="mobileMenuOpen"
+               (navClick)="closeMobileMenu()" />
 
   <div class="main">
-    <app-topbar (toggleSidebar)="toggleSidebar()" />
+    <app-topbar (toggleSidebar)="onToggleSidebar()" />
     <div class="content">
       <router-outlet />
     </div>
