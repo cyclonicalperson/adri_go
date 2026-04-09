@@ -11,6 +11,9 @@ import { Router } from '@angular/router';
 })
 export class SavedLocationsComponent {
   activeFilter: string = 'All';
+  
+  // Default slika (fallback zaštita ako neka slika nekada ne uspe da se učita)
+  defaultImage: string = 'assets/plaza.jpg';
 
   savedItems = [
     {
@@ -44,7 +47,7 @@ export class SavedLocationsComponent {
       distance: 2.8,
       status: 'Open Now',
       isOpen: true,
-      imageUrl: 'assets/wharf.jpg'
+      imageUrl: 'assets/plaza.jpg' // <-- Vraćena slika za treću lokaciju!
     }
   ];
 

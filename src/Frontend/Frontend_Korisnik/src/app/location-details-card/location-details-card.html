@@ -1,42 +1,46 @@
 <div class="bottom-sheet-overlay">
   <div class="location-details-card">
     
+    <!-- Zaglavlje -->
     <div class="card-header">
       <div class="category-label">
         <span class="label-dot"></span>
-        {{ locationData.category }}
+        {{ locationData?.category || 'General' }}
       </div>
-      <button class="close-btn" (click)="onCloseClick()">
-        <span class="close-icon">×</span> </button>
+      <button class="close-btn" (click)="onCloseClick($event)">
+        <span class="close-icon">✕</span>
+      </button>
     </div>
 
+    <!-- Slika (Koristi getter displayImage) -->
     <div class="image-container">
-      <img [src]="locationData.imageUrl" alt="Location photo" class="main-image">
+      <img [src]="displayImage" alt="Location photo" class="main-image">
     </div>
 
+    <!-- Telo kartice -->
     <div class="card-body">
       <div class="title-row">
-        <h2 class="location-title">{{ locationData.title }}</h2>
-        <div class="rating-box">
+        <h2 class="location-title">{{ locationData?.title || 'Unknown Location' }}</h2>
+        <div class="rating-box" *ngIf="locationData?.rating">
           <span class="rating-value">{{ locationData.rating }}</span>
           <span class="star-icon">★</span>
         </div>
       </div>
 
       <div class="info-row">
-        <div class="info-item distance-info">
+        <div class="info-item distance-info" *ngIf="locationData?.distance">
           <span class="info-icon">📍</span>
-          <span class="info-text">{{ locationData.distance }} km from you</span>
+          <span class="info-text">{{ locationData.distance }} km away</span>
         </div>
-        <div class="info-item status-info">
+        <div class="info-item status-info" *ngIf="locationData?.status">
           <span class="info-icon">🕒</span>
           <span class="info-text status-open">{{ locationData.status }}</span>
         </div>
       </div>
       
-      <p class="reviews-text">({{ locationData.reviews }} reviews)</p>
+      <p class="reviews-text" *ngIf="locationData?.reviews">Based on {{ locationData.reviews }} reviews</p>
 
-      <button class="btn btn-details">
+      <button class="btn btn-details" (click)="onViewDetailsClick($event)">
         View details <span class="arrow">→</span>
       </button>
     </div>

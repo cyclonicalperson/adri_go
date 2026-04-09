@@ -1,47 +1,78 @@
 <div class="map-wrapper">
-  
-  <div class="map-placeholder">
-    <div class="mock-pin hotel-pin" style="top: 30%; left: 70%;">🏨</div>
-    <div class="mock-pin restaurant-pin" style="top: 45%; left: 40%;">🍴</div>
-    <div class="mock-pin beach-pin" style="top: 70%; left: 20%;">🏖️</div>
 
-    <div 
-      class="mock-pin location-pin location-pin-active" 
-      style="top: 55%; left: 60%; cursor: pointer;"
-      (click)="openOldTownBudva()"
-    >
-      📍
+  <!-- ===== HEADER ===== -->
+  <div class="app-header">
+    <div class="header-left">
+      <span class="logo-icon">🌍</span>
+      <span class="logo-text">AdriGo</span>
+    </div>
+    <div class="header-right">
+      <button class="header-login-btn" (click)="goToLogin()">
+        👤 Login
+      </button>
+      <button class="header-menu-btn" (click)="toggleMenu()">☰</button>
     </div>
   </div>
 
+  <!-- ===== PRAVA LEAFLET MAPA ===== -->
+  <div class="map-container">
+    <div id="map"></div>
+  </div>
+
+  <!-- ===== SEARCH BAR SLOJ ===== -->
   <div class="top-ui-layer">
-    
     <div class="search-container">
       <span class="search-icon">🔍</span>
-      <input 
-        type="text" 
-        class="search-input" 
-        placeholder="Locations..." 
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search locations..."
         (keyup.enter)="onSearch($event)"
       >
       <button class="filter-btn" (click)="openFilters()">
         <span class="filter-icon">⚲</span>
       </button>
     </div>
-
-    <button class="list-view-btn" (click)="toggleListView()">
-      <span class="list-icon">☰</span>
-    </button>
-    
   </div>
 
-  <app-location-details-card 
-    *ngIf="selectedLocation" 
+  <!-- ===== LOCATION CARD (popup na mapi) ===== -->
+  <app-location-details-card
+    *ngIf="selectedLocation"
     [locationData]="selectedLocation"
     (onClose)="closeLocationDetails()"
     (click)="viewFullDetails()"
     style="cursor: pointer;"
   >
   </app-location-details-card>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="app-footer" *ngIf="!selectedLocation">
+    <button class="footer-btn" [class.active]="activeTab === 'map'" (click)="activeTab = 'map'">
+      <span class="footer-icon">🗺️</span>
+      <span class="footer-label">Map</span>
+    </button>
+    <button class="footer-btn" [class.active]="activeTab === 'list'" (click)="toggleListView()">
+      <span class="footer-icon">📋</span>
+      <span class="footer-label">Explore</span>
+    </button>
+    <button class="footer-btn" [class.active]="activeTab === 'saved'" (click)="goToSaved()">
+      <span class="footer-icon">🔖</span>
+      <span class="footer-label">Saved</span>
+    </button>
+    <button class="footer-btn" [class.active]="activeTab === 'tickets'" (click)="goToTickets()">
+      <span class="footer-icon">🎟️</span>
+      <span class="footer-label">Tickets</span>
+    </button>
+    <button class="footer-btn" [class.active]="activeTab === 'account'" (click)="goToAccount()">
+      <span class="footer-icon">👤</span>
+      <span class="footer-label">Account</span>
+    </button>
+  </div>
+
+  <!-- ===== SIDE MENU ===== -->
+  <app-side-menu
+    *ngIf="isMenuOpen"
+    (onClose)="isMenuOpen = false">
+  </app-side-menu>
 
 </div>

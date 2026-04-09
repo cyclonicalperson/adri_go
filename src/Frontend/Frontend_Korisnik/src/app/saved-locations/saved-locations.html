@@ -1,9 +1,14 @@
 <div class="saved-container">
+  
+  <!-- Header -->
   <div class="header">
-    <button class="back-btn" (click)="goBack()">‹</button>
-    <h1>Saved</h1>
+    <button class="back-btn" (click)="goBack()">
+      <span class="icon">←</span>
+    </button>
+    <h1>Saved Collections</h1>
   </div>
 
+  <!-- Horizontal Scroll za filtere -->
   <div class="filter-scroll">
     <div class="chips-row">
       <button 
@@ -16,40 +21,65 @@
     </div>
   </div>
 
+  <!-- Lista kartica -->
   <div class="scroll-content">
-    <p class="section-label">ALL COLLECTIONS ({{filteredItems.length}})</p>
+    <p class="section-label">YOU HAVE {{filteredItems.length}} SAVED {{filteredItems.length === 1 ? 'ITEM' : 'ITEMS'}}</p>
 
     <div class="card" *ngFor="let item of filteredItems">
       <div class="image-box">
-        <img [src]="item.imageUrl" [alt]="item.title">
-        <span class="badge" [ngClass]="item.category.toLowerCase()">{{item.category}}</span>
-        <button class="heart-btn">🤍</button>
+        <!-- Prikaz slike (uz fallback zaštitu) -->
+        <img 
+          [src]="item.imageUrl || defaultImage" 
+          (error)="item.imageUrl = defaultImage" 
+          [alt]="item.title" 
+          class="main-image"
+        >
+        <div class="image-overlay"></div>
+        
+        <span class="badge" [ngClass]="item.category.toLowerCase()">
+          <span class="dot"></span> {{item.category}}
+        </span>
+        
+        <button class="heart-btn active-heart">❤️</button>
       </div>
+      
       <div class="card-body">
         <div class="title-row">
           <h3>{{item.title}}</h3>
           <span class="rating">⭐ {{item.rating}}</span>
         </div>
+        
         <div class="meta-row">
-          <span>📍 {{item.distance}} km away</span>
-          <span [class.closed]="!item.isOpen">🕒 {{item.status}}</span>
+          <span class="info-pill">📍 {{item.distance}} km away</span>
+          <span class="info-pill" [class.closed]="!item.isOpen">🕒 {{item.status}}</span>
           <span class="reviews">({{item.reviews}} reviews)</span>
         </div>
+        
+        <div class="divider"></div>
+        
         <button class="view-link" (click)="viewDetails(item.id)">
-          View details <span class="arrow">↗</span>
+          View details <span class="arrow">→</span>
         </button>
       </div>
     </div>
 
-    <div class="loader-box">
+    <!-- Prikazuje se ako korisnik izabere filter koji nema lokacije -->
+    <div class="empty-state" *ngIf="filteredItems.length === 0">
+      <div class="empty-icon">📂</div>
+      <p>No saved items in this category.</p>
+    </div>
+
+    <!-- Spinner na dnu liste -->
+    <div class="loader-box" *ngIf="filteredItems.length > 0">
       <div class="spinner"></div>
       <p>Discovering more gems...</p>
     </div>
   </div>
 
+  <!-- Fiksiran Footer -->
   <div class="footer">
     <button class="map-btn" (click)="showOnMap()">
-      🗺️ Show on map
+      <span class="map-icon">🗺️</span> Show on map
     </button>
   </div>
 </div>
