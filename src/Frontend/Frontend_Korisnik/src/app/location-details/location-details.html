@@ -1,74 +1,189 @@
 <div class="details-container">
-  
-  <!-- Hero Sekcija sa Overlay-om -->
-  <div class="hero-section" [style.backgroundImage]="'url(' + heroImage + ')'">
-    <div class="hero-gradient"></div>
-    <button class="back-btn" (click)="goBack()">
-      <span class="back-icon">←</span>
-    </button>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" style="text-align:center; padding:60px; color:#888;">
+    ⏳ Loading...
   </div>
 
-  <!-- Beli kontejner koji naleže na sliku -->
-  <div class="content-card">
-    
-    <div class="header-info">
-      <div class="badges">
-        <span class="badge category">
-          <span class="dot"></span> {{locationData?.category}}
-        </span>
-        <span class="badge rating">
-          ⭐ {{locationData?.rating}} <span class="review-count">({{locationData?.reviews}})</span>
-        </span>
+  <!-- Error -->
+  <div *ngIf="errorMessage && !isLoading" style="padding:20px; text-align:center;">
+    <p style="color:#c0392b;">{{ errorMessage }}</p>
+    <button class="back-btn" (click)="goBack()">← Back</button>
+  </div>
+
+  <ng-container *ngIf="location && !isLoading">
+
+    <!-- Hero slika -->
+    <div class="hero-section" 
+      [style.backgroundImage]="images.length ? 'url(' + images[0] + ')' : 'url(assets/Budva.jpg)'">
+      <button class="back-btn" (click)="goBack()">←</button>
+    </div>
+
+    <div class="content-card">
+
+      <!-- Header info -->
+      <div class="header-info">
+        <div class="badges">
+          <span class="badge category">{{ location.postType }}</span>
+          <span class="badge rating">
+            ⭐ {{ location.avgRating ? (location.avgRating | number:'1.1-1') : 'N/A' }}
+            ({{ location.reviewCount }})
+          </span>
+        </div>
+        <h1>{{ location.title }}</h1>
+        <p class="address" *ngIf="location.address">📍 {{ location.address }}</p>
+        <p class="address" *ngIf="location.regionName && !location.address">📍 {{ location.regionName }}</p>
       </div>
-      
-      <div class="title-row">
-        <h1>{{locationData?.title}}</h1>
+
+      <!-- Statistike -->
+      <div style="display:flex; gap:16px; margin: 12px 0; font-size:0.9rem; color:#666; flex-wrap:wrap;">
+        <span>👁 {{ location.viewCount }} views</span>
+        <span>❤️ {{ location.likeCount }} likes</span>
+        <span>🔖 {{ location.saveCount }} saved</span>
+      </div>
+
+      <!-- Feedback poruke -->
+      <div *ngIf="likeMessage" style="background:#e8f5e9;color:#2e7d32;padding:8px 12px;border-radius:6px;margin-bottom:8px;font-size:0.85rem;">
+        {{ likeMessage }}
+      </div>
+      <div *ngIf="saveMessage" style="background:#e8f0fe;color:#1565c0;padding:8px 12px;border-radius:6px;margin-bottom:8px;font-size:0.85rem;">
+        {{ saveMessage }}
+      </div>
+      <div *ngIf="reviewSuccess" style="background:#e8f5e9;color:#2e7d32;padding:8px 12px;border-radius:6px;margin-bottom:8px;font-size:0.85rem;">
+        {{ reviewSuccess }}
+      </div>
+
+      <!-- Akcioni dugmadi -->
+      <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
         <button class="directions-btn" (click)="getDirections()">
-          <span class="icon">➤</span>
+          <span class="icon">➤</span> Directions
         </button>
+        <button (click)="onLike()" style="
+          background:#fde8e8; color:#c0392b; border:none;
+          padding:10px 18px; border-radius:20px; cursor:pointer; font-size:0.9rem;
+        ">❤️ Like</button>
+        <button (click)="onSave()" style="
+          background:#e8f0fe; color:#1565c0; border:none;
+          padding:10px 18px; border-radius:20px; cursor:pointer; font-size:0.9rem;
+        ">🔖 Save</button>
       </div>
-      <p class="address">📍 {{locationData?.address}}</p>
-    </div>
 
-    <section class="about">
-      <h3>About</h3>
-      <p>{{locationData?.description}} <span class="read-more">Read more</span></p>
-    </section>
+      <!-- Opis -->
+      <section class="about" *ngIf="location.description">
+        <h3>About</h3>
+        <p>{{ location.description }}</p>
+      </section>
 
-    <div class="info-grid">
-      <div class="info-item">
-        <div class="item-icon time-bg">🕒</div>
-        <div class="info-text">
-          <label>WORKING HOURS</label>
-          <strong>Open {{locationData?.workingHours}}</strong>
-        </div>
-      </div>
-      <div class="info-item">
-        <div class="item-icon pass-bg">🎫</div>
-        <div class="info-text">
-          <label>PASS / ENTRY</label>
-          <strong>{{locationData?.pass}}</strong>
-        </div>
-      </div>
-    </div>
-
-    <section class="reviews">
-      <div class="section-header">
-        <h3>Reviews</h3>
-        <span class="see-all">See all</span>
-      </div>
-      
-      <div class="review-card">
-        <div class="user-meta">
-          <div class="avatar-placeholder">MJ</div>
-          <div class="user-details">
-            <strong>Marko Jovanović</strong>
-            <span class="date">2 DAYS AGO</span>
+      <!-- Info grid -->
+      <div class="info-grid">
+        <div class="info-item" *ngIf="location.openingHours">
+          <span class="item-icon">🕒</span>
+          <div>
+            <label>WORKING HOURS</label>
+            <strong>{{ location.openingHours }}</strong>
           </div>
         </div>
-        <p class="review-text">"An incredible place with a rich history. The streets are beautiful to walk around and get lost in the magic of the old town."</p>
+        <div class="info-item" *ngIf="location.externalUrl">
+          <span class="item-icon">🌐</span>
+          <div>
+            <label>WEBSITE</label>
+            <a [href]="location.externalUrl" target="_blank">
+              {{ location.externalUrlLabel || location.externalUrl }}
+            </a>
+          </div>
+        </div>
       </div>
-    </section>
 
-  </div>
-</div>
+      <!-- ── RECENZIJE ───────────────────────────────────────────────────────── -->
+      <section class="reviews">
+        <div class="section-header">
+          <h3>Reviews ({{ location.reviewCount }})</h3>
+
+          <!-- Dugme za formu — samo prijavljeni -->
+          <span
+            *ngIf="authService.isLoggedIn"
+            class="see-all"
+            style="cursor:pointer;"
+            (click)="showReviewForm = !showReviewForm"
+          >
+            {{ showReviewForm ? 'Cancel' : '+ Add review' }}
+          </span>
+          <span *ngIf="!authService.isLoggedIn" class="see-all">
+            <a routerLink="/login">Login to review</a>
+          </span>
+        </div>
+
+        <!-- Forma za recenziju -->
+        <div *ngIf="showReviewForm && authService.isLoggedIn" style="
+          background:#f9f9f9; padding:16px; border-radius:10px;
+          margin-bottom:16px; border:1px solid #eee;
+        ">
+          <div *ngIf="reviewError" style="color:#c0392b;font-size:0.85rem;margin-bottom:8px;">
+            {{ reviewError }}
+          </div>
+
+          <!-- Zvjezdice -->
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:6px;">Rating</label>
+            <span style="display:flex;gap:4px;">
+              <button *ngFor="let s of [1,2,3,4,5]"
+                type="button"
+                (click)="newRating = s"
+                style="background:none;border:none;font-size:1.8rem;cursor:pointer;line-height:1;"
+                [style.color]="s <= newRating ? '#f39c12' : '#ddd'"
+              >★</button>
+            </span>
+          </div>
+
+          <!-- Komentar -->
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:6px;">Comment (optional)</label>
+            <textarea
+              [(ngModel)]="newComment"
+              rows="3"
+              maxlength="1000"
+              placeholder="Share your experience..."
+              style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;resize:vertical;"
+            ></textarea>
+            <small style="color:#aaa;">{{ newComment.length }}/1000</small>
+          </div>
+
+          <button
+            (click)="submitReview()"
+            [disabled]="isSubmittingReview"
+            style="
+              background:#3498db;color:white;border:none;
+              padding:10px 24px;border-radius:8px;cursor:pointer;font-size:0.9rem;
+            "
+          >
+            {{ isSubmittingReview ? 'Submitting...' : 'Submit review' }}
+          </button>
+        </div>
+
+        <!-- Lista recenzija -->
+        <div *ngIf="reviews.length === 0" style="color:#888;padding:16px 0;font-size:0.9rem;">
+          No reviews yet. Be the first!
+        </div>
+
+        <div *ngFor="let review of reviews" class="review-card">
+          <div class="user-meta">
+            <div style="
+              width:36px;height:36px;border-radius:50%;
+              background:#3498db;color:white;
+              display:flex;align-items:center;justify-content:center;
+              font-weight:600;font-size:0.9rem;flex-shrink:0;
+            ">
+              {{ review.touristName.charAt(0).toUpperCase() }}
+            </div>
+            <div>
+              <strong>{{ review.touristName }}</strong>
+              <span class="date">{{ review.createdAt | date:'dd.MM.yyyy' }}</span>
+            </div>
+            <span style="margin-left:auto;color:#f39c12;font-size:1rem;">
+              {{ getStars(review.rating) }}
+            </span>
+          </div>
+          <p *ngIf="review.comment" style="margin-top:8px;font-size:0.9rem;color:#444;">
+            "{{ review.comment }}"
+          </p>
+        </div>

@@ -1,7 +1,22 @@
+
+
 <div class="page-container">
   <div class="header">
     <h1 class="title">Create your profile</h1>
     <p class="subtitle">Discover Montenegro your way</p>
+  </div>
+
+  <!-- Prikaz greške iz backenda -->
+  <div *ngIf="errorMessage" style="
+    background: #fde8e8;
+    color: #c0392b;
+    border: 1px solid #e74c3c;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+  ">
+    {{ errorMessage }}
   </div>
 
   <form [formGroup]="profileForm" (ngSubmit)="onCreateAccount()">
@@ -101,8 +116,8 @@
       </label>
     </div>
 
-    <button type="submit" class="btn btn-primary" [disabled]="!profileForm.valid">
-      Create account
+    <button type="submit" class="btn btn-primary" [disabled]="!profileForm.valid || isLoading">
+      {{ isLoading ? 'Creating account...' : 'Create account' }}
     </button>
   </form>
 

@@ -1,74 +1,115 @@
-import { Component } from '@angular/core';
+
+
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-// Importuj SideMenu komponentu
-import { SideMenuComponent } from '../SideMenu/side-menu.component'; 
+import { SideMenuComponent } from '../SideMenu/side-menu.component';
+import { LocationService, Location } from '../services/location.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  // OBAVEZNO dodaj SideMenuComponent u imports niz
-  imports: [CommonModule, SideMenuComponent], 
+  imports: [CommonModule, SideMenuComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
-export class LocationListComponent {
-  
-  // Varijabla koja kontroliše da li je bočni meni vidljiv
+export class LocationListComponent implements OnInit {
+
   isMenuOpen = false;
+  locations: Location[] = [];
+  isLoading = false;
+  errorMessage = '';
 
-  locations = [
-    {
-      id: 1,
-      title: 'Beach Morgen',
-      category: 'Beach',
-      rating: 4.8,
-      reviews: 1240,
-      distance: 1.2,
-      status: 'Open now',
-      isOpen: true,
-      imageUrl: 'assets/Budva.jpg' // Koristim sliku koju već imaš u assets
-    },
-    {
-      id: 2,
-      title: 'Old Town Budva',
-      category: 'Culture',
-      rating: 4.9,
-      reviews: 3502,
-      distance: 0.8,
-      status: 'Open now',
-      isOpen: true,
-      imageUrl: 'assets/Budva.jpg'
-    },
-    {
-      id: 3,
-      title: 'Lovćen - Njegošev Mauzolej',
-      category: 'Nature',
-      rating: 4.7,
-      reviews: 890,
-      distance: 42.5,
-      status: 'Closed',
-      isOpen: false,
-      imageUrl: 'assets/Durmitor.jpg' // Koristim tvoju sliku planine
+  // Feedback poruke za like/save
+  feedbackMessage = '';
+
+  constructor(
+    private router: Router,
+    private locationService: LocationService,
+    private authService: AuthService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadLocations();
+  }
+
+  loadLocations(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.locationService.getLocations().subscribe({
+      next: (res) => {
+        this.locations = res.data;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.errorMessage = 'Greška pri učitavanju lokacija.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  // ── Like ──────────────────────────────────────────────────────────────────
+  onLike(loc: Location, event: Event): void {
+    event.stopPropagation();
+    const touristId = this.authService.touristId;
+    if (!touristId) {
+      this.router.navigate(['/login']);
+      return;
     }
-  ];
+    this.locationService.likeLocation(loc.id, touristId).subscribe({
+      next: (res) => {
+        if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
+        this.showFeedback('❤️ Liked!');
+      },
+      error: (err) => console.error(err)
+    });
+  }
 
-  constructor(private router: Router) {}
+  // ── Save ──────────────────────────────────────────────────────────────────
+  onSave(loc: Location, event: Event): void {
+    event.stopPropagation();
+    const touristId = this.authService.touristId;
+    if (!touristId) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.locationService.saveLocation(loc.id, touristId).subscribe({
+      next: (res) => {
+        if (res.saveCount !== undefined) loc.saveCount = res.saveCount;
+        this.showFeedback('🔖 Saved!');
+      },
+      error: (err) => console.error(err)
+    });
+  }
 
-  // Funkcija za otvaranje/zatvaranje menija
+  private showFeedback(msg: string): void {
+    this.feedbackMessage = msg;
+    setTimeout(() => (this.feedbackMessage = ''), 2500);
+  }
+
+  // ── Navigacija ────────────────────────────────────────────────────────────
   toggleMenu(): void {
     this.isMenuOpen = !this.isMenuOpen;
   }
 
-  goToMap() {
+  goToMap(): void {
     this.router.navigate(['/map-home']);
   }
 
-  openFilters() {
+  openFilters(): void {
     this.router.navigate(['/filters']);
   }
 
-  viewDetails(id: number) {
-  this.router.navigate(['/location-details', id]);
-}
+  viewDetails(id: number): void {
+    this.router.navigate(['/location-details', id]);
+  }
+
+  // ── Helper ────────────────────────────────────────────────────────────────
+  getFirstImage(loc: Location): string {
+    const imgs = this.locationService.parseImages(loc.images);
+    return imgs[0] || 'assets/Budva.jpg';
+  }
 }
