@@ -5,9 +5,10 @@ import { AuthService } from '@core/auth/auth.service';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
+  imports: [ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
-  imports: [ReactiveFormsModule],   // No RouterLink needed — we navigate imperatively
 })
 export class LoginComponent {
   form: FormGroup;
@@ -31,21 +32,24 @@ export class LoginComponent {
 
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+
     this.loading = true;
     this.error = null;
 
     this.auth.login(this.form.value).subscribe({
       next: res => {
         this.loading = false;
-        if (res.user.role === 'ADMIN' || res.user.role === 'ORG') {
+        // DB ENUM vrednosti: 'superadmin' | 'admin'
+        if (res.user.role === 'superadmin' || res.user.role === 'admin') {
           this.router.navigate(['/admin/dashboard']);
         } else {
-          this.router.navigate(['/app']);
+          // Fallback za buduće role
+          this.router.navigate(['/admin/dashboard']);
         }
       },
       error: err => {
         this.loading = false;
-        this.error = err.error?.message ?? 'Pogrešan email ili lozinka.';
+        this.error = err.error?.message ?? err.message ?? 'Pogrešan email ili lozinka.';
       },
     });
   }

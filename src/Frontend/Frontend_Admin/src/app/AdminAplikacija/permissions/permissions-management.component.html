@@ -2,7 +2,7 @@
 
   <div class="page-intro">
     <div class="page-intro-title">Upravljanje dozvolama</div>
-    <div class="page-intro-sub">Odaberite korisnika → entitet → dozvole</div>
+    <div class="page-intro-sub">Odaberite korisnika i podesite dozvole</div>
   </div>
 
   <div class="perm-layout">
@@ -38,57 +38,49 @@
       </div>
     </div>
 
-    <!-- ── COL 2: Entity + permissions ────────────────────────────────── -->
+    <!-- ── COL 2: Permissions ─────────────────────────────────────────── -->
     <div class="perm-panel">
       <div class="perm-panel-header">
-        <span>2. Entitet i dozvole{{ selectedUser ? ' — ' + selectedUser.fullName : '' }}</span>
+        <span>2. Dozvole{{ selectedUser ? ' — ' + selectedUser.fullName : '' }}</span>
         <div class="step-badge">2</div>
       </div>
       <div class="perm-panel-body">
 
         @if (!selectedUser) {
         <div class="empty-hint">← Odaberite admina</div>
+        } @else if (permLoading) {
+        <div class="empty-hint">Učitavanje dozvola…</div>
         } @else {
 
-        <div class="entity-section-label">Odaberite entitet</div>
+        <div class="perm-bulk-actions">
+          <button class="btn-outline-sm" (click)="grantAll()">✓ Sve</button>
+          <button class="btn-outline-sm" (click)="revokeAll()">✗ Ništa</button>
+        </div>
 
-        @for (entity of availableEntities; track entity.id) {
-        <div class="entity-item"
-             [class.selected]="selectedEntity?.id === entity.id"
-             (click)="selectEntity(entity)">
-          <div class="entity-icon" [style.background]="entity.iconBg">{{ entity.icon }}</div>
+        @for (perm of allPermissions; track perm.code) {
+        <div class="perm-toggle-row">
           <div>
-            <div class="entity-nm">{{ entity.name }}</div>
-            <div class="entity-path">{{ entity.type }} · {{ entity.location }}</div>
+            <div class="perm-key">{{ perm.label }}</div>
+            <div class="perm-desc">{{ perm.description ?? perm.code }}</div>
           </div>
+          <button class="toggle"
+                  [class.on]="hasPermission(perm.code)"
+                  [class.off]="!hasPermission(perm.code)"
+                  (click)="togglePermission(perm.code)"
+                  [attr.aria-label]="(hasPermission(perm.code) ? 'Ukloni' : 'Dodaj') + ' dozvolu ' + perm.code"
+                  [attr.aria-pressed]="hasPermission(perm.code)">
+          </button>
         </div>
         }
 
-        @if (selectedEntity) {
-        <div class="perm-section-label">
-          Dozvole nad {{ selectedEntity.name }}
-        </div>
-
-        @for (perm of allPermissions; track perm.key) {
-        <div class="perm-toggle-row">
-          <div>
-            <div class="perm-key">{{ perm.key }}</div>
-            <div class="perm-desc">{{ perm.desc }}</div>
-          </div>
-          <button class="toggle"
-                  [class.on]="hasPermission(perm.key)"
-                  [class.off]="!hasPermission(perm.key)"
-                  (click)="togglePermission(perm.key)"
-                  [attr.aria-label]="(hasPermission(perm.key) ? 'Ukloni' : 'Dodaj') + ' dozvolu ' + perm.key"
-                  [attr.aria-pressed]="hasPermission(perm.key)">
-          </button>
-        </div>
+        @if (saveMsg) {
+        <div class="save-msg">{{ saveMsg }}</div>
         }
 
         <button class="save-btn" (click)="savePermissions()" [disabled]="saving">
           {{ saving ? 'Čuvanje...' : 'Sačuvaj dozvole' }}
         </button>
-        }
+
         }
       </div>
     </div>
@@ -101,9 +93,9 @@
       <div class="perm-panel-body">
         @for (entry of changeLog; track entry.time) {
         <div class="log-entry">
-          <div class="log-action" [class]="entry.type">{{ entry.actionLabel }}</div>
+          <div class="log-action" [class]="entry.type">{{ entry.label }}</div>
           <div class="log-detail">
-            <strong>{{ entry.user }}</strong> → {{ entry.permission }}
+            <strong>{{ entry.user }}</strong> → {{ entry.perm }}
           </div>
           <div class="log-meta">{{ entry.entity }} · {{ entry.time }}</div>
         </div>

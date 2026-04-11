@@ -45,12 +45,9 @@
          [cdkDragDisabled]="!customiseMode"
          [cdkDragData]="slot">
 
-
       @if (customiseMode) {
       <div class="widget-overlay">
-        <!-- Drag handle — grab this to drag the widget -->
         <div class="drag-grip" cdkDragHandle title="Prevuci da premestiš">⠿</div>
-        <!-- Arrow reorder — precise control -->
         <div class="overlay-move">
           <button class="oa-btn oa-move"
                   (click)="moveWidget(i, -1); $event.stopPropagation()"
@@ -65,9 +62,7 @@
             ↓
           </button>
         </div>
-        <!-- Widget name -->
         <div class="overlay-label">{{ widgetLabel(slot.id) }}</div>
-        <!-- Width toggle + remove -->
         <div class="overlay-actions">
           <button class="oa-btn"
                   (click)="toggleSpan(slot); $event.stopPropagation()"
@@ -82,7 +77,6 @@
         </div>
       </div>
 
-      <!-- Placeholder shown where widget will land during drag -->
       <div *cdkDragPlaceholder class="drag-placeholder"></div>
       }
 
@@ -97,21 +91,21 @@
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">🏢</div>
-            <div class="kpi-val">{{ stats?.totalObjects ?? 0 }}</div>
-            <div class="kpi-lbl">Lokacija</div>
+            <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
+            <div class="kpi-lbl">Objave</div>
             <div class="kpi-trend up">↑ +8 ovog meseca</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
-            <div class="kpi-icon-wrap">🎯</div>
+            <div class="kpi-icon-wrap">🗺️</div>
             <div class="kpi-val">{{ stats?.totalRoutes ?? 0 }}</div>
-            <div class="kpi-lbl">Aktivnosti</div>
+            <div class="kpi-lbl">Rute</div>
             <div class="kpi-trend up">↑ +4 ove nedelje</div>
           </div>
           <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
-            <div class="kpi-icon-wrap">🎟️</div>
-            <div class="kpi-val">{{ stats?.totalEvents ?? 0 }}</div>
-            <div class="kpi-lbl">Dogadjaji</div>
-            <div class="kpi-trend neutral">→ 5 ove nedelje</div>
+            <div class="kpi-icon-wrap">👥</div>
+            <div class="kpi-val">{{ stats?.totalAdmins ?? 0 }}</div>
+            <div class="kpi-lbl">Admini</div>
+            <div class="kpi-trend neutral">→ Aktivni</div>
           </div>
           <div class="kpi-tile" style="--accent:#8b5cf6;--accent-bg:#f5f3ff">
             <div class="kpi-icon-wrap">⭐</div>
@@ -200,7 +194,7 @@
           <div class="donut-wrap">
             <div class="donut">
               <div class="donut-center">
-                <div class="donut-num">{{ stats?.totalObjects ?? 248 }}</div>
+                <div class="donut-num">{{ stats?.totalPosts ?? 0 }}</div>
                 <div class="donut-lbl">Ukupno</div>
               </div>
             </div>
@@ -226,7 +220,7 @@
           @for (obj of popularObjects.slice(0, 5); track obj.id; let i = $index) {
           <div class="rank-item">
             <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
-            <span class="rank-name">{{ obj.name }}</span>
+            <span class="rank-name">{{ obj.title }}</span>
             <div class="rank-bar"><div class="rank-fill" [style.width.%]="topBarWidth(obj.viewCount, popularObjects)" style="background:#22c55e"></div></div>
             <span class="rank-val">{{ obj.viewCount | number }}</span>
           </div>
@@ -249,7 +243,7 @@
           @for (ev of popularEvents.slice(0, 5); track ev.id; let i = $index) {
           <div class="rank-item">
             <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
-            <span class="rank-name">{{ ev.name }}</span>
+            <span class="rank-name">{{ ev.title }}</span>
             <div class="rank-bar"><div class="rank-fill" [style.width.%]="topBarWidth(ev.viewCount, popularEvents)" style="background:#3b82f6"></div></div>
             <span class="rank-val">{{ ev.viewCount | number }}</span>
           </div>
@@ -292,7 +286,7 @@
       <div class="panel widget">
         <div class="panel-header">
           <div><div class="panel-title">Zahtevi na čekanju</div><div class="panel-sub">{{ pendingCount }} čeka odobrenje</div></div>
-          <a routerLink="/admin/permissions" class="panel-link">Svi →</a>
+          <a routerLink="/admin/users" class="panel-link">Svi →</a>
         </div>
         <div class="panel-body">
           @for (req of pendingRequests; track req.id) {
@@ -346,7 +340,7 @@
             <div class="map-pin" style="background:#f59e0b;left:35%;top:55%"></div>
             <div class="map-pin" style="background:#22c55e;left:65%;top:48%"></div>
             <div class="map-pin" style="background:#8b5cf6;left:50%;top:30%"></div>
-            <div class="map-count">{{ stats?.totalObjects ?? 0 }} lokacija</div>
+            <div class="map-count">{{ stats?.totalPosts ?? 0 }} objava</div>
           </div>
         </div>
       </div>
@@ -365,7 +359,7 @@
             <div class="heat-spot" style="left:55%;top:28%;width:60px;height:60px;background:radial-gradient(circle,rgba(34,197,94,.4),transparent)"></div>
             <div class="heat-spot" style="left:38%;top:60%;width:50px;height:50px;background:radial-gradient(circle,rgba(34,197,94,.35),transparent)"></div>
             @if (movements.length) {
-            @for (m of movements.slice(0, 6); track m.destinationId) {
+            @for (m of movements.slice(0, 6); track m.regionId) {
             <div class="map-pin" [style.left.%]="pinLeft(m)" [style.top.%]="pinTop(m)" style="background:#22c55e"></div>
             }
             } @else {

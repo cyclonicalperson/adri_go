@@ -1,11 +1,10 @@
 import { Injectable } from '@angular/core';
 
-const TOKEN_KEY = 'tg_access_token';  // Kada budemo hostovali, ubaciti tokene kao secrete
+const TOKEN_KEY = 'tg_access_token';
 const USER_KEY = 'tg_user';
 
 @Injectable({ providedIn: 'root' })
 export class TokenStorageService {
-
   saveToken(token: string): void {
     localStorage.setItem(TOKEN_KEY, token);
   }
@@ -19,12 +18,25 @@ export class TokenStorageService {
   }
 
   saveUser(user: object): void {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    } catch (e) {
+      console.error('Failed to save user to localStorage', e);
+    }
   }
 
-  getUser(): any {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? JSON.parse(raw) : null;
+  getUser(): any | null {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      if (!raw || raw === 'null' || raw === 'undefined') {
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch (e) {
+      console.warn('🔄 Corrupted user data in localStorage. Clearing to prevent bootstrap crash.', e);
+      this.removeUser();
+      return null;
+    }
   }
 
   removeUser(): void {
@@ -32,7 +44,7 @@ export class TokenStorageService {
   }
 
   clear(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    this.removeToken();
+    this.removeUser();
   }
 }

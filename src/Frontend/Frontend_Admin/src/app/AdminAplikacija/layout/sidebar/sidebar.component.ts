@@ -38,7 +38,7 @@ export class SidebarComponent {
   // Analytics items removed — analytics is now embedded in the Dashboard.
   readonly analyticsItems: NavItem[] = [];
 
-  get isSuperAdmin(): boolean { return this.auth.isRole('ADMIN'); }
+  get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
 
   get initials(): string {
     return (this.auth.currentUser?.fullName ?? 'U')
@@ -46,7 +46,7 @@ export class SidebarComponent {
   }
 
   get roleLabel(): string {
-    return { ADMIN: 'Super Administrator', ORG: 'Administrator' }[this.auth.currentUser?.role ?? '']
+    return { superadmin: 'Super Administrator', admin: 'Administrator' }[this.auth.currentUser?.role ?? '']
       ?? (this.auth.currentUser?.role ?? '');
   }
 }

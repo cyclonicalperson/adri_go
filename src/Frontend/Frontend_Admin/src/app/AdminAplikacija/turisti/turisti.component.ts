@@ -81,7 +81,7 @@ export class TuristiComponent implements OnInit {
 
   pinColor(m: TouristMovement): string {
     const top = [...this.movements].sort((a, b) => b.visitCount - a.visitCount);
-    const rank = top.findIndex(x => x.destinationId === m.destinationId);
+    const rank = top.findIndex(x => x.regionId === m.regionId);
     return rank === 0 ? '#22c55e' : rank < 3 ? '#f59e0b' : '#3b82f6';
   }
 }

@@ -2,26 +2,21 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { UserService } from '@core/services/user.service';
+import { UserPermission } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 
-// Extend the base user type with optional fields that the token storage
-// may persist but that AuthResponse['user'] doesn't declare.
+/** Proširena verzija AuthUser-a sa opcionim poljima koja možda postoje u localStorage-u */
 interface ExtendedUser {
   userId: number;
   fullName: string;
   email: string;
-  role: 'ADMIN' | 'ORG' | 'TOURIST';
+  role: 'superadmin' | 'admin';   // DB ENUM vrednosti
   organizationId: number | null;
-  // Fields populated from mock data / full API profile endpoint:
-  organization?: { organizationId: number; name: string } | null;
+  isIndividual: boolean;
+  accountStatus: 'active' | 'suspended' | 'pending';
+  organization?: { name: string } | null;
   createdAt?: string | null;
-}
-
-interface PermGroup {
-  entityName: string;
-  entityType: string;
-  icon: string;
-  permissions: string[];
 }
 
 @Component({
@@ -31,39 +26,28 @@ interface PermGroup {
   imports: [ReactiveFormsModule, DateLocalPipe],
 })
 export class ProfileComponent implements OnInit {
-  // Declare auth before user so the field initializer can reference it
-  private readonly authService: AuthService;
 
   user: ExtendedUser | null = null;
+
   editMode = false;
   saving = false;
   editForm!: FormGroup;
 
-  readonly permissionGroups: PermGroup[] = [
-    {
-      entityName: 'Hotel Kopaonik Star',
-      entityType: 'Lokacija · Kopaonik',
-      icon: '🏔️',
-      permissions: ['manage_place', 'create_event', 'view_analytics'],
-    },
-    {
-      entityName: 'Spa & Wellness Vrnjci',
-      entityType: 'Lokacija · Vrnjačka Banja',
-      icon: '💆',
-      permissions: ['manage_place', 'view_analytics'],
-    },
-  ];
+  // Dozvole koje je superadmin dodelio ovom adminu
+  userPermissions: UserPermission[] = [];
+  permsLoading = false;
 
-  readonly platformStats = { admins: 5, locations: 248, events: 37, pending: 12 };
+  // Statistike platforme za superadmin prikaz
+  readonly platformStats = { admins: 5, posts: 8, routes: 3, pending: 2 };
 
   constructor(
-    auth: AuthService,
+    private authService: AuthService,
+    private userService: UserService,
     private fb: FormBuilder,
     private router: Router,
   ) {
-    // Assign to the field AFTER constructor parameter is available
-    this.authService = auth;
-    this.user = auth.currentUser as ExtendedUser | null;
+    // Postavi user u konstruktoru — auth je dostupan pre field initializera
+    this.user = this.authService.currentUser as ExtendedUser | null;
   }
 
   ngOnInit(): void {
@@ -71,9 +55,25 @@ export class ProfileComponent implements OnInit {
       fullName: [this.user?.fullName ?? '', Validators.required],
       email: [this.user?.email ?? '', [Validators.required, Validators.email]],
     });
+
+    // Učitaj dozvole samo za admin (ne superadmin — superadmin ima sve)
+    if (!this.isSuperAdmin && this.user?.userId) {
+      this.loadPermissions(this.user.userId);
+    }
   }
 
-  get isSuperAdmin(): boolean { return this.authService.isRole('ADMIN'); }
+  private loadPermissions(userId: number): void {
+    this.permsLoading = true;
+    this.userService.getUserPermissions(userId).subscribe({
+      next: res => {
+        this.userPermissions = res.data;
+        this.permsLoading = false;
+      },
+      error: () => { this.permsLoading = false; },
+    });
+  }
+
+  get isSuperAdmin(): boolean { return this.authService.isRole('superadmin'); }
 
   get initials(): string {
     return (this.user?.fullName ?? 'U')
@@ -81,26 +81,54 @@ export class ProfileComponent implements OnInit {
   }
 
   get roleLabel(): string {
-    return { ADMIN: 'Super Administrator', ORG: 'Admin' }[this.user?.role ?? '']
-      ?? (this.user?.role ?? '');
+    const map: Record<string, string> = {
+      superadmin: 'Super Administrator',
+      admin: 'Administrator',
+    };
+    return map[this.user?.role ?? ''] ?? (this.user?.role ?? '');
   }
 
   get roleBadgeClass(): string {
     return this.isSuperAdmin ? 'badge-red' : 'badge-blue';
   }
 
-  // Organization name — falls back to organizationId hint when full object not loaded
+  /** Naziv organizacije — iz punog objekta ili fallback na ID */
   get orgName(): string | null {
     if (this.user?.organization?.name) return this.user.organization.name;
-    if (this.user?.organizationId) return `Admin #${this.user.organizationId}`;
+    if (this.user?.organizationId) return `Org #${this.user.organizationId}`;
     return null;
+  }
+
+  /** Grupiši dozvole po kategoriji za lepši prikaz */
+  get permsByCategory(): { category: string; label: string; perms: UserPermission[] }[] {
+    const categoryLabels: Record<string, string> = {
+      content: '📝 Sadržaj',
+      analytics: '📊 Analitika',
+      users: '👥 Korisnici',
+    };
+
+    const grouped = new Map<string, UserPermission[]>();
+    for (const up of this.userPermissions) {
+      const cat = up.permission.category;
+      if (!grouped.has(cat)) grouped.set(cat, []);
+      grouped.get(cat)!.push(up);
+    }
+
+    return Array.from(grouped.entries()).map(([cat, perms]) => ({
+      category: cat,
+      label: categoryLabels[cat] ?? cat,
+      perms,
+    }));
   }
 
   saveProfile(): void {
     if (this.editForm.invalid) return;
     this.saving = true;
-    // TODO: call API to PATCH /profile
-    setTimeout(() => { this.saving = false; this.editMode = false; }, 600);
+    // TODO: Poziv API PATCH /admin-users/:id
+    setTimeout(() => {
+      this.saving = false;
+      this.editMode = false;
+    }, 600);
   }
 
   changePassword(): void {

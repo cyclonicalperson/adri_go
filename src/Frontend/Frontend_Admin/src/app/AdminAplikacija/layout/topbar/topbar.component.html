@@ -40,17 +40,21 @@
       </div>
       <div class="notif-list">
         @if (notifications.length === 0) {
+        @if (notifLoading) {
+        <div class="notif-empty">Učitavanje…</div>
+        } @else {
         <div class="notif-empty">Nema novih obaveštenja.</div>
         }
+        }
         @for (n of notifications; track n.id) {
-        <div class="notif-item" [class.unread]="!n.read" (click)="openNotification(n)">
-          <div class="notif-icon" [style.background]="n.iconBg">{{ n.icon }}</div>
+        <div class="notif-item" [class.unread]="!n.isRead" (click)="openNotification(n)">
+          <div class="notif-icon" [style.background]="notifIconBg(n.type)">{{ notifIcon(n.type) }}</div>
           <div class="notif-body">
             <div class="notif-title">{{ n.title }}</div>
-            <div class="notif-desc">{{ n.description }}</div>
+            <div class="notif-desc">{{ n.body }}</div>
             <div class="notif-time">{{ n.time }}</div>
           </div>
-          @if (!n.read) {
+          @if (!n.isRead) {
           <div class="notif-unread-dot"></div>
           }
         </div>

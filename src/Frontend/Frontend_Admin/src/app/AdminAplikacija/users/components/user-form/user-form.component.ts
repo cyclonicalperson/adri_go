@@ -67,7 +67,7 @@ export class UserFormComponent implements OnInit {
   onRoleSelected(roleId: number): void {
     this.form.patchValue({ roleId });
     const selectedRole = this.roles.find(r => r.roleId === roleId);
-    if (selectedRole?.roleName !== 'ORG') {
+    if (selectedRole?.roleName !== 'admin') {
       this.form.patchValue({ organizationId: null });
     }
   }

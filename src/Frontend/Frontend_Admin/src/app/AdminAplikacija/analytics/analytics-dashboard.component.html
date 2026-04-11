@@ -54,8 +54,8 @@
             <div class="bar bar-primary" [style.height.%]="barHeight(v.count)"></div>
             }
             @if (visits.length === 0) {
-            @for (h of [55,70,42,88,65,50,80,60,92,75,45,95,58,72,85]; track $index) {
-            <div class="bar" [class]="barColor($index)" [style.height.%]="h"></div>
+            @for (h of [55,70,42,88,65,50,80,60,92,75,45,95,58,72,85]; track $index; let i = $index) {
+            <div class="bar" [class]="barColor(i)" [style.height.%]="h"></div>
             }
             }
           </div>
@@ -99,7 +99,7 @@
         @for (obj of popularObjects.slice(0, 5); track obj.id; let i = $index) {
         <div class="top-item">
           <span class="top-rank">{{ i + 1 }}</span>
-          <span class="top-name">{{ obj.name }}</span>
+          <span class="top-name">{{ obj.title }}</span>
           <div class="top-bar-wrap">
             <div class="top-bar-fill" [style.width.%]="topBarWidth(obj.viewCount, popularObjects)"
                  style="background:#22c55e"></div>
@@ -119,7 +119,7 @@
         @for (ev of popularEvents.slice(0, 5); track ev.id; let i = $index) {
         <div class="top-item">
           <span class="top-rank">{{ i + 1 }}</span>
-          <span class="top-name">{{ ev.name }}</span>
+          <span class="top-name">{{ ev.title }}</span>
           <div class="top-bar-wrap">
             <div class="top-bar-fill" [style.width.%]="topBarWidth(ev.viewCount, popularEvents)"
                  style="background:#3b82f6"></div>
