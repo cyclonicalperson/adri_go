@@ -49,7 +49,7 @@ export class ObjectDetailComponent implements OnInit {
     }).subscribe({
       next: ({ obj, reviews }) => {
         this.object = obj.data;
-        this.reviews = reviews.data.filter(r => r.objectId === id);
+        this.reviews = reviews.data.filter(r => r.postId === id);
         this.loading = false;
       },
       error: () => { this.loading = false; },

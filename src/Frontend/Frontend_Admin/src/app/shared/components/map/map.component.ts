@@ -1,7 +1,7 @@
 import {
   Component, Input, Output, EventEmitter,
-  OnInit, OnChanges, OnDestroy,
-  ElementRef, ViewChild, SimpleChanges,
+  OnInit, OnChanges, OnDestroy, AfterViewInit,
+  ElementRef, ViewChild, SimpleChanges, NgZone,
 } from '@angular/core';
 import * as L from 'leaflet';
 
@@ -24,12 +24,12 @@ export interface MapClickEvent {
   templateUrl: './map.component.html',
   styleUrl: './map.component.scss',
 })
-export class MapComponent implements OnInit, OnChanges, OnDestroy {
+export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('mapEl', { static: true }) mapEl!: ElementRef<HTMLDivElement>;
 
   @Input() markers: MapMarker[] = [];
-  @Input() centerLat: number = 43.8563;
-  @Input() centerLng: number = 18.4131;
+  @Input() centerLat: number = 43.1556;   // Default: Žabljak (Montenegro)
+  @Input() centerLng: number = 19.1225;
   @Input() zoom: number = 8;
   @Input() height: string = '400px';
   @Input() clickable: boolean = false;
@@ -42,8 +42,24 @@ export class MapComponent implements OnInit, OnChanges, OnDestroy {
   private markerLayer!: L.LayerGroup;
   private selectedPin: L.Marker | null = null;
 
+  constructor(private zone: NgZone) { }
+
   ngOnInit(): void {
     this.initMap();
+  }
+
+  /**
+   * invalidateSize() must be called AFTER the host element has been painted.
+   * When the map lives inside a flex/grid container or a panel that opens after
+   * init (sidebar, tab, overlay), Leaflet measures 0×0 and renders broken tiles.
+   * Two RAF ticks are enough to let the browser layout the container first.
+   */
+  ngAfterViewInit(): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.map?.invalidateSize();
+      });
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -56,13 +72,18 @@ export class MapComponent implements OnInit, OnChanges, OnDestroy {
     if (changes['centerLat'] || changes['centerLng'] || changes['zoom']) {
       this.map.setView([this.centerLat, this.centerLng], this.zoom);
     }
+
+    if (changes['height']) {
+      // Height changed — force Leaflet to re-measure
+      requestAnimationFrame(() => this.map?.invalidateSize());
+    }
   }
 
   ngOnDestroy(): void {
     this.map?.remove();
   }
 
-  // Koristi se iz parent komponente za postavljanje jednog pina (npr. u formama)
+  /** Called from parent to place a single "picked" pin (e.g. in forms). */
   setPickedLocation(lat: number, lng: number): void {
     this.selectedPin?.remove();
     this.selectedPin = L.marker([lat, lng], { icon: this.buildIcon('picked') })
@@ -70,27 +91,39 @@ export class MapComponent implements OnInit, OnChanges, OnDestroy {
     this.map.setView([lat, lng], 14);
   }
 
+  /** Force a size recalculation — useful when the host panel becomes visible. */
+  refresh(): void {
+    requestAnimationFrame(() => this.map?.invalidateSize());
+  }
+
   private initMap(): void {
-    this.map = L.map(this.mapEl.nativeElement, {
-      center: [this.centerLat, this.centerLng],
-      zoom: this.zoom,
-      zoomControl: true,
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
-    }).addTo(this.map);
-
-    this.markerLayer = L.layerGroup().addTo(this.map);
-
-    if (this.clickable) {
-      this.map.on('click', (e: L.LeafletMouseEvent) => {
-        this.mapClicked.emit({ lat: e.latlng.lat, lng: e.latlng.lng });
+    // Run outside Angular change detection so Leaflet's internal events
+    // don't trigger unnecessary CD cycles.
+    this.zone.runOutsideAngular(() => {
+      this.map = L.map(this.mapEl.nativeElement, {
+        center: [this.centerLat, this.centerLng],
+        zoom: this.zoom,
+        zoomControl: true,
       });
-    }
 
-    this.renderMarkers();
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(this.map);
+
+      this.markerLayer = L.layerGroup().addTo(this.map);
+
+      if (this.clickable) {
+        this.map.on('click', (e: L.LeafletMouseEvent) => {
+          // Re-enter Angular zone so EventEmitter subscribers get CD
+          this.zone.run(() => {
+            this.mapClicked.emit({ lat: e.latlng.lat, lng: e.latlng.lng });
+          });
+        });
+      }
+
+      this.renderMarkers();
+    });
   }
 
   private renderMarkers(): void {
@@ -102,8 +135,12 @@ export class MapComponent implements OnInit, OnChanges, OnDestroy {
         icon: this.buildIcon(isSelected ? 'selected' : 'default'),
       });
 
-      marker.bindPopup(`<strong>${m.label}</strong>${m.category ? '<br>' + m.category : ''}`);
-      marker.on('click', () => this.markerClicked.emit(m));
+      marker.bindPopup(
+        `<strong>${m.label}</strong>${m.category ? '<br>' + m.category : ''}`
+      );
+      marker.on('click', () => {
+        this.zone.run(() => this.markerClicked.emit(m));
+      });
       this.markerLayer.addLayer(marker);
     });
   }
@@ -119,13 +156,12 @@ export class MapComponent implements OnInit, OnChanges, OnDestroy {
 
     return L.divIcon({
       className: '',
-      html: `
-        <div style="
-          width:28px; height:28px; border-radius:50% 50% 50% 0;
-          background:${color}; border:2px solid #fff;
-          transform:rotate(-45deg);
-          box-shadow:0 2px 6px rgba(0,0,0,.25);
-        "></div>`,
+      html: `<div style="
+        width:28px; height:28px; border-radius:50% 50% 50% 0;
+        background:${color}; border:2px solid #fff;
+        transform:rotate(-45deg);
+        box-shadow:0 2px 6px rgba(0,0,0,.25);
+      "></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 28],
       popupAnchor: [0, -30],

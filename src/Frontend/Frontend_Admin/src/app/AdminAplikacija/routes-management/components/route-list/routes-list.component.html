@@ -18,8 +18,8 @@
 
     <select class="select" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Sve destinacije</option>
-      @for (d of destinations; track d.destinationId) {
-      <option [value]="d.destinationId">{{ d.name }}</option>
+      @for (d of destinations; track d.regionId) {
+      <option [value]="d.regionId">{{ d.name }}</option>
       }
     </select>
 

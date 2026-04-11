@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ObjectService } from '@core/services/object.service';
-import { DestinationService } from '@core/services/destination.service';
+import { RegionService } from '@core/services/region.service';
 import { TouristObject, ObjectCategory } from '@core/models/object.model';
-import { Destination } from '@core/models/destination.model';
+import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -16,7 +16,7 @@ import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 })
 export class ObjectsListComponent implements OnInit {
   objects: TouristObject[] = [];
-  destinations: Destination[] = [];
+  regions: Region[] = [];
   total = 0;
   totalPages = 1;
   loading = true;
@@ -27,19 +27,19 @@ export class ObjectsListComponent implements OnInit {
   pendingCount = 0;
   inactiveCount = 0;
 
-  req: PageRequest & { category?: string; destinationId?: number } = {
+  req: PageRequest & { category?: string; regionId?: number } = {
     page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc',
   };
 
   constructor(
     private service: ObjectService,
-    private destService: DestinationService,
+    private destService: RegionService,
     private router: Router,
   ) { }
 
   ngOnInit(): void {
-    this.destService.getAll({ page: 1, pageSize: 200 }).subscribe(res => {
-      this.destinations = res.data;
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
+      this.regions = res.data;
     });
     this.load();
   }
@@ -72,7 +72,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   onDestinationChange(id: string): void {
-    this.req = { ...this.req, destinationId: id ? +id : undefined, page: 1 };
+    this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
   }
 

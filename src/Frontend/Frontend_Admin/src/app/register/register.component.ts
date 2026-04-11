@@ -26,6 +26,10 @@ export class RegisterComponent {
   error: string | null = null;
   successMsg: string | null = null;
 
+  /** Dokument priložen od strane podnosioca zahtjeva */
+  selectedFile: File | null = null;
+  fileError: string | null = null;
+
   constructor(private fb: FormBuilder, private http: HttpClient) {
     this.form = this.fb.group(
       {
@@ -47,21 +51,73 @@ export class RegisterComponent {
   get password() { return this.form.get('password')!; }
   get confirmPassword() { return this.form.get('confirmPassword')!; }
 
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.fileError = null;
+
+    if (!input.files?.length) {
+      this.selectedFile = null;
+      return;
+    }
+
+    const file = input.files[0];
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const maxSizeMb = 5;
+
+    if (!allowedTypes.includes(file.type)) {
+      this.fileError = 'Dozvoljeni formati: JPG, PNG, PDF.';
+      this.selectedFile = null;
+      input.value = '';
+      return;
+    }
+
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      this.fileError = `Maksimalna veličina fajla je ${maxSizeMb} MB.`;
+      this.selectedFile = null;
+      input.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+  }
+
+  removeFile(): void {
+    this.selectedFile = null;
+    this.fileError = null;
+  }
+
+  get fileIconEmoji(): string {
+    if (!this.selectedFile) return '📎';
+    if (this.selectedFile.type === 'application/pdf') return '📄';
+    return '🖼️';
+  }
+
+  get fileSizeLabel(): string {
+    if (!this.selectedFile) return '';
+    const kb = this.selectedFile.size / 1024;
+    return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
+  }
+
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+
+    if (!this.selectedFile) {
+      this.fileError = 'Dokument je obavezan. Priložite ličnu kartu, pasoš ili registraciju.';
+      return;
+    }
 
     this.loading = true;
     this.error = null;
 
-    const payload = {
-      fullName: `${this.firstName.value} ${this.lastName.value}`,
-      email: this.email.value,
-      password: this.password.value,
-      orgName: this.orgName.value,
-      role: 'ORG',
-    };
+    const formData = new FormData();
+    formData.append('fullName', `${this.firstName.value} ${this.lastName.value}`);
+    formData.append('email', this.email.value);
+    formData.append('password', this.password.value);
+    formData.append('orgName', this.orgName.value);
+    formData.append('role', 'admin');
+    formData.append('document', this.selectedFile, this.selectedFile.name);
 
-    this.http.post(`${environment.apiUrl}/auth/register`, payload).subscribe({
+    this.http.post(`${environment.apiUrl}/auth/register`, formData).subscribe({
       next: () => {
         this.loading = false;
         this.successMsg = `Email za verifikaciju je poslat na ${this.email.value}. Proverite sanduče i kliknite na link da aktivirate nalog.`;

@@ -79,6 +79,7 @@ export class TopbarComponent implements OnInit {
     '/admin/permissions': { title: 'Dozvole', sub: 'Upravljanje dozvolama' },
     '/admin/map-admin': { title: 'Mapa', sub: 'Interaktivna mapa lokacija' },
     '/admin/profile': { title: 'Moj profil', sub: 'Podaci o nalogu' },
+    '/admin/zahtevi': { title: 'Zahtevi za registraciju', sub: 'Pregled i odobravanje zahteva' },
   };
 
   pageTitle$ = this.router.events.pipe(

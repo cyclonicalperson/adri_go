@@ -2,8 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ObjectService } from '@core/services/object.service';
-import { DestinationService } from '@core/services/destination.service';
-import { Destination } from '@core/models/destination.model';
+import { RegionService } from '@core/services/region.service';
+import { Region } from '@core/models/region.model';
 import { ObjectCategory } from '@core/models/object.model';
 import { Media } from '@core/models/destination.model';
 import { ObjectMapPickerComponent } from '../object-map-picker/object-map-picker.component';
@@ -28,7 +28,7 @@ export class ObjectFormComponent implements OnInit {
   saving = false;
   error: string | null = null;
 
-  destinations: Destination[] = [];
+  destinations: Region[] = [];
   selectedActivityIds: number[] = [];
   media: Media[] = [];
 
@@ -49,14 +49,14 @@ export class ObjectFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: ObjectService,
-    private destService: DestinationService,
+    private destService: RegionService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      destinationId: [null, Validators.required],
+      regionId: [null, Validators.required],
       name: ['', Validators.required],
       category: ['HOTEL', Validators.required],
       description: ['', Validators.required],
@@ -79,7 +79,7 @@ export class ObjectFormComponent implements OnInit {
       this.service.getById(this.id!).subscribe(res => {
         const o = res.data;
         this.form.patchValue({
-          destinationId: o.destinationId,
+          regionId: o.regionId,
           name: o.name,
           category: o.category,
           description: o.description,

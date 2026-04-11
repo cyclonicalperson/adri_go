@@ -85,31 +85,59 @@
         }
       </div>
 
-      <!-- Permissions panel — only for ORG admins -->
+      <!-- Permissions panel — visible to regular admins (not superadmin) -->
       @if (!isSuperAdmin) {
       <div class="card">
         <div class="card-title">Moje dozvole</div>
         <div class="perm-intro">
-          Dozvole koje vam je dodelio Super Administrator. Za izmenu kontaktirajte superadmina.
+          Dozvole koje vam je dodijelio Super Administrator.
+          Za izmenu kontaktirajte Super Admina.
         </div>
 
-        @if (permissions.length === 0) {
-        <div class="perm-empty">Nemate dodeljene dozvole. Kontaktirajte Super Administratora.</div>
+        @if (permsLoading) {
+        <div class="perm-loading">
+          <div class="perm-loading-spinner"></div>
+          <span>Učitavanje dozvola…</span>
+        </div>
+        } @else if (userPermissions.length === 0) {
+        <div class="perm-empty-state">
+          <div class="perm-empty-icon">🔒</div>
+          <div class="perm-empty-title">Nema dodijeljenih dozvola</div>
+          <div class="perm-empty-sub">Kontaktirajte Super Admina za dodjelu dozvola.</div>
+        </div>
         } @else {
+        <!-- Summary strip -->
+        <div class="perm-summary-strip">
+          <div class="perm-summary-chip">
+            <span class="perm-summary-num">{{ userPermissions.length }}</span>
+            <span class="perm-summary-lbl">Ukupno dozvola</span>
+          </div>
+          @for (group of permsByCategory; track group.category) {
+          <div class="perm-summary-chip">
+            <span class="perm-summary-num">{{ group.perms.length }}</span>
+            <span class="perm-summary-lbl">{{ group.label }}</span>
+          </div>
+          }
+        </div>
+
+        <!-- Permission groups -->
         <div class="perm-groups">
-          @for (group of permissionGroups; track group.entityName) {
+          @for (group of permsByCategory; track group.category) {
           <div class="perm-group">
             <div class="perm-group-header">
-              <span class="perm-entity-icon">{{ group.icon }}</span>
-              <div>
-                <div class="perm-entity-name">{{ group.entityName }}</div>
-                <div class="perm-entity-type">{{ group.entityType }}</div>
-              </div>
-              <span class="perm-count">{{ group.permissions.length }} dozvola</span>
+              <span class="perm-category-icon">{{ group.icon }}</span>
+              <span class="perm-category-label">{{ group.label }}</span>
+              <span class="perm-count">{{ group.perms.length }}</span>
             </div>
             <div class="perm-chips">
-              @for (perm of group.permissions; track perm) {
-              <span class="perm-chip">{{ perm }}</span>
+              @for (up of group.perms; track up.id) {
+              <span class="perm-chip" [title]="up.permission.description ?? ''">
+                <span class="perm-chip-dot"></span>
+                {{ up.permission.label }}
+                @if (up.regionId) {
+                <span class="perm-region">🗺 Scoped</span>
+                }
+              </span>
               }
             </div>
           </div>

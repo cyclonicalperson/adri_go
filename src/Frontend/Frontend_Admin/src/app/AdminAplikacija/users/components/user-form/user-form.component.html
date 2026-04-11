@@ -66,8 +66,8 @@
             </label>
           </div>
 
-          <!-- Admin organizacija — only shown when ORG role selected -->
-          @if (selectedRole === 'ORG') {
+          <!-- Admin organizacija — prikazano samo za Admin (ORG) rolu -->
+          @if (selectedRole === 'admin') {
           <div class="field">
             <label class="label">Admin organizacija</label>
             <select class="input" formControlName="organizationId">

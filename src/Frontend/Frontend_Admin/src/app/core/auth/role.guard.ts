@@ -12,7 +12,8 @@ export const RoleGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  const allowed: AdminRole[] = route.data['roles'] ?? [];
+  // Cast explicitly — route.data is typed as Record<string, any>
+  const allowed = (route.data['roles'] ?? []) as AdminRole[];
 
   if (auth.isLoggedIn && auth.isRole(...allowed)) {
     return true;

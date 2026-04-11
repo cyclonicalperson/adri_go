@@ -100,11 +100,11 @@ export class ProfileComponent implements OnInit {
   }
 
   /** Grupiši dozvole po kategoriji za lepši prikaz */
-  get permsByCategory(): { category: string; label: string; perms: UserPermission[] }[] {
-    const categoryLabels: Record<string, string> = {
-      content: '📝 Sadržaj',
-      analytics: '📊 Analitika',
-      users: '👥 Korisnici',
+  get permsByCategory(): { category: string; label: string; icon: string; perms: UserPermission[] }[] {
+    const categoryMeta: Record<string, { label: string; icon: string }> = {
+      content: { label: 'Sadržaj', icon: '📝' },
+      analytics: { label: 'Analitika', icon: '📊' },
+      users: { label: 'Korisnici', icon: '👥' },
     };
 
     const grouped = new Map<string, UserPermission[]>();
@@ -116,7 +116,8 @@ export class ProfileComponent implements OnInit {
 
     return Array.from(grouped.entries()).map(([cat, perms]) => ({
       category: cat,
-      label: categoryLabels[cat] ?? cat,
+      label: categoryMeta[cat]?.label ?? cat,
+      icon: categoryMeta[cat]?.icon ?? '🔑',
       perms,
     }));
   }

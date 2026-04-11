@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { RouteService } from '@core/services/route.service';
-import { DestinationService } from '@core/services/destination.service';
+import { RegionService } from '@core/services/region.service';
 import { TouristRoute, RouteType, RouteDifficulty } from '@core/models/route.model';
-import { Destination } from '@core/models/destination.model';
+import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { SearchBarComponent } from '@shared/components/search-bar/search-bar.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
@@ -25,12 +25,12 @@ import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confir
 
 export class RoutesListComponent implements OnInit {
   routes: TouristRoute[] = [];
-  destinations: Destination[] = [];
+  destinations: Region[] = [];
   total = 0;
   totalPages = 1;
 
   req: PageRequest & {
-    destinationId?: number;
+    regionId?: number;
     difficulty?: string;
     routeType?: string;
   } = { page: 1, pageSize: 12, sortBy: 'name', sortDir: 'asc' };
@@ -40,10 +40,10 @@ export class RoutesListComponent implements OnInit {
 
   readonly difficultyOptions = [
     { value: '', label: 'Sve težine' },
-    { value: 'EASY', label: 'Lako' },
-    { value: 'MODERATE', label: 'Srednje' },
-    { value: 'HARD', label: 'Teško' },
-    { value: 'EXPERT', label: 'Ekspertsko' },
+    { value: 'easy', label: 'Lako' },
+    { value: 'moderate', label: 'Srednje' },
+    { value: 'hard', label: 'Teško' },
+    { value: 'expert', label: 'Ekspertsko' },
   ];
 
   readonly typeOptions = [
@@ -57,12 +57,12 @@ export class RoutesListComponent implements OnInit {
 
   constructor(
     private service: RouteService,
-    private destService: DestinationService,
+    private destService: RegionService,
     private router: Router,
   ) { }
 
   ngOnInit(): void {
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Destination[]; }) => {
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[]; }) => {
       this.destinations = res.data;
     });
     this.load();
@@ -97,7 +97,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   onDestinationChange(id: string): void {
-    this.req = { ...this.req, destinationId: id ? +id : undefined, page: 1 };
+    this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
   }
 
@@ -127,7 +127,7 @@ export class RoutesListComponent implements OnInit {
 
   difficultyBadge(d: RouteDifficulty): BadgeVariant {
     const map: Record<string, BadgeVariant> = {
-      EASY: 'success', MODERATE: 'info', HARD: 'warning', EXPERT: 'danger',
+      easy: 'success', moderate: 'info', hard: 'warning', expert: 'danger',
     };
     return map[d] ?? 'default';
   }

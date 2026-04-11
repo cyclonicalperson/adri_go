@@ -2,9 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EventService } from '@core/services/event.service';
-import { DestinationService } from '@core/services/destination.service';
+import { RegionService } from '@core/services/region.service';
 import { ObjectService } from '@core/services/object.service';
-import { Destination } from '@core/models/destination.model';
+import { Region } from '@core/models/region.model';
 import { TouristObject } from '@core/models/object.model';
 import { EventCategory } from '@core/models/event.model';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
@@ -24,7 +24,7 @@ export class EventFormComponent implements OnInit {
   saving = false;
   error: string | null = null;
 
-  destinations: Destination[] = [];
+  destinations: Region[] = [];
   objects: TouristObject[] = [];
 
   readonly categoryOptions: { value: EventCategory; label: string }[] = [
@@ -41,7 +41,7 @@ export class EventFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: EventService,
-    private destService: DestinationService,
+    private destService: RegionService,
     private objService: ObjectService,
     private route: ActivatedRoute,
     private router: Router,
@@ -52,7 +52,7 @@ export class EventFormComponent implements OnInit {
       name: ['', Validators.required],
       category: ['CONCERT', Validators.required],
       description: ['', Validators.required],
-      destinationId: [null],
+      regionId: [null],
       objectId: [null],
       startAt: ['', Validators.required],
       endAt: ['', Validators.required],
@@ -61,7 +61,7 @@ export class EventFormComponent implements OnInit {
       longitude: [null],
     });
 
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Destination[]; }) => {
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[]; }) => {
       this.destinations = res.data;
     });
 
@@ -79,7 +79,7 @@ export class EventFormComponent implements OnInit {
           name: e.name,
           category: e.category,
           description: e.description,
-          destinationId: e.destinationId,
+          regionId: e.regionId,
           objectId: e.objectId,
           startAt: e.startAt.slice(0, 16),
           endAt: e.endAt.slice(0, 16),
@@ -108,7 +108,7 @@ export class EventFormComponent implements OnInit {
     const raw = this.form.value;
     const payload = {
       ...raw,
-      destinationId: raw.destinationId || undefined,
+      regionId: raw.regionId || undefined,
       objectId: raw.objectId || undefined,
       ticketUrl: raw.ticketUrl || undefined,
       latitude: raw.latitude || undefined,

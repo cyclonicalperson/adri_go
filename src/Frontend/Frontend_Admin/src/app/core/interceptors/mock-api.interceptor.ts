@@ -24,9 +24,8 @@ const POSTS = [
     lat: 43.1378, lng: 19.0644, address: 'Žabljak bb, 84210 Žabljak',
     externalUrl: 'https://www.booking.com/hotel/me/jezera-zabljak.html',
     externalUrlLabel: 'Rezerviši na Booking',
-    images: ['/images/posts/jezera1.jpg', '/images/posts/jezera2.jpg'],
-    openingHours: { mon: '00:00-24:00', tue: '00:00-24:00' },
-    details: { stars: 4, rooms: 86, priceFrom: 85, currency: 'EUR', amenities: ['spa', 'restaurant', 'parking', 'wifi'] },
+    images: ['/images/posts/jezera1.jpg'], openingHours: { mon: '00:00-24:00' },
+    details: { stars: 4, rooms: 86, priceFrom: 85, currency: 'EUR' },
     status: 'published', viewCount: 3, likeCount: 3, saveCount: 3,
     reviewCount: 2, avgRating: 4.5, publishedAt: '2024-03-01T09:00:00',
     createdAt: '2024-03-01T09:00:00', updatedAt: '2024-03-01T09:00:00',
@@ -39,8 +38,7 @@ const POSTS = [
     description: 'Tradicionalna crnogorska kuhinja sa lokalno uzgojenim namirnicama.',
     lat: 43.1556, lng: 19.1225, address: 'Njegoševa 12, Žabljak',
     externalUrl: null, externalUrlLabel: null,
-    images: ['/images/posts/soa1.jpg'],
-    openingHours: { mon: '12:00-22:00', fri: '12:00-23:00' },
+    images: ['/images/posts/soa1.jpg'], openingHours: { mon: '12:00-22:00' },
     details: { cuisine: 'Montenegrin', priceRange: '€€', capacity: 60 },
     status: 'published', viewCount: 2, likeCount: 2, saveCount: 0,
     reviewCount: 0, avgRating: null, publishedAt: '2024-03-05T10:00:00',
@@ -54,8 +52,7 @@ const POSTS = [
     description: 'Muzej posvećen historiji i prirodnim bogatstvima Durmitora.',
     lat: 43.1548, lng: 19.1218, address: 'Trg Durmitorskih ratnika 2, Žabljak',
     externalUrl: 'https://muzejzabljak.me', externalUrlLabel: 'Saznaj više',
-    images: ['/images/posts/muzej1.jpg'],
-    openingHours: { tue: '09:00-17:00', wed: '09:00-17:00', sat: '10:00-16:00' },
+    images: ['/images/posts/muzej1.jpg'], openingHours: { tue: '09:00-17:00' },
     details: { entranceFee: 3, currency: 'EUR', guidedTours: true },
     status: 'published', viewCount: 1, likeCount: 1, saveCount: 1,
     reviewCount: 1, avgRating: 4.0, publishedAt: '2024-03-08T11:00:00',
@@ -69,9 +66,8 @@ const POSTS = [
     description: 'Trodnevni muzički festival pod vedrim nebom na Žabljaku.',
     lat: 43.1560, lng: 19.1230, address: 'Stadion Žabljak, Žabljak',
     externalUrl: 'https://durmitorsummerfest.me/karte', externalUrlLabel: 'Kupi kartu',
-    images: ['/images/posts/fest1.jpg'],
-    openingHours: null,
-    details: { eventStart: '2025-07-18 18:00:00', eventEnd: '2025-07-20 23:59:00', price: 15, currency: 'EUR', capacity: 2000, ticketsSold: 847 },
+    images: ['/images/posts/fest1.jpg'], openingHours: null,
+    details: { eventStart: '2025-07-18 18:00:00', eventEnd: '2025-07-20 23:59:00', price: 15, currency: 'EUR' },
     status: 'published', viewCount: 2, likeCount: 2, saveCount: 2,
     reviewCount: 1, avgRating: 5.0, publishedAt: '2024-04-01T09:00:00',
     createdAt: '2024-04-01T09:00:00', updatedAt: '2024-04-01T09:00:00',
@@ -84,8 +80,7 @@ const POSTS = [
     description: 'Simbol Durmitora i cijele Crne Gore. Glacijalnog porijekla.',
     lat: 43.1378, lng: 19.0644, address: 'NP Durmitor, Žabljak',
     externalUrl: null, externalUrlLabel: null,
-    images: ['/images/posts/crnojezero1.jpg', '/images/posts/crnojezero2.jpg'],
-    openingHours: { mon: '00:00-24:00' },
+    images: ['/images/posts/crnojezero1.jpg'], openingHours: { mon: '00:00-24:00' },
     details: { entranceFee: 5, currency: 'EUR', perimeterKm: 3.6, altitudeM: 1416 },
     status: 'published', viewCount: 5, likeCount: 5, saveCount: 2,
     reviewCount: 2, avgRating: 4.5, publishedAt: '2024-02-15T08:00:00',
@@ -99,9 +94,8 @@ const POSTS = [
     description: 'Privatni apartmani sa pogledom na Durmitor.',
     lat: 43.1570, lng: 19.1235, address: 'Vuka Karadžića 8, Žabljak',
     externalUrl: 'https://www.airbnb.com/rooms/durmitorview', externalUrlLabel: 'Rezerviši na Airbnb',
-    images: ['/images/posts/apt1.jpg'],
-    openingHours: null,
-    details: { priceFrom: 45, currency: 'EUR', numApartments: 6, amenities: ['parking', 'wifi', 'kitchen'] },
+    images: ['/images/posts/apt1.jpg'], openingHours: null,
+    details: { priceFrom: 45, currency: 'EUR', numApartments: 6 },
     status: 'published', viewCount: 1, likeCount: 1, saveCount: 1,
     reviewCount: 1, avgRating: 4.0, publishedAt: '2024-03-20T10:00:00',
     createdAt: '2024-03-20T10:00:00', updatedAt: '2024-03-20T10:00:00',
@@ -114,9 +108,8 @@ const POSTS = [
     description: 'Najpopularniji beach club na Crnogorskom primorju.',
     lat: 42.2820, lng: 18.8390, address: 'Slovenska plaža, Budva',
     externalUrl: null, externalUrlLabel: null,
-    images: ['/images/posts/aquarius1.jpg'],
-    openingHours: { fri: '22:00-06:00', sat: '22:00-06:00' },
-    details: { capacity: 1500, entryFee: 10, currency: 'EUR', dressCode: 'smart casual' },
+    images: ['/images/posts/aquarius1.jpg'], openingHours: { fri: '22:00-06:00', sat: '22:00-06:00' },
+    details: { capacity: 1500, entryFee: 10, currency: 'EUR' },
     status: 'published', viewCount: 2, likeCount: 2, saveCount: 2,
     reviewCount: 0, avgRating: null, publishedAt: '2024-05-01T12:00:00',
     createdAt: '2024-05-01T12:00:00', updatedAt: '2024-05-01T12:00:00',
@@ -129,8 +122,7 @@ const POSTS = [
     description: 'Skijalište na 2313m nadmorske visine. 4 žičare, 12 staza.',
     lat: 43.1789, lng: 19.0456, address: 'Savin Kuk, NP Durmitor',
     externalUrl: null, externalUrlLabel: null,
-    images: ['/images/posts/savinkuk1.jpg'],
-    openingHours: { mon: '09:00-16:00', sat: '09:00-16:30' },
+    images: ['/images/posts/savinkuk1.jpg'], openingHours: { mon: '09:00-16:00' },
     details: { lifts: 4, slopes: 12, totalKm: 18, skiSchool: true, dayPass: 25, currency: 'EUR' },
     status: 'published', viewCount: 3, likeCount: 3, saveCount: 1,
     reviewCount: 2, avgRating: 4.5, publishedAt: '2024-11-01T08:00:00',
@@ -143,7 +135,7 @@ const POSTS = [
 // Admin (id=2, Ana) owns posts 3 and 6
 const ADMIN_POST_IDS = new Set([3, 6]);
 
-// ── Routes (v_routes_full) ────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────────────────────
 const ROUTES = [
   {
     routeId: 1, adminId: 3, regionId: 2,
@@ -152,7 +144,6 @@ const ROUTES = [
     description: 'Kružna staza oko Crnog jezera. Idealna za početnike i porodice.',
     waypoints: [
       { lat: 43.1378, lng: 19.0644, name: 'Ulaz — parking' },
-      { lat: 43.1395, lng: 19.0580, name: 'Malo jezero' },
       { lat: 43.1420, lng: 19.0610, name: 'Vidikovac' },
       { lat: 43.1378, lng: 19.0644, name: 'Povratak — parking' },
     ],
@@ -206,17 +197,16 @@ const REVIEWS = [
   { reviewId: 11, touristId: 2, postId: 7, routeId: null, rating: 2, comment: 'Previše buke, nisam mogla spavati.', status: 'PENDING', createdAt: '2025-05-01', touristName: 'Luca Rossi', entityType: 'OBJECT', entityName: 'Club Aquarius Budva', postType: 'club' },
 ];
 
-// Admin (id=2, Ana) sees reviews for their posts (3, 6) and any PENDING
 const ADMIN_REVIEW_POST_IDS = new Set([3, 6]);
 
-// ── Admin users (v_admin_users_full) ──────────────────────────────────────
+// ── Admin users (v_admin_users_full) — roles: 'superadmin' | 'admin' ─────
 const ADMIN_USERS = [
   { userId: 1, organizationId: null, fullName: 'Marko Petrović', email: 'superadmin@touristhub.me', emailVerifiedAt: '2024-01-01', role: 'superadmin', isIndividual: true, accountStatus: 'active', createdAt: '2024-01-01', organization: null, isActive: true, permissionCount: 0 },
   { userId: 2, organizationId: 1, fullName: 'Ana Kovačević', email: 'ana.kovacevic@zabljak.travel', emailVerifiedAt: '2024-01-15', role: 'admin', isIndividual: false, accountStatus: 'active', createdAt: '2024-01-15', organization: { organizationId: 1, name: 'TuristOrg Žabljak', type: 'municipality', contactEmail: 'info@zabljak.travel', website: 'https://zabljak.travel', isVerified: true }, isActive: true, permissionCount: 7 },
   { userId: 3, organizationId: 2, fullName: 'Nikola Đurić', email: 'nikola.djuric@npdurmitor.me', emailVerifiedAt: '2024-01-16', role: 'admin', isIndividual: false, accountStatus: 'active', createdAt: '2024-01-16', organization: { organizationId: 2, name: 'NP Durmitor', type: 'municipality', contactEmail: 'info@npdurmitor.me', website: 'https://npdurmitor.me', isVerified: true }, isActive: true, permissionCount: 5 },
   { userId: 4, organizationId: 3, fullName: 'Jovana Milić', email: 'jovana.milic@mnadv.me', emailVerifiedAt: '2024-01-17', role: 'admin', isIndividual: false, accountStatus: 'active', createdAt: '2024-01-17', organization: { organizationId: 3, name: 'Montenegro Adventures', type: 'tourist_agency', contactEmail: 'hello@mnadv.me', website: 'https://montenegroadv.me', isVerified: true }, isActive: true, permissionCount: 5 },
   { userId: 5, organizationId: 4, fullName: 'Stefan Radović', email: 'stefan.radovic@hoteljezera.me', emailVerifiedAt: '2024-01-18', role: 'admin', isIndividual: false, accountStatus: 'active', createdAt: '2024-01-18', organization: { organizationId: 4, name: 'Hotel Jezera Žabljak', type: 'hotel_chain', contactEmail: 'rezervacije@jezera.me', website: 'https://hoteljezera.me', isVerified: true }, isActive: true, permissionCount: 4 },
-  { userId: 6, organizationId: null, fullName: 'Petar Vuković', email: 'petar.vukovic@gmail.com', emailVerifiedAt: '2024-01-19', role: 'admin', isIndividual: true, accountStatus: 'active', createdAt: '2024-01-19', organization: null, isActive: true, permissionCount: 3 },
+  { userId: 6, organizationId: null, fullName: 'Petar Vuković', email: 'petar.vukovic@gmail.com', emailVerifiedAt: '2024-01-19', role: 'admin', isIndividual: true, accountStatus: 'suspended', createdAt: '2024-01-19', organization: null, isActive: false, permissionCount: 3 },
 ];
 
 // ── Permissions ───────────────────────────────────────────────────────────
@@ -239,17 +229,57 @@ const ALL_PERMISSIONS = [
   { id: 16, code: 'manage_tickets', label: 'Upravljanje kartama', category: 'content', description: 'Upravljanje ulaznicama' },
 ];
 
-// Ana's permissions (userId=2)
 const ANA_PERMISSIONS = [4, 5, 6, 7, 11, 10, 12].map(id => ({
-  id, adminUserId: 2, permission: ALL_PERMISSIONS.find(p => p.id === id)!, regionId: null, grantedBy: 1, grantedAt: '2024-01-15',
+  id,
+  adminUserId: 2,
+  permission: ALL_PERMISSIONS.find(p => p.id === id)!,
+  regionId: null,
+  grantedBy: 1,
+  grantedAt: '2024-01-15',
 }));
 
-// ── Notifications (admin_notification) ───────────────────────────────────
+// ── Registration Requests (admin_registration_request) ────────────────────
+const REGISTRATION_REQUESTS = [
+  {
+    id: 1, fullName: 'Milica Stanković', email: 'milica.s@gmail.com',
+    isIndividual: true, organizationName: null, organizationEmail: null,
+    emailVerifiedAt: '2024-06-01T12:00:00',
+    status: 'pending', rejectionReason: null,
+    submittedAt: '2024-06-01T10:00:00', reviewedAt: null, reviewedBy: null,
+    documentUrl: '/documents/milica_licna.pdf',
+  },
+  {
+    id: 2, fullName: 'Boris Nikolić', email: 'boris@adventureme.com',
+    isIndividual: false, organizationName: 'Adventure Montenegro', organizationEmail: 'info@adventureme.com',
+    emailVerifiedAt: null,
+    status: 'pending', rejectionReason: null,
+    submittedAt: '2024-06-02T09:30:00', reviewedAt: null, reviewedBy: null,
+    documentUrl: null,
+  },
+  {
+    id: 3, fullName: 'Sanja Đokić', email: 'sanja.djokic@kotor.travel',
+    isIndividual: false, organizationName: 'Kotor Tours', organizationEmail: 'info@kotor.travel',
+    emailVerifiedAt: '2024-05-20T08:00:00',
+    status: 'approved', rejectionReason: null,
+    submittedAt: '2024-05-19T14:00:00', reviewedAt: '2024-05-21T10:00:00', reviewedBy: 1,
+    documentUrl: '/documents/kotor_tours_reg.pdf',
+  },
+  {
+    id: 4, fullName: 'Dragan Vukić', email: 'dragan.v@gmail.com',
+    isIndividual: true, organizationName: null, organizationEmail: null,
+    emailVerifiedAt: null,
+    status: 'rejected', rejectionReason: 'Email nije verifikovan u predvidjenom roku.',
+    submittedAt: '2024-05-10T11:00:00', reviewedAt: '2024-05-17T09:00:00', reviewedBy: 1,
+    documentUrl: null,
+  },
+];
+
+// ── Notifications ─────────────────────────────────────────────────────────
 const ADMIN_NOTIFICATIONS: Record<number, any[]> = {
   1: [
-    { id: 1, adminUserId: 1, type: 'new_registration', title: 'Novi zahtjev za registraciju', body: 'Milica Stanković čeka odobrenje naloga.', payload: { registration_id: 1, url: '/admin/users' }, isRead: false, createdAt: '2024-06-01T10:00:00' },
+    { id: 1, adminUserId: 1, type: 'new_registration', title: 'Novi zahtjev za registraciju', body: 'Milica Stanković čeka odobrenje naloga.', payload: { registration_id: 1, url: '/admin/zahtevi' }, isRead: false, createdAt: '2024-06-01T10:00:00' },
     { id: 2, adminUserId: 1, type: 'pending_review', title: 'Nova recenzija čeka moderaciju', body: 'Turist je ostavio recenziju za Hotel Jezera.', payload: { review_id: 1, post_id: 1, url: '/admin/reviews' }, isRead: false, createdAt: '2024-06-02T09:00:00' },
-    { id: 3, adminUserId: 1, type: 'pending_review', title: 'Negativna recenzija', body: 'Recenzija sa ocjenom 2/5 za Crno jezero.', payload: { review_id: 11, post_id: 7, url: '/admin/reviews' }, isRead: true, createdAt: '2025-05-01T08:00:00' },
+    { id: 3, adminUserId: 1, type: 'pending_review', title: 'Negativna recenzija', body: 'Recenzija sa ocjenom 2/5 za Club Aquarius.', payload: { review_id: 11, post_id: 7, url: '/admin/reviews' }, isRead: true, createdAt: '2025-05-01T08:00:00' },
   ],
   2: [
     { id: 4, adminUserId: 2, type: 'post_approved', title: 'Muzej Žabljaka odobren', body: 'Vaša objava "Muzej Žabljaka" je odobrena.', payload: { post_id: 3, url: '/admin/lokacije' }, isRead: false, createdAt: '2024-03-09T11:00:00' },
@@ -259,28 +289,16 @@ const ADMIN_NOTIFICATIONS: Record<number, any[]> = {
 
 // ── Dashboard stats (v_superadmin_overview) ───────────────────────────────
 const SUPERADMIN_STATS = {
-  totalTourists: 5,
-  totalAdmins: 5,
-  totalPosts: 8,
-  totalRoutes: 3,
-  pendingRegistrations: 2,
-  pendingReviews: 2,
-  ticketsIssued: 3,
-  unreadNotifications: 2,
+  totalTourists: 5, totalAdmins: 5, totalPosts: 8, totalRoutes: 3,
+  pendingRegistrations: 2, pendingReviews: 2, ticketsIssued: 3, unreadNotifications: 2,
 };
 
 const ADMIN_STATS = {
-  totalTourists: 0,
-  totalAdmins: 0,
-  totalPosts: 2,
-  totalRoutes: 0,
-  pendingRegistrations: 0,
-  pendingReviews: 1,
-  ticketsIssued: 0,
-  unreadNotifications: 1,
+  totalTourists: 0, totalAdmins: 0, totalPosts: 2, totalRoutes: 0,
+  pendingRegistrations: 0, pendingReviews: 1, ticketsIssued: 0, unreadNotifications: 1,
 };
 
-// ── Region popularity (v_region_popularity) ───────────────────────────────
+// ── Region popularity ─────────────────────────────────────────────────────
 const REGION_POPULARITY = [
   { regionId: 1, name: 'Žabljak', type: 'city', numPosts: 5, totalViews: 9, totalLikes: 9, avgRating: 4.3 },
   { regionId: 2, name: 'Durmitor', type: 'national_park', numPosts: 1, totalViews: 3, totalLikes: 3, avgRating: 4.5 },
@@ -297,7 +315,7 @@ const MOVEMENTS = [
   { regionId: 5, regionName: 'Budva', latitude: 42.2864, longitude: 18.8400, visitCount: 2 },
 ];
 
-// ── Daily visits (post_view aggregated) ──────────────────────────────────
+// ── Daily visits ──────────────────────────────────────────────────────────
 const DAILY_VISITS = Array.from({ length: 30 }, (_, i) => ({
   date: new Date(Date.now() - (29 - i) * 86400000).toISOString().split('T')[0],
   count: Math.floor(Math.random() * 12 + 2),
@@ -333,8 +351,9 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   const url = req.url;
   const params = req.params;
   const user = currentUser();
+
+  // DB roles: 'superadmin' | 'admin'
   const isSuperAdmin = user?.role === 'superadmin';
-  const isAdmin = user?.role === 'admin';
   const userId = user?.userId ?? 0;
 
   const page = +(params.get('page') ?? 1);
@@ -364,21 +383,16 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     return ok({ data: MOVEMENTS, success: true });
   }
 
-  // ── Posts (lokacije + events) ─────────────────────────────────────────────
+  // ── Posts ─────────────────────────────────────────────────────────────────
   if (url.includes('/posts') && req.method === 'GET' && !url.match(/\/posts\/\d+/)) {
     let list = [...POSTS];
-    // Admin scope
     if (!isSuperAdmin) list = list.filter(p => ADMIN_POST_IDS.has(p.postId));
-    // postType filter (can be multiple)
     const types = params.getAll('postType') ?? [];
     if (types.length) list = list.filter(p => types.includes(p.postType));
-    // regionId filter
     const rid = params.get('regionId');
     if (rid) list = list.filter(p => p.regionId === +rid);
-    // status filter
     const status = params.get('status');
     if (status) list = list.filter(p => p.status === status);
-    // search
     const q = params.get('search');
     if (q) list = list.filter(p => p.title.toLowerCase().includes(q.toLowerCase()));
     return ok(paginate(list, page, pageSize));
@@ -398,8 +412,7 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   }
   if (url.match(/\/regions\/(\d+)$/) && req.method === 'GET') {
     const id = +url.split('/').pop()!;
-    const region = REGIONS.find(r => r.regionId === id);
-    return ok({ data: region ?? null, success: true });
+    return ok({ data: REGIONS.find(r => r.regionId === id) ?? null, success: true });
   }
 
   // ── Routes ────────────────────────────────────────────────────────────────
@@ -411,8 +424,7 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   }
   if (url.match(/\/routes\/(\d+)$/) && req.method === 'GET') {
     const id = +url.split('/').pop()!;
-    const route = ROUTES.find(r => r.routeId === id);
-    return ok({ data: route ?? null, success: true });
+    return ok({ data: ROUTES.find(r => r.routeId === id) ?? null, success: true });
   }
 
   // ── Reviews ───────────────────────────────────────────────────────────────
@@ -427,9 +439,17 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     if (status) list = list.filter(r => r.status === status);
     const entityType = params.get('entityType');
     if (entityType) list = list.filter(r => r.entityType === entityType);
+    const minRating = params.get('minRating');
+    if (minRating) list = list.filter(r => r.rating >= +minRating);
+    const maxRating = params.get('maxRating');
+    if (maxRating) list = list.filter(r => r.rating <= +maxRating);
     return ok(paginate(list, page, pageSize));
   }
-  if (url.match(/\/reviews\/(\d+)\/status$/) && (req.method === 'PATCH')) {
+  if (url.match(/\/reviews\/(\d+)\/status$/) && req.method === 'PATCH') {
+    return ok({ data: null, success: true });
+  }
+  if (url.match(/\/reviews\/(\d+)$/) && req.method === 'DELETE') {
+    // Only superadmin can delete reviews — enforced in component too
     return ok({ data: null, success: true });
   }
 
@@ -447,8 +467,7 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   }
   if (url.match(/\/admin-users\/(\d+)$/) && req.method === 'GET') {
     const id = +url.split('/').pop()!;
-    const user = ADMIN_USERS.find(u => u.userId === id);
-    return ok({ data: user ?? null, success: true });
+    return ok({ data: ADMIN_USERS.find(u => u.userId === id) ?? null, success: true });
   }
   if (url.match(/\/admin-users\/(\d+)\/permissions$/) && req.method === 'GET') {
     const data = userId === 2 ? ANA_PERMISSIONS : [];
@@ -460,13 +479,13 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     return ok({ data: ALL_PERMISSIONS, success: true });
   }
 
-  // ── Roles (za user-form kompatibilnost) ────────────────────────────────────
+  // ── Roles ─────────────────────────────────────────────────────────────────
   if (url.endsWith('/roles') && req.method === 'GET') {
     return ok({
       data: [
         { roleId: 1, roleName: 'superadmin', description: 'Pun pristup svim funkcijama platforme' },
         { roleId: 2, roleName: 'admin', description: 'Pristup ograničen dodeljenim dozvolama' },
-      ], success: true
+      ], success: true,
     });
   }
 
@@ -478,17 +497,16 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
         { organizationId: 2, name: 'NP Durmitor', type: 'municipality', contactEmail: 'info@npdurmitor.me', website: 'https://npdurmitor.me', isVerified: true },
         { organizationId: 3, name: 'Montenegro Adventures d.o.o.', type: 'tourist_agency', contactEmail: 'hello@mnadv.me', website: 'https://montenegroadv.me', isVerified: true },
         { organizationId: 4, name: 'Hotel Jezera Žabljak', type: 'hotel_chain', contactEmail: 'rezervacije@jezera.me', website: 'https://hoteljezera.me', isVerified: true },
-      ], success: true
+      ], success: true,
     });
   }
 
-  // ── Registration requests ─────────────────────────────────────────────────
-  if (url.includes('/registrations') && req.method === 'GET') {
+  // ── Registration Requests (zahtevi) ───────────────────────────────────────
+  if (url.includes('/registrations') && req.method === 'GET' && !url.match(/\/registrations\/\d+/)) {
+    if (!isSuperAdmin) return ok(paginate([], page, pageSize));
     const status = params.get('status');
-    const list = [
-      { id: 1, fullName: 'Milica Stanković', email: 'milica.s@gmail.com', isIndividual: true, organizationName: null, status: 'pending', submittedAt: '2024-06-01', emailVerifiedAt: null },
-      { id: 2, fullName: 'Boris Nikolić', email: 'boris@adventureme.com', isIndividual: false, organizationName: 'Adventure Montenegro', status: 'pending', submittedAt: '2024-06-02', emailVerifiedAt: null },
-    ].filter(r => !status || r.status === status);
+    let list = [...REGISTRATION_REQUESTS];
+    if (status) list = list.filter(r => r.status === status);
     return ok(paginate(list, page, pageSize));
   }
   if (url.match(/\/registrations\/\d+\/(approve|reject)$/) && req.method === 'PATCH') {
@@ -512,6 +530,6 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     return ok({ data: null, success: true, message: 'Mock: operacija uspješna.' });
   }
 
-  // Pass through (map tiles, CDN, etc.)
+  // ── Pass through (map tiles, CDN, etc.) ───────────────────────────────────
   return next(req);
 };

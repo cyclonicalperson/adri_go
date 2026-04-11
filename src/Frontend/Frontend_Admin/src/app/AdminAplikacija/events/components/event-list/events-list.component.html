@@ -53,18 +53,17 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
-    <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
-      <option value="">Sve destinacije</option>
-      @for (d of destinations; track d.destinationId) {
-      <option [value]="d.destinationId">{{ d.name }}</option>
+    <select class="filter-select" (change)="onRegionChange($any($event.target).value)">
+      <option value="">Svi regioni</option>
+      @for (r of regions; track r.regionId) {
+      <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
 
     <select class="filter-select" (change)="onStatusFilter($any($event.target).value)">
-      <option value="">Svi statusi</option>
-      <option value="upcoming">📅 Predstojeći</option>
-      <option value="ongoing">🟢 U toku</option>
-      <option value="past">✔ Završeni</option>
+      @for (opt of statusOptions; track opt.value) {
+      <option [value]="opt.value">{{ opt.label }}</option>
+      }
     </select>
 
     <div class="view-toggle-tabs">
@@ -118,36 +117,37 @@
         </tr>
       </thead>
       <tbody>
-        @for (e of events; track e.eventId) {
+        @for (e of events; track e.postId) {
         <tr>
           <td>
             <div class="item-cell">
-              <div class="item-thumb">{{ categoryIcon(e.category) }}</div>
+              <div class="item-thumb">{{ categoryIcon(eventCategory(e)) }}</div>
               <div>
-                <div class="item-name">{{ e.name }}</div>
+                <div class="item-name">{{ e.title }}</div>
                 <div class="item-desc">{{ e.description | truncate:55 }}</div>
-                @if (e.ticketUrl) {
+                @if ((e.externalUrl)) {
                 <div style="font-size:11px;color:#1d4ed8;margin-top:3px">🎟 Karte dostupne</div>
                 }
               </div>
             </div>
           </td>
           <td>
-            <span class="type-badge" [class]="catBadgeClass(e.category)">
-              {{ categoryIcon(e.category) }} {{ categoryLabel(e.category) }}
+            <span class="type-badge" [class]="catBadgeClass(eventCategory(e))">
+              {{ categoryIcon(eventCategory(e)) }} {{ categoryLabel(eventCategory(e)) }}
             </span>
           </td>
           <td>
             <span class="badge" [class]="statusBadge(e)">{{ statusLabel(e) }}</span>
+            <span class="badge" [class]="postStatusBadgeClass(e.status)">{{ postStatusLabel(e.status) }}</span>
           </td>
           <td style="font-size:12px;color:#374151;font-weight:600">
-            {{ e.startAt | dateLocal:'datetime' }}
+            {{ eventStart(e).toLocaleDateString('sr-RS') }}
           </td>
           <td style="font-size:12px;color:#374151;font-weight:600">
-            {{ e.endAt | dateLocal:'datetime' }}
+            {{ eventEnd(e).toLocaleDateString('sr-RS') }}
           </td>
           <td style="font-size:12px;color:#6b7280">
-            {{ e.destination?.name ?? e.object?.name ?? '—' }}
+            {{ e.region?.name ?? '—' }}
           </td>
           <td style="font-size:12px;font-weight:600">—</td>
           <td (click)="$event.stopPropagation()">
@@ -182,7 +182,7 @@
 
 <app-confirm-dialog [visible]="!!deleteTarget"
                     title="Obriši dogadjaj"
-                    [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
+                    [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.title ?? '') + '&quot;?'"
                     confirmLabel="Obriši"
                     [danger]="true"
                     (confirmed)="doDelete()"

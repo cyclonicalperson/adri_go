@@ -137,13 +137,23 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 18px;
-  align-items: start;
+  // stretch so equal-height widgets fill their row
+  align-items: stretch;
 }
 
 // ── Widget slot ────────────────────────────────────────────────────────────
 .widget-slot {
   position: relative;
   grid-column: span 1;
+  // Make slot a flex container so the inner .panel fills height
+  display: flex;
+  flex-direction: column;
+
+  > .panel,
+  > .widget {
+    flex: 1;
+    min-height: 220px; // minimum so empty widgets never collapse to 0
+  }
 
   &.span-2 {
     grid-column: span 2;

@@ -238,3 +238,105 @@
     grid-template-columns: 1fr;
   }
 }
+
+// ── Document upload ────────────────────────────────────────────────────────
+.doc-field {
+  gap: 8px;
+
+  .doc-hint {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: $gray-400;
+    margin-top: 2px;
+  }
+}
+
+.doc-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 16px;
+  border: 2px dashed $gray-200;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  text-align: center;
+
+  &:hover {
+    border-color: $primary;
+    background: $primary-soft;
+  }
+
+  &.error {
+    border-color: $danger;
+  }
+
+  .doc-upload-icon {
+    font-size: 24px;
+  }
+
+  .doc-upload-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: $gray-700;
+  }
+
+  .doc-upload-sub {
+    font-size: 11px;
+    color: $gray-400;
+  }
+}
+
+.doc-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: $primary-soft;
+  border: 1.5px solid $primary-mid;
+  border-radius: $radius-md;
+
+  .doc-preview-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .doc-preview-info {
+    flex: 1;
+    min-width: 0;
+
+    .doc-preview-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: $gray-900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .doc-preview-size {
+      font-size: 11px;
+      color: $gray-500;
+      margin-top: 2px;
+    }
+  }
+
+  .doc-remove {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: $gray-400;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+
+    &:hover {
+      background: rgba(239,68,68,.1);
+      color: $danger;
+    }
+  }
+}

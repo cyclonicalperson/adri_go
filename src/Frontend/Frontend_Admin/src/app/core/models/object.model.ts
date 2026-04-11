@@ -13,7 +13,10 @@ export type ObjectCategory =
 
 export interface TouristObject {
   objectId: number;
+  // DB uses region_id — destinationId kept for backward compatibility
   destinationId: number;
+  /** Alias for destinationId — matches new DB schema (region table) */
+  regionId?: number;
   name: string;
   category: ObjectCategory;
   description: string;
@@ -25,7 +28,9 @@ export interface TouristObject {
   workingHours: string;
   createdBy: number;
   createdAt: string;
-  destination?: { destinationId: number; name: string };
+  // API may return either destination (old) or region (new DB)
+  destination?: { destinationId: number; name: string } | null;
+  region?: { regionId: number; name: string } | null;
   activities?: Activity[];
   media?: Media[];
   averageRating?: number;
@@ -33,7 +38,8 @@ export interface TouristObject {
 }
 
 export interface CreateObjectRequest {
-  destinationId: number;
+  destinationId?: number;
+  regionId?: number;
   name: string;
   category: ObjectCategory;
   description: string;

@@ -1,10 +1,10 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of } from 'rxjs';
 
-// ── Mock credentials — EXACTLY as in README.md ───────────────────────────
+// ── Mock credentials ───────────────────────────────────────────────────────
 //
-//  Super Admin: superadmin@touristhub.rs   / admin123
-//  Admin:       admin@kopaonik.rs          / admin123
+//  Super Admin: superadmin@touristhub.me        / SuperAdmin123!
+//  Admin:       ana.kovacevic@zabljak.travel    / Admin123!
 //
 //  Roles match DB ENUM exactly: admin_user.role = ENUM('superadmin','admin')
 // ──────────────────────────────────────────────────────────────────────────
@@ -21,24 +21,24 @@ const MOCK_USERS: Record<string, {
     accountStatus: 'active';
   };
 }> = {
-  'superadmin@touristhub.rs': {
+  'superadmin@touristhub.me': {
     accessToken: 'mock-token-superadmin',
     user: {
       userId: 1,
       fullName: 'Marko Petrović',
-      email: 'superadmin@touristhub.rs',
+      email: 'superadmin@touristhub.me',
       role: 'superadmin',
       organizationId: null,
       isIndividual: true,
       accountStatus: 'active',
     },
   },
-  'admin@kopaonik.rs': {
+  'ana.kovacevic@zabljak.travel': {
     accessToken: 'mock-token-admin',
     user: {
       userId: 2,
       fullName: 'Ana Kovačević',
-      email: 'admin@kopaonik.rs',
+      email: 'ana.kovacevic@zabljak.travel',
       role: 'admin',
       organizationId: 1,
       isIndividual: false,
@@ -48,12 +48,11 @@ const MOCK_USERS: Record<string, {
 };
 
 const PASSWORDS: Record<string, string> = {
-  'superadmin@touristhub.rs': 'admin123',
-  'admin@kopaonik.rs': 'admin123',
+  'superadmin@touristhub.me': 'SuperAdmin123!',
+  'ana.kovacevic@zabljak.travel': 'Admin123!',
 };
 
 export const mockAuthInterceptor: HttpInterceptorFn = (req, next) => {
-  // ── Registration (mock success) ────────────────────────────────────────
   if (req.url.endsWith('/auth/register') && req.method === 'POST') {
     return of(new HttpResponse({
       status: 201,
@@ -61,28 +60,17 @@ export const mockAuthInterceptor: HttpInterceptorFn = (req, next) => {
     }));
   }
 
-  // ── Login ─────────────────────────────────────────────────────────────
   if (req.url.endsWith('/auth/login') && req.method === 'POST') {
     const body = req.body as { email: string; password: string };
-    const email = body?.email?.toLowerCase();
-    const match = MOCK_USERS[email];
+    const match = MOCK_USERS[body?.email ?? ''];
 
-    if (match && body?.password === PASSWORDS[email]) {
-      // Simulate small network delay for realistic UX
-      return of(new HttpResponse({ status: 200, body: match })).pipe(
-        // If you want delay: import { delay } from 'rxjs'; then use .pipe(delay(300))
-      );
+    if (match && body?.password === PASSWORDS[body.email]) {
+      return of(new HttpResponse({ status: 200, body: match }));
     }
-
     return of(new HttpResponse({
       status: 401,
       body: { message: 'Pogrešan email ili lozinka.' },
     }));
-  }
-
-  // ── Logout (clear mock session) ────────────────────────────────────────
-  if (req.url.endsWith('/auth/logout') && req.method === 'POST') {
-    return of(new HttpResponse({ status: 200, body: { success: true } }));
   }
 
   return next(req);

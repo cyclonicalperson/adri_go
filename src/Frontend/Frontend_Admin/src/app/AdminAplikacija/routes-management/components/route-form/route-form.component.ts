@@ -2,8 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouteService } from '@core/services/route.service';
-import { DestinationService } from '@core/services/destination.service';
-import { Destination } from '@core/models/destination.model';
+import { RegionService } from '@core/services/region.service';
+import { Region } from '@core/models/region.model';
 import { RouteType, RouteDifficulty, Waypoint } from '@core/models/route.model';
 import { WaypointEditorComponent } from '../waypoint-editor/waypoint-editor.component';
 
@@ -22,7 +22,7 @@ export class RouteFormComponent implements OnInit {
   saving = false;
   error: string | null = null;
 
-  destinations: Destination[] = [];
+  destinations: Region[] = [];
   waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[] = [];
 
   readonly typeOptions: { value: RouteType; label: string }[] = [
@@ -43,14 +43,14 @@ export class RouteFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: RouteService,
-    private destService: DestinationService,
+    private destService: RegionService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      destinationId: [null, Validators.required],
+      regionId: [null, Validators.required],
       name: ['', Validators.required],
       routeType: ['HIKING', Validators.required],
       difficulty: ['EASY', Validators.required],
@@ -61,7 +61,7 @@ export class RouteFormComponent implements OnInit {
       isActive: [true],
     });
 
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Destination[]; }) => {
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[]; }) => {
       this.destinations = res.data;
     });
 
@@ -72,7 +72,7 @@ export class RouteFormComponent implements OnInit {
       this.service.getById(this.id!).subscribe((res: { data: any; }) => {
         const r = res.data;
         this.form.patchValue({
-          destinationId: r.destinationId,
+          regionId: r.regionId,
           name: r.name,
           routeType: r.routeType,
           difficulty: r.difficulty,
