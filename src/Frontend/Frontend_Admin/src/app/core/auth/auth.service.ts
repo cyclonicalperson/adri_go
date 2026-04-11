@@ -12,7 +12,7 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
-  accessToken: string;
+  token: string;
   user: {
     userId: number;
     fullName: string;
@@ -39,7 +39,7 @@ export class AuthService {
   login(payload: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, payload).pipe(
       tap(res => {
-        this.tokenStorage.saveToken(res.accessToken);
+        this.tokenStorage.saveToken((res as any).token);
         this.tokenStorage.saveUser(res.user);
         this._currentUser$.next(res.user);
       })

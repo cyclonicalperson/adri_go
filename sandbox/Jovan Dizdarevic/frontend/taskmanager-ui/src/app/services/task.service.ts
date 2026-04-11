@@ -6,7 +6,7 @@ import { CreateTaskItem, TaskItem, TaskStatus } from '../models/task-item.model'
 @Injectable({ providedIn: 'root' })
 export class TaskService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:5000/api/tasks';
+  private readonly baseUrl = 'http://localhost:5125/api/tasks';
 
   getAll(status?: TaskStatus | ''): Observable<TaskItem[]> {
     let params = new HttpParams();
