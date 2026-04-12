@@ -26,6 +26,7 @@ export class ZahteviComponent implements OnInit {
   pendingCount = 0;
   approvedCount = 0;
   rejectedCount = 0;
+  allCount = 0;
 
   // Filters
   activeStatus: FilterStatus = 'pending';
@@ -66,11 +67,15 @@ export class ZahteviComponent implements OnInit {
 
   private loadCounts(): void {
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' })
-      .subscribe(r => { this.pendingCount = r.total; });
+      .subscribe(r => { this.pendingCount = r.total; this.recomputeAll(); });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'approved' })
-      .subscribe(r => { this.approvedCount = r.total; });
+      .subscribe(r => { this.approvedCount = r.total; this.recomputeAll(); });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'rejected' })
-      .subscribe(r => { this.rejectedCount = r.total; });
+      .subscribe(r => { this.rejectedCount = r.total; this.recomputeAll(); });
+  }
+
+  private recomputeAll(): void {
+    this.allCount = this.pendingCount + this.approvedCount + this.rejectedCount;
   }
 
   setStatus(s: FilterStatus): void {

@@ -2,14 +2,12 @@
 
 .map-container {
   width: 100%;
-  // CRITICAL: No overflow:hidden on this element.
-  // Leaflet measures container size before tiles load.
-  // overflow:hidden before init = tiles render in wrong grid positions.
   border-radius: $radius-lg;
   border: 1px solid $gray-200;
   display: block;
   position: relative;
-  // Clip only AFTER Leaflet has added .leaflet-container
+  overflow: hidden;
+
   .leaflet-container {
     border-radius: $radius-lg;
     overflow: hidden;

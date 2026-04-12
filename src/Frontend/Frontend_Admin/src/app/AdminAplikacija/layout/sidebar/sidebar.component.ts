@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { UserService } from '@core/services/user.service';
+import { ReviewService } from '@core/services/review.service';
 
 interface NavItem {
   label: string;
@@ -21,30 +22,32 @@ export class SidebarComponent implements OnInit {
   @Output() collapsedChange = new EventEmitter<boolean>();
   @Output() navClick = new EventEmitter<void>();
 
-  // Dynamic badge counts
   pendingReviewsBadge: number | null = null;
   pendingZahteviNadge: number | null = null;
-  pendingPermissionsBadge: number | null = null;
 
-  constructor(public auth: AuthService, private userService: UserService) { }
+  constructor(
+    public auth: AuthService,
+    private userService: UserService,
+    private reviewService: ReviewService,
+  ) { }
 
   ngOnInit(): void {
     this.loadBadges();
   }
 
   private loadBadges(): void {
-    // Pending reviews — visible to all
-    // (loaded via ReviewService in a real app; using analytics stats here)
-    // For now keep static badge until ReviewService is injected
-    this.pendingReviewsBadge = null;
+    // Pending reviews — vidljivo svim adminima
+    this.reviewService.getAll({ page: 1, pageSize: 1, status: 'PENDING' }).subscribe({
+      next: res => { this.pendingReviewsBadge = res.total > 0 ? res.total : null; },
+      error: () => { this.pendingReviewsBadge = null; },
+    });
 
+    // Pending zahtevi — samo superadmin
     if (this.isSuperAdmin) {
-      // Pending registration requests
-      this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' })
-        .subscribe({
-          next: res => { this.pendingZahteviNadge = res.total > 0 ? res.total : null; },
-          error: () => { this.pendingZahteviNadge = null; },
-        });
+      this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }).subscribe({
+        next: res => { this.pendingZahteviNadge = res.total > 0 ? res.total : null; },
+        error: () => { this.pendingZahteviNadge = null; },
+      });
     }
   }
 
@@ -62,7 +65,7 @@ export class SidebarComponent implements OnInit {
     return [
       { label: 'Admini', route: '/admin/users', icon: '👥' },
       { label: 'Zahtevi', route: '/admin/zahtevi', icon: '📋', badge: this.pendingZahteviNadge },
-      { label: 'Dozvole', route: '/admin/permissions', icon: '🔐', badge: this.pendingPermissionsBadge },
+      { label: 'Dozvole', route: '/admin/permissions', icon: '🔐' },
     ];
   }
 

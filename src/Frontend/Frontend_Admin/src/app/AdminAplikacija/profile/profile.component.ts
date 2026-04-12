@@ -3,8 +3,10 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { UserService } from '@core/services/user.service';
+import { AnalyticsService } from '@core/services/analytics.service';
 import { UserPermission } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
+import { DecimalPipe } from '@angular/common';
 
 /** Proširena verzija AuthUser-a sa opcionim poljima koja možda postoje u localStorage-u */
 interface ExtendedUser {
@@ -23,7 +25,7 @@ interface ExtendedUser {
   selector: 'app-profile',
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
-  imports: [ReactiveFormsModule, DateLocalPipe],
+  imports: [ReactiveFormsModule, DateLocalPipe, DecimalPipe],
 })
 export class ProfileComponent implements OnInit {
 
@@ -37,12 +39,14 @@ export class ProfileComponent implements OnInit {
   userPermissions: UserPermission[] = [];
   permsLoading = false;
 
-  // Statistike platforme za superadmin prikaz
-  readonly platformStats = { admins: 5, posts: 8, routes: 3, pending: 2 };
+  // Statistike platforme za superadmin prikaz — punjene iz API-ja
+  platformStats = { admins: 0, posts: 0, routes: 0, pending: 0 };
+  statsLoading = false;
 
   constructor(
     private authService: AuthService,
     private userService: UserService,
+    private analytics: AnalyticsService,
     private fb: FormBuilder,
     private router: Router,
   ) {
@@ -59,6 +63,23 @@ export class ProfileComponent implements OnInit {
     // Učitaj dozvole samo za admin (ne superadmin — superadmin ima sve)
     if (!this.isSuperAdmin && this.user?.userId) {
       this.loadPermissions(this.user.userId);
+    }
+
+    // Učitaj statistike platforme za superadmin
+    if (this.isSuperAdmin) {
+      this.statsLoading = true;
+      this.analytics.getDashboardStats().subscribe({
+        next: res => {
+          this.platformStats = {
+            admins: res.data.totalAdmins,
+            posts: res.data.totalPosts,
+            routes: res.data.totalRoutes,
+            pending: res.data.pendingRegistrations,
+          };
+          this.statsLoading = false;
+        },
+        error: () => { this.statsLoading = false; },
+      });
     }
   }
 

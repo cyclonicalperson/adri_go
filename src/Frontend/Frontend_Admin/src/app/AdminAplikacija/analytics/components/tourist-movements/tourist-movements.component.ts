@@ -15,10 +15,10 @@ export class TouristMovementsComponent {
 
   get markers(): MapMarker[] {
     return this.movements.map(m => ({
-      id: m.destinationId,
+      id: m.regionId,
       lat: m.latitude,
       lng: m.longitude,
-      label: `${m.destinationName} (${m.visitCount} poseta)`,
+      label: `${m.regionName} (${m.visitCount} poseta)`,
     }));
   }
 

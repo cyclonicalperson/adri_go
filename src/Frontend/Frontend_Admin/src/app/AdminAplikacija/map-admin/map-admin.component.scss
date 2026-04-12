@@ -114,3 +114,23 @@
   margin-top: 8px;
   font-weight: 600;
 }
+
+.btn-detail {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px 14px;
+  border: 1px solid $primary;
+  background: $surface-green;
+  color: $primary-dark;
+  border-radius: $radius-md;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    background: $primary;
+    color: $white;
+  }
+}

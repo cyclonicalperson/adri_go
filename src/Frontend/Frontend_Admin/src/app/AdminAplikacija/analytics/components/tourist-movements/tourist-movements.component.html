@@ -9,10 +9,10 @@
            height="320px" />
   <div class="ranking">
     <div class="ranking-title">Top 5 destinacija</div>
-    @for (m of topMovements; track m.destinationId; let i = $index) {
+    @for (m of topMovements; track m.regionId; let i = $index) {
     <div class="ranking-item">
       <span class="rank">{{ i + 1 }}</span>
-      <span class="dest-name">{{ m.destinationName }}</span>
+      <span class="dest-name">{{ m.regionName }}</span>
       <span class="visit-count">{{ m.visitCount }}</span>
     </div>
     }

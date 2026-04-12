@@ -40,6 +40,7 @@ export class UsersListComponent implements OnInit {
   ngOnInit(): void {
     this.service.getRoles().subscribe(res => { this.roles = res.data; });
     this.load();
+    this.loadPendingCount();
   }
 
   load(): void {
@@ -51,10 +52,16 @@ export class UsersListComponent implements OnInit {
         this.totalPages = res.totalPages;
         this.activeCount = res.data.filter(u => u.isActive).length;
         this.suspendedCount = res.data.filter(u => !u.isActive).length;
-        this.pendingCount = 3; // from permissions system
         this.loading = false;
       },
       error: () => { this.loading = false; },
+    });
+  }
+
+  private loadPendingCount(): void {
+    this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }).subscribe({
+      next: res => { this.pendingCount = res.total; },
+      error: () => { this.pendingCount = 0; },
     });
   }
 

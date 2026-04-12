@@ -11,3 +11,134 @@
   background: #fef3c7;
   color: #92400e;
 }
+
+// ── Detail / Map overlay ──────────────────────────────────────────────
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.detail-panel {
+  width: 480px;
+  max-width: 95vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  overflow-y: auto;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f3f4f6;
+
+  .detail-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+  }
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  &:hover { color: #374151; }
+}
+
+.detail-body {
+  padding: 24px;
+  flex: 1;
+}
+
+.detail-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.detail-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.detail-cat {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.detail-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-val {
+  font-size: 13px;
+  color: #374151;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid #f3f4f6;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-outline {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+  &:hover { background: #f9fafb; }
+}
+
+.btn-primary {
+  background: #22c55e;
+  color: #fff;
+  &:hover { background: #16a34a; }
+}
+
+.state-msg {
+  text-align: center;
+  color: #9ca3af;
+  padding: 32px;
+  font-size: 13px;
+}

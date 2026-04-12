@@ -56,18 +56,15 @@
 }
 
 .grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
 }
 
 .day-cell {
-  display: inline-block;
   min-height: 90px;
   padding: 8px;
   border-right: 1px solid $gray-100;
   border-bottom: 1px solid $gray-100;
-  vertical-align: top;
-  width: calc(100% / 7);
 
   &.other-month {
     opacity: .35;

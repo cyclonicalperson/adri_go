@@ -21,11 +21,11 @@
       <div class="day-num">{{ day.date.getDate() }}</div>
 
       <div class="day-events">
-        @for (ev of day.events.slice(0, 3); track ev.eventId) {
+        @for (ev of day.events.slice(0, 3); track ev.postId) {
         <div class="event-pill"
-             [style.background]="categoryColor(ev.category)"
+             [style.background]="categoryColor(ev)"
              (click)="editEvent.emit(ev)"
-             [title]="ev.name">{{ ev.name }}</div>
+             [title]="ev.title">{{ ev.title }}</div>
         }
         @if (day.events.length > 3) {
         <div class="more">+{{ day.events.length - 3 }} još</div>

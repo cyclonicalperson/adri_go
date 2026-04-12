@@ -1,5 +1,6 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { environment } from '@env/environment';
 import { MapComponent, MapMarker } from '@shared/components/map/map.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
@@ -38,7 +39,7 @@ export class MapAdminComponent implements OnInit {
   layer: LayerType = 'all';
   loading = true;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private router: Router) { }
 
   ngOnInit(): void {
     this.loadData();
@@ -127,6 +128,23 @@ export class MapAdminComponent implements OnInit {
   onMarkerClicked(m: MapMarker): void { this.selectedMarker = m; }
   clearSelection(): void { this.selectedMarker = null; }
 
+  goToDetail(): void {
+    if (!this.selectedMarker) return;
+    const id = this.selectedMarker.id;
+    // Route markers have id >= 100000
+    if (id >= 100000) {
+      this.router.navigate(['/admin/routes-management']);
+    } else {
+      // Check if it's an event
+      const post = this.posts.find(p => p.id === id);
+      if (post?.postType === 'event') {
+        this.router.navigate(['/admin/events', id, 'edit']);
+      } else {
+        this.router.navigate(['/admin/lokacije', id]);
+      }
+    }
+  }
+
   setLayer(l: LayerType): void {
     this.layer = l;
     this.selectedMarker = null;
@@ -136,7 +154,7 @@ export class MapAdminComponent implements OnInit {
 
   typeLabel(postType: string): string {
     const map: Record<string, string> = {
-      accommodation: '🏨 Smještaj',
+      accommodation: '🏨 Smeštaj',
       restaurant: '🍽️ Restoran',
       club: '🎵 Klub',
       cultural_site: '🏛️ Kulturni objekat',

@@ -22,34 +22,26 @@ export class RolesPermissionsComponent {
   @Output() roleSelected = new EventEmitter<number>();
 
   readonly roleInfo: Record<string, RoleInfo> = {
-    ADMIN: {
-      roleName: 'Administrator',
+    superadmin: {
+      roleName: 'Super Administrator',
       badge: 'danger',
       permissions: [
-        'Upravljanje svim destinacijama, objektima, dogadjajima i rutama',
-        'Upravljanje korisnicima i rolama',
-        'Moderacija recenzija',
+        'Upravljanje svim lokacijama, aktivnostima, dogadjajima i rutama',
+        'Upravljanje adminima i rolama',
+        'Moderacija svih recenzija',
         'Pristup svim analitikama',
-        'Upravljanje organizacijama',
+        'Upravljanje organizacijama i dozvolama',
+        'Odobravanje zahteva za registraciju',
       ],
     },
-    ORG: {
-      roleName: 'Organizacija',
+    admin: {
+      roleName: 'Administrator',
       badge: 'info',
       permissions: [
-        'Kreiranje i upravljanje vlastitim dogadjajima',
-        'Pregled recenzija vlastitih dogadjaja',
+        'Kreiranje i upravljanje dodeljenim sadržajem',
+        'Pregled recenzija vlastitih objava',
         'Pregled analitike za vlastite entitete',
-      ],
-    },
-    TOURIST: {
-      roleName: 'Turist',
-      badge: 'success',
-      permissions: [
-        'Pregled destinacija, objekata, dogadjaja i ruta',
-        'Pisanje recenzija',
-        'Čuvanje favorita',
-        'Pristup preporukama',
+        'Pristup ograničen dodeljenim dozvolama',
       ],
     },
   };

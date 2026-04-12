@@ -1,7 +1,7 @@
 <div class="page-content">
 
   <!-- ── STATS ────────────────────────────────────────────────────────── -->
-  <div class="stats-strip">
+  <div class="stats-strip" style="grid-template-columns: repeat(4, 1fr)">
     <div class="stat-chip">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
@@ -18,7 +18,7 @@
       <div class="trend">Neispunili uslove</div>
     </div>
     <div class="stat-chip">
-      <div class="num">{{ total }}</div>
+      <div class="num">{{ allCount }}</div>
       <div class="lbl">Svi zahtevi</div>
       <div class="trend">Ukupno primljeno</div>
     </div>
@@ -233,7 +233,7 @@
     <h3 class="reject-title">Odbij zahtev</h3>
     <p class="reject-sub">
       Unosite razlog odbijanja za <strong>{{ rejectTarget.fullName }}</strong>.
-      Podnosilac će dobiti email obavještenje.
+      Podnosilac će dobiti email obaveštenje.
     </p>
     <label class="reject-label">Razlog odbijanja (opcionalno)</label>
     <textarea class="reject-textarea"

@@ -83,7 +83,7 @@ export interface UpdatePostRequest extends Partial<CreatePostRequest> {
 
 /** Srpski nazivi za tipove objava */
 export const POST_TYPE_LABELS: Record<PostType, string> = {
-  accommodation: 'Smještaj',
+  accommodation: 'Smeštaj',
   restaurant: 'Restoran',
   club: 'Klub',
   cultural_site: 'Kulturni objekat',

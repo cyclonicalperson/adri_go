@@ -16,10 +16,13 @@ import {
   AnalyticsService, DashboardStats, DailyVisit,
   PopularPost, TouristMovement,
 } from '@core/services/analytics.service';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { environment } from '@env/environment';
 import {
   WidgetId, WidgetSlot, DashboardConfig, WidgetDef,
   WIDGET_CATALOGUE, DEFAULT_LAYOUT_ADMIN, DEFAULT_LAYOUT_ORG,
 } from './dashboard-widget.model';
+import { MapComponent, MapMarker } from '@shared/components/map/map.component';
 
 const STORAGE_KEY_PREFIX = 'th_dashboard_v1_';
 
@@ -32,7 +35,7 @@ interface CityBreakdown { label: string; pct: number; color: string; }
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
-  imports: [RouterLink, DecimalPipe, CdkDrag, CdkDropList, CdkDragHandle, CdkDragPlaceholder],
+  imports: [RouterLink, DecimalPipe, CdkDrag, CdkDropList, CdkDragHandle, CdkDragPlaceholder, MapComponent],
 })
 export class DashboardComponent implements OnInit {
   loading = true;
@@ -44,6 +47,7 @@ export class DashboardComponent implements OnInit {
   popularObjects: PopularPost[] = [];
   popularEvents: PopularPost[] = [];
   movements: TouristMovement[] = [];
+  allPosts: { postId: number; title: string; postType: string; lat: number; lng: number }[] = [];
 
   activeTourists = 8294;
   currentlyOnsite = 312;
@@ -73,15 +77,26 @@ export class DashboardComponent implements OnInit {
   ];
 
   readonly cityBreakdown: CityBreakdown[] = [
-    { label: '🏙️ Beograd', pct: 34, color: '#22c55e' },
-    { label: '🏔️ Kopaonik', pct: 22, color: '#3b82f6' },
-    { label: '🎵 Novi Sad', pct: 18, color: '#8b5cf6' },
-    { label: '💆 Vrnjačka B.', pct: 14, color: '#f59e0b' },
-    { label: '🌿 Zlatibor', pct: 8, color: '#ef4444' },
+    { label: '🏙️ Žabljak', pct: 34, color: '#22c55e' },
+    { label: '🏔️ Durmitor', pct: 22, color: '#3b82f6' },
+    { label: '🌊 Budva', pct: 18, color: '#8b5cf6' },
+    { label: '🏰 Kotor', pct: 14, color: '#f59e0b' },
+    { label: '🌿 Tara kanjon', pct: 8, color: '#ef4444' },
     { label: '📍 Ostalo', pct: 4, color: '#d1d5db' },
   ];
 
-  constructor(public auth: AuthService, private analytics: AnalyticsService) { }
+  readonly categoryBreakdown = [
+    { label: 'Smeštaj', icon: '🏨', pct: 31, color: '#22c55e' },
+    { label: 'Restoran', icon: '🍽️', pct: 15, color: '#3b82f6' },
+    { label: 'Atrakcije', icon: '🌟', pct: 15, color: '#f59e0b' },
+    { label: 'Kulturni objekti', icon: '🏛️', pct: 15, color: '#8b5cf6' },
+    { label: 'Sportski objekti', icon: '⚽', pct: 8, color: '#ec4899' },
+    { label: 'Dogadjaji', icon: '🎟️', pct: 8, color: '#06b6d4' },
+    { label: 'Klubovi', icon: '🎵', pct: 5, color: '#f97316' },
+    { label: 'Ostalo', icon: '📍', pct: 3, color: '#d1d5db' },
+  ];
+
+  constructor(public auth: AuthService, private analytics: AnalyticsService, private http: HttpClient) { }
 
   ngOnInit(): void {
     this.config = this.loadConfig();
@@ -108,6 +123,12 @@ export class DashboardComponent implements OnInit {
         this.popularEvents = res.events.data;
         this.movements = res.movements.data;
         this.loading = false;
+        // Load posts for location map pins
+        this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
+          params: new HttpParams().set('page', 1).set('pageSize', 200)
+        }).subscribe(r => {
+          this.allPosts = (r.data ?? []).filter((p: any) => p.lat && p.lng && p.postType !== 'event');
+        });
       },
       error: () => { this.loading = false; },
     });
@@ -115,6 +136,35 @@ export class DashboardComponent implements OnInit {
 
   get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
   get pendingCount(): number { return this.pendingRequests.length; }
+
+  get movementMarkers(): MapMarker[] {
+    return this.movements.map(m => ({
+      id: m.regionId,
+      lat: m.latitude,
+      lng: m.longitude,
+      label: `${m.regionName} (${m.visitCount} poseta)`,
+    }));
+  }
+
+  /** All non-event posts with coordinates for the location map widget */
+  get locationMarkers(): MapMarker[] {
+    if (this.allPosts.length) {
+      return this.allPosts.map(p => ({
+        id: p.postId,
+        lat: p.lat,
+        lng: p.lng,
+        label: p.title,
+        category: p.postType,
+      }));
+    }
+    // Fallback to movements if posts not loaded yet
+    return this.movements.map(m => ({
+      id: m.regionId,
+      lat: m.latitude,
+      lng: m.longitude,
+      label: m.regionName,
+    }));
+  }
 
   // ── Config persistence ────────────────────────────────────────────────
   private storageKey(): string {

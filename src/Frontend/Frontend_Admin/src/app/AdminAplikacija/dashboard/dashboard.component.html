@@ -90,28 +90,28 @@
         </div>
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
-            <div class="kpi-icon-wrap">🏢</div>
+            <div class="kpi-icon-wrap">📍</div>
             <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
-            <div class="kpi-lbl">Objave</div>
-            <div class="kpi-trend up">↑ +8 ovog meseca</div>
+            <div class="kpi-lbl">Lokacije</div>
+            <div class="kpi-trend up">↑ +3 ovog meseca</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
             <div class="kpi-icon-wrap">🗺️</div>
             <div class="kpi-val">{{ stats?.totalRoutes ?? 0 }}</div>
             <div class="kpi-lbl">Rute</div>
-            <div class="kpi-trend up">↑ +4 ove nedelje</div>
+            <div class="kpi-trend neutral">→ Stabilno</div>
           </div>
           <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
             <div class="kpi-icon-wrap">👥</div>
             <div class="kpi-val">{{ stats?.totalAdmins ?? 0 }}</div>
             <div class="kpi-lbl">Admini</div>
-            <div class="kpi-trend neutral">→ Aktivni</div>
+            <div class="kpi-trend neutral">{{ stats?.pendingRegistrations ?? 0 }} na čekanju</div>
           </div>
           <div class="kpi-tile" style="--accent:#8b5cf6;--accent-bg:#f5f3ff">
             <div class="kpi-icon-wrap">⭐</div>
             <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
             <div class="kpi-lbl">Recenzije čekaju</div>
-            <div class="kpi-trend down">↑ Treba pregled</div>
+            <div class="kpi-trend down">⚠ Treba pregled</div>
           </div>
         </div>
       </div>
@@ -189,21 +189,18 @@
       <!-- ── CATEGORY DONUT ────────────────────────────────────────── -->
       @case ('category_donut') {
       <div class="panel widget">
-        <div class="panel-header"><div class="panel-title">Po kategoriji</div></div>
+        <div class="panel-header"><div class="panel-title">Raspored po tipu</div></div>
         <div class="panel-body">
-          <div class="donut-wrap">
-            <div class="donut">
-              <div class="donut-center">
-                <div class="donut-num">{{ stats?.totalPosts ?? 0 }}</div>
-                <div class="donut-lbl">Ukupno</div>
+          <div class="category-bars">
+            @for (cat of categoryBreakdown; track cat.label) {
+            <div class="cat-row">
+              <span class="cat-label">{{ cat.icon }} {{ cat.label }}</span>
+              <div class="cat-bar-wrap">
+                <div class="cat-bar-fill" [style.width.%]="cat.pct" [style.background]="cat.color"></div>
               </div>
+              <span class="cat-val">{{ cat.pct }}%</span>
             </div>
-            <div class="legend">
-              <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Smeštaj<span class="legend-val">45%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Kultura<span class="legend-val">23%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Sport<span class="legend-val">15%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Ostalo<span class="legend-val">17%</span></div>
-            </div>
+            }
           </div>
         </div>
       </div>
@@ -325,52 +322,47 @@
       </div>
       }
 
-      <!-- ── MAP PREVIEW ───────────────────────────────────────────── -->
+      <!-- ── MAP PREVIEW (Tourist heatmap) ─────────────────────────── -->
       @case ('map_preview') {
       <div class="panel widget">
         <div class="panel-header">
-          <div class="panel-title">Mapa lokacija</div>
-          <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
+          <div class="panel-title">Kretanje turista</div>
+          <div class="panel-sub">Poslednjih 7 dana</div>
         </div>
         <div class="panel-body">
-          <div class="map-preview">
+          <div class="map-heat">
             <div class="map-grid"></div>
-            <div class="map-pin" style="background:#22c55e;left:42%;top:38%"></div>
-            <div class="map-pin" style="background:#3b82f6;left:58%;top:25%"></div>
-            <div class="map-pin" style="background:#f59e0b;left:35%;top:55%"></div>
-            <div class="map-pin" style="background:#22c55e;left:65%;top:48%"></div>
-            <div class="map-pin" style="background:#8b5cf6;left:50%;top:30%"></div>
-            <div class="map-count">{{ stats?.totalPosts ?? 0 }} objava</div>
+            @for (m of movements.slice(0, 6); track m.regionId) {
+            <div class="heat-spot" [style.left.%]="pinLeft(m)" [style.top.%]="pinTop(m)"
+                 [style.width.px]="30 + m.visitCount * 8" [style.height.px]="30 + m.visitCount * 8"
+                 style="background:radial-gradient(circle,rgba(34,197,94,.45),transparent)"></div>
+            <div class="map-pin" [style.left.%]="pinLeft(m)" [style.top.%]="pinTop(m)" style="background:#22c55e"></div>
+            }
+            @for (m of movements.slice(0, 4); track m.regionId) {
+            <div class="heat-label" [style.left.%]="pinLeft(m)" [style.top]="'calc(' + pinTop(m) + '% + 14px)'"
+                 style="font-size:10px;color:#15803d;font-weight:700;position:absolute;transform:translateX(-50%);white-space:nowrap">
+              {{ m.regionName }}
+            </div>
+            }
+            <div class="map-overlay">🟢 {{ currentlyOnsite }} turista trenutno</div>
           </div>
         </div>
       </div>
       }
 
-      <!-- ── TOURIST MAP ────────────────────────────────────────────── -->
+      <!-- ── TOURIST MAP (Mapa lokacija) ──────────────────────────────── -->
       @case ('tourist_map') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Mapa kretanja turista</div><div class="panel-sub">Toplotna mapa · poslednjih 7 dana</div></div>
+          <div><div class="panel-title">Mapa lokacija</div><div class="panel-sub">Sve lokacije na platformi</div></div>
+          <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
         </div>
         <div class="panel-body">
-          <div class="map-heat">
-            <div class="map-grid"></div>
-            <div class="heat-spot" style="left:48%;top:45%;width:80px;height:80px;background:radial-gradient(circle,rgba(34,197,94,.5),transparent)"></div>
-            <div class="heat-spot" style="left:55%;top:28%;width:60px;height:60px;background:radial-gradient(circle,rgba(34,197,94,.4),transparent)"></div>
-            <div class="heat-spot" style="left:38%;top:60%;width:50px;height:50px;background:radial-gradient(circle,rgba(34,197,94,.35),transparent)"></div>
-            @if (movements.length) {
-            @for (m of movements.slice(0, 6); track m.regionId) {
-            <div class="map-pin" [style.left.%]="pinLeft(m)" [style.top.%]="pinTop(m)" style="background:#22c55e"></div>
-            }
-            } @else {
-            <div class="map-pin" style="left:48%;top:45%;background:#22c55e"></div>
-            <div class="map-pin" style="left:55%;top:28%;background:#22c55e"></div>
-            <div class="map-pin" style="left:38%;top:60%;background:#f59e0b"></div>
-            <div class="map-pin" style="left:65%;top:42%;background:#3b82f6"></div>
-            <div class="map-pin" style="left:32%;top:35%;background:#8b5cf6"></div>
-            }
-            <div class="map-overlay">🟢 {{ currentlyOnsite }} turista trenutno</div>
-          </div>
+          <app-map [markers]="locationMarkers"
+                   [centerLat]="43.15"
+                   [centerLng]="19.10"
+                   [zoom]="9"
+                   height="320px" />
         </div>
       </div>
       }

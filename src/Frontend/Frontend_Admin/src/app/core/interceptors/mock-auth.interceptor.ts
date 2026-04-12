@@ -1,10 +1,10 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of } from 'rxjs';
 
-// ── Mock credentials ───────────────────────────────────────────────────────
+// ── Mock credentials — EXACTLY as in README.md ───────────────────────────
 //
-//  Super Admin: superadmin@touristhub.me        / SuperAdmin123!
-//  Admin:       ana.kovacevic@zabljak.travel    / Admin123!
+//  Super Admin: superadmin@touristhub.rs   / admin123
+//  Admin:       admin@kopaonik.rs          / admin123
 //
 //  Roles match DB ENUM exactly: admin_user.role = ENUM('superadmin','admin')
 // ──────────────────────────────────────────────────────────────────────────
@@ -21,24 +21,24 @@ const MOCK_USERS: Record<string, {
     accountStatus: 'active';
   };
 }> = {
-  'superadmin@touristhub.me': {
+  'superadmin@touristhub.rs': {
     accessToken: 'mock-token-superadmin',
     user: {
       userId: 1,
       fullName: 'Marko Petrović',
-      email: 'superadmin@touristhub.me',
+      email: 'superadmin@touristhub.rs',  // ← mora da se poklapa sa ključem
       role: 'superadmin',
       organizationId: null,
       isIndividual: true,
       accountStatus: 'active',
     },
   },
-  'ana.kovacevic@zabljak.travel': {
+  'admin@kopaonik.rs': {
     accessToken: 'mock-token-admin',
     user: {
       userId: 2,
       fullName: 'Ana Kovačević',
-      email: 'ana.kovacevic@zabljak.travel',
+      email: 'admin@kopaonik.rs',  // ← mora da se poklapa sa ključem
       role: 'admin',
       organizationId: 1,
       isIndividual: false,
@@ -48,11 +48,12 @@ const MOCK_USERS: Record<string, {
 };
 
 const PASSWORDS: Record<string, string> = {
-  'superadmin@touristhub.me': 'SuperAdmin123!',
-  'ana.kovacevic@zabljak.travel': 'Admin123!',
+  'superadmin@touristhub.rs': 'admin123',
+  'admin@kopaonik.rs': 'admin123',
 };
 
 export const mockAuthInterceptor: HttpInterceptorFn = (req, next) => {
+  // ── Registration (mock success) ────────────────────────────────────────
   if (req.url.endsWith('/auth/register') && req.method === 'POST') {
     return of(new HttpResponse({
       status: 201,
@@ -60,17 +61,25 @@ export const mockAuthInterceptor: HttpInterceptorFn = (req, next) => {
     }));
   }
 
+  // ── Login ─────────────────────────────────────────────────────────────
   if (req.url.endsWith('/auth/login') && req.method === 'POST') {
     const body = req.body as { email: string; password: string };
-    const match = MOCK_USERS[body?.email ?? ''];
+    const email = body?.email?.toLowerCase().trim();
+    const match = MOCK_USERS[email];
 
-    if (match && body?.password === PASSWORDS[body.email]) {
+    if (match && body?.password === PASSWORDS[email]) {
       return of(new HttpResponse({ status: 200, body: match }));
     }
+
     return of(new HttpResponse({
       status: 401,
       body: { message: 'Pogrešan email ili lozinka.' },
     }));
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────
+  if (req.url.endsWith('/auth/logout') && req.method === 'POST') {
+    return of(new HttpResponse({ status: 200, body: { success: true } }));
   }
 
   return next(req);

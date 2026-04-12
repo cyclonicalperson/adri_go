@@ -1109,3 +1109,47 @@
     border-radius: $radius-xl $radius-xl 0 0;
   }
 }
+
+// ── Category bar chart widget ──────────────────────────────────────────────
+.category-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.cat-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 38px;
+  align-items: center;
+  gap: 10px;
+
+  .cat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cat-bar-wrap {
+    background: #f3f4f6;
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+
+    .cat-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .4s ease;
+    }
+  }
+
+  .cat-val {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-align: right;
+  }
+}

@@ -8,6 +8,9 @@ import { PageRequest } from '@core/models/api-response.model';
 import { RegionService } from '@core/services/region.service';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
+import { MapComponent, MapMarker } from '@shared/components/map/map.component';
+import { EventCalendarComponent } from '../event-calendar/event-calendar.component';
 
 type ViewMode = 'table' | 'calendar';
 
@@ -15,7 +18,7 @@ type ViewMode = 'table' | 'calendar';
   selector: 'app-events-list',
   templateUrl: './events-list.component.html',
   styleUrl: './events-list.component.scss',
-  imports: [ConfirmDialogComponent, TruncatePipe],
+  imports: [ConfirmDialogComponent, TruncatePipe, DateLocalPipe, MapComponent, EventCalendarComponent],
 })
 export class EventsListComponent implements OnInit {
   events: Post[] = [];
@@ -29,6 +32,14 @@ export class EventsListComponent implements OnInit {
   upcomingCount = 0;
   ongoingCount = 0;
   pastCount = 0;
+
+  // Detail panel
+  detailEvent: Post | null = null;
+  detailOpen = false;
+
+  // Map panel
+  mapEvent: Post | null = null;
+  mapOpen = false;
 
   req: PageRequest & {
     regionId?: number;
@@ -150,6 +161,25 @@ export class EventsListComponent implements OnInit {
   goEdit(e: Post): void { this.router.navigate(['/admin/events', e.postId, 'edit']); }
   confirmDelete(e: Post): void { this.deleteTarget = e; }
   cancelDelete(): void { this.deleteTarget = null; }
+
+  // ── Detail panel ────────────────────────────────────────────────────────
+  openDetail(e: Post): void { this.detailEvent = e; this.detailOpen = true; }
+  closeDetail(): void { this.detailOpen = false; this.detailEvent = null; }
+
+  // ── Map panel ───────────────────────────────────────────────────────────
+  showOnMap(e: Post): void { this.mapEvent = e; this.mapOpen = true; }
+  closeMap(): void { this.mapOpen = false; this.mapEvent = null; }
+
+  get mapMarkers(): MapMarker[] {
+    if (!this.mapEvent || !this.mapEvent.lat || !this.mapEvent.lng) return [];
+    return [{
+      id: this.mapEvent.postId,
+      lat: this.mapEvent.lat,
+      lng: this.mapEvent.lng,
+      label: this.mapEvent.title,
+      category: this.categoryLabel(this.eventCategory(this.mapEvent)),
+    }];
+  }
 
   doDelete(): void {
     if (!this.deleteTarget) return;

@@ -27,7 +27,7 @@ export class ObjectsListComponent implements OnInit {
   pendingCount = 0;
   inactiveCount = 0;
 
-  req: PageRequest & { category?: string; regionId?: number } = {
+  req: PageRequest & { category?: string; regionId?: number; status?: string } = {
     page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc',
   };
 
@@ -76,8 +76,15 @@ export class ObjectsListComponent implements OnInit {
     this.load();
   }
 
-  onStatusFilter(_val: string): void {
-    // Status not yet a backend filter — reserved for future
+  onStatusFilter(val: string): void {
+    // Map UI value to DB status
+    const statusMap: Record<string, string> = {
+      active: 'published',
+      pending: 'draft',
+      inactive: 'archived',
+    };
+    (this.req as any)['status'] = statusMap[val] || undefined;
+    this.req = { ...this.req, page: 1 };
     this.load();
   }
 

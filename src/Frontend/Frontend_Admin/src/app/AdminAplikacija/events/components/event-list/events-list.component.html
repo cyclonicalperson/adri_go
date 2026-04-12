@@ -152,8 +152,8 @@
           <td style="font-size:12px;font-weight:600">—</td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
-              <button class="btn-icon map-btn" title="Mapa">🗺️</button>
-              <button class="btn-icon" title="Detalji">👁️</button>
+              <button class="btn-icon map-btn" title="Mapa" (click)="showOnMap(e)">🗺️</button>
+              <button class="btn-icon" title="Detalji" (click)="openDetail(e)">👁️</button>
               <button class="btn-icon" title="Izmeni" (click)="goEdit(e)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(e)">🗑️</button>
             </div>
@@ -187,3 +187,85 @@
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
+
+<!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
+@if (detailOpen && detailEvent) {
+<div class="detail-overlay" (click)="closeDetail()">
+  <div class="detail-panel" (click)="$event.stopPropagation()">
+    <div class="detail-header">
+      <h3 class="detail-title">Detalji dogadjaja</h3>
+      <button class="btn-close" (click)="closeDetail()">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-icon">{{ categoryIcon(eventCategory(detailEvent)) }}</div>
+      <div class="detail-name">{{ detailEvent.title }}</div>
+      <div class="detail-cat">
+        <span class="type-tag" [class]="catBadgeClass(eventCategory(detailEvent))">{{ categoryLabel(eventCategory(detailEvent)) }}</span>
+        <span class="badge" [class]="postStatusBadgeClass(detailEvent.status)">{{ postStatusLabel(detailEvent.status) }}</span>
+      </div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">Opis</span>
+          <span class="detail-val">{{ detailEvent.description }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Region</span>
+          <span class="detail-val">{{ detailEvent.region?.name ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Adresa</span>
+          <span class="detail-val">{{ detailEvent.address ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Početak</span>
+          <span class="detail-val">{{ eventStart(detailEvent) | dateLocal:'datetime' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Kraj</span>
+          <span class="detail-val">{{ eventEnd(detailEvent) | dateLocal:'datetime' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Admin</span>
+          <span class="detail-val">{{ detailEvent.adminName ?? '—' }}</span>
+        </div>
+      </div>
+      @if (detailEvent.lat && detailEvent.lng) {
+      <div style="margin-top:16px">
+        <app-map [markers]="[{id: detailEvent.postId, lat: detailEvent.lat, lng: detailEvent.lng, label: detailEvent.title}]"
+                 [centerLat]="detailEvent.lat"
+                 [centerLng]="detailEvent.lng"
+                 [zoom]="12"
+                 height="200px" />
+      </div>
+      }
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-outline" (click)="goEdit(detailEvent)">✏️ Izmeni</button>
+      <button class="btn btn-primary" (click)="closeDetail()">Zatvori</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ── MAP PANEL ─────────────────────────────────────────────────────── -->
+@if (mapOpen && mapEvent) {
+<div class="detail-overlay" (click)="closeMap()">
+  <div class="detail-panel" (click)="$event.stopPropagation()" style="max-width:700px">
+    <div class="detail-header">
+      <h3 class="detail-title">{{ mapEvent.title }} — Mapa</h3>
+      <button class="btn-close" (click)="closeMap()">✕</button>
+    </div>
+    <div class="detail-body">
+      @if (mapEvent.lat && mapEvent.lng) {
+      <app-map [markers]="mapMarkers"
+               [centerLat]="mapEvent.lat"
+               [centerLng]="mapEvent.lng"
+               [zoom]="13"
+               height="400px" />
+      } @else {
+      <div class="state-msg">Ovaj dogadjaj nema definisanu lokaciju.</div>
+      }
+    </div>
+  </div>
+</div>
+}

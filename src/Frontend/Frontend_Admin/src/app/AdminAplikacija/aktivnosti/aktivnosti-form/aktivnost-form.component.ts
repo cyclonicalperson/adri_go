@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
+import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 interface SimpleObject { objectId: number; name: string; }
 
@@ -10,9 +11,11 @@ interface SimpleObject { objectId: number; name: string; }
   selector: 'app-aktivnost-form',
   templateUrl: './aktivnost-form.component.html',
   styleUrl: './aktivnost-form.component.scss',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, MapComponent],
 })
 export class AktivnostFormComponent implements OnInit {
+  @ViewChild(MapComponent) mapComp?: MapComponent;
+
   form!: FormGroup;
   isEdit = false;
   id: number | null = null;
@@ -54,7 +57,6 @@ export class AktivnostFormComponent implements OnInit {
       status: ['PENDING'],
     });
 
-    // Load available objects for linking
     this.http.get<{ data: SimpleObject[] }>(`${environment.apiUrl}/objects?pageSize=100`)
       .subscribe(res => { this.objects = res.data; });
 
@@ -69,9 +71,16 @@ export class AktivnostFormComponent implements OnInit {
             name: a.name, category: a.category, description: a.description,
             duration: a.duration, difficulty: a.difficulty, maxCapacity: a.maxCapacity,
             tags: Array.isArray(a.tags) ? a.tags.join(', ') : (a.tags ?? ''),
-            objectId: a.objectId, latitude: a.latitude, longitude: a.longitude,
+            objectId: a.objectId,
+            latitude: a.latitude ?? a.lat ?? null,
+            longitude: a.longitude ?? a.lng ?? null,
             status: a.status,
           });
+          const lat = a.latitude ?? a.lat;
+          const lng = a.longitude ?? a.lng;
+          if (lat && lng) {
+            setTimeout(() => this.mapComp?.setPickedLocation(lat, lng), 300);
+          }
         });
     }
   }
@@ -104,4 +113,9 @@ export class AktivnostFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/aktivnosti']); }
   f(name: string) { return this.form.get(name)!; }
+
+  onMapClick(ev: MapClickEvent): void {
+    this.form.patchValue({ latitude: +ev.lat.toFixed(4), longitude: +ev.lng.toFixed(4) });
+    this.mapComp?.setPickedLocation(ev.lat, ev.lng);
+  }
 }

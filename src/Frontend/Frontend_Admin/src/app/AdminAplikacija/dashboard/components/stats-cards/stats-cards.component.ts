@@ -20,7 +20,7 @@ export class StatsCardsComponent {
 
   get cards(): StatCard[] {
     return [
-      { label: 'Objave', value: this.stats.totalPosts, color: '#3FA26E' },
+      { label: 'Lokacije', value: this.stats.totalPosts, color: '#3FA26E' },
       { label: 'Rute', value: this.stats.totalRoutes, color: '#1A73E8' },
       { label: 'Turisti', value: this.stats.totalTourists, color: '#F59E0B' },
       { label: 'Admini', value: this.stats.totalAdmins, color: '#8B5CF6' },
