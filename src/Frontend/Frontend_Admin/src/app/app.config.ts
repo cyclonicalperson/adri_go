@@ -5,18 +5,19 @@ import { routes } from './app.routes';
 import { authInterceptor }    from './core/auth/auth.interceptor';
 import { errorInterceptor }   from './core/interceptors/error.interceptor';
 import { loadingInterceptor } from './core/interceptors/loading.interceptor';
+<<<<<<< HEAD
 import { mockAuthInterceptor } from './core/interceptors/mock-auth.interceptor';
 import { mockApiInterceptor }  from './core/interceptors/mock-api.interceptor';
 import { environment } from '../environments/environment';
+=======
+>>>>>>> master
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideHttpClient(
       withInterceptors([
-        // Mock interceptors run FIRST in development — they short-circuit
-        // real HTTP calls and return fake data. Remove for production.
-        ...(environment.production ? [] : [mockAuthInterceptor, mockApiInterceptor]),
+        // Mock interceptori su ISKLJUČENI – sav saobraćaj ide ka pravom backendu.
         authInterceptor,
         errorInterceptor,
         loadingInterceptor,

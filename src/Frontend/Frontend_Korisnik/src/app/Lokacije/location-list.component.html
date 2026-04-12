@@ -1,3 +1,5 @@
+
+
 <div class="list-container">
   <div class="header-bar">
     <div class="logo">
@@ -22,29 +24,83 @@
     <button class="main-search-btn">Search</button>
   </div>
 
-  <h2 class="section-title">Near you</h2>
+  <!-- Feedback poruka za like/save -->
+  <div *ngIf="feedbackMessage" style="
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    text-align: center;
+  ">
+    {{ feedbackMessage }}
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" style="text-align:center; padding: 40px; color: #888;">
+    <div style="font-size: 2rem; margin-bottom: 10px;">⏳</div>
+    Loading locations...
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage && !isLoading" style="
+    background: #fde8e8;
+    color: #c0392b;
+    padding: 12px;
+    border-radius: 8px;
+    margin: 10px 0;
+    text-align: center;
+  ">
+    {{ errorMessage }}
+    <button (click)="loadLocations()" style="margin-left: 10px; cursor: pointer;">
+      Pokušaj ponovo
+    </button>
+  </div>
+
+  <!-- Prazna lista -->
+  <div *ngIf="!isLoading && !errorMessage && locations.length === 0" style="
+    text-align: center; padding: 40px; color: #888;
+  ">
+    Nema lokacija za prikaz.
+  </div>
+
+  <!-- Lista lokacija -->
+  <h2 class="section-title" *ngIf="!isLoading && locations.length > 0">Near you</h2>
 
   <div class="scroll-area">
     <div class="location-card" *ngFor="let loc of locations">
       <div class="image-wrapper">
-        <img [src]="loc.imageUrl" [alt]="loc.title">
-        <span class="category-badge">{{ loc.category }}</span>
-        <button class="favorite-btn">📍</button>
+        <img [src]="getFirstImage(loc)" [alt]="loc.title">
+        <span class="category-badge">{{ loc.postType }}</span>
+
+        <!-- Dugmad za like i save -->
+        <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;">
+          <button
+            (click)="onLike(loc, $event)"
+            title="Like"
+            style="background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem;"
+          >❤️</button>
+          <button
+            (click)="onSave(loc, $event)"
+            title="Save"
+            style="background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem;"
+          >🔖</button>
+        </div>
       </div>
       
       <div class="card-content">
         <div class="title-row">
           <h3>{{ loc.title }}</h3>
           <div class="rating-badge">
-            ⭐ {{ loc.rating }}
+            ⭐ {{ loc.avgRating ? (loc.avgRating | number:'1.1-1') : 'N/A' }}
           </div>
         </div>
 
         <div class="info-row">
-          <span>📍 {{ loc.distance }} km from you</span>
-          <span [class.closed]="!loc.isOpen">🕒 {{ loc.status }}</span>
+          <span *ngIf="loc.regionName">📍 {{ loc.regionName }}</span>
+          <span>❤️ {{ loc.likeCount }} &nbsp; 💬 {{ loc.reviewCount }}</span>
         </div>
-        <p class="reviews-count">({{ loc.reviews }} reviews)</p>
 
         <div class="divider"></div>
 

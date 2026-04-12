@@ -57,17 +57,16 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular/build:dev-server",
-          "configurations": {
-            "production": {
-              "buildTarget": "Frontend_Korisnik:build:production"
+              "builder": "@angular/build:dev-server",
+              "configurations": {
+                "production": { "buildTarget": "Frontend_Korisnik:build:production" },
+                "development": { "buildTarget": "Frontend_Korisnik:build:development" }
+              },
+              "defaultConfiguration": "development",
+              "options": {
+                "port": 4201
+              }
             },
-            "development": {
-              "buildTarget": "Frontend_Korisnik:build:development"
-            }
-          },
-          "defaultConfiguration": "development"
-        },
         "test": {
           "builder": "@angular/build:unit-test"
         }
