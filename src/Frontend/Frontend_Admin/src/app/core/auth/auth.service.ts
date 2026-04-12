@@ -6,8 +6,8 @@ import { environment } from '../../../environments/environment';
 import { TokenStorageService } from './token-storage.service';
 
 export interface LoginRequest {
-  email: string;
-  password: string;
+    email: string;
+    password: string;
 }
 
 /**
@@ -19,80 +19,69 @@ export interface LoginRequest {
 export type AdminRole = 'superadmin' | 'admin';
 
 export interface AuthUser {
-  userId: number;
-  fullName: string;
-  email: string;
-  role: AdminRole;
-  organizationId: number | null;
-  isIndividual: boolean;   // true = fizičko lice, false = organizacija
-  accountStatus: 'active' | 'suspended' | 'pending';
-}
-
-export interface AuthResponse {
-<<<<<<< HEAD
-  accessToken: string;
-  user: AuthUser;
-=======
-  token: string;
-  user: {
     userId: number;
     fullName: string;
     email: string;
-    role: 'ADMIN' | 'ORG' | 'TOURIST';
+    role: AdminRole;
     organizationId: number | null;
-  };
->>>>>>> master
+    isIndividual: boolean;   // true = fizičko lice, false = organizacija
+    accountStatus: 'active' | 'suspended' | 'pending';
+}
+
+export interface AuthResponse {
+    accessToken: string;
+    user: AuthUser;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http = inject(HttpClient);
-  private router = inject(Router);
-  private tokenStorage = inject(TokenStorageService);
+    private http = inject(HttpClient);
+    private router = inject(Router);
+    private tokenStorage = inject(TokenStorageService);
 
-  private _currentUser$ = new BehaviorSubject<AuthUser | null>(
-    this.tokenStorage.getUser() as AuthUser | null
-  );
-
-  private readonly apiUrl = `${environment.apiUrl}/auth`;
-
-  currentUser$ = this._currentUser$.asObservable();
-
-  login(payload: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, payload).pipe(
-      tap(res => {
-        this.tokenStorage.saveToken((res as any).token);
-        this.tokenStorage.saveUser(res.user);
-        this._currentUser$.next(res.user);
-      })
+    private _currentUser$ = new BehaviorSubject<AuthUser | null>(
+        this.tokenStorage.getUser() as AuthUser | null
     );
-  }
 
-  logout(): void {
-    this.tokenStorage.clear();
-    this._currentUser$.next(null);
-    this.router.navigate(['/login']);
-  }
+    private readonly apiUrl = `${environment.apiUrl}/auth`;
 
-  get currentUser(): AuthUser | null {
-    return this._currentUser$.value;
-  }
+    currentUser$ = this._currentUser$.asObservable();
 
-  get isLoggedIn(): boolean {
-    return !!this.tokenStorage.getToken();
-  }
+    login(payload: LoginRequest): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(`${this.apiUrl}/login`, payload).pipe(
+            tap(res => {
+                this.tokenStorage.saveToken(res.accessToken);
+                this.tokenStorage.saveUser(res.user);
+                this._currentUser$.next(res.user);
+            })
+        );
+    }
 
-  get role(): AdminRole | null {
-    return this.currentUser?.role ?? null;
-  }
+    logout(): void {
+        this.tokenStorage.clear();
+        this._currentUser$.next(null);
+        this.router.navigate(['/login']);
+    }
 
-  /** True if current user has at least one of the given roles */
-  isRole(...roles: AdminRole[]): boolean {
-    return !!this.role && roles.includes(this.role);
-  }
+    get currentUser(): AuthUser | null {
+        return this._currentUser$.value;
+    }
 
-  /** Convenience: true only for superadmin */
-  get isSuperAdmin(): boolean {
-    return this.role === 'superadmin';
-  }
+    get isLoggedIn(): boolean {
+        return !!this.tokenStorage.getToken();
+    }
+
+    get role(): AdminRole | null {
+        return this.currentUser?.role ?? null;
+    }
+
+    /** True if current user has at least one of the given roles */
+    isRole(...roles: AdminRole[]): boolean {
+        return !!this.role && roles.includes(this.role);
+    }
+
+    /** Convenience: true only for superadmin */
+    get isSuperAdmin(): boolean {
+        return this.role === 'superadmin';
+    }
 }
