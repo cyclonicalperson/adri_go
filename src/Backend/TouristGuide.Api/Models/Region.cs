@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TouristGuide.Api.Models
@@ -15,9 +15,10 @@ namespace TouristGuide.Api.Models
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
 
+        /// <summary>city | mountain | lake | national_park | coast | village | other</summary>
         [Required]
         [Column("type")]
-        public string Type { get; set; } = string.Empty; // city, mountain, lake, itd.
+        public string Type { get; set; } = string.Empty;
 
         [Column("description")]
         public string? Description { get; set; }
@@ -45,5 +46,7 @@ namespace TouristGuide.Api.Models
 
         // Navigation
         public ICollection<Post> Posts { get; set; } = new List<Post>();
+        public ICollection<Route> Routes { get; set; } = new List<Route>();
+        public ICollection<AdminUserPermission> ScopedPermissions { get; set; } = new List<AdminUserPermission>();
     }
 }

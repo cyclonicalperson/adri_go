@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TouristGuide.Api.Models
@@ -23,20 +23,27 @@ namespace TouristGuide.Api.Models
         [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
 
+        /// <summary>NULL = email nije verifikovan</summary>
+        [Column("email_verified_at")]
+        public DateTime? EmailVerifiedAt { get; set; }
+
         [Required]
         [Column("password_hash")]
         [MaxLength(255)]
         public string PasswordHash { get; set; } = string.Empty;
 
+        /// <summary>superadmin | admin</summary>
         [Required]
         [Column("role")]
-        public string Role { get; set; } = "admin"; // 'superadmin' | 'admin'
+        public string Role { get; set; } = "admin";
 
+        /// <summary>1 = fizičko lice, 0 = organizacija</summary>
         [Column("is_individual")]
         public bool IsIndividual { get; set; } = true;
 
+        /// <summary>active | suspended | pending</summary>
         [Column("account_status")]
-        public string AccountStatus { get; set; } = "pending"; // 'active' | 'suspended' | 'pending'
+        public string AccountStatus { get; set; } = "pending";
 
         [Column("profile_image")]
         [MaxLength(500)]
@@ -55,5 +62,7 @@ namespace TouristGuide.Api.Models
         public Organization? Organization { get; set; }
         public ICollection<AdminUserPermission> UserPermissions { get; set; } = new List<AdminUserPermission>();
         public ICollection<Post> Posts { get; set; } = new List<Post>();
+        public ICollection<Route> Routes { get; set; } = new List<Route>();
+        public ICollection<AdminNotification> Notifications { get; set; } = new List<AdminNotification>();
     }
 }
