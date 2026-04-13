@@ -2,30 +2,24 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="filterByStatus('')">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno dogadjaja</div>
-      <div class="trend">Sve vreme</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
       <div class="num" style="color:#15803d">{{ upcomingCount }}</div>
-      <div class="lbl">Predstojeći</div>
-      <div class="trend up">↑ 8 ove nedelje</div>
+      <div class="lbl">Objavljeni</div>
     </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#1d4ed8">{{ ongoingCount }}</div>
-      <div class="lbl">U toku</div>
-      <div class="trend">Aktivni trenutno</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#d97706">3</div>
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
+      <div class="num" style="color:#d97706">{{ draftCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (draftCount > 0) {
       <div class="trend warn">⚠ Traži pregled</div>
+      }
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'archived'" (click)="filterByStatus('archived')">
       <div class="num" style="color:#6b7280">{{ pastCount }}</div>
-      <div class="lbl">Završeni</div>
-      <div class="trend">Istorijat</div>
+      <div class="lbl">Arhivirani</div>
     </div>
   </div>
 
@@ -42,6 +36,22 @@
     }
   </div>
 
+  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!activeStatusFilter" (click)="filterByStatus('')">
+      Svi statusi
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
+      ✅ Objavljeni
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
+      ⏳ Na čekanju ({{ draftCount }})
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'archived'" (click)="filterByStatus('archived')">
+      📦 Arhivirani
+    </button>
+  </div>
+
   <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
@@ -53,18 +63,17 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
-    <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
-      <option value="">Sve destinacije</option>
-      @for (d of destinations; track d.destinationId) {
-      <option [value]="d.destinationId">{{ d.name }}</option>
+    <select class="filter-select" (change)="onRegionChange($any($event.target).value)">
+      <option value="">Svi regioni</option>
+      @for (r of regions; track r.regionId) {
+      <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
 
     <select class="filter-select" (change)="onStatusFilter($any($event.target).value)">
-      <option value="">Svi statusi</option>
-      <option value="upcoming">📅 Predstojeći</option>
-      <option value="ongoing">🟢 U toku</option>
-      <option value="past">✔ Završeni</option>
+      @for (opt of statusOptions; track opt.value) {
+      <option [value]="opt.value">{{ opt.label }}</option>
+      }
     </select>
 
     <div class="view-toggle-tabs">
@@ -93,7 +102,7 @@
   } @else {
 
   @if (viewMode === 'calendar') {
-  <app-event-calendar [events]="events" (editEvent)="goEdit($event)" />
+  <app-event-calendar [events]="events" (editEvent)="openDetail($event)" />
   } @else {
 
   <div class="panel">
@@ -118,42 +127,43 @@
         </tr>
       </thead>
       <tbody>
-        @for (e of events; track e.eventId) {
+        @for (e of events; track e.postId) {
         <tr>
           <td>
             <div class="item-cell">
-              <div class="item-thumb">{{ categoryIcon(e.category) }}</div>
+              <div class="item-thumb">{{ categoryIcon(eventCategory(e)) }}</div>
               <div>
-                <div class="item-name">{{ e.name }}</div>
+                <div class="item-name">{{ e.title }}</div>
                 <div class="item-desc">{{ e.description | truncate:55 }}</div>
-                @if (e.ticketUrl) {
+                @if ((e.externalUrl)) {
                 <div style="font-size:11px;color:#1d4ed8;margin-top:3px">🎟 Karte dostupne</div>
                 }
               </div>
             </div>
           </td>
           <td>
-            <span class="type-badge" [class]="catBadgeClass(e.category)">
-              {{ categoryIcon(e.category) }} {{ categoryLabel(e.category) }}
+            <span class="type-badge" [class]="catBadgeClass(eventCategory(e))">
+              {{ categoryIcon(eventCategory(e)) }} {{ categoryLabel(eventCategory(e)) }}
             </span>
           </td>
           <td>
             <span class="badge" [class]="statusBadge(e)">{{ statusLabel(e) }}</span>
+            <span class="badge" [class]="postStatusBadgeClass(e.status)">{{ postStatusLabel(e.status) }}</span>
           </td>
           <td style="font-size:12px;color:#374151;font-weight:600">
-            {{ e.startAt | dateLocal:'datetime' }}
+            {{ eventStart(e).toLocaleDateString('sr-RS') }}
           </td>
           <td style="font-size:12px;color:#374151;font-weight:600">
-            {{ e.endAt | dateLocal:'datetime' }}
+            {{ eventEnd(e).toLocaleDateString('sr-RS') }}
           </td>
           <td style="font-size:12px;color:#6b7280">
-            {{ e.destination?.name ?? e.object?.name ?? '—' }}
+            {{ e.region?.name ?? '—' }}
           </td>
           <td style="font-size:12px;font-weight:600">—</td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
-              <button class="btn-icon map-btn" title="Mapa">🗺️</button>
-              <button class="btn-icon" title="Detalji">👁️</button>
+              <button class="btn-icon map-btn" title="Mapa" (click)="showOnMap(e)">🗺️</button>
+              <button class="btn-icon" title="Detalji" (click)="openDetail(e)">👁️</button>
               <button class="btn-icon" title="Izmeni" (click)="goEdit(e)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(e)">🗑️</button>
             </div>
@@ -182,8 +192,90 @@
 
 <app-confirm-dialog [visible]="!!deleteTarget"
                     title="Obriši dogadjaj"
-                    [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
+                    [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.title ?? '') + '&quot;?'"
                     confirmLabel="Obriši"
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
+
+<!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
+@if (detailOpen && detailEvent) {
+<div class="detail-overlay" (click)="closeDetail()">
+  <div class="detail-panel" (click)="$event.stopPropagation()">
+    <div class="detail-header">
+      <h3 class="detail-title">Detalji dogadjaja</h3>
+      <button class="btn-close" (click)="closeDetail()">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-icon">{{ categoryIcon(eventCategory(detailEvent)) }}</div>
+      <div class="detail-name">{{ detailEvent.title }}</div>
+      <div class="detail-cat">
+        <span class="type-tag" [class]="catBadgeClass(eventCategory(detailEvent))">{{ categoryLabel(eventCategory(detailEvent)) }}</span>
+        <span class="badge" [class]="postStatusBadgeClass(detailEvent.status)">{{ postStatusLabel(detailEvent.status) }}</span>
+      </div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">Opis</span>
+          <span class="detail-val">{{ detailEvent.description }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Region</span>
+          <span class="detail-val">{{ detailEvent.region?.name ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Adresa</span>
+          <span class="detail-val">{{ detailEvent.address ?? '—' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Početak</span>
+          <span class="detail-val">{{ eventStart(detailEvent) | dateLocal:'datetime' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Kraj</span>
+          <span class="detail-val">{{ eventEnd(detailEvent) | dateLocal:'datetime' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Admin</span>
+          <span class="detail-val">{{ detailEvent.adminName ?? '—' }}</span>
+        </div>
+      </div>
+      @if (detailEvent.lat && detailEvent.lng) {
+      <div style="margin-top:16px">
+        <app-map [markers]="[{id: detailEvent.postId, lat: detailEvent.lat, lng: detailEvent.lng, label: detailEvent.title}]"
+                 [centerLat]="detailEvent.lat"
+                 [centerLng]="detailEvent.lng"
+                 [zoom]="12"
+                 height="200px" />
+      </div>
+      }
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-outline" (click)="goEdit(detailEvent)">✏️ Izmeni</button>
+      <button class="btn btn-primary" (click)="closeDetail()">Zatvori</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ── MAP PANEL ─────────────────────────────────────────────────────── -->
+@if (mapOpen && mapEvent) {
+<div class="detail-overlay" (click)="closeMap()">
+  <div class="detail-panel" (click)="$event.stopPropagation()" style="max-width:700px">
+    <div class="detail-header">
+      <h3 class="detail-title">{{ mapEvent.title }} — Mapa</h3>
+      <button class="btn-close" (click)="closeMap()">✕</button>
+    </div>
+    <div class="detail-body">
+      @if (mapEvent.lat && mapEvent.lng) {
+      <app-map [markers]="mapMarkers"
+               [centerLat]="mapEvent.lat"
+               [centerLng]="mapEvent.lng"
+               [zoom]="13"
+               height="400px" />
+      } @else {
+      <div class="state-msg">Ovaj dogadjaj nema definisanu lokaciju.</div>
+      }
+    </div>
+  </div>
+</div>
+}

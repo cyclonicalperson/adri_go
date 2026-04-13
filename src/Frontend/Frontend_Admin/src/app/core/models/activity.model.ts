@@ -14,6 +14,9 @@ export interface Activity {
   name: string;
   category: ActivityCategory;
   description: string;
+  lat?: number | null;
+  lng?: number | null;
+  locationName?: string;
 }
 
 export interface CreateActivityRequest {

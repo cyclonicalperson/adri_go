@@ -27,7 +27,7 @@ export interface WidgetDef {
   description: string;       // Short description shown in picker
   icon: string;       // Emoji icon
   defaultSpan: WidgetSpan;   // Default column span
-  adminOnly: boolean;      // Hidden for ORG admins if true
+  adminOnly: boolean;      // Hidden for regular Admins (ORG role) if true
 }
 
 /** Saved per-user configuration for one widget slot */
@@ -112,9 +112,9 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   },
   {
     id: 'map_preview',
-    label: 'Mapa lokacija',
-    description: 'Mini mapa sa pinovima svih lokacija.',
-    icon: '🗺️',
+    label: 'Mapa kretanja turista',
+    description: 'Toplotna mapa kretanja turista po regionima.',
+    icon: '🌡️',
     defaultSpan: 1,
     adminOnly: false,
   },
@@ -128,9 +128,9 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   },
   {
     id: 'tourist_map',
-    label: 'Mapa kretanja turista',
-    description: 'Toplotna mapa kretanja turista u realnom vremenu.',
-    icon: '🌡️',
+    label: 'Mapa lokacija',
+    description: 'Interaktivna mapa svih lokacija na platformi.',
+    icon: '🗺️',
     defaultSpan: 2,
     adminOnly: false,
   },
@@ -172,10 +172,12 @@ export const DEFAULT_LAYOUT_ADMIN: DashboardConfig = {
     { id: 'top_lokacije', span: 1 },
     { id: 'category_donut', span: 1 },
     { id: 'activity_log', span: 1 },
-    { id: 'tourist_kpis', span: 2 },
     { id: 'tourist_map', span: 2 },
+    { id: 'tourist_kpis', span: 2 },
     { id: 'top_dogadjaji', span: 1 },
+    { id: 'map_preview', span: 1 },
     { id: 'city_breakdown', span: 1 },
+    { id: 'recent_reviews', span: 1 },
   ],
 };
 
@@ -184,9 +186,17 @@ export const DEFAULT_LAYOUT_ORG: DashboardConfig = {
     { id: 'kpi_stats', span: 2 },
     { id: 'visits_chart', span: 2 },
     { id: 'top_lokacije', span: 1 },
+    { id: 'category_donut', span: 1 },
+    { id: 'tourist_map', span: 2 },
     { id: 'activity_log', span: 1 },
-    { id: 'tourist_kpis', span: 2 },
     { id: 'tourist_preferences', span: 1 },
     { id: 'recent_reviews', span: 2 },
   ],
 };
+
+// ── Helper — zamjena za @angular/cdk/drag-drop moveItemInArray ───────────
+// Koristiti dok CDK nije instaliran (npm install @angular/cdk)
+export function moveItemInArray<T>(array: T[], from: number, to: number): void {
+  const item = array.splice(from, 1)[0];
+  array.splice(to, 0, item);
+}

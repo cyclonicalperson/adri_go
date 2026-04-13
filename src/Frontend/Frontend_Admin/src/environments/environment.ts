@@ -1,4 +1,8 @@
+// src/environments/environment.ts
+// useMocks: false → koristi pravi backend API
+// useMocks: true  → koristi mock interceptore (radi bez backend-a)
 export const environment = {
-  production: true,
-  apiUrl: 'https://your-api-domain.com/api',  // Kada zapravo budemo hostovali ovo, zameniti URL ovde
+  production: false,
+  useMocks: true,
+  apiUrl: 'http://localhost:5000/api',
 };

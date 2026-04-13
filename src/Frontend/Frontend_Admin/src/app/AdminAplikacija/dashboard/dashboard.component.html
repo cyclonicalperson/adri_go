@@ -45,12 +45,9 @@
          [cdkDragDisabled]="!customiseMode"
          [cdkDragData]="slot">
 
-
       @if (customiseMode) {
       <div class="widget-overlay">
-        <!-- Drag handle — grab this to drag the widget -->
         <div class="drag-grip" cdkDragHandle title="Prevuci da premestiš">⠿</div>
-        <!-- Arrow reorder — precise control -->
         <div class="overlay-move">
           <button class="oa-btn oa-move"
                   (click)="moveWidget(i, -1); $event.stopPropagation()"
@@ -65,9 +62,7 @@
             ↓
           </button>
         </div>
-        <!-- Widget name -->
         <div class="overlay-label">{{ widgetLabel(slot.id) }}</div>
-        <!-- Width toggle + remove -->
         <div class="overlay-actions">
           <button class="oa-btn"
                   (click)="toggleSpan(slot); $event.stopPropagation()"
@@ -82,7 +77,6 @@
         </div>
       </div>
 
-      <!-- Placeholder shown where widget will land during drag -->
       <div *cdkDragPlaceholder class="drag-placeholder"></div>
       }
 
@@ -96,28 +90,30 @@
         </div>
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
-            <div class="kpi-icon-wrap">🏢</div>
-            <div class="kpi-val">{{ stats?.totalObjects ?? 0 }}</div>
-            <div class="kpi-lbl">Lokacija</div>
-            <div class="kpi-trend up">↑ +8 ovog meseca</div>
+            <div class="kpi-icon-wrap">📍</div>
+            <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
+            <div class="kpi-lbl">Lokacije</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
-            <div class="kpi-icon-wrap">🎯</div>
+            <div class="kpi-icon-wrap">🗺️</div>
             <div class="kpi-val">{{ stats?.totalRoutes ?? 0 }}</div>
-            <div class="kpi-lbl">Aktivnosti</div>
-            <div class="kpi-trend up">↑ +4 ove nedelje</div>
+            <div class="kpi-lbl">Rute</div>
           </div>
           <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
-            <div class="kpi-icon-wrap">🎟️</div>
-            <div class="kpi-val">{{ stats?.totalEvents ?? 0 }}</div>
-            <div class="kpi-lbl">Dogadjaji</div>
-            <div class="kpi-trend neutral">→ 5 ove nedelje</div>
+            <div class="kpi-icon-wrap">👥</div>
+            <div class="kpi-val">{{ stats?.totalAdmins ?? 0 }}</div>
+            <div class="kpi-lbl">Admini</div>
+            @if ((stats?.pendingRegistrations ?? 0) > 0) {
+            <div class="kpi-trend neutral">{{ stats?.pendingRegistrations }} na čekanju</div>
+            }
           </div>
           <div class="kpi-tile" style="--accent:#8b5cf6;--accent-bg:#f5f3ff">
             <div class="kpi-icon-wrap">⭐</div>
             <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
             <div class="kpi-lbl">Recenzije čekaju</div>
-            <div class="kpi-trend down">↑ Treba pregled</div>
+            @if ((stats?.pendingReviews ?? 0) > 0) {
+            <div class="kpi-trend down">⚠ Treba pregled</div>
+            }
           </div>
         </div>
       </div>
@@ -128,32 +124,23 @@
       <div class="panel widget">
         <div class="panel-header">
           <div class="panel-title">Turistički pregled</div>
-          <div class="panel-sub">Poslednjih 30 dana</div>
+          <div class="panel-sub">Na osnovu podataka iz baze</div>
         </div>
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">👣</div>
-            <div class="kpi-val">{{ activeTourists | number }}</div>
-            <div class="kpi-lbl">Aktivnih turista</div>
-            <div class="kpi-trend up">↑ +12%</div>
+            <div class="kpi-val">{{ stats?.totalTourists ?? 0 }}</div>
+            <div class="kpi-lbl">Registrovanih turista</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
             <div class="kpi-icon-wrap">📍</div>
-            <div class="kpi-val">{{ currentlyOnsite }}</div>
-            <div class="kpi-lbl">Na lokacijama sada</div>
-            <div class="kpi-trend up">↑ Trenutno</div>
+            <div class="kpi-val">{{ movements.length }}</div>
+            <div class="kpi-lbl">Regiona sa posetama</div>
           </div>
           <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
-            <div class="kpi-icon-wrap">🔁</div>
-            <div class="kpi-val">34%</div>
-            <div class="kpi-lbl">Povratnih turista</div>
-            <div class="kpi-trend down">↓ -2%</div>
-          </div>
-          <div class="kpi-tile" style="--accent:#8b5cf6;--accent-bg:#f5f3ff">
-            <div class="kpi-icon-wrap">🗺️</div>
-            <div class="kpi-val">4.2</div>
-            <div class="kpi-lbl">Avg. lokacija/poseta</div>
-            <div class="kpi-trend neutral">→ Stabilno</div>
+            <div class="kpi-icon-wrap">⭐</div>
+            <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
+            <div class="kpi-lbl">Recenzija na čekanju</div>
           </div>
         </div>
       </div>
@@ -164,29 +151,44 @@
       <div class="panel widget">
         <div class="panel-header">
           <div>
-            <div class="panel-title">Posete platformi (30 dana)</div>
-            <div class="panel-sub">Lokacije · Aktivnosti · Dogadjaji</div>
+            <div class="panel-title">Posete platformi</div>
+            <div class="panel-sub">Poslednjih 30 dana · Ukupno: {{ totalVisits | number }} pregleda</div>
           </div>
           <div class="chart-legend">
-            <span class="cleg"><span class="cleg-dot" style="background:#22c55e"></span>Lok.</span>
-            <span class="cleg"><span class="cleg-dot" style="background:#3b82f6"></span>Akt.</span>
-            <span class="cleg"><span class="cleg-dot" style="background:#f59e0b"></span>Dog.</span>
+            <span class="cleg"><span class="cleg-dot" style="background:#22c55e"></span>Pregledi</span>
           </div>
         </div>
         <div class="panel-body">
-          <div class="chart-area">
-            @for (v of visits; track v.date; let i = $index) {
-            <div class="bar" [class]="barColor(i)" [style.height.%]="barHeight(v.count)"></div>
-            }
-            @if (visits.length === 0) {
-            @for (h of [55,72,44,88,61,50,80,66,91,74,48,95,57,70,84,60,77,42,88,65]; track $index; let i = $index) {
-            <div class="bar" [class]="barColor(i)" [style.height.%]="h"></div>
-            }
-            }
+          <div class="chart-wrap">
+            <div class="chart-y-axis">
+              <span>{{ maxVisitCount }}</span>
+              <span>{{ Math.round(maxVisitCount * 0.66) }}</span>
+              <span>{{ Math.round(maxVisitCount * 0.33) }}</span>
+              <span>0</span>
+            </div>
+            <div class="chart-area">
+              @for (v of visits; track v.date; let i = $index) {
+              <div class="bar bar-green"
+                   [style.height.%]="barHeight(v.count)"
+                   [attr.data-tooltip]="formatBarDate(v.date) + ': ' + v.count + ' pregleda'"></div>
+              }
+              @if (visits.length === 0) {
+              @for (h of [55,72,44,88,61,50,80,66,91,74,48,95,57,70,84,60,77,42,88,65]; track $index) {
+              <div class="bar bar-green" [style.height.%]="h"></div>
+              }
+              }
+            </div>
           </div>
           <div class="chart-labels">
-            <span>1.3</span><span>5.3</span><span>10.3</span>
-            <span>15.3</span><span>20.3</span><span>25.3</span><span>29.3</span>
+            @if (visits.length >= 7) {
+            <span>{{ visits[0]?.date?.slice(5) }}</span>
+            <span>{{ visits[Math.floor(visits.length/6)]?.date?.slice(5) }}</span>
+            <span>{{ visits[Math.floor(visits.length/3)]?.date?.slice(5) }}</span>
+            <span>{{ visits[Math.floor(visits.length/2)]?.date?.slice(5) }}</span>
+            <span>{{ visits[Math.floor(visits.length*2/3)]?.date?.slice(5) }}</span>
+            <span>{{ visits[Math.floor(visits.length*5/6)]?.date?.slice(5) }}</span>
+            <span>{{ visits[visits.length - 1]?.date?.slice(5) }}</span>
+            }
           </div>
         </div>
       </div>
@@ -195,21 +197,18 @@
       <!-- ── CATEGORY DONUT ────────────────────────────────────────── -->
       @case ('category_donut') {
       <div class="panel widget">
-        <div class="panel-header"><div class="panel-title">Po kategoriji</div></div>
+        <div class="panel-header"><div class="panel-title">Raspored po tipu</div></div>
         <div class="panel-body">
-          <div class="donut-wrap">
-            <div class="donut">
-              <div class="donut-center">
-                <div class="donut-num">{{ stats?.totalObjects ?? 248 }}</div>
-                <div class="donut-lbl">Ukupno</div>
+          <div class="category-bars">
+            @for (cat of categoryBreakdown; track cat.label) {
+            <div class="cat-row">
+              <span class="cat-label">{{ cat.icon }} {{ cat.label }}</span>
+              <div class="cat-bar-wrap">
+                <div class="cat-bar-fill" [style.width.%]="cat.pct" [style.background]="cat.color"></div>
               </div>
+              <span class="cat-val">{{ cat.pct }}%</span>
             </div>
-            <div class="legend">
-              <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Smeštaj<span class="legend-val">45%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Kultura<span class="legend-val">23%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Sport<span class="legend-val">15%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Ostalo<span class="legend-val">17%</span></div>
-            </div>
+            }
           </div>
         </div>
       </div>
@@ -226,7 +225,7 @@
           @for (obj of popularObjects.slice(0, 5); track obj.id; let i = $index) {
           <div class="rank-item">
             <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
-            <span class="rank-name">{{ obj.name }}</span>
+            <span class="rank-name">{{ obj.title }}</span>
             <div class="rank-bar"><div class="rank-fill" [style.width.%]="topBarWidth(obj.viewCount, popularObjects)" style="background:#22c55e"></div></div>
             <span class="rank-val">{{ obj.viewCount | number }}</span>
           </div>
@@ -249,7 +248,7 @@
           @for (ev of popularEvents.slice(0, 5); track ev.id; let i = $index) {
           <div class="rank-item">
             <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
-            <span class="rank-name">{{ ev.name }}</span>
+            <span class="rank-name">{{ ev.title }}</span>
             <div class="rank-bar"><div class="rank-fill" [style.width.%]="topBarWidth(ev.viewCount, popularEvents)" style="background:#3b82f6"></div></div>
             <span class="rank-val">{{ ev.viewCount | number }}</span>
           </div>
@@ -265,23 +264,18 @@
       @case ('top_aktivnosti') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Top aktivnosti</div><div class="panel-sub">Po interesovanju</div></div>
+          <div><div class="panel-title">Top aktivnosti</div><div class="panel-sub">Registrovane na platformi</div></div>
           <a routerLink="/admin/aktivnosti" class="panel-link">Sve →</a>
         </div>
         <div class="panel-body">
-          @for (item of [
-          {id:1,name:'Teniski kamp 2026',viewCount:2100},
-          {id:2,name:'Plivanje SC Vojvodina',viewCount:1800},
-          {id:3,name:'Planinarska tura Rtanj',viewCount:1400},
-          {id:4,name:'Spa masaža Vrnjci',viewCount:892},
-          {id:5,name:'Shopping tura Beograd',viewCount:534}
-          ]; track item.id; let i = $index) {
+          @for (item of topActivities; track item.id; let i = $index) {
           <div class="rank-item">
             <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
             <span class="rank-name">{{ item.name }}</span>
-            <div class="rank-bar"><div class="rank-fill" [style.width.%]="item.viewCount / 21" style="background:#8b5cf6"></div></div>
-            <span class="rank-val">{{ item.viewCount | number }}</span>
           </div>
+          }
+          @if (topActivities.length === 0) {
+          <div class="state-msg">Nema podataka.</div>
           }
         </div>
       </div>
@@ -292,7 +286,7 @@
       <div class="panel widget">
         <div class="panel-header">
           <div><div class="panel-title">Zahtevi na čekanju</div><div class="panel-sub">{{ pendingCount }} čeka odobrenje</div></div>
-          <a routerLink="/admin/permissions" class="panel-link">Svi →</a>
+          <a routerLink="/admin/users" class="panel-link">Svi →</a>
         </div>
         <div class="panel-body">
           @for (req of pendingRequests; track req.id) {
@@ -331,52 +325,49 @@
       </div>
       }
 
-      <!-- ── MAP PREVIEW ───────────────────────────────────────────── -->
+      <!-- ── MAP PREVIEW (Tourist heatmap) ─────────────────────────── -->
       @case ('map_preview') {
       <div class="panel widget">
         <div class="panel-header">
-          <div class="panel-title">Mapa lokacija</div>
-          <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
+          <div class="panel-title">Kretanje turista</div>
+          <div class="panel-sub">Distribucija poseta po regionima</div>
         </div>
         <div class="panel-body">
-          <div class="map-preview">
-            <div class="map-grid"></div>
-            <div class="map-pin" style="background:#22c55e;left:42%;top:38%"></div>
-            <div class="map-pin" style="background:#3b82f6;left:58%;top:25%"></div>
-            <div class="map-pin" style="background:#f59e0b;left:35%;top:55%"></div>
-            <div class="map-pin" style="background:#22c55e;left:65%;top:48%"></div>
-            <div class="map-pin" style="background:#8b5cf6;left:50%;top:30%"></div>
-            <div class="map-count">{{ stats?.totalObjects ?? 0 }} lokacija</div>
+          @if (movements.length) {
+          <app-map [markers]="[]"
+                   [heatPoints]="movementHeatPoints"
+                   [centerLat]="43.0"
+                   [centerLng]="19.1"
+                   [zoom]="8"
+                   height="280px" />
+          <div class="heat-legend">
+            @for (m of movements; track m.regionId) {
+            <span class="heat-legend-item">
+              <span class="heat-dot" [style.background]="heatColor(m)"></span>
+              {{ m.regionName }} · {{ m.visitCount }} poseta
+            </span>
+            }
           </div>
+          } @else {
+          <div class="state-msg">Nema podataka o kretanju.</div>
+          }
         </div>
       </div>
       }
 
-      <!-- ── TOURIST MAP ────────────────────────────────────────────── -->
+      <!-- ── TOURIST MAP (Mapa lokacija) ──────────────────────────────── -->
       @case ('tourist_map') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Mapa kretanja turista</div><div class="panel-sub">Toplotna mapa · poslednjih 7 dana</div></div>
+          <div><div class="panel-title">Mapa lokacija</div><div class="panel-sub">Sve lokacije na platformi</div></div>
+          <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
         </div>
         <div class="panel-body">
-          <div class="map-heat">
-            <div class="map-grid"></div>
-            <div class="heat-spot" style="left:48%;top:45%;width:80px;height:80px;background:radial-gradient(circle,rgba(34,197,94,.5),transparent)"></div>
-            <div class="heat-spot" style="left:55%;top:28%;width:60px;height:60px;background:radial-gradient(circle,rgba(34,197,94,.4),transparent)"></div>
-            <div class="heat-spot" style="left:38%;top:60%;width:50px;height:50px;background:radial-gradient(circle,rgba(34,197,94,.35),transparent)"></div>
-            @if (movements.length) {
-            @for (m of movements.slice(0, 6); track m.destinationId) {
-            <div class="map-pin" [style.left.%]="pinLeft(m)" [style.top.%]="pinTop(m)" style="background:#22c55e"></div>
-            }
-            } @else {
-            <div class="map-pin" style="left:48%;top:45%;background:#22c55e"></div>
-            <div class="map-pin" style="left:55%;top:28%;background:#22c55e"></div>
-            <div class="map-pin" style="left:38%;top:60%;background:#f59e0b"></div>
-            <div class="map-pin" style="left:65%;top:42%;background:#3b82f6"></div>
-            <div class="map-pin" style="left:32%;top:35%;background:#8b5cf6"></div>
-            }
-            <div class="map-overlay">🟢 {{ currentlyOnsite }} turista trenutno</div>
-          </div>
+          <app-map [markers]="locationMarkers"
+                   [centerLat]="43.15"
+                   [centerLng]="19.10"
+                   [zoom]="9"
+                   height="320px" />
         </div>
       </div>
       }
@@ -419,10 +410,7 @@
           <a routerLink="/admin/reviews" class="panel-link">Sve →</a>
         </div>
         <div class="panel-body">
-          @for (r of [{name:'Milica K.',initials:'MK',comment:'Odličan hotel, preporučujem svima!',stars:'★★★★★'},
-          {name:'Ana T.',   initials:'AT',comment:'Razočarana organizacijom, red je bio dug.',stars:'★★☆☆☆'},
-          {name:'Jovan P.', initials:'JP',comment:'Lepa tura, vodič je bio odličan.',stars:'★★★★☆'}];
-          track r.name) {
+          @for (r of recentReviews; track r.name) {
           <div class="review-row">
             <div class="rev-av">{{ r.initials }}</div>
             <div class="rev-body">
@@ -431,9 +419,14 @@
             </div>
             <div class="rev-right">
               <div class="rev-stars">{{ r.stars }}</div>
-              <span class="badge badge-amber">⏳</span>
+              <span class="badge" [class]="r.status === 'PENDING' ? 'badge-amber' : 'badge-green'">
+                {{ r.status === 'PENDING' ? '⏳' : '✅' }}
+              </span>
             </div>
           </div>
+          }
+          @if (recentReviews.length === 0) {
+          <div class="state-msg">Nema recenzija.</div>
           }
         </div>
       </div>

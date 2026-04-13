@@ -1,6 +1,8 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { UserService } from '@core/services/user.service';
+import { ReviewService } from '@core/services/review.service';
 
 interface NavItem {
   label: string;
@@ -15,30 +17,59 @@ interface NavItem {
   styleUrl: './sidebar.component.scss',
   imports: [RouterLink, RouterLinkActive],
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit {
   @Input() collapsed = false;
   @Output() collapsedChange = new EventEmitter<boolean>();
   @Output() navClick = new EventEmitter<void>();
 
-  constructor(public auth: AuthService) { }
+  pendingReviewsBadge: number | null = null;
+  pendingZahteviNadge: number | null = null;
 
-  readonly mainItems: NavItem[] = [
-    { label: 'Dashboard', route: '/admin/dashboard', icon: '📊' },
-    { label: 'Lokacije', route: '/admin/lokacije', icon: '🏢' },
-    { label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' },
-    { label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' },
-    { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: 12 },
-  ];
+  constructor(
+    public auth: AuthService,
+    private userService: UserService,
+    private reviewService: ReviewService,
+  ) { }
 
-  readonly adminItems: NavItem[] = [
-    { label: 'Admini', route: '/admin/users', icon: '👥' },
-    { label: 'Dozvole', route: '/admin/permissions', icon: '🔐', badge: 3 },
-  ];
+  ngOnInit(): void {
+    this.loadBadges();
+  }
 
-  // Analytics items removed — analytics is now embedded in the Dashboard.
-  readonly analyticsItems: NavItem[] = [];
+  private loadBadges(): void {
+    // Pending reviews — vidljivo svim adminima
+    this.reviewService.getAll({ page: 1, pageSize: 1, status: 'PENDING' }).subscribe({
+      next: res => { this.pendingReviewsBadge = res.total > 0 ? res.total : null; },
+      error: () => { this.pendingReviewsBadge = null; },
+    });
 
-  get isSuperAdmin(): boolean { return this.auth.isRole('ADMIN'); }
+    // Pending zahtevi — samo superadmin
+    if (this.isSuperAdmin) {
+      this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }).subscribe({
+        next: res => { this.pendingZahteviNadge = res.total > 0 ? res.total : null; },
+        error: () => { this.pendingZahteviNadge = null; },
+      });
+    }
+  }
+
+  get mainItems(): NavItem[] {
+    return [
+      { label: 'Dashboard', route: '/admin/dashboard', icon: '📊' },
+      { label: 'Lokacije', route: '/admin/lokacije', icon: '🏢' },
+      { label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' },
+      { label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' },
+      { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.pendingReviewsBadge },
+    ];
+  }
+
+  get adminItems(): NavItem[] {
+    return [
+      { label: 'Admini', route: '/admin/users', icon: '👥' },
+      { label: 'Zahtevi', route: '/admin/zahtevi', icon: '📋', badge: this.pendingZahteviNadge },
+      { label: 'Dozvole', route: '/admin/permissions', icon: '🔐' },
+    ];
+  }
+
+  get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
 
   get initials(): string {
     return (this.auth.currentUser?.fullName ?? 'U')
@@ -46,7 +77,7 @@ export class SidebarComponent {
   }
 
   get roleLabel(): string {
-    return { ADMIN: 'Super Administrator', ORG: 'Administrator' }[this.auth.currentUser?.role ?? '']
+    return { superadmin: 'Super Administrator', admin: 'Administrator' }[this.auth.currentUser?.role ?? '']
       ?? (this.auth.currentUser?.role ?? '');
   }
 }

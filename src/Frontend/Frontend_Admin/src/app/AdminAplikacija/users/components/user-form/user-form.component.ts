@@ -50,13 +50,39 @@ export class UserFormComponent implements OnInit {
     if (this.isEdit) {
       this.service.getById(this.id!).subscribe((res: { data: any; }) => {
         const u = res.data;
-        this.form.patchValue({
-          fullName: u.fullName,
-          email: u.email,
-          roleId: u.roleId,
-          organizationId: u.organizationId,
-          isActive: u.isActive,
-        });
+        // Mock returns role as string, not roleId. Map it.
+        let roleId = u.roleId ?? null;
+        if (!roleId && u.role) {
+          // Try to find roleId from roles list; if roles not loaded yet, wait
+          const tryPatch = () => {
+            const found = this.roles.find(r => r.roleName === u.role);
+            roleId = found?.roleId ?? null;
+            this.form.patchValue({
+              fullName: u.fullName,
+              email: u.email,
+              roleId,
+              organizationId: u.organizationId,
+              isActive: u.isActive ?? u.accountStatus === 'active',
+            });
+          };
+          if (this.roles.length) {
+            tryPatch();
+          } else {
+            // Roles may not have loaded yet, subscribe again
+            this.service.getRoles().subscribe((rr: { data: Role[] }) => {
+              this.roles = rr.data;
+              tryPatch();
+            });
+          }
+        } else {
+          this.form.patchValue({
+            fullName: u.fullName,
+            email: u.email,
+            roleId,
+            organizationId: u.organizationId,
+            isActive: u.isActive ?? u.accountStatus === 'active',
+          });
+        }
       });
     } else {
       this.form.get('password')!.setValidators(Validators.required);
@@ -67,7 +93,7 @@ export class UserFormComponent implements OnInit {
   onRoleSelected(roleId: number): void {
     this.form.patchValue({ roleId });
     const selectedRole = this.roles.find(r => r.roleId === roleId);
-    if (selectedRole?.roleName !== 'ORG') {
+    if (selectedRole?.roleName !== 'admin') {
       this.form.patchValue({ organizationId: null });
     }
   }

@@ -1,17 +1,18 @@
 import { Component, OnInit } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 // already imported
 import { environment } from '@env/environment';
 import { Activity, ActivityCategory } from '@core/models/activity.model';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+import { MapComponent, MapMarker } from '@shared/components/map/map.component';
 
 @Component({
   selector: 'app-aktivnosti-list',
   templateUrl: './aktivnosti-list.component.html',
   styleUrl: './aktivnosti-list.component.scss',
-  imports: [TruncatePipe, DecimalPipe],
+  imports: [TruncatePipe, ConfirmDialogComponent, MapComponent],
 })
 export class AktivnostiListComponent implements OnInit {
   activities: Activity[] = [];
@@ -23,14 +24,25 @@ export class AktivnostiListComponent implements OnInit {
 
   searchQuery = '';
   activeCategory = '';
+  activeStatus = '';
   sortBy = 'createdAt';
   sortDir: 'asc' | 'desc' = 'desc';
 
-  // Approximate stat counts
-  sportCount = 38;
-  natureCount = 29;
-  wellnessCount = 22;
-  totalViews = 8294;
+  // Computed stat counts
+  sportCount = 0;
+  natureCount = 0;
+  wellnessCount = 0;
+
+  // Detail panel
+  detailActivity: Activity | null = null;
+  detailOpen = false;
+
+  // Map panel
+  mapActivity: Activity | null = null;
+  mapOpen = false;
+
+  // Delete dialog
+  deleteTarget: Activity | null = null;
 
   readonly categoryOptions = [
     { value: '', label: 'Sve' },
@@ -39,6 +51,7 @@ export class AktivnostiListComponent implements OnInit {
     { value: 'WELLNESS', label: '💆 Wellness' },
     { value: 'SHOPPING', label: '🛍️ Shopping' },
     { value: 'DINING', label: '🍴 Ishrana' },
+    { value: 'SIGHTSEEING', label: '📸 Razgledanje' },
     { value: 'NIGHTLIFE', label: '🎶 Klupsko' },
     { value: 'BUSINESS', label: '💼 Poslovno' },
     { value: 'OTHER', label: '➕ Ostalo' },
@@ -58,6 +71,7 @@ export class AktivnostiListComponent implements OnInit {
     };
     if (this.searchQuery) params['search'] = this.searchQuery;
     if (this.activeCategory) params['category'] = this.activeCategory;
+    if (this.activeStatus) params['status'] = this.activeStatus;
 
     const query = new URLSearchParams(params).toString();
     this.http.get<{ data: Activity[]; total: number; totalPages: number }>(
@@ -67,6 +81,9 @@ export class AktivnostiListComponent implements OnInit {
         this.activities = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
+        this.sportCount = res.data.filter(a => a.category === 'SPORT').length;
+        this.natureCount = res.data.filter(a => a.category === 'ADVENTURE').length;
+        this.wellnessCount = res.data.filter(a => a.category === 'WELLNESS').length;
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -75,6 +92,7 @@ export class AktivnostiListComponent implements OnInit {
 
   onSearch(q: string): void { this.searchQuery = q; this.page = 1; this.load(); }
   setCategory(c: string): void { this.activeCategory = c; this.page = 1; this.load(); }
+  setStatus(s: string): void { this.activeStatus = s; this.page = 1; this.load(); }
   onCityChange(_v: string): void { this.load(); }
   onStatusChange(_v: string): void { this.load(); }
   onSortChange(val: string): void {
@@ -88,7 +106,35 @@ export class AktivnostiListComponent implements OnInit {
   onPage(p: number): void { if (p >= 1 && p <= this.totalPages) { this.page = p; this.load(); } }
 
   editActivity(a: Activity): void { this.router.navigate(['/admin/aktivnosti', a.activityId, 'edit']); }
-  deleteActivity(a: Activity): void { /* TODO: confirm + delete */ }
+
+  // ── Detail panel ────────────────────────────────────────────────────────
+  openDetail(a: Activity): void { this.detailActivity = a; this.detailOpen = true; }
+  closeDetail(): void { this.detailOpen = false; this.detailActivity = null; }
+
+  // ── Map panel ───────────────────────────────────────────────────────────
+  showOnMap(a: Activity): void { this.mapActivity = a; this.mapOpen = true; }
+  closeMap(): void { this.mapOpen = false; this.mapActivity = null; }
+
+  get mapMarkers(): MapMarker[] {
+    if (!this.mapActivity || !this.mapActivity.lat || !this.mapActivity.lng) return [];
+    return [{
+      id: this.mapActivity.activityId,
+      lat: this.mapActivity.lat,
+      lng: this.mapActivity.lng,
+      label: this.mapActivity.name,
+      category: this.categoryLabel(this.mapActivity.category),
+    }];
+  }
+
+  // ── Delete ──────────────────────────────────────────────────────────────
+  confirmDelete(a: Activity): void { this.deleteTarget = a; }
+  cancelDelete(): void { this.deleteTarget = null; }
+  doDelete(): void {
+    if (!this.deleteTarget) return;
+    this.http.delete(`${environment.apiUrl}/activities/${this.deleteTarget.activityId}`)
+      .subscribe(() => { this.deleteTarget = null; this.load(); });
+  }
+
   openNew(): void { this.router.navigate(['/admin/aktivnosti', 'new']); }
   printReport(): void { window.print(); }
   exportCsv(): void { /* TODO */ }
@@ -105,7 +151,7 @@ export class AktivnostiListComponent implements OnInit {
     const map: Record<string, string> = {
       SPORT: '🎾', ADVENTURE: '⛰️', WELLNESS: '💆',
       SHOPPING: '🛍️', DINING: '🍽️', NIGHTLIFE: '🎶',
-      BUSINESS: '💼', OTHER: '📌',
+      SIGHTSEEING: '📸', BUSINESS: '💼', OTHER: '📌',
     };
     return map[cat] ?? '📌';
   }
@@ -123,6 +169,9 @@ export class AktivnostiListComponent implements OnInit {
     return map[cat] ?? 'type-ostalo';
   }
 
-  locationName(_a: Activity): string { return 'Srbija'; }
-  gpsText(_a: Activity): string { return ''; }
+  locationName(a: Activity): string { return (a as any).locationName ?? 'Srbija'; }
+  gpsText(a: Activity): string {
+    if (a.lat && a.lng) return `${a.lat.toFixed(4)}°N, ${a.lng.toFixed(4)}°E`;
+    return '';
+  }
 }

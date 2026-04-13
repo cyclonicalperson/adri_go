@@ -106,10 +106,13 @@
         <h3 class="card-title">Lokacija na mapi</h3>
         <p class="hint">Kliknite na mapu ili unesite koordinate ručno.</p>
 
-        <div class="map-placeholder">
-          🗺️
-          <span>Interaktivna mapa</span>
-        </div>
+        <app-map [markers]="[]"
+                 [centerLat]="f('latitude').value || 43.15"
+                 [centerLng]="f('longitude').value || 19.10"
+                 [zoom]="10"
+                 [clickable]="true"
+                 height="220px"
+                 (mapClicked)="onMapClick($event)" />
 
         <div class="row-2" style="margin-top:14px">
           <div class="field">

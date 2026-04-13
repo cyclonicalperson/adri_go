@@ -55,6 +55,33 @@
   }
 }
 
+.spacer { flex: 1; }
+
+.heat-toggle {
+  padding: 8px 16px;
+  border: 1px solid $gray-200;
+  border-radius: $radius-md;
+  background: $white;
+  color: $gray-500;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    border-color: #f59e0b;
+    color: #92400e;
+    background: #fffbeb;
+  }
+
+  &.active {
+    background: #f59e0b;
+    color: $white;
+    border-color: #f59e0b;
+  }
+}
+
 .map-layout {
   position: relative;
 }
@@ -79,7 +106,7 @@
   padding: 16px 18px;
   box-shadow: $shadow-md;
   min-width: 200px;
-  z-index: 10;
+  z-index: 1000;
 }
 
 .info-header {
@@ -113,4 +140,24 @@
   color: $gray-400;
   margin-top: 8px;
   font-weight: 600;
+}
+
+.btn-detail {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px 14px;
+  border: 1px solid $primary;
+  background: $surface-green;
+  color: $primary-dark;
+  border-radius: $radius-md;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: $font-sans;
+  transition: all .15s;
+
+  &:hover {
+    background: $primary;
+    color: $white;
+  }
 }

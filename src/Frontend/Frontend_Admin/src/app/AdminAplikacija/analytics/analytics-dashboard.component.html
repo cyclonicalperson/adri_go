@@ -7,28 +7,24 @@
   <!-- ── KPI CARDS ──────────────────────────────────────────────────── -->
   <div class="kpi-grid">
     <div class="kpi-card">
-      <div class="kpi-icon" style="background:#f0fdf4">👣</div>
-      <div class="kpi-label">Aktivnih turista (30d)</div>
-      <div class="kpi-value">24.3k</div>
-      <div class="kpi-change up">↑ +12% vs prošli mesec</div>
+      <div class="kpi-icon" style="background:#f0fdf4">📍</div>
+      <div class="kpi-label">Lokacije na platformi</div>
+      <div class="kpi-value">{{ popularObjects.length + popularEvents.length }}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon" style="background:#eff6ff">👀</div>
-      <div class="kpi-label">Pregledi sadržaja</div>
-      <div class="kpi-value">118k</div>
-      <div class="kpi-change up">↑ +8.4% rast</div>
+      <div class="kpi-label">Ukupno pregleda</div>
+      <div class="kpi-value">{{ totalViews | number }}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-icon" style="background:#fffbeb">⭐</div>
       <div class="kpi-label">Prosečna ocena</div>
-      <div class="kpi-value">4.7</div>
-      <div class="kpi-change up">↑ +0.2 vs prošli kvartal</div>
+      <div class="kpi-value">{{ avgRating }}</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-icon" style="background:#fef2f2">📝</div>
-      <div class="kpi-label">Nove recenzije</div>
-      <div class="kpi-value">1.2k</div>
-      <div class="kpi-change down">↓ -3% vs prošli mesec</div>
+      <div class="kpi-icon" style="background:#f0fdf4">🗺️</div>
+      <div class="kpi-label">Regiona sa posetama</div>
+      <div class="kpi-value">{{ movements.length }}</div>
     </div>
   </div>
 
@@ -54,14 +50,16 @@
             <div class="bar bar-primary" [style.height.%]="barHeight(v.count)"></div>
             }
             @if (visits.length === 0) {
-            @for (h of [55,70,42,88,65,50,80,60,92,75,45,95,58,72,85]; track $index) {
-            <div class="bar" [class]="barColor($index)" [style.height.%]="h"></div>
+            @for (h of [55,70,42,88,65,50,80,60,92,75,45,95,58,72,85]; track $index; let i = $index) {
+            <div class="bar" [class]="barColor(i)" [style.height.%]="h"></div>
             }
             }
           </div>
           <div class="chart-labels">
-            <span>1.3</span><span>5.3</span><span>10.3</span>
-            <span>15.3</span><span>20.3</span><span>25.3</span><span>29.3</span>
+            @if (visits.length >= 2) {
+            <span>{{ visits[0]?.date?.slice(5) }}</span>
+            <span>{{ visits[visits.length - 1]?.date?.slice(5) }}</span>
+            }
           </div>
         </div>
       </div>
@@ -99,7 +97,7 @@
         @for (obj of popularObjects.slice(0, 5); track obj.id; let i = $index) {
         <div class="top-item">
           <span class="top-rank">{{ i + 1 }}</span>
-          <span class="top-name">{{ obj.name }}</span>
+          <span class="top-name">{{ obj.title }}</span>
           <div class="top-bar-wrap">
             <div class="top-bar-fill" [style.width.%]="topBarWidth(obj.viewCount, popularObjects)"
                  style="background:#22c55e"></div>
@@ -119,7 +117,7 @@
         @for (ev of popularEvents.slice(0, 5); track ev.id; let i = $index) {
         <div class="top-item">
           <span class="top-rank">{{ i + 1 }}</span>
-          <span class="top-name">{{ ev.name }}</span>
+          <span class="top-name">{{ ev.title }}</span>
           <div class="top-bar-wrap">
             <div class="top-bar-fill" [style.width.%]="topBarWidth(ev.viewCount, popularEvents)"
                  style="background:#3b82f6"></div>

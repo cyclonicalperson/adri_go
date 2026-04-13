@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ObjectService } from '@core/services/object.service';
-import { DestinationService } from '@core/services/destination.service';
+import { RegionService } from '@core/services/region.service';
 import { TouristObject, ObjectCategory } from '@core/models/object.model';
-import { Destination } from '@core/models/destination.model';
+import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -16,30 +16,31 @@ import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 })
 export class ObjectsListComponent implements OnInit {
   objects: TouristObject[] = [];
-  destinations: Destination[] = [];
+  regions: Region[] = [];
   total = 0;
   totalPages = 1;
   loading = true;
   deleteTarget: TouristObject | null = null;
+  activeStatusFilter = '';
 
   // Computed stat counts (set after load)
   activeCount = 0;
   pendingCount = 0;
   inactiveCount = 0;
 
-  req: PageRequest & { category?: string; destinationId?: number } = {
+  req: PageRequest & { category?: string; regionId?: number; status?: string } = {
     page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc',
   };
 
   constructor(
     private service: ObjectService,
-    private destService: DestinationService,
+    private destService: RegionService,
     private router: Router,
   ) { }
 
   ngOnInit(): void {
-    this.destService.getAll({ page: 1, pageSize: 200 }).subscribe(res => {
-      this.destinations = res.data;
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
+      this.regions = res.data;
     });
     this.load();
   }
@@ -51,10 +52,9 @@ export class ObjectsListComponent implements OnInit {
         this.objects = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
-        // Approximate stat counts from current page
-        this.activeCount = Math.round(this.total * 0.86);
-        this.pendingCount = Math.round(this.total * 0.09);
-        this.inactiveCount = this.total - this.activeCount - this.pendingCount;
+        this.activeCount = res.data.filter(o => this.objectStatus(o) === 'published').length;
+        this.pendingCount = res.data.filter(o => this.objectStatus(o) === 'draft').length;
+        this.inactiveCount = res.data.filter(o => this.objectStatus(o) === 'archived').length;
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -72,12 +72,19 @@ export class ObjectsListComponent implements OnInit {
   }
 
   onDestinationChange(id: string): void {
-    this.req = { ...this.req, destinationId: id ? +id : undefined, page: 1 };
+    this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
   }
 
-  onStatusFilter(_val: string): void {
-    // Status not yet a backend filter — reserved for future
+  onStatusFilter(val: string): void {
+    this.activeStatusFilter = val;
+    const statusMap: Record<string, string> = {
+      active: 'published',
+      pending: 'draft',
+      inactive: 'archived',
+    };
+    (this.req as any)['status'] = statusMap[val] || undefined;
+    this.req = { ...this.req, page: 1 };
     this.load();
   }
 
@@ -164,7 +171,10 @@ export class ObjectsListComponent implements OnInit {
   }
 
   ownerName(o: TouristObject): string {
-    // Would come from API — placeholder
-    return o.destination?.name ?? 'Sistem';
+    return o.destination?.name ?? o.region?.name ?? 'Sistem';
+  }
+
+  objectStatus(o: TouristObject): string {
+    return (o as any).status ?? 'published';
   }
 }

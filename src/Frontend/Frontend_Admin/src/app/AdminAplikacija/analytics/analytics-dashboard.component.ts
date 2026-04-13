@@ -4,7 +4,7 @@ import { forkJoin } from 'rxjs';
 import {
   AnalyticsService,
   DailyVisit,
-  PopularEntity,
+  PopularPost,
   TouristMovement,
 } from '@core/services/analytics.service';
 import { TouristMovementsComponent } from './components/tourist-movements/tourist-movements.component';
@@ -17,8 +17,8 @@ import { TouristMovementsComponent } from './components/tourist-movements/touris
 })
 export class AnalyticsDashboardComponent implements OnInit {
   visits: DailyVisit[] = [];
-  popularObjects: PopularEntity[] = [];
-  popularEvents: PopularEntity[] = [];
+  popularObjects: PopularPost[] = [];
+  popularEvents: PopularPost[] = [];
   movements: TouristMovement[] = [];
   loading = true;
 
@@ -32,7 +32,7 @@ export class AnalyticsDashboardComponent implements OnInit {
 
     forkJoin({
       visits: this.analytics.getDailyVisits(fmt(from), fmt(today)),
-      objects: this.analytics.getPopularObjects(5),
+      objects: this.analytics.getPopularPosts(5),
       events: this.analytics.getPopularEvents(5),
       movements: this.analytics.getTouristMovements(),
     }).subscribe({
@@ -57,8 +57,21 @@ export class AnalyticsDashboardComponent implements OnInit {
     return ['bar-green', 'bar-blue', 'bar-amber'][i % 3];
   }
 
-  topBarWidth(val: number, list: PopularEntity[]): number {
+  topBarWidth(val: number, list: PopularPost[]): number {
     const max = Math.max(...list.map(e => e.viewCount), 1);
     return Math.round((val / max) * 100);
+  }
+
+  get totalViews(): number {
+    const objViews = this.popularObjects.reduce((s, p) => s + p.viewCount, 0);
+    const evViews = this.popularEvents.reduce((s, p) => s + p.viewCount, 0);
+    return objViews + evViews;
+  }
+
+  get avgRating(): string {
+    const rated = [...this.popularObjects, ...this.popularEvents].filter(p => p.avgRating != null);
+    if (!rated.length) return '—';
+    const avg = rated.reduce((s, p) => s + (p.avgRating ?? 0), 0) / rated.length;
+    return avg.toFixed(1);
   }
 }

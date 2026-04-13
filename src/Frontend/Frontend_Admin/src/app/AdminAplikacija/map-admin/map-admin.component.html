@@ -2,28 +2,41 @@
 
   <div class="toolbar">
     <div class="layer-toggle">
-      <button class="layer-btn" [class.active]="layer === 'both'"
-              (click)="setLayer('both')">
+      <button class="layer-btn" [class.active]="layer === 'all'"
+              (click)="setLayer('all')">
         Sve
       </button>
-      <button class="layer-btn" [class.active]="layer === 'destinations'"
-              (click)="setLayer('destinations')">
-        Destinacije
+      <button class="layer-btn" [class.active]="layer === 'locations'"
+              (click)="setLayer('locations')">
+        Lokacije
       </button>
-      <button class="layer-btn" [class.active]="layer === 'objects'"
-              (click)="setLayer('objects')">
-        Objekti
+      <button class="layer-btn" [class.active]="layer === 'events'"
+              (click)="setLayer('events')">
+        Dogadjaji
+      </button>
+      <button class="layer-btn" [class.active]="layer === 'routes'"
+              (click)="setLayer('routes')">
+        Rute
       </button>
     </div>
 
     <div class="counts">
       <span class="count-item">
-        Destinacije: <strong>{{ destinations.length }}</strong>
+        Lokacije: <strong>{{ locationCount }}</strong>
       </span>
       <span class="count-item">
-        Objekti: <strong>{{ objects.length }}</strong>
+        Dogadjaji: <strong>{{ eventCount }}</strong>
+      </span>
+      <span class="count-item">
+        Rute: <strong>{{ routeCount }}</strong>
       </span>
     </div>
+
+    <div class="spacer"></div>
+
+    <button class="heat-toggle" [class.active]="showHeatmap" (click)="toggleHeatmap()">
+      🌡️ Heatmap
+    </button>
   </div>
 
   <div class="map-layout">
@@ -31,9 +44,10 @@
     <div class="loading">Učitavanje mape...</div>
     } @else {
     <app-map [markers]="markers"
-             [centerLat]="43.85"
-             [centerLng]="18.41"
-             [zoom]="7"
+             [heatPoints]="activeHeatPoints"
+             [centerLat]="43.1556"
+             [centerLng]="19.1225"
+             [zoom]="8"
              height="600px"
              (markerClicked)="onMarkerClicked($event)" />
     }
@@ -51,6 +65,7 @@
         {{ selectedMarker.lat.toFixed(5) }}°N,
         {{ selectedMarker.lng.toFixed(5) }}°E
       </div>
+      <button class="btn-detail" (click)="goToDetail()">Pogledaj detalje →</button>
     </div>
     }
   </div>

@@ -24,13 +24,13 @@
 
         <div class="row-2">
           <div class="field">
-            <label class="label">Destinacija *</label>
+            <label class="label">Region *</label>
             <select class="input"
-                    [class.invalid]="f('destinationId').invalid && f('destinationId').touched"
-                    formControlName="destinationId">
+                    [class.invalid]="f('regionId').invalid && f('regionId').touched"
+                    formControlName="regionId">
               <option [ngValue]="null">— Izaberite —</option>
-              @for (d of destinations; track d.destinationId) {
-              <option [value]="d.destinationId">{{ d.name }}</option>
+              @for (r of destinations; track r.regionId) {
+              <option [value]="r.regionId">{{ r.name }}</option>
               }
             </select>
           </div>

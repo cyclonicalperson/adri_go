@@ -2,30 +2,24 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="onStatusFilter('')">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno lokacija</div>
-      <div class="trend up">↑ +8 ovog meseca</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'active'" (click)="onStatusFilter('active')">
       <div class="num" style="color:#15803d">{{ activeCount }}</div>
       <div class="lbl">Aktivne</div>
-      <div class="trend">86% od ukupnog</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'pending'" (click)="onStatusFilter('pending')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
       <div class="trend warn">⚠ Traži pregled</div>
+      }
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'inactive'" (click)="onStatusFilter('inactive')">
       <div class="num" style="color:#ef4444">{{ inactiveCount }}</div>
       <div class="lbl">Neaktivne</div>
-      <div class="trend">5% od ukupnog</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num">4.7 ⭐</div>
-      <div class="lbl">Prosečna ocena</div>
-      <div class="trend up">Na osnovu 12k recenzija</div>
     </div>
   </div>
 
@@ -57,6 +51,22 @@
     </button>
   </div>
 
+  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!activeStatusFilter" (click)="onStatusFilter('')">
+      Svi statusi
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'active'" (click)="onStatusFilter('active')">
+      ✅ Aktivne
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'pending'" (click)="onStatusFilter('pending')">
+      ⏳ Na čekanju ({{ pendingCount }})
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'inactive'" (click)="onStatusFilter('inactive')">
+      📦 Neaktivne
+    </button>
+  </div>
+
   <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
@@ -69,9 +79,9 @@
     </div>
 
     <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
-      <option value="">Svi gradovi</option>
-      @for (d of destinations; track d.destinationId) {
-      <option [value]="d.destinationId">{{ d.name }}</option>
+      <option value="">Svi regioni</option>
+      @for (r of regions; track r.regionId) {
+      <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
 
@@ -158,7 +168,7 @@
             </span>
           </td>
           <td>
-            <div style="font-weight:600;font-size:13px">{{ o.destination?.name ?? '—' }}</div>
+            <div style="font-weight:600;font-size:13px">{{ o.region?.name ?? o.destination?.name ?? '—' }}</div>
             @if (o.latitude && o.longitude) {
             <div style="font-size:11px;color:#6b7280">
               {{ o.latitude.toFixed(4) }}° N, {{ o.longitude.toFixed(4) }}° E
@@ -183,7 +193,13 @@
             }
           </td>
           <td>
+            @if (objectStatus(o) === 'published') {
             <span class="badge badge-green">✅ Aktivna</span>
+            } @else if (objectStatus(o) === 'draft') {
+            <span class="badge badge-amber">⏳ Na čekanju</span>
+            } @else {
+            <span class="badge badge-gray">📦 Arhivirana</span>
+            }
           </td>
           <td style="font-size:12px;font-weight:600;color:#374151">
             {{ ownerName(o) }}

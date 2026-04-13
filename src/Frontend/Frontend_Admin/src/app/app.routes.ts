@@ -13,7 +13,6 @@ export const routes: Routes = [
       import('./login/login.routes').then(m => m.LOGIN_ROUTES),
   },
   {
-    // Registration page — public, no guard
     path: 'register',
     loadChildren: () =>
       import('./register/register.routes').then(m => m.REGISTER_ROUTES),

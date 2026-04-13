@@ -2,30 +2,21 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="!activeCategory" (click)="setCategory('')">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno aktivnosti</div>
-      <div class="trend up">↑ +4 ove nedelje</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'SPORT'" (click)="setCategory('SPORT')">
       <div class="num" style="color:#1e40af">{{ sportCount }}</div>
       <div class="lbl">Sportske</div>
-      <div class="trend">Plivanje, tenis, ski…</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'ADVENTURE'" (click)="setCategory('ADVENTURE')">
       <div class="num" style="color:#15803d">{{ natureCount }}</div>
       <div class="lbl">Priroda / Ture</div>
-      <div class="trend">Pešačenje, rafting…</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'WELLNESS'" (click)="setCategory('WELLNESS')">
       <div class="num" style="color:#7e22ce">{{ wellnessCount }}</div>
-      <div class="lbl">Wellness tretmani</div>
-      <div class="trend">Spa, kozmetika…</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num">{{ totalViews | number }}</div>
-      <div class="lbl">Pregleda (30 dana)</div>
-      <div class="trend up">↑ +12% interesovanje</div>
+      <div class="lbl">Wellness</div>
     </div>
   </div>
 
@@ -42,6 +33,19 @@
     }
   </div>
 
+  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!activeStatus" (click)="setStatus('')">
+      Svi statusi
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'approved'" (click)="setStatus('approved')">
+      ✅ Odobrene
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
+      ⏳ Na čekanju
+    </button>
+  </div>
+
   <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
@@ -52,14 +56,6 @@
              [value]="searchQuery"
              (input)="onSearch($any($event.target).value)" />
     </div>
-
-    <select class="filter-select" (change)="onCityChange($any($event.target).value)">
-      <option value="">Svi gradovi</option>
-      <option value="beograd">Beograd</option>
-      <option value="novi-sad">Novi Sad</option>
-      <option value="kopaonik">Kopaonik</option>
-      <option value="vrnjacka">Vrnjačka Banja</option>
-    </select>
 
     <select class="filter-select" (change)="onStatusChange($any($event.target).value)">
       <option value="">Svi statusi</option>
@@ -141,10 +137,10 @@
           </td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
-              <button class="btn-icon map-btn" title="Prikaži na mapi">🗺️</button>
-              <button class="btn-icon" title="Detalji">👁️</button>
+              <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="showOnMap(a)">🗺️</button>
+              <button class="btn-icon" title="Detalji" (click)="openDetail(a)">👁️</button>
               <button class="btn-icon" title="Izmeni" (click)="editActivity(a)">✏️</button>
-              <button class="btn-icon danger" title="Obriši" (click)="deleteActivity(a)">🗑️</button>
+              <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(a)">🗑️</button>
             </div>
           </td>
         </tr>
@@ -167,3 +163,85 @@
   }
 
 </div>
+
+<!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
+@if (detailOpen && detailActivity) {
+<div class="detail-overlay" (click)="closeDetail()">
+  <div class="detail-panel" (click)="$event.stopPropagation()">
+    <div class="detail-header">
+      <h3 class="detail-title">Detalji aktivnosti</h3>
+      <button class="btn-close" (click)="closeDetail()">✕</button>
+    </div>
+    <div class="detail-body">
+      <div class="detail-icon">{{ categoryIcon(detailActivity.category) }}</div>
+      <div class="detail-name">{{ detailActivity.name }}</div>
+      <div class="detail-cat">
+        <span class="type-tag" [class]="typeBadgeClass(detailActivity.category)">{{ categoryLabel(detailActivity.category) }}</span>
+      </div>
+      <div class="detail-rows">
+        <div class="detail-row">
+          <span class="detail-label">Opis</span>
+          <span class="detail-val">{{ detailActivity.description }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Lokacija</span>
+          <span class="detail-val">{{ locationName(detailActivity) }}</span>
+        </div>
+        @if (gpsText(detailActivity)) {
+        <div class="detail-row">
+          <span class="detail-label">Koordinate</span>
+          <span class="detail-val">{{ gpsText(detailActivity) }}</span>
+        </div>
+        }
+      </div>
+      @if (detailActivity.lat && detailActivity.lng) {
+      <div style="margin-top:16px">
+        <app-map [markers]="[{id: detailActivity.activityId, lat: detailActivity.lat!, lng: detailActivity.lng!, label: detailActivity.name}]"
+                 [centerLat]="detailActivity.lat!"
+                 [centerLng]="detailActivity.lng!"
+                 [zoom]="12"
+                 height="200px" />
+      </div>
+      }
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-outline" (click)="editActivity(detailActivity)">✏️ Izmeni</button>
+      <button class="btn btn-primary" (click)="closeDetail()">Zatvori</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ── MAP PANEL ─────────────────────────────────────────────────────── -->
+@if (mapOpen && mapActivity) {
+<div class="detail-overlay" (click)="closeMap()">
+  <div class="detail-panel" (click)="$event.stopPropagation()" style="max-width:700px">
+    <div class="detail-header">
+      <h3 class="detail-title">{{ mapActivity.name }} — Mapa</h3>
+      <button class="btn-close" (click)="closeMap()">✕</button>
+    </div>
+    <div class="detail-body">
+      @if (mapActivity.lat && mapActivity.lng) {
+      <app-map [markers]="mapMarkers"
+               [centerLat]="mapActivity.lat!"
+               [centerLng]="mapActivity.lng!"
+               [zoom]="13"
+               height="400px" />
+      } @else {
+      <div class="state-msg">Ova aktivnost nema definisanu lokaciju.</div>
+      }
+    </div>
+  </div>
+</div>
+}
+
+<!-- ── DELETE DIALOG ──────────────────────────────────────────────────── -->
+@if (deleteTarget) {
+<app-confirm-dialog [visible]="true"
+  title="Obriši aktivnost"
+  [message]="'Da li ste sigurni da želite da obrišete ‹' + deleteTarget.name + '›?'"
+  confirmLabel="Obriši"
+  [danger]="true"
+  (confirmed)="doDelete()"
+  (cancelled)="cancelDelete()" />
+}

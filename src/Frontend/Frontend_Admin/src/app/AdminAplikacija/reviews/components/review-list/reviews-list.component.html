@@ -5,22 +5,21 @@
     <div class="stat-chip">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno recenzija</div>
-      <div class="trend up">↑ 5% ovog meseca</div>
     </div>
     <div class="stat-chip">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
       <div class="trend warn">⚠ Traži moderaciju</div>
+      }
     </div>
     <div class="stat-chip">
       <div class="num" style="color:#ef4444">{{ rejectedCount }}</div>
       <div class="lbl">Odbijene</div>
-      <div class="trend">Spam / neprikladno</div>
     </div>
     <div class="stat-chip">
-      <div class="num">4.4 ⭐</div>
-      <div class="lbl">Prosečna ocena</div>
-      <div class="trend">Sve lokacije</div>
+      <div class="num" style="color:#15803d">{{ approvedCount }}</div>
+      <div class="lbl">Odobrene</div>
     </div>
   </div>
 
@@ -112,9 +111,9 @@
         <tr>
           <td>
             <div class="author-cell">
-              <div class="author-av">{{ initials(r.user?.fullName) }}</div>
+              <div class="author-av">{{ initials(r.touristName ?? r.user?.fullName) }}</div>
               <div>
-                <div style="font-weight:700;font-size:13px">{{ r.user?.fullName ?? 'Anoniman' }}</div>
+                <div style="font-weight:700;font-size:13px">{{ r.touristName ?? r.user?.fullName ?? 'Anoniman' }}</div>
                 <div style="font-size:11px;color:#6b7280">Turistički nalog</div>
               </div>
             </div>
@@ -151,7 +150,9 @@
               <button class="btn-icon danger" title="Odbij" (click)="updateStatus(r, 'REJECTED')">❌</button>
               }
               <button class="btn-icon" title="Detalji" (click)="openModeration(r)">👁️</button>
-              <button class="btn-icon danger" title="Obriši" (click)="deleteReview(r)">🗑️</button>
+              @if (canDelete) {
+              <button class="btn-icon danger" title="Trajno obriši (samo superadmin)" (click)="deleteReview(r)">🗑️</button>
+              }
             </div>
           </td>
         </tr>

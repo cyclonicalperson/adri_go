@@ -1,25 +1,36 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenStorageService } from './token-storage.service';
-import { inject } from '@angular/core';
 
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
+/**
+ * Roles match DB ENUM: admin_user.role = ENUM('superadmin','admin')
+ *
+ *  'superadmin' — Super Administrator — pun pristup svemu
+ *  'admin'      — Administrator      — pristup ograničen dozvolama i regionom
+ */
+export type AdminRole = 'superadmin' | 'admin';
+
+export interface AuthUser {
+  userId: number;
+  fullName: string;
+  email: string;
+  role: AdminRole;
+  organizationId: number | null;
+  isIndividual: boolean;   // true = fizičko lice, false = organizacija
+  accountStatus: 'active' | 'suspended' | 'pending';
+}
+
 export interface AuthResponse {
-  token: string;
-  user: {
-    userId: number;
-    fullName: string;
-    email: string;
-    role: 'ADMIN' | 'ORG' | 'TOURIST';
-    organizationId: number | null;
-  };
+  accessToken: string;
+  user: AuthUser;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,8 +39,8 @@ export class AuthService {
   private router = inject(Router);
   private tokenStorage = inject(TokenStorageService);
 
-  private _currentUser$ = new BehaviorSubject<AuthResponse['user'] | null>(
-    this.tokenStorage.getUser()
+  private _currentUser$ = new BehaviorSubject<AuthUser | null>(
+    this.tokenStorage.getUser() as AuthUser | null
   );
 
   private readonly apiUrl = `${environment.apiUrl}/auth`;
@@ -37,9 +48,26 @@ export class AuthService {
   currentUser$ = this._currentUser$.asObservable();
 
   login(payload: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, payload).pipe(
+    return this.http.post<any>(`${this.apiUrl}/login`, payload).pipe(
+      map(res => {
+        // Backend returns { token, user: { id, ... } }
+        // Mock returns { accessToken, user: { userId, ... } }
+        const user = res.user ?? {};
+        return {
+          accessToken: res.accessToken ?? res.token,
+          user: {
+            userId: user.userId ?? user.id,
+            fullName: user.fullName ?? user.FullName,
+            email: user.email ?? user.Email,
+            role: (user.role ?? user.Role ?? 'admin') as AdminRole,
+            organizationId: user.organizationId ?? user.OrganizationId ?? null,
+            isIndividual: user.isIndividual ?? user.IsIndividual ?? true,
+            accountStatus: (user.accountStatus ?? user.AccountStatus ?? 'active') as 'active' | 'suspended' | 'pending',
+          }
+        } as AuthResponse;
+      }),
       tap(res => {
-        this.tokenStorage.saveToken((res as any).token);
+        this.tokenStorage.saveToken(res.accessToken);
         this.tokenStorage.saveUser(res.user);
         this._currentUser$.next(res.user);
       })
@@ -52,7 +80,7 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  get currentUser(): AuthResponse['user'] | null {
+  get currentUser(): AuthUser | null {
     return this._currentUser$.value;
   }
 
@@ -60,11 +88,17 @@ export class AuthService {
     return !!this.tokenStorage.getToken();
   }
 
-  get role(): string | null {
+  get role(): AdminRole | null {
     return this.currentUser?.role ?? null;
   }
 
-  isRole(...roles: string[]): boolean {
+  /** True if current user has at least one of the given roles */
+  isRole(...roles: AdminRole[]): boolean {
     return !!this.role && roles.includes(this.role);
+  }
+
+  /** Convenience: true only for superadmin */
+  get isSuperAdmin(): boolean {
+    return this.role === 'superadmin';
   }
 }
