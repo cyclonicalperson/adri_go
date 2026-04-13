@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TouristGuide.Api.Models
@@ -18,6 +18,7 @@ namespace TouristGuide.Api.Models
         [MaxLength(255)]
         public string? Email { get; set; }
 
+        /// <summary>NULL ako je guest korisnik bez naloga</summary>
         [Column("password_hash")]
         [MaxLength(255)]
         public string? PasswordHash { get; set; }
@@ -27,8 +28,9 @@ namespace TouristGuide.Api.Models
         [MaxLength(5)]
         public string Language { get; set; } = "en";
 
+        /// <summary>JSON: ["hiking", "culture", "food", ...]</summary>
         [Column("interests")]
-        public string? Interests { get; set; } // JSON string
+        public string? Interests { get; set; }
 
         [Column("home_lat")]
         public decimal? HomeLat { get; set; }
@@ -50,9 +52,17 @@ namespace TouristGuide.Api.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation
-        public ICollection<PostReview> Reviews { get; set; } = new List<PostReview>();
+        public ICollection<Review> Reviews { get; set; } = new List<Review>();
         public ICollection<PostLike> Likes { get; set; } = new List<PostLike>();
         public ICollection<SavedPost> SavedPosts { get; set; } = new List<SavedPost>();
         public ICollection<PostView> Views { get; set; } = new List<PostView>();
+        public ICollection<TouristFavorite> Favorites { get; set; } = new List<TouristFavorite>();
+        public ICollection<ExternalClick> ExternalClicks { get; set; } = new List<ExternalClick>();
+        public ICollection<DirectionRequest> DirectionRequests { get; set; } = new List<DirectionRequest>();
+        public ICollection<ContentShare> Shares { get; set; } = new List<ContentShare>();
+        public ICollection<VisitPlanner> Planners { get; set; } = new List<VisitPlanner>();
+        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<MailingList> MailingListEntries { get; set; } = new List<MailingList>();
     }
 }
