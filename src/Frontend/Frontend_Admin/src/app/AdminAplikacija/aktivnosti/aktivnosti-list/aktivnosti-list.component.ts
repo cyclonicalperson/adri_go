@@ -24,14 +24,14 @@ export class AktivnostiListComponent implements OnInit {
 
   searchQuery = '';
   activeCategory = '';
+  activeStatus = '';
   sortBy = 'createdAt';
   sortDir: 'asc' | 'desc' = 'desc';
 
-  // Approximate stat counts
-  sportCount = 38;
-  natureCount = 29;
-  wellnessCount = 22;
-  totalViews = 8294;
+  // Computed stat counts
+  sportCount = 0;
+  natureCount = 0;
+  wellnessCount = 0;
 
   // Detail panel
   detailActivity: Activity | null = null;
@@ -71,6 +71,7 @@ export class AktivnostiListComponent implements OnInit {
     };
     if (this.searchQuery) params['search'] = this.searchQuery;
     if (this.activeCategory) params['category'] = this.activeCategory;
+    if (this.activeStatus) params['status'] = this.activeStatus;
 
     const query = new URLSearchParams(params).toString();
     this.http.get<{ data: Activity[]; total: number; totalPages: number }>(
@@ -80,6 +81,9 @@ export class AktivnostiListComponent implements OnInit {
         this.activities = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
+        this.sportCount = res.data.filter(a => a.category === 'SPORT').length;
+        this.natureCount = res.data.filter(a => a.category === 'ADVENTURE').length;
+        this.wellnessCount = res.data.filter(a => a.category === 'WELLNESS').length;
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -88,6 +92,7 @@ export class AktivnostiListComponent implements OnInit {
 
   onSearch(q: string): void { this.searchQuery = q; this.page = 1; this.load(); }
   setCategory(c: string): void { this.activeCategory = c; this.page = 1; this.load(); }
+  setStatus(s: string): void { this.activeStatus = s; this.page = 1; this.load(); }
   onCityChange(_v: string): void { this.load(); }
   onStatusChange(_v: string): void { this.load(); }
   onSortChange(val: string): void {

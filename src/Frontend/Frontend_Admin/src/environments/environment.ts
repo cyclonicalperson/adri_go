@@ -1,9 +1,8 @@
 // src/environments/environment.ts
-// Ovo je RAZVOJNA konfiguracija — koristi se sa ng serve.
-// angular.json NEMA fileReplacements za development,
-// pa Angular direktno čita ovaj fajl pri ng serve.
-// Mock interceptori se aktiviraju kada je production: false.
+// useMocks: false → koristi pravi backend API
+// useMocks: true  → koristi mock interceptore (radi bez backend-a)
 export const environment = {
   production: false,
+  useMocks: true,
   apiUrl: 'http://localhost:5000/api',
 };

@@ -2,30 +2,24 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="filterByStatus('')">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno dogadjaja</div>
-      <div class="trend">Sve vreme</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
       <div class="num" style="color:#15803d">{{ upcomingCount }}</div>
-      <div class="lbl">Predstojeći</div>
-      <div class="trend up">↑ 8 ove nedelje</div>
+      <div class="lbl">Objavljeni</div>
     </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#1d4ed8">{{ ongoingCount }}</div>
-      <div class="lbl">U toku</div>
-      <div class="trend">Aktivni trenutno</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#d97706">3</div>
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
+      <div class="num" style="color:#d97706">{{ draftCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (draftCount > 0) {
       <div class="trend warn">⚠ Traži pregled</div>
+      }
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'archived'" (click)="filterByStatus('archived')">
       <div class="num" style="color:#6b7280">{{ pastCount }}</div>
-      <div class="lbl">Završeni</div>
-      <div class="trend">Istorijat</div>
+      <div class="lbl">Arhivirani</div>
     </div>
   </div>
 
@@ -40,6 +34,22 @@
       {{ opt.label }}
     </button>
     }
+  </div>
+
+  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!activeStatusFilter" (click)="filterByStatus('')">
+      Svi statusi
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
+      ✅ Objavljeni
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
+      ⏳ Na čekanju ({{ draftCount }})
+    </button>
+    <button class="ftab" [class.active]="activeStatusFilter === 'archived'" (click)="filterByStatus('archived')">
+      📦 Arhivirani
+    </button>
   </div>
 
   <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
@@ -92,7 +102,7 @@
   } @else {
 
   @if (viewMode === 'calendar') {
-  <app-event-calendar [events]="events" (editEvent)="goEdit($event)" />
+  <app-event-calendar [events]="events" (editEvent)="openDetail($event)" />
   } @else {
 
   <div class="panel">

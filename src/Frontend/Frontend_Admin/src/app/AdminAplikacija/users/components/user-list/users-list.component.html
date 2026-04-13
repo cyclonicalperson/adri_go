@@ -5,22 +5,21 @@
     <div class="stat-chip">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
       <div class="trend warn">⚠ Čekaju odobrenje</div>
+      }
     </div>
     <div class="stat-chip">
       <div class="num" style="color:#15803d">{{ activeCount }}</div>
       <div class="lbl">Aktivni admini</div>
-      <div class="trend up">↑ 3 ovog meseca</div>
     </div>
     <div class="stat-chip">
       <div class="num" style="color:#ef4444">{{ suspendedCount }}</div>
       <div class="lbl">Suspendovani</div>
-      <div class="trend">Privremeno onemogućeni</div>
     </div>
     <div class="stat-chip">
       <div class="num">{{ total }}</div>
       <div class="lbl">Svi admini</div>
-      <div class="trend">Ukupno na platformi</div>
     </div>
   </div>
 

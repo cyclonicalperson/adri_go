@@ -8,23 +8,19 @@
   <div class="stats-strip">
     <div class="stat-chip">
       <div class="num">{{ activeTourists | number }}</div>
-      <div class="lbl">Aktivnih turista</div>
-      <div class="trend up">↑ +12% ovog meseca</div>
+      <div class="lbl">Ukupno poseta</div>
     </div>
     <div class="stat-chip">
-      <div class="num">{{ currentlyOnsite }}</div>
-      <div class="lbl">Na lokacijama sada</div>
-      <div class="trend up">↑ Trenutno</div>
+      <div class="num">{{ movements.length }}</div>
+      <div class="lbl">Regiona sa posetama</div>
     </div>
     <div class="stat-chip">
-      <div class="num">4.2</div>
-      <div class="lbl">Avg. lokacija po poseti</div>
-      <div class="trend">→ Stabilno</div>
+      <div class="num">{{ topMovements.length > 0 ? topMovements[0].regionName : '—' }}</div>
+      <div class="lbl">Najposećeniji region</div>
     </div>
     <div class="stat-chip">
-      <div class="num">34%</div>
-      <div class="lbl">Povratnih turista</div>
-      <div class="trend down">↓ -2% vs prošli mesec</div>
+      <div class="num">{{ topMovements.length > 0 ? topMovements[0].visitCount : 0 }}</div>
+      <div class="lbl">Poseta u top regionu</div>
     </div>
   </div>
 

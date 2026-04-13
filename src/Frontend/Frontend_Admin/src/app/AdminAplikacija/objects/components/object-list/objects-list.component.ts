@@ -21,6 +21,7 @@ export class ObjectsListComponent implements OnInit {
   totalPages = 1;
   loading = true;
   deleteTarget: TouristObject | null = null;
+  activeStatusFilter = '';
 
   // Computed stat counts (set after load)
   activeCount = 0;
@@ -51,10 +52,9 @@ export class ObjectsListComponent implements OnInit {
         this.objects = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
-        // Approximate stat counts from current page
-        this.activeCount = Math.round(this.total * 0.86);
-        this.pendingCount = Math.round(this.total * 0.09);
-        this.inactiveCount = this.total - this.activeCount - this.pendingCount;
+        this.activeCount = res.data.filter(o => this.objectStatus(o) === 'published').length;
+        this.pendingCount = res.data.filter(o => this.objectStatus(o) === 'draft').length;
+        this.inactiveCount = res.data.filter(o => this.objectStatus(o) === 'archived').length;
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -77,7 +77,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   onStatusFilter(val: string): void {
-    // Map UI value to DB status
+    this.activeStatusFilter = val;
     const statusMap: Record<string, string> = {
       active: 'published',
       pending: 'draft',
@@ -171,7 +171,10 @@ export class ObjectsListComponent implements OnInit {
   }
 
   ownerName(o: TouristObject): string {
-    // Would come from API — placeholder
-    return o.destination?.name ?? 'Sistem';
+    return o.destination?.name ?? o.region?.name ?? 'Sistem';
+  }
+
+  objectStatus(o: TouristObject): string {
+    return (o as any).status ?? 'published';
   }
 }

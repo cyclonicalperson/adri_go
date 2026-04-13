@@ -18,6 +18,13 @@ export interface MapClickEvent {
   lng: number;
 }
 
+export interface HeatPoint {
+  lat: number;
+  lng: number;
+  intensity: number; // 0-1
+  label?: string;
+}
+
 @Component({
   selector: 'app-map',
   standalone: true,
@@ -28,6 +35,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   @ViewChild('mapEl', { static: true }) mapEl!: ElementRef<HTMLDivElement>;
 
   @Input() markers: MapMarker[] = [];
+  @Input() heatPoints: HeatPoint[] = [];
   @Input() centerLat: number = 43.1556;
   @Input() centerLng: number = 19.1225;
   @Input() zoom: number = 8;
@@ -40,6 +48,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   private map!: L.Map;
   private markerLayer!: L.LayerGroup;
+  private heatLayer!: L.LayerGroup;
   private selectedPin: L.Marker | null = null;
 
   constructor(private zone: NgZone) { }
@@ -63,6 +72,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.map) return;
     if (changes['markers']) this.zone.runOutsideAngular(() => this.renderMarkers());
+    if (changes['heatPoints']) this.zone.runOutsideAngular(() => this.renderHeat());
     if (changes['centerLat'] || changes['centerLng'] || changes['zoom']) this.map.setView([this.centerLat, this.centerLng], this.zoom);
     if (changes['height']) requestAnimationFrame(() => this.map?.invalidateSize());
   }
@@ -85,6 +95,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     }).addTo(this.map);
 
     this.markerLayer = L.layerGroup().addTo(this.map);
+    this.heatLayer = L.layerGroup().addTo(this.map);
 
     if (this.clickable) {
       this.map.on('click', (e: L.LeafletMouseEvent) => {
@@ -92,6 +103,30 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
       });
     }
     this.renderMarkers();
+    this.renderHeat();
+  }
+
+  private renderHeat(): void {
+    this.heatLayer.clearLayers();
+    this.heatPoints.forEach(hp => {
+      const radius = 800 + hp.intensity * 4000;
+      const green = Math.round(197 * hp.intensity);
+      const alpha = 0.15 + hp.intensity * 0.25;
+      const circle = L.circle([hp.lat, hp.lng], {
+        radius,
+        color: 'transparent',
+        fillColor: `rgb(34, ${green}, 94)`,
+        fillOpacity: alpha,
+      });
+      if (hp.label) {
+        circle.bindTooltip(hp.label, { permanent: false, direction: 'top' });
+      }
+      this.heatLayer.addLayer(circle);
+    });
+  }
+
+  clearHeat(): void {
+    this.heatLayer?.clearLayers();
   }
 
   private renderMarkers(): void {

@@ -61,4 +61,17 @@ export class AnalyticsDashboardComponent implements OnInit {
     const max = Math.max(...list.map(e => e.viewCount), 1);
     return Math.round((val / max) * 100);
   }
+
+  get totalViews(): number {
+    const objViews = this.popularObjects.reduce((s, p) => s + p.viewCount, 0);
+    const evViews = this.popularEvents.reduce((s, p) => s + p.viewCount, 0);
+    return objViews + evViews;
+  }
+
+  get avgRating(): string {
+    const rated = [...this.popularObjects, ...this.popularEvents].filter(p => p.avgRating != null);
+    if (!rated.length) return '—';
+    const avg = rated.reduce((s, p) => s + (p.avgRating ?? 0), 0) / rated.length;
+    return avg.toFixed(1);
+  }
 }

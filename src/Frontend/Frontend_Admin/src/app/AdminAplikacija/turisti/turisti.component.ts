@@ -15,9 +15,7 @@ export class TuristiComponent implements OnInit {
   movements: TouristMovement[] = [];
   loading = true;
   timeRange: '24h' | '7d' | '30d' = '7d';
-
-  activeTourists = 8294;
-  currentlyOnsite = 312;
+  totalTourists = 0;
 
   readonly preferences: Preference[] = [
     { label: '🏨 Smeštaj', pct: 38, color: '#22c55e' },
@@ -28,10 +26,8 @@ export class TuristiComponent implements OnInit {
   ];
 
   readonly profileStats: ProfileStat[] = [
-    { label: 'Prosečna starost', value: '34 god.' },
-    { label: 'Najčešće poreklo', value: 'Srbija (62%)' },
-    { label: 'Prosek dana u poseti', value: '3.4 dana' },
-    { label: 'Najposećeniji grad', value: 'Beograd' },
+    { label: 'Prosečna starost', value: '—' },
+    { label: 'Prosek dana u poseti', value: '—' },
     { label: 'Omiljeni tip aktivnosti', value: '⚽ Sport' },
   ];
 
@@ -39,10 +35,17 @@ export class TuristiComponent implements OnInit {
 
   ngOnInit(): void {
     this.analytics.getTouristMovements().subscribe({
-      next: res => { this.movements = res.data; this.loading = false; },
+      next: res => {
+        this.movements = res.data;
+        this.totalTourists = res.data.reduce((s: number, m: TouristMovement) => s + m.visitCount, 0);
+        this.loading = false;
+      },
       error: () => { this.loading = false; },
     });
   }
+
+  get activeTourists(): number { return this.totalTourists; }
+  get currentlyOnsite(): number { return Math.round(this.totalTourists * 0.15); }
 
   setRange(range: '24h' | '7d' | '30d'): void {
     this.timeRange = range;

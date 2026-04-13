@@ -5,22 +5,21 @@
     <div class="stat-chip">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno recenzija</div>
-      <div class="trend up">↑ 5% ovog meseca</div>
     </div>
     <div class="stat-chip">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
       <div class="trend warn">⚠ Traži moderaciju</div>
+      }
     </div>
     <div class="stat-chip">
       <div class="num" style="color:#ef4444">{{ rejectedCount }}</div>
       <div class="lbl">Odbijene</div>
-      <div class="trend">Spam / neprikladno</div>
     </div>
     <div class="stat-chip">
-      <div class="num">4.4 ⭐</div>
-      <div class="lbl">Prosečna ocena</div>
-      <div class="trend">Sve lokacije</div>
+      <div class="num" style="color:#15803d">{{ approvedCount }}</div>
+      <div class="lbl">Odobrene</div>
     </div>
   </div>
 

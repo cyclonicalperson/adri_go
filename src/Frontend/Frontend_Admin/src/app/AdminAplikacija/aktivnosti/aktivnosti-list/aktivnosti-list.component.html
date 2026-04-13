@@ -2,30 +2,21 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="!activeCategory" (click)="setCategory('')">
       <div class="num">{{ total }}</div>
       <div class="lbl">Ukupno aktivnosti</div>
-      <div class="trend up">↑ +4 ove nedelje</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'SPORT'" (click)="setCategory('SPORT')">
       <div class="num" style="color:#1e40af">{{ sportCount }}</div>
       <div class="lbl">Sportske</div>
-      <div class="trend">Kategorija: Sport</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'ADVENTURE'" (click)="setCategory('ADVENTURE')">
       <div class="num" style="color:#15803d">{{ natureCount }}</div>
       <div class="lbl">Priroda / Ture</div>
-      <div class="trend">Kategorija: Avantura</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'WELLNESS'" (click)="setCategory('WELLNESS')">
       <div class="num" style="color:#7e22ce">{{ wellnessCount }}</div>
-      <div class="lbl">Wellness tretmani</div>
-      <div class="trend">Kategorija: Wellness</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num">{{ total }}</div>
-      <div class="lbl">Ukupno u bazi</div>
-      <div class="trend">Sve kategorije</div>
+      <div class="lbl">Wellness</div>
     </div>
   </div>
 
@@ -42,6 +33,19 @@
     }
   </div>
 
+  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!activeStatus" (click)="setStatus('')">
+      Svi statusi
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'approved'" (click)="setStatus('approved')">
+      ✅ Odobrene
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
+      ⏳ Na čekanju
+    </button>
+  </div>
+
   <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
@@ -52,14 +56,6 @@
              [value]="searchQuery"
              (input)="onSearch($any($event.target).value)" />
     </div>
-
-    <select class="filter-select" (change)="onCityChange($any($event.target).value)">
-      <option value="">Svi gradovi</option>
-      <option value="beograd">Beograd</option>
-      <option value="novi-sad">Novi Sad</option>
-      <option value="kopaonik">Kopaonik</option>
-      <option value="vrnjacka">Vrnjačka Banja</option>
-    </select>
 
     <select class="filter-select" (change)="onStatusChange($any($event.target).value)">
       <option value="">Svi statusi</option>

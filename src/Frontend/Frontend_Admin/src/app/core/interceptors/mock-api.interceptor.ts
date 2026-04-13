@@ -315,7 +315,7 @@ const ADMIN_NOTIFICATIONS: Record<number, any[]> = {
 };
 
 // ── Dashboard stats ───────────────────────────────────────────────────────────
-const SUPERADMIN_STATS = { totalTourists: 5, totalAdmins: 5, totalPosts: 13, totalRoutes: 3, pendingRegistrations: 2, pendingReviews: 2, ticketsIssued: 3, unreadNotifications: 2 };
+const SUPERADMIN_STATS = { totalTourists: 5, totalAdmins: 5, totalPosts: 9, totalRoutes: 3, pendingRegistrations: 2, pendingReviews: 2, ticketsIssued: 3, unreadNotifications: 2 };
 const ADMIN_STATS = { totalTourists: 0, totalAdmins: 0, totalPosts: 2, totalRoutes: 0, pendingRegistrations: 0, pendingReviews: 1, ticketsIssued: 0, unreadNotifications: 1 };
 
 // ── Region popularity ─────────────────────────────────────────────────────────
@@ -392,8 +392,14 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   // ── Analytics ──────────────────────────────────────────────────────────────
   if (url.includes('/analytics/stats')) return ok({ data: isSuperAdmin ? SUPERADMIN_STATS : ADMIN_STATS, success: true });
   if (url.includes('/analytics/visits')) return ok({ data: DAILY_VISITS, success: true });
-  if (url.includes('/analytics/popular/posts')) return ok({ data: POSTS.filter(p => p.postType !== 'event').sort((a, b) => b.viewCount - a.viewCount).slice(0, 5).map(p => ({ id: p.postId, title: p.title, postType: p.postType, viewCount: p.viewCount, likeCount: p.likeCount, avgRating: p.avgRating, regionName: p.region?.name ?? null, adminName: p.adminName })), success: true });
-  if (url.includes('/analytics/popular/events')) return ok({ data: POSTS.filter(p => p.postType === 'event').sort((a, b) => b.viewCount - a.viewCount).slice(0, 5).map(p => ({ id: p.postId, title: p.title, postType: p.postType, viewCount: p.viewCount, likeCount: p.likeCount, avgRating: p.avgRating, regionName: p.region?.name ?? null, adminName: p.adminName })), success: true });
+  if (url.includes('/analytics/popular/posts')) {
+    const posts = isSuperAdmin ? POSTS : POSTS.filter(p => ADMIN_POST_IDS.has(p.postId));
+    return ok({ data: posts.filter(p => p.postType !== 'event').sort((a, b) => b.viewCount - a.viewCount).slice(0, 5).map(p => ({ id: p.postId, title: p.title, postType: p.postType, viewCount: p.viewCount, likeCount: p.likeCount, avgRating: p.avgRating, regionName: p.region?.name ?? null, adminName: p.adminName })), success: true });
+  }
+  if (url.includes('/analytics/popular/events')) {
+    const posts = isSuperAdmin ? POSTS : POSTS.filter(p => ADMIN_POST_IDS.has(p.postId));
+    return ok({ data: posts.filter(p => p.postType === 'event').sort((a, b) => b.viewCount - a.viewCount).slice(0, 5).map(p => ({ id: p.postId, title: p.title, postType: p.postType, viewCount: p.viewCount, likeCount: p.likeCount, avgRating: p.avgRating, regionName: p.region?.name ?? null, adminName: p.adminName })), success: true });
+  }
   if (url.includes('/analytics/regions')) return ok({ data: REGION_POPULARITY, success: true });
   if (url.includes('/analytics/movements')) return ok({ data: MOVEMENTS, success: true });
 

@@ -31,6 +31,12 @@
         Rute: <strong>{{ routeCount }}</strong>
       </span>
     </div>
+
+    <div class="spacer"></div>
+
+    <button class="heat-toggle" [class.active]="showHeatmap" (click)="toggleHeatmap()">
+      🌡️ Heatmap
+    </button>
   </div>
 
   <div class="map-layout">
@@ -38,6 +44,7 @@
     <div class="loading">Učitavanje mape...</div>
     } @else {
     <app-map [markers]="markers"
+             [heatPoints]="activeHeatPoints"
              [centerLat]="43.1556"
              [centerLng]="19.1225"
              [zoom]="8"

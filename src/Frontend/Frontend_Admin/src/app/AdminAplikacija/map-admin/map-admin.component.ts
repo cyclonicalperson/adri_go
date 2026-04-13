@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { environment } from '@env/environment';
-import { MapComponent, MapMarker } from '@shared/components/map/map.component';
+import { MapComponent, MapMarker, HeatPoint } from '@shared/components/map/map.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 
 type LayerType = 'all' | 'locations' | 'events' | 'routes';
@@ -38,6 +38,8 @@ export class MapAdminComponent implements OnInit {
   selectedMarker: MapMarker | null = null;
   layer: LayerType = 'all';
   loading = true;
+  showHeatmap = false;
+  heatPoints: HeatPoint[] = [];
 
   constructor(private http: HttpClient, private router: Router) { }
 
@@ -71,6 +73,18 @@ export class MapAdminComponent implements OnInit {
               next: rRes => {
                 this.routes = (rRes.data ?? []).filter((r: any) => r.waypoints?.length > 0);
                 this.loading = false;
+                // Load movements for heatmap overlay
+                this.http.get<{ data: any[] }>(`${environment.apiUrl}/analytics/movements`)
+                  .subscribe(mRes => {
+                    const moves = mRes.data ?? [];
+                    const maxVisits = Math.max(...moves.map((m: any) => m.visitCount), 1);
+                    this.heatPoints = moves.map((m: any) => ({
+                      lat: m.latitude,
+                      lng: m.longitude,
+                      intensity: m.visitCount / maxVisits,
+                      label: `${m.regionName}: ${m.visitCount} poseta`,
+                    }));
+                  });
               },
               error: () => { this.loading = false; },
             });
@@ -127,6 +141,17 @@ export class MapAdminComponent implements OnInit {
 
   onMarkerClicked(m: MapMarker): void { this.selectedMarker = m; }
   clearSelection(): void { this.selectedMarker = null; }
+
+  toggleHeatmap(): void {
+    this.showHeatmap = !this.showHeatmap;
+    if (!this.showHeatmap) {
+      this.mapComp?.clearHeat();
+    }
+  }
+
+  get activeHeatPoints(): HeatPoint[] {
+    return this.showHeatmap ? this.heatPoints : [];
+  }
 
   goToDetail(): void {
     if (!this.selectedMarker) return;

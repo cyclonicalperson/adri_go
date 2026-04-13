@@ -32,6 +32,8 @@ export class EventsListComponent implements OnInit {
   upcomingCount = 0;
   ongoingCount = 0;
   pastCount = 0;
+  draftCount = 0;
+  activeStatusFilter = '';
 
   // Detail panel
   detailEvent: Post | null = null;
@@ -106,6 +108,7 @@ export class EventsListComponent implements OnInit {
         this.upcomingCount = res.data.filter(e => this.eventStart(e) > now).length;
         this.ongoingCount = res.data.filter(e => this.eventStart(e) <= now && this.eventEnd(e) >= now).length;
         this.pastCount = res.data.filter(e => this.eventEnd(e) < now).length;
+        this.draftCount = res.data.filter(e => e.status === 'draft').length;
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -144,6 +147,12 @@ export class EventsListComponent implements OnInit {
 
   onStatusFilter(val: string): void {
     this.req = { ...this.req, status: (val as PostStatus) || undefined, page: 1 }; this.load();
+  }
+
+  filterByStatus(status: string): void {
+    this.activeStatusFilter = status;
+    this.req = { ...this.req, status: (status as PostStatus) || undefined, page: 1 };
+    this.load();
   }
 
   onSortCol(col: string): void {

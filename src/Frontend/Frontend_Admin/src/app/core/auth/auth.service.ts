@@ -1,13 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, Observable, tap, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenStorageService } from './token-storage.service';
 
 export interface LoginRequest {
-    email: string;
-    password: string;
+  email: string;
+  password: string;
 }
 
 /**
@@ -19,69 +19,86 @@ export interface LoginRequest {
 export type AdminRole = 'superadmin' | 'admin';
 
 export interface AuthUser {
-    userId: number;
-    fullName: string;
-    email: string;
-    role: AdminRole;
-    organizationId: number | null;
-    isIndividual: boolean;   // true = fizičko lice, false = organizacija
-    accountStatus: 'active' | 'suspended' | 'pending';
+  userId: number;
+  fullName: string;
+  email: string;
+  role: AdminRole;
+  organizationId: number | null;
+  isIndividual: boolean;   // true = fizičko lice, false = organizacija
+  accountStatus: 'active' | 'suspended' | 'pending';
 }
 
 export interface AuthResponse {
-    accessToken: string;
-    user: AuthUser;
+  accessToken: string;
+  user: AuthUser;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private http = inject(HttpClient);
-    private router = inject(Router);
-    private tokenStorage = inject(TokenStorageService);
+  private http = inject(HttpClient);
+  private router = inject(Router);
+  private tokenStorage = inject(TokenStorageService);
 
-    private _currentUser$ = new BehaviorSubject<AuthUser | null>(
-        this.tokenStorage.getUser() as AuthUser | null
+  private _currentUser$ = new BehaviorSubject<AuthUser | null>(
+    this.tokenStorage.getUser() as AuthUser | null
+  );
+
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
+
+  currentUser$ = this._currentUser$.asObservable();
+
+  login(payload: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<any>(`${this.apiUrl}/login`, payload).pipe(
+      map(res => {
+        // Backend returns { token, user: { id, ... } }
+        // Mock returns { accessToken, user: { userId, ... } }
+        const user = res.user ?? {};
+        return {
+          accessToken: res.accessToken ?? res.token,
+          user: {
+            userId: user.userId ?? user.id,
+            fullName: user.fullName ?? user.FullName,
+            email: user.email ?? user.Email,
+            role: (user.role ?? user.Role ?? 'admin') as AdminRole,
+            organizationId: user.organizationId ?? user.OrganizationId ?? null,
+            isIndividual: user.isIndividual ?? user.IsIndividual ?? true,
+            accountStatus: (user.accountStatus ?? user.AccountStatus ?? 'active') as 'active' | 'suspended' | 'pending',
+          }
+        } as AuthResponse;
+      }),
+      tap(res => {
+        this.tokenStorage.saveToken(res.accessToken);
+        this.tokenStorage.saveUser(res.user);
+        this._currentUser$.next(res.user);
+      })
     );
+  }
 
-    private readonly apiUrl = `${environment.apiUrl}/auth`;
+  logout(): void {
+    this.tokenStorage.clear();
+    this._currentUser$.next(null);
+    this.router.navigate(['/login']);
+  }
 
-    currentUser$ = this._currentUser$.asObservable();
+  get currentUser(): AuthUser | null {
+    return this._currentUser$.value;
+  }
 
-    login(payload: LoginRequest): Observable<AuthResponse> {
-        return this.http.post<AuthResponse>(`${this.apiUrl}/login`, payload).pipe(
-            tap(res => {
-                this.tokenStorage.saveToken(res.accessToken);
-                this.tokenStorage.saveUser(res.user);
-                this._currentUser$.next(res.user);
-            })
-        );
-    }
+  get isLoggedIn(): boolean {
+    return !!this.tokenStorage.getToken();
+  }
 
-    logout(): void {
-        this.tokenStorage.clear();
-        this._currentUser$.next(null);
-        this.router.navigate(['/login']);
-    }
+  get role(): AdminRole | null {
+    return this.currentUser?.role ?? null;
+  }
 
-    get currentUser(): AuthUser | null {
-        return this._currentUser$.value;
-    }
+  /** True if current user has at least one of the given roles */
+  isRole(...roles: AdminRole[]): boolean {
+    return !!this.role && roles.includes(this.role);
+  }
 
-    get isLoggedIn(): boolean {
-        return !!this.tokenStorage.getToken();
-    }
-
-    get role(): AdminRole | null {
-        return this.currentUser?.role ?? null;
-    }
-
-    /** True if current user has at least one of the given roles */
-    isRole(...roles: AdminRole[]): boolean {
-        return !!this.role && roles.includes(this.role);
-    }
-
-    /** Convenience: true only for superadmin */
-    get isSuperAdmin(): boolean {
-        return this.role === 'superadmin';
-    }
+  /** Convenience: true only for superadmin */
+  get isSuperAdmin(): boolean {
+    return this.role === 'superadmin';
+  }
 }
