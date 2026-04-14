@@ -123,11 +123,11 @@ namespace TouristGuide.Api.DTOs
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
             catch { return null; }
-        }
+    }
 
         public string ToJson() =>
             JsonSerializer.Serialize(this, new JsonSerializerOptions
-            {
+    {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
     }
