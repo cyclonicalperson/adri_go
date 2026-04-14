@@ -1,70 +1,103 @@
-/* Osnovni kontejner sa donjim gradijentom */
+/* ============================================================
+   LOGIN PAGE
+   ============================================================ */
+
 .page-container {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #ffffff;
-  /* Gradijent koji simulira onaj na dnu slike */
-  background: linear-gradient(180deg, rgba(255,255,255,1) 60%, rgba(135,225,160,0.6) 100%);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  padding: 20px;
+  background: linear-gradient(180deg, #fff 55%, rgba(134, 239, 172, 0.45) 100%);
+  font-family: var(--font-sans);
+  padding: 24px 20px;
   box-sizing: border-box;
 }
 
-/* Bela kartica u sredini */
+/* ── LOGO AREA ───────────────────────────────────────────────── */
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.logo-mark {
+  width: 40px; height: 40px;
+  background: var(--green-500);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(34,197,94,0.3);
+}
+.logo-mark svg { width: 22px; height: 22px; fill: #fff; }
+
+.logo-name {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--green-500);
+  letter-spacing: -0.5px;
+}
+
+/* ── CARD ────────────────────────────────────────────────────── */
 .login-card {
-  background: #ffffff;
+  background: #fff;
   width: 100%;
-  max-width: 380px;
-  border-radius: 20px;
-  padding: 40px 30px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  box-sizing: border-box;
+  max-width: 400px;
+  border-radius: var(--radius-xl);
+  padding: 36px 28px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06);
 }
 
-/* Tipografija */
 .title {
   text-align: center;
+  font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 8px 0;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin: 0 0 6px;
 }
 
 .subtitle {
   text-align: center;
   font-size: 14px;
-  color: #777;
-  margin: 0 0 30px 0;
+  color: var(--gray-500);
+  margin: 0 0 28px;
+  line-height: 1.4;
 }
 
-/* Polja za unos */
-.form-group {
-  margin-bottom: 20px;
-}
+/* ── FORM ────────────────────────────────────────────────────── */
+.form-group { margin-bottom: 18px; }
 
 .label-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 8px;
 }
 
 label {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  color: var(--gray-700);
 }
+
+.label-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.label-icon svg { width: 14px; height: 14px; fill: var(--gray-400); }
 
 .forgot-link {
   font-size: 13px;
-  color: #22c55e;
+  color: var(--green-600);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
+  transition: opacity 0.15s;
 }
+.forgot-link:hover { opacity: 0.8; }
 
 .input-wrapper {
   position: relative;
@@ -72,129 +105,157 @@ label {
   align-items: center;
 }
 
-.input-wrapper .icon {
+.input-icon {
   position: absolute;
   left: 14px;
-  color: #aaa;
-  font-size: 16px;
+  display: flex; align-items: center;
+  pointer-events: none;
 }
+.input-icon svg { width: 16px; height: 16px; fill: var(--gray-400); }
 
 input {
   width: 100%;
-  padding: 12px 14px 12px 40px;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
+  padding: 13px 14px 13px 42px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  color: #333;
+  font-family: var(--font-sans);
+  color: var(--gray-800);
   outline: none;
-  transition: border 0.3s ease;
+  background: var(--gray-50);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   box-sizing: border-box;
 }
 
 input:focus {
-  border-color: #22c55e;
+  border-color: var(--green-500);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
 }
 
-input::placeholder {
-  color: #bbb;
-}
+input::placeholder { color: var(--gray-400); }
 
-/* Dugmići */
+/* ── BUTTONS ─────────────────────────────────────────────────── */
 .btn {
   width: 100%;
   padding: 14px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: opacity 0.2s ease;
-  margin-bottom: 12px;
+  gap: 8px;
+  transition: opacity 0.2s, transform 0.15s;
+  margin-bottom: 10px;
+  font-family: var(--font-sans);
 }
-
-.btn:active {
-  opacity: 0.8;
-}
+.btn:active { opacity: 0.85; transform: scale(0.98); }
+.btn svg { width: 17px; height: 17px; }
 
 .btn-primary {
-  background-color: #22c55e; /* Zelena boja sa slike */
-  color: #ffffff;
+  background: var(--green-500);
+  color: #fff;
+  box-shadow: var(--shadow-green);
 }
-
-.btn-primary .arrow {
-  margin-left: 8px;
-  font-size: 16px;
-}
+.btn-primary svg { fill: #fff; }
+.btn-primary:hover { opacity: 0.92; }
 
 .btn-guest {
-  background-color: #22c55e;
-  margin-bottom: 25px;
+  background: var(--green-500);
+  color: #fff;
+  box-shadow: var(--shadow-green);
+  margin-bottom: 22px;
 }
+.btn-guest svg { fill: #fff; }
+.btn-guest:hover { opacity: 0.92; }
 
-/* Linija za razdvajanje (OR CONTINUE AS) */
+/* ── DIVIDER ─────────────────────────────────────────────────── */
 .divider {
   display: flex;
   align-items: center;
   text-align: center;
-  margin-bottom: 25px;
+  margin-bottom: 18px;
+  gap: 12px;
 }
-
 .divider::before,
 .divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--gray-200);
 }
-
 .divider span {
-  padding: 0 15px;
   font-size: 11px;
-  font-weight: 600;
-  color: #888;
+  font-weight: 700;
+  color: var(--gray-400);
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
-/* Social dugmići */
-.social-buttons {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 25px;
-}
+/* ── SOCIAL ──────────────────────────────────────────────────── */
+.social-buttons { display: flex; gap: 12px; margin-bottom: 22px; }
 
 .btn-outline {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  color: #333;
   flex: 1;
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-700);
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 0;
 }
+.btn-outline:hover { border-color: var(--gray-400); background: var(--gray-50); }
+.btn-outline svg { width: 18px; height: 18px; }
 
-.social-icon {
-  margin-right: 8px;
-  font-size: 16px;
-}
+/* Google colors */
+.btn-google svg path:first-child { fill: #4285F4; }
 
-/* Register deo */
+/* ── REGISTER LINK ───────────────────────────────────────────── */
 .register-text {
   text-align: center;
   font-size: 14px;
-  color: #777;
+  color: var(--gray-500);
   margin: 0;
 }
+.register-text a { color: var(--green-600); font-weight: 700; }
 
-.register-text a {
-  color: #22c55e;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-/* Terms and conditions ispod kartice */
+/* ── TERMS ───────────────────────────────────────────────────── */
 .terms-text {
   text-align: center;
   font-size: 12px;
-  color: #888;
-  margin-top: 30px;
+  color: var(--gray-400);
+  margin-top: 24px;
   line-height: 1.5;
+  max-width: 340px;
+}
+
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .login-card { padding: 44px 36px; max-width: 420px; }
+  .title { font-size: 26px; }
+}
+
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .page-container {
+    min-height: 100vh;
+    justify-content: center;
+    background: linear-gradient(180deg, #f0fdf4 0%, rgba(134,239,172,0.3) 100%);
+  }
+  .login-card {
+    max-width: 420px;
+    padding: 44px 40px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+  }
 }

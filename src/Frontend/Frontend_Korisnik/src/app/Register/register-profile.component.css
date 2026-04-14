@@ -1,294 +1,207 @@
+/* ============================================================
+   REGISTER PROFILE
+   ============================================================ */
+
 .page-container {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background-color: #f7f7f7;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  padding: 30px 20px;
-  box-sizing: border-box;
-  /* Donji gradijent */
-  background: linear-gradient(180deg, #f7f7f7 70%, rgba(135,225,160,0.5) 100%);
+  align-items: center;
+  background: linear-gradient(180deg, #fff 60%, rgba(134, 239, 172, 0.4) 100%);
+  font-family: var(--font-sans);
+  padding: 24px 20px 40px;
 }
 
-.header {
-  margin-bottom: 25px;
+/* ── CARD ────────────────────────────────────────────────────── */
+.register-card {
+  background: #fff;
+  width: 100%;
+  max-width: 400px;
+  border-radius: var(--radius-xl);
+  padding: 32px 24px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.09), 0 4px 16px rgba(0,0,0,0.05);
 }
 
 .title {
-  font-size: 26px;
+  font-family: var(--font-display);
+  font-size: 22px;
   font-weight: 800;
-  color: #1a1a1a;
-  margin: 0 0 5px 0;
+  color: var(--gray-900);
+  margin: 0 0 4px;
 }
+.subtitle { font-size: 13px; color: var(--gray-500); margin: 0 0 24px; }
 
-.subtitle {
-  font-size: 14px;
-  color: #777;
-  margin: 0;
-}
+/* ── FORM ────────────────────────────────────────────────────── */
+.form-group { margin-bottom: 16px; }
 
-/* Form polja */
-.form-section {
-  margin-bottom: 25px;
-}
-
-.form-group {
-  margin-bottom: 18px;
-}
-
-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 7px;
-}
-
-.input-wrapper {
-  position: relative;
+.field-label {
   display: flex;
   align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 7px;
 }
+.field-label .label-icon { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.field-label .label-icon svg { width: 10px; height: 10px; }
+.lbl-green { background: var(--green-500); } .lbl-green svg { fill: #fff; }
+.lbl-gray  { background: var(--gray-400); } .lbl-gray svg  { fill: #fff; }
+.lbl-amber { background: var(--warning); }  .lbl-amber svg { fill: #fff; }
 
-.input-wrapper .icon {
+.input-wrapper { position: relative; display: flex; align-items: center; }
+
+.input-icon {
   position: absolute;
-  left: 14px;
-  color: #aaa;
-  font-size: 16px;
+  left: 12px;
+  display: flex; align-items: center;
+  pointer-events: none;
 }
+.input-icon svg { width: 16px; height: 16px; fill: var(--gray-400); }
 
-input {
+input, select {
   width: 100%;
   padding: 12px 14px 12px 40px;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
   font-size: 14px;
-  color: #333;
+  font-family: var(--font-sans);
+  color: var(--gray-800);
   outline: none;
-  background-color: #ffffff;
-  transition: border 0.3s ease;
+  background: var(--gray-50);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   box-sizing: border-box;
+  -webkit-appearance: none;
 }
+input:focus, select:focus {
+  border-color: var(--green-500);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+}
+input::placeholder { color: var(--gray-400); }
 
-input:focus {
-  border-color: #22c55e;
+/* ── INTERESTS ───────────────────────────────────────────────── */
+.interests-heading {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin: 20px 0 4px;
 }
-
-input::placeholder {
-  color: #bbb;
-}
-
-/* Jezik dropdown simulator */
-.language-group .input-wrapper {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding-right: 14px;
-}
-
-.language-group input {
-  border: none;
-  padding-left: 40px;
-}
-
-.language-group .arrow {
-  font-size: 10px;
-  color: #777;
-}
-
-/* Interesovanja */
-.interests-section {
-  margin-bottom: 25px;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 5px 0;
-}
-
-.section-subtitle {
-  font-size: 13px;
-  color: #777;
-  margin: 0 0 20px 0;
-}
+.interests-sub { font-size: 12px; color: var(--gray-400); margin: 0 0 14px; }
 
 .interests-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.interest-card {
+.interest-chip {
+  padding: 12px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: #fff;
   display: flex;
   align-items: center;
-  padding: 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 14px;
-  background-color: #ffffff;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.interest-card.active {
-  background-color: #eefaf2; /* Blaga zelena pozadina */
-  border-color: #22c55e; /* Zeleni okvir */
-}
-
-.interest-icon-wrapper {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #ffffff;
-  margin-right: 12px;
-}
-
-.interest-card.active .interest-icon-wrapper {
-  background-color: #22c55e;
-}
-
-.interest-icon {
-  font-size: 18px;
-}
-
-.interest-card.active .interest-icon {
-  filter: brightness(0) invert(1); /* Pretvara ikonu u belu kad je aktivna */
-}
-
-.interest-label {
+  gap: 10px;
   font-size: 13px;
-  color: #555;
   font-weight: 600;
-  flex: 1;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+.interest-chip:hover { border-color: var(--green-300); }
+.interest-chip.selected {
+  border-color: var(--green-500);
+  background: var(--green-50);
+  color: var(--green-700);
 }
 
-.interest-card.active .interest-label {
-  color: #22c55e; /* Zelena boja za tekst kad je aktivna */
+.chip-icon-box {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: var(--gray-100);
+  transition: background 0.18s;
 }
+.chip-icon-box svg { width: 17px; height: 17px; fill: var(--gray-500); }
+.interest-chip.selected .chip-icon-box { background: var(--green-500); }
+.interest-chip.selected .chip-icon-box svg { fill: #fff; }
 
-/* Lokacija kartica */
-.location-permit-card {
+/* ── LOCATION PERMIT ─────────────────────────────────────────── */
+.permit-card {
+  background: var(--green-50);
+  border: 1px solid var(--green-100);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+  align-items: flex-start;
+}
+.permit-icon { flex-shrink: 0; margin-top: 2px; }
+.permit-icon svg { width: 18px; height: 18px; fill: var(--green-600); }
+.permit-text h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--green-800); }
+.permit-text p  { margin: 0; font-size: 12px; color: var(--green-700); line-height: 1.4; }
+
+/* ── TERMS ───────────────────────────────────────────────────── */
+.terms-row {
   display: flex;
   align-items: flex-start;
-  padding: 20px;
-  background-color: #f1faf6; /* Blaga zelena pozadina kao na slici */
-  border: 1px solid #e0e0e0;
-  border-radius: 16px;
-  margin-bottom: 25px;
+  gap: 12px;
+  margin-bottom: 22px;
 }
-
-.location-icon-wrapper {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background-color: #e3f5eb;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-right: 15px;
+.terms-checkbox {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--gray-300);
+  border-radius: 4px;
+  cursor: pointer;
   flex-shrink: 0;
+  margin-top: 1px;
+  accent-color: var(--green-500);
 }
+.terms-text { font-size: 12px; color: var(--gray-500); line-height: 1.5; }
+.terms-text a { color: var(--green-600); font-weight: 700; }
 
-.location-icon {
-  font-size: 20px;
-}
-
-.location-text {
-  flex: 1;
-}
-
-.location-text h3 {
-  margin: 0 0 5px 0;
+/* ── SUBMIT ──────────────────────────────────────────────────── */
+.submit-btn {
+  width: 100%;
+  padding: 15px;
+  background: var(--green-500);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
   font-size: 15px;
   font-weight: 700;
-  color: #1a1a1a;
-}
-
-.location-text p {
-  margin: 0;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.5;
-}
-
-/* Uslovi korišćenja */
-.terms-group {
-  margin-bottom: 30px;
-}
-
-.terms-checkbox-label {
-  display: flex;
-  align-items: flex-start;
-  font-size: 13px;
-  color: #777;
   cursor: pointer;
+  font-family: inherit;
+  box-shadow: var(--shadow-green);
+  transition: opacity 0.2s, transform 0.15s;
+  margin-bottom: 16px;
 }
-
-.terms-checkbox-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  margin-right: 10px;
-  margin-top: 2px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.terms-text {
-  line-height: 1.4;
-}
-
-.terms-link {
-  color: #22c55e;
-  text-decoration: underline;
-}
-
-/* Glavno dugme */
-.btn {
-  width: 100%;
-  padding: 16px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: opacity 0.2s ease;
-  margin-bottom: 15px;
-}
-
-.btn:active {
-  opacity: 0.8;
-}
-
-.btn-primary {
-  background-color: #22c55e;
-  color: #ffffff;
-}
-
-.btn-primary[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Login link footer */
-.login-footer-text {
-  text-align: center;
-  font-size: 13px;
-  color: #777;
-  margin: 0;
-}
+.submit-btn:hover  { opacity: 0.92; transform: translateY(-1px); }
+.submit-btn:active { opacity: 0.85; transform: scale(0.98); }
 
 .login-link {
-  color: #22c55e;
-  text-decoration: none;
-  font-weight: 600;
-  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+.login-link a { color: var(--green-600); font-weight: 700; }
+
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .page-container {
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .register-card {
+    max-width: 460px;
+    padding: 40px 36px;
+  }
+  .interests-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }

@@ -14,7 +14,6 @@ namespace TouristGuide.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
-
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
             "accommodation", "restaurant", "club", "cultural_site",
@@ -30,55 +29,6 @@ namespace TouristGuide.Api.Controllers
         {
             _context = context;
         }
-
-        // ===== NOVO: Public endpoint za turistički frontend (bez logina) =====
-        [HttpGet("public")]
-        public async Task<IActionResult> GetPublic(
-            [FromQuery] uint? region_id,
-            [FromQuery] string? type,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
-        {
-            if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 20;
-
-            var query = _context.Posts
-                .Include(p => p.Admin)
-                .Include(p => p.Region)
-                .Where(p => p.Status == "published")
-                .AsQueryable();
-
-            if (region_id.HasValue)
-                query = query.Where(p => p.RegionId == region_id.Value);
-
-            if (!string.IsNullOrWhiteSpace(type))
-            {
-                var typeLower = type.ToLower().Trim();
-                if (!AllowedPostTypes.Contains(typeLower))
-                    return BadRequest(new { message = $"Nepoznat tip '{type}'." });
-                query = query.Where(p => p.PostType == typeLower);
-            }
-
-            var total = await query.CountAsync();
-
-            var posts = await query
-                .OrderByDescending(p => p.PublishedAt)
-                .ThenByDescending(p => p.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => MapToDto(p))
-                .ToListAsync();
-
-            return Ok(new
-            {
-                total,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)total / pageSize),
-                data = posts
-            });
-        }
-        // ===== KRAJ NOVOG KODA =====
 
         [HttpGet]
         [Authorize]
@@ -137,14 +87,14 @@ namespace TouristGuide.Api.Controllers
             if (!postExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var reviews = await _context.PostReviews
+            var reviews = await _context.Reviews
                 .Where(r => r.PostId == id && r.IsApproved)
                 .Include(r => r.Tourist)
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new ReviewDto
                 {
                     Id = r.Id,
-                    TouristId = r.TouristId,
+                    TouristId = r.TouristId ?? 0,
                     TouristName = r.Tourist != null ? r.Tourist.Name ?? string.Empty : string.Empty,
                     Rating = r.Rating,
                     Comment = r.Comment,
@@ -179,23 +129,23 @@ namespace TouristGuide.Api.Controllers
             if (tourist is null)
                 return Unauthorized(new { message = "Turista nije pronadjen ili nije aktivan." });
 
-            var reviewExists = await _context.PostReviews
+            var reviewExists = await _context.Reviews
                 .AnyAsync(r => r.PostId == id && r.TouristId == touristId.Value);
 
             if (reviewExists)
                 return Conflict(new { message = "Turista je vec ostavio recenziju za ovu objavu." });
 
-            var review = new PostReview
+            var review = new Review
             {
                 PostId = id,
                 TouristId = touristId.Value,
-                Rating = dto.Rating,
+                Rating = (byte)dto.Rating,
                 Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
                 IsApproved = true,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.PostReviews.Add(review);
+            _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
             await RefreshReviewStats(post);
@@ -606,10 +556,10 @@ namespace TouristGuide.Api.Controllers
             UpdatedAt = post.UpdatedAt
         };
 
-        private static ReviewDto MapToReviewDto(PostReview review, string? touristName = null) => new()
+        private static ReviewDto MapToReviewDto(Review review, string? touristName = null) => new()
         {
             Id = review.Id,
-            TouristId = r.TouristId,
+            TouristId = review.TouristId ?? 0,
             TouristName = touristName ?? review.Tourist?.Name ?? string.Empty,
             Rating = review.Rating,
             Comment = review.Comment,
@@ -618,10 +568,10 @@ namespace TouristGuide.Api.Controllers
 
         private async Task RefreshReviewStats(Post post)
         {
-            post.AvgRating = await _context.PostReviews
+            post.AvgRating = await _context.Reviews
                 .Where(r => r.PostId == post.Id && r.IsApproved)
                 .AverageAsync(r => (decimal?)r.Rating);
-            post.ReviewCount = (uint)await _context.PostReviews.CountAsync(r => r.PostId == post.Id && r.IsApproved);
+            post.ReviewCount = (uint)await _context.Reviews.CountAsync(r => r.PostId == post.Id && r.IsApproved);
             post.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

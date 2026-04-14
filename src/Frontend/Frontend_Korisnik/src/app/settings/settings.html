@@ -1,119 +1,144 @@
 <div class="settings-container">
+
   <div class="header">
-    <button class="back-btn" (click)="goBack()">‹</button>
+    <button class="back-btn" (click)="goBack()">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
     <h1>Settings</h1>
   </div>
 
   <div class="scroll-content">
-    
-    <div class="section">
-      <h3 class="section-title">ACCOUNT & SECURITY</h3>
-      <div class="card">
-        <button class="row">
-          <span class="icon edit-bg">👤</span>
-          <span class="text">Edit Profile</span>
-          <span class="arrow">›</span>
+
+    <!-- ACCOUNT & SECURITY -->
+    <div class="settings-group">
+      <p class="group-label">Account &amp; Security</p>
+      <div class="group-items">
+        <button class="setting-row">
+          <span class="row-icon icon-profile"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+          <div class="row-text"><span class="label">Edit Profile</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="row border-top">
-          <span class="icon pass-bg">🔒</span>
-          <span class="text">Change Password</span>
-          <span class="arrow">›</span>
+        <button class="setting-row">
+          <span class="row-icon icon-password"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
+          <div class="row-text"><span class="label">Change Password</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="row border-top">
-          <span class="icon connect-bg">📱</span>
-          <span class="text">Connected Accounts</span>
-          <span class="arrow">›</span>
+        <button class="setting-row">
+          <span class="row-icon icon-connected"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
+          <div class="row-text"><span class="label">Connected Accounts</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
       </div>
     </div>
 
-    <div class="section">
-      <h3 class="section-title">LANGUAGE & CONTENT</h3>
-      <div class="card">
-        <button class="row">
-          <span class="icon lang-bg">🌐</span>
-          <span class="text">App Language</span>
-          <span class="val">{{settings.language}} ›</span>
-        </button>
-        <button class="row border-top">
-          <span class="icon content-bg">🔤</span>
-          <span class="text">Content Preferences</span>
-          <span class="arrow">›</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="section">
-      <h3 class="section-title">PRIVACY & TRACKING</h3>
-      <div class="card">
-        <div class="row-toggle">
-          <div class="info">
-            <span class="icon loc-bg">📍</span>
-            <div>
-              <strong>Location Sharing</strong>
-              <p>Allow AdriGo to access your live location.</p>
-            </div>
+    <!-- LANGUAGE & CONTENT -->
+    <div class="settings-group">
+      <p class="group-label">Language &amp; Content</p>
+      <div class="group-items">
+        <button class="setting-row">
+          <span class="row-icon icon-language"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96z"/></svg></span>
+          <div class="row-text">
+            <span class="label">App Language</span>
+            <span class="value">{{ settings.language }}</span>
           </div>
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="settings.locationSharing">
-            <span class="slider"></span>
-          </label>
-        </div>
-        
-        <div class="row-toggle border-top">
-          <div class="info">
-            <span class="icon anal-bg">📊</span>
-            <div>
-              <strong>Anonymous Analytics</strong>
-              <p>Help us improve by sharing usage data.</p>
-            </div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="settings.anonymousAnalytics">
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h3 class="section-title">NOTIFICATIONS</h3>
-      <div class="card">
-        <div class="row-toggle">
-          <div class="info">
-            <span class="icon push-bg">🔔</span>
-            <div>
-              <strong>Push Notifications</strong>
-              <p>Real-time alerts for bookings and tickets.</p>
-            </div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" [(ngModel)]="settings.pushNotifications">
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h3 class="section-title">ABOUT & SUPPORT</h3>
-      <div class="card">
-        <button class="row">
-          <span class="icon help-bg">❓</span>
-          <span class="text">Help & Support Center</span>
-          <span class="arrow">›</span>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <div class="row border-top no-btn">
-          <span class="icon version-bg">ℹ️</span>
-          <span class="text">App Version</span>
-          <span class="val">{{appVersion}}</span>
+        <button class="setting-row">
+          <span class="row-icon icon-content"><svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg></span>
+          <div class="row-text"><span class="label">Content Preferences</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- PRIVACY & TRACKING -->
+    <div class="settings-group">
+      <p class="group-label">Privacy &amp; Tracking</p>
+      <div class="group-items">
+        <div class="setting-row no-hover">
+          <span class="row-icon icon-location"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></span>
+          <div class="row-text"><span class="label">Location Sharing</span><span class="desc">Allow AdriGo to access your live location for maps.</span></div>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.locationSharing"><span class="slider round"></span></label>
+        </div>
+        <div class="setting-row no-hover">
+          <span class="row-icon icon-analytics"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></span>
+          <div class="row-text"><span class="label">Anonymous Analytics</span><span class="desc">Help us improve by sharing usage data.</span></div>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.anonymousAnalytics"><span class="slider round"></span></label>
+        </div>
+        <div class="setting-row no-hover">
+          <span class="row-icon icon-recommend"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></span>
+          <div class="row-text"><span class="label">Personalized Recommendations</span><span class="desc">Get tailored suggestions for attractions.</span></div>
+          <!-- uses personalizedRecs — the actual property name -->
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.personalizedRecs"><span class="slider round"></span></label>
         </div>
       </div>
     </div>
 
-    <div class="actions">
+    <!-- NOTIFICATIONS -->
+    <div class="settings-group">
+      <p class="group-label">Notifications</p>
+      <div class="group-items">
+        <div class="setting-row no-hover">
+          <span class="row-icon icon-push"><svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></span>
+          <div class="row-text"><span class="label">Push Notifications</span><span class="desc">Real-time alerts for bookings and tickets.</span></div>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.pushNotifications"><span class="slider round"></span></label>
+        </div>
+        <div class="setting-row no-hover">
+          <span class="row-icon icon-email"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
+          <div class="row-text"><span class="label">Email Notifications</span><span class="desc">Summary of your trips and receipts.</span></div>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.emailNotifications"><span class="slider round"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTEGRATIONS -->
+    <div class="settings-group">
+      <p class="group-label">Integrations &amp; Bookings</p>
+      <div class="group-items">
+        <button class="setting-row">
+          <span class="row-icon icon-booking"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
+          <div class="row-text"><span class="label">Connected Booking Services</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+        <button class="setting-row">
+          <span class="row-icon icon-payment"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></span>
+          <div class="row-text"><span class="label">Payment Methods</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="settings-group">
+      <p class="group-label">About &amp; Support</p>
+      <div class="group-items">
+        <button class="setting-row">
+          <span class="row-icon icon-help"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg></span>
+          <div class="row-text"><span class="label">Help &amp; Support Center</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+        <button class="setting-row">
+          <span class="row-icon icon-privacy"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg></span>
+          <div class="row-text"><span class="label">Terms of Service &amp; Privacy</span></div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+        <div class="setting-row no-hover">
+          <span class="row-icon icon-version"><svg viewBox="0 0 24 24"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg></span>
+          <div class="row-text"><span class="label">App Version</span></div>
+          <span class="version-tag">{{ appVersion }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER ACTIONS -->
+    <div class="footer-actions">
+      <!-- saveChanges() is the actual method name -->
       <button class="save-btn" (click)="saveChanges()">Save Changes</button>
-      <button class="logout-btn" (click)="logout()">Logout</button>
+      <button class="logout-link" (click)="logout()">
+        <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        Logout
+      </button>
     </div>
+
   </div>
 </div>

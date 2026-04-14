@@ -1,5 +1,3 @@
-
-
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -26,7 +24,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.loginForm = this.fb.group({
-      emailOrPhone: ['', [Validators.required, Validators.email]],
+      emailOrPhone: ['', [Validators.required]],
       password: ['', Validators.required]
     });
   }
@@ -39,29 +37,34 @@ export class LoginComponent implements OnInit {
 
     const { emailOrPhone, password } = this.loginForm.value;
 
-    this.authService.login(emailOrPhone, password).subscribe({
+    // Try JWT-enabled endpoint first (tourist-auth), fall back to simple tourists endpoint
+    this.authService.loginWithToken(emailOrPhone, password).subscribe({
       next: () => {
+        this.isLoading = false;
         this.router.navigate(['/map-home']);
       },
-      error: (err) => {
-        this.isLoading = false;
-        this.errorMessage = err?.error?.message || 'Pogrešan email ili lozinka.';
+      error: () => {
+        // Fallback to simple endpoint (no JWT)
+        this.authService.login(emailOrPhone, password).subscribe({
+          next: () => {
+            this.isLoading = false;
+            this.router.navigate(['/map-home']);
+          },
+          error: (err) => {
+            this.isLoading = false;
+            this.errorMessage = err?.error?.message || 'Pogrešan email ili lozinka.';
+          }
+        });
       }
     });
   }
 
-  // Gost — nastavlja bez logina
   onGuestLogin(): void {
     this.router.navigate(['/map-home']);
   }
 
-  onGoogleLogin(): void {
-    console.log('Google login — nije implementiran');
-  }
-
-  onAppleLogin(): void {
-    console.log('Apple login — nije implementiran');
-  }
+  onGoogleLogin(): void { console.log('Google login — nije implementiran'); }
+  onAppleLogin(): void  { console.log('Apple login — nije implementiran'); }
 
   goToRegister(): void {
     this.router.navigate(['/choose-role']);

@@ -1,5 +1,3 @@
-
-
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, FormControl, Validators, AbstractControl, ValidatorFn, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -19,12 +17,12 @@ export class RegisterProfileComponent implements OnInit {
   errorMessage = '';
 
   interests = [
-    { id: 'nature', label: 'Nature', icon: '🌲' },
-    { id: 'food', label: 'Food', icon: '🍴' },
-    { id: 'beaches', label: 'Beaches', icon: '🏖️' },
-    { id: 'culture', label: 'History and Culture', icon: '🏛️' },
-    { id: 'nightlife', label: 'Night Life', icon: '🎶' },
-    { id: 'photography', label: 'Photography', icon: '📷' }
+    { id: 'nature',      label: 'Nature',             icon: '🌲' },
+    { id: 'food',        label: 'Food',               icon: '🍴' },
+    { id: 'beaches',     label: 'Beaches',            icon: '🏖️' },
+    { id: 'history',     label: 'History and Culture',icon: '🏛️' },
+    { id: 'nightlife',   label: 'Night Life',         icon: '🎶' },
+    { id: 'photography', label: 'Photography',        icon: '📷' }
   ];
 
   constructor(
@@ -35,13 +33,13 @@ export class RegisterProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.profileForm = this.fb.group({
-      fullName: ['', Validators.required],
-      emailOrPhone: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
-      language: ['English'],
+      fullName:          ['', Validators.required],
+      emailOrPhone:      ['', [Validators.required, Validators.email]],
+      password:          ['', [Validators.required, Validators.minLength(8)]],
+      language:          ['English'],
       selectedInterests: this.fb.array([], [this.minimumSelectionValidator(2)]),
-      locationPermit: [false],
-      termsAccepted: [false, Validators.requiredTrue]
+      locationPermit:    [false],
+      termsAccepted:     [false, Validators.requiredTrue]
     });
   }
 
@@ -50,49 +48,49 @@ export class RegisterProfileComponent implements OnInit {
   }
 
   toggleInterest(interestId: string): void {
-    const interests = this.selectedInterestsArray;
+    const arr = this.selectedInterestsArray;
     if (this.isInterestSelected(interestId)) {
-      const index = interests.controls.findIndex(ctrl => ctrl.value === interestId);
-      interests.removeAt(index);
+      const idx = arr.controls.findIndex(c => c.value === interestId);
+      arr.removeAt(idx);
     } else {
-      interests.push(new FormControl(interestId));
+      arr.push(new FormControl(interestId));
     }
   }
 
   isInterestSelected(interestId: string): boolean {
-    return this.selectedInterestsArray.controls.some(ctrl => ctrl.value === interestId);
+    return this.selectedInterestsArray.controls.some(c => c.value === interestId);
   }
 
   minimumSelectionValidator(min: number): ValidatorFn {
     return (control: AbstractControl) => {
-      const formArray = control as FormArray;
-      return formArray && formArray.length < min ? { requireAtLeast: min } : null;
+      const arr = control as FormArray;
+      return arr && arr.length < min ? { requireAtLeast: min } : null;
     };
   }
 
   onCreateAccount(): void {
-    if (this.profileForm.invalid) {
-      console.log('Forma nije validna.');
-      return;
-    }
+    if (this.profileForm.invalid) return;
 
     this.isLoading = true;
     this.errorMessage = '';
 
     const { fullName, emailOrPhone, password } = this.profileForm.value;
 
-    this.authService.register(fullName, emailOrPhone, password).subscribe({
-      next: () => {
-        this.router.navigate(['/map-home']);
-      },
-      error: (err) => {
-        this.isLoading = false;
-        this.errorMessage = err?.error?.message || 'Greška pri registraciji. Pokušajte ponovo.';
+    // Try JWT endpoint first
+    this.authService.registerWithToken(fullName, emailOrPhone, password).subscribe({
+      next: () => { this.isLoading = false; this.router.navigate(['/map-home']); },
+      error: () => {
+        // Fallback to simple endpoint
+        this.authService.register(fullName, emailOrPhone, password).subscribe({
+          next: () => { this.isLoading = false; this.router.navigate(['/map-home']); },
+          error: (err) => {
+            this.isLoading = false;
+            this.errorMessage = err?.error?.message || 'Greška pri registraciji.';
+          }
+        });
       }
     });
   }
 
-  goToLogin(): void {
-    this.router.navigate(['/login']);
-  }
+  goToLogin(): void { this.router.navigate(['/login']); }
 }

@@ -1,5 +1,3 @@
-
-
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -20,8 +18,6 @@ export class LocationListComponent implements OnInit {
   locations: Location[] = [];
   isLoading = false;
   errorMessage = '';
-
-  // Feedback poruke za like/save
   feedbackMessage = '';
 
   constructor(
@@ -30,58 +26,44 @@ export class LocationListComponent implements OnInit {
     private authService: AuthService
   ) {}
 
-  ngOnInit(): void {
-    this.loadLocations();
-  }
+  ngOnInit(): void { this.loadLocations(); }
 
   loadLocations(): void {
     this.isLoading = true;
     this.errorMessage = '';
-
     this.locationService.getLocations().subscribe({
+      next: (res) => { this.locations = res.data; this.isLoading = false; },
+      error: () => { this.errorMessage = 'Greška pri učitavanju lokacija.'; this.isLoading = false; }
+    });
+  }
+
+  onLike(loc: Location, event: Event): void {
+    event.stopPropagation();
+    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    this.locationService.likeLocation(loc.id).subscribe({
       next: (res) => {
-        this.locations = res.data;
-        this.isLoading = false;
+        if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
+        this.showFeedback('Liked!');
       },
       error: (err) => {
-        console.error(err);
-        this.errorMessage = 'Greška pri učitavanju lokacija.';
-        this.isLoading = false;
+        if (err.status === 401) this.router.navigate(['/login']);
+        else console.error(err);
       }
     });
   }
 
-  // ── Like ──────────────────────────────────────────────────────────────────
-  onLike(loc: Location, event: Event): void {
-    event.stopPropagation();
-    const touristId = this.authService.touristId;
-    if (!touristId) {
-      this.router.navigate(['/login']);
-      return;
-    }
-    this.locationService.likeLocation(loc.id, touristId).subscribe({
-      next: (res) => {
-        if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
-        this.showFeedback('❤️ Liked!');
-      },
-      error: (err) => console.error(err)
-    });
-  }
-
-  // ── Save ──────────────────────────────────────────────────────────────────
   onSave(loc: Location, event: Event): void {
     event.stopPropagation();
-    const touristId = this.authService.touristId;
-    if (!touristId) {
-      this.router.navigate(['/login']);
-      return;
-    }
-    this.locationService.saveLocation(loc.id, touristId).subscribe({
+    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    this.locationService.saveLocation(loc.id).subscribe({
       next: (res) => {
         if (res.saveCount !== undefined) loc.saveCount = res.saveCount;
-        this.showFeedback('🔖 Saved!');
+        this.showFeedback('Saved!');
       },
-      error: (err) => console.error(err)
+      error: (err) => {
+        if (err.status === 401) this.router.navigate(['/login']);
+        else console.error(err);
+      }
     });
   }
 
@@ -90,24 +72,11 @@ export class LocationListComponent implements OnInit {
     setTimeout(() => (this.feedbackMessage = ''), 2500);
   }
 
-  // ── Navigacija ────────────────────────────────────────────────────────────
-  toggleMenu(): void {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
+  toggleMenu():    void { this.isMenuOpen = !this.isMenuOpen; }
+  goToMap():       void { this.router.navigate(['/map-home']); }
+  openFilters():   void { this.router.navigate(['/filters']); }
+  viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
 
-  goToMap(): void {
-    this.router.navigate(['/map-home']);
-  }
-
-  openFilters(): void {
-    this.router.navigate(['/filters']);
-  }
-
-  viewDetails(id: number): void {
-    this.router.navigate(['/location-details', id]);
-  }
-
-  // ── Helper ────────────────────────────────────────────────────────────────
   getFirstImage(loc: Location): string {
     const imgs = this.locationService.parseImages(loc.images);
     return imgs[0] || 'assets/Budva.jpg';

@@ -101,7 +101,7 @@ namespace TouristGuide.Api.Controllers
             // Token sluzi za naredne zasticene zahteve; user payload je tu da frontend odmah zna ko je prijavljen.
             var token = _jwtService.GenerateToken(
                 tourist.Id,
-                tourist.Email,
+                tourist.Email ?? string.Empty,
                 "tourist",
                 null
             );

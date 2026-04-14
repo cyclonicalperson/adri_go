@@ -1,13 +1,19 @@
+/* ============================================================
+   LOCATION DETAILS — Full detail page
+   ============================================================ */
+
 .details-container {
-  background: #f8f9fa;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding-bottom: 30px;
+  background: var(--gray-50);
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  padding-bottom: 40px;
 }
 
-/* Hero Section */
+/* ── HERO ────────────────────────────────────────────────────── */
 .hero-section {
-  height: 40vh; /* Malo viša slika */
+  height: 45vh;
+  min-height: 240px;
+  max-height: 380px;
   background-size: cover;
   background-position: center;
   position: relative;
@@ -15,118 +21,181 @@
 
 .hero-gradient {
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 120px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%);
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.45) 0%,
+    rgba(0,0,0,0) 45%,
+    rgba(0,0,0,0.2) 100%
+  );
 }
 
 .back-btn {
   position: absolute;
-  top: 40px;
+  top: 52px;
   left: 20px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255,255,255,0.92);
   border: none;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  font-size: 24px;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
   z-index: 2;
+  backdrop-filter: blur(4px);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.back-btn:hover  { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
+.back-btn:active { transform: scale(0.96); }
+.back-btn svg { width: 20px; height: 20px; fill: var(--gray-700); }
+
+.share-btn {
+  position: absolute;
+  top: 52px;
+  right: 20px;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  z-index: 2;
+  backdrop-filter: blur(4px);
   transition: transform 0.2s;
 }
+.share-btn:hover { transform: scale(1.05); }
+.share-btn svg { width: 20px; height: 20px; fill: var(--gray-700); }
 
-.back-btn:active { transform: scale(0.95); }
-
-/* Content Card */
+/* ── CONTENT CARD ────────────────────────────────────────────── */
 .content-card {
-  background: white;
-  margin-top: -40px; /* Preklapa se preko slike */
-  border-radius: 40px 40px 0 0; /* Ekstra obli uglovi */
-  padding: 30px 25px;
+  background: #fff;
+  margin-top: -32px;
+  border-radius: 32px 32px 0 0;
+  padding: 28px 22px;
   position: relative;
   z-index: 3;
-  box-shadow: 0 -10px 30px rgba(0,0,0,0.08);
+  box-shadow: 0 -6px 24px rgba(0,0,0,0.06);
+  min-height: 60vh;
 }
 
-/* Header & Badges */
+/* ── BADGES ROW ──────────────────────────────────────────────── */
 .badges {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .badge {
   padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 13px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.badge.category { background: #f0fdf4; color: #22c55e; }
-.badge.category .dot { width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
-.badge.rating { background: #fef9c3; color: #f59e0b; }
-.review-count { color: #b45309; font-weight: 600; font-size: 11px; margin-left: 2px;}
+.badge.category {
+  background: var(--green-50);
+  color: var(--green-700);
+}
+.badge.category .dot { width: 6px; height: 6px; background: var(--green-500); border-radius: 50%; }
 
+.badge.rating {
+  background: #fef9c3;
+  color: #92400e;
+}
+.badge.rating svg { width: 13px; height: 13px; fill: var(--warning); }
+
+.review-count { color: #b45309; font-size: 11px; font-weight: 600; }
+
+/* ── TITLE ROW ───────────────────────────────────────────────── */
 .title-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 6px;
 }
 
 .title-row h1 {
   margin: 0;
-  font-size: 26px;
+  font-family: var(--font-display);
+  font-size: 24px;
   font-weight: 800;
-  color: #1a1a1a;
-  line-height: 1.2;
+  color: var(--gray-900);
+  line-height: 1.25;
+  flex: 1;
 }
 
-/* Moderno kružno dugme za mapu */
+/* Directions CTA */
 .directions-btn {
-  background: #22c55e;
-  color: white;
+  background: var(--green-500);
+  color: #fff;
   border: none;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
   display: flex;
-  justify-content: center;
   align-items: center;
-  font-size: 20px;
-  box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--shadow-green);
   cursor: pointer;
   flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.15s;
+  font-family: var(--font-sans);
+}
+.directions-btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+.directions-btn:active { opacity: 0.85; transform: scale(0.97); }
+.directions-btn svg { width: 16px; height: 16px; fill: #fff; }
+
+.address {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 500;
+  margin: 0 0 24px;
+}
+.address svg { width: 14px; height: 14px; fill: var(--gray-400); flex-shrink: 0; }
+
+/* ── SECTION DIVIDER ─────────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: var(--gray-100);
+  margin: 20px 0;
 }
 
-.address { margin: 0; font-size: 14px; color: #777; font-weight: 500; }
+/* ── ABOUT ───────────────────────────────────────────────────── */
+.about { margin-bottom: 24px; }
+.about h3 { margin: 0 0 10px; font-size: 17px; font-weight: 800; color: var(--gray-900); }
+.about p  { font-size: 14px; color: var(--gray-600); line-height: 1.65; margin: 0; }
+.read-more { color: var(--green-600); font-weight: 700; cursor: pointer; background: none; border: none; font-size: 14px; padding: 0; margin-top: 6px; display: inline-block; font-family: inherit; }
 
-/* About Section */
-.about { margin: 30px 0; }
-h3 { margin: 0 0 10px 0; font-size: 18px; font-weight: 800; color: #111; }
-.about p { font-size: 14px; color: #666; line-height: 1.6; margin: 0; }
-.read-more { color: #22c55e; font-weight: 700; cursor: pointer; }
-
-/* Info Grid */
+/* ── INFO GRID ───────────────────────────────────────────────── */
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 30px;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
 .info-item {
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  padding: 15px;
-  border-radius: 20px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-100);
+  padding: 14px;
+  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -135,42 +204,127 @@ h3 { margin: 0 0 10px 0; font-size: 18px; font-weight: 800; color: #111; }
 .item-icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   display: flex;
-  justify-content: center;
   align-items: center;
-  font-size: 18px;
+  justify-content: center;
+  flex-shrink: 0;
 }
+.item-icon svg { width: 20px; height: 20px; }
 
-.time-bg { background: #eff6ff; color: #3b82f6; }
-.pass-bg { background: #fef2f2; color: #ef4444; }
+.time-bg  { background: #eff6ff; }
+.time-bg svg { fill: var(--info); }
+.pass-bg  { background: #f0fdf4; }
+.pass-bg svg { fill: var(--green-600); }
 
-.info-text label { display: block; font-size: 10px; font-weight: 800; color: #aaa; letter-spacing: 0.5px; margin-bottom: 3px; }
-.info-text strong { display: block; font-size: 13px; color: #333; }
+.info-text label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--gray-400);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.info-text strong { font-size: 13px; color: var(--gray-800); font-weight: 700; }
 
-/* Reviews */
-.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.see-all { font-size: 13px; color: #22c55e; font-weight: 700; cursor: pointer; }
+/* ── REVIEWS ─────────────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.section-header h3 { margin: 0; font-size: 17px; font-weight: 800; color: var(--gray-900); }
+.see-all { font-size: 13px; color: var(--green-600); font-weight: 700; cursor: pointer; background: none; border: none; font-family: inherit; }
 
 .review-card {
-  background: white;
-  border: 1px solid #f0f0f0;
-  padding: 20px;
-  border-radius: 24px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  background: #fff;
+  border: 1px solid var(--gray-100);
+  padding: 18px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 12px;
 }
 
-.user-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.user-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 
-/* Avatar Placeholder u slučaju da nema slike */
 .avatar-placeholder {
-  width: 40px; height: 40px; border-radius: 50%;
-  background: #22c55e; color: white;
-  display: flex; justify-content: center; align-items: center;
-  font-weight: 800; font-size: 14px;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-500), var(--green-600));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
-.user-details strong { display: block; font-size: 14px; color: #111; }
-.date { font-size: 10px; color: #aaa; font-weight: 700; letter-spacing: 0.5px; }
+.user-details strong { display: block; font-size: 14px; color: var(--gray-900); font-weight: 700; }
+.date { font-size: 10px; color: var(--gray-400); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 
-.review-text { font-size: 13px; color: #666; line-height: 1.5; margin: 0; font-style: italic; }
+.stars { display: flex; gap: 2px; margin: 6px 0 2px; }
+.stars svg { width: 14px; height: 14px; fill: var(--warning); }
+.stars svg.empty { fill: var(--gray-200); }
+
+.review-text { font-size: 13px; color: var(--gray-600); line-height: 1.55; margin: 0; font-style: italic; }
+
+/* ── NEARBY ──────────────────────────────────────────────────── */
+.nearby-section { margin-top: 28px; }
+.nearby-section h3 { font-size: 17px; font-weight: 800; color: var(--gray-900); margin-bottom: 14px; }
+
+.nearby-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.nearby-scroll::-webkit-scrollbar { display: none; }
+
+.nearby-card {
+  flex-shrink: 0;
+  width: 140px;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.nearby-card:hover { transform: translateY(-2px); }
+
+.nearby-img { width: 100%; height: 96px; object-fit: cover; }
+
+.nearby-info { padding: 10px; }
+.nearby-info h4 { margin: 0 0 4px; font-size: 12px; font-weight: 700; color: var(--gray-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.nearby-meta { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray-500); }
+.nearby-meta svg { width: 12px; height: 12px; fill: var(--gray-400); }
+
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .hero-section { height: 50vh; max-height: 420px; }
+  .content-card { padding: 32px 28px; border-radius: 36px 36px 0 0; }
+  .title-row h1 { font-size: 26px; }
+  .info-grid { gap: 16px; }
+}
+
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .details-container {
+    max-width: 760px;
+    margin: 0 auto;
+    background: var(--gray-50);
+    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+  }
+  .hero-section {
+    height: 52vh;
+    max-height: 460px;
+  }
+  .content-card {
+    padding: 36px 36px;
+    border-radius: 40px 40px 0 0;
+  }
+  .title-row h1 { font-size: 28px; }
+  .info-grid { gap: 16px; }
+  .nearby-card { width: 160px; }
+  .nearby-img  { height: 110px; }
+  .review-card { padding: 20px 24px; }
+}

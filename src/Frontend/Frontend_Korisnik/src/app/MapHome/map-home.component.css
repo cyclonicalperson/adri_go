@@ -1,147 +1,175 @@
-/* ===== GLAVNI WRAPPER ===== */
+/* ============================================================
+   MAP HOME — Main map screen
+   ============================================================ */
+
 .map-wrapper {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  background-color: #f4f4f4;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--gray-100);
+  font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
 }
 
-/* ===== HEADER ===== */
+/* ── HEADER ─────────────────────────────────────────────────── */
 .app-header {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
   height: 60px;
-  background: white;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  background: #fff;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  box-sizing: border-box;
-  z-index: 10;
+  z-index: 20;
 }
 
 .header-left { display: flex; align-items: center; gap: 8px; }
-.logo-icon { font-size: 22px; }
-.logo-text { font-size: 20px; font-weight: 800; color: #22c55e; letter-spacing: -0.5px; }
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--green-500);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logo-icon svg { width: 18px; height: 18px; fill: #fff; }
+
+.logo-text {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--green-500);
+  letter-spacing: -0.5px;
+}
+
 .header-right { display: flex; align-items: center; gap: 8px; }
 
 .header-login-btn {
-  background: #22c55e;
-  color: white;
+  background: var(--green-500);
+  color: #fff;
   border: none;
-  border-radius: 20px;
-  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  padding: 8px 18px;
   font-size: 13px;
   font-weight: 700;
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
   transition: opacity 0.2s;
+  box-shadow: 0 3px 10px rgba(34,197,94,0.25);
 }
-
-.header-login-btn:active { opacity: 0.85; }
+.header-login-btn svg { width: 15px; height: 15px; fill: #fff; }
+.header-login-btn:hover { opacity: 0.9; }
 
 .header-menu-btn {
-  background: #f4f4f4;
+  background: var(--gray-100);
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 18px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  transition: background 0.15s;
 }
+.header-menu-btn:hover { background: var(--gray-200); }
+.header-menu-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }
 
-/* ===== KONTEJNER ZA PRAVU MAPU ===== */
+/* ── MAP ─────────────────────────────────────────────────────── */
 .map-container {
   position: absolute;
-  top: 0; 
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
   z-index: 1;
 }
 
-/* Osigurava da Leaflet mapa zauzme ceo prostor */
 #map {
   width: 100%;
   height: 100%;
-  background-color: #e5e5e5; /* siva pozadina dok se učitavaju slike mape */
+  background: #e8efe8;
 }
 
-/* Sklanjamo link na dnu mape za čistiji dizajn (opciono) */
-.leaflet-control-attribution {
-  display: none !important;
-}
+.leaflet-control-attribution { display: none !important; }
 
-/* ===== SEARCH BAR SLOJ ===== */
+/* ── SEARCH BAR ──────────────────────────────────────────────── */
 .top-ui-layer {
   position: absolute;
-  top: 72px;  /* ispod headera */
+  top: 68px;
   left: 0;
   width: 100%;
-  padding: 0 15px;
-  box-sizing: border-box;
+  padding: 0 14px;
+  z-index: 10;
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: 10px;
-  z-index: 5;
-  pointer-events: none; /* Propustamo klikove do mape */
 }
 
 .search-container {
-  pointer-events: auto; /* Oživljavamo klikove na sam search bar */
+  pointer-events: auto;
+  flex: 1;
   display: flex;
   align-items: center;
-  background-color: #ffffff;
-  border-radius: 25px;
-  padding: 10px 15px;
-  flex: 1;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+  background: #fff;
+  border-radius: var(--radius-pill);
+  padding: 10px 16px;
+  box-shadow: var(--shadow-lg);
+  gap: 10px;
 }
 
-.search-icon { font-size: 16px; color: #666; margin-right: 10px; }
-.search-input { flex: 1; border: none; outline: none; font-size: 15px; color: #333; background: transparent; }
-.search-input::placeholder { color: #999; }
+.search-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.search-icon svg { width: 18px; height: 18px; fill: var(--gray-400); }
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  color: var(--gray-700);
+  background: transparent;
+}
+.search-input::placeholder { color: var(--gray-400); }
 
 .filter-btn {
   background: none;
   border: none;
-  border-left: 1px solid #eee;
-  padding-left: 12px;
-  cursor: pointer;
+  border-left: 1px solid var(--gray-200);
+  padding: 0 0 0 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 600;
 }
+.filter-btn svg { width: 18px; height: 18px; fill: var(--green-500); }
 
-.filter-icon { font-size: 20px; color: #555; transform: rotate(90deg); }
-
-/* ===== FOOTER ===== */
+/* ── FOOTER NAV ──────────────────────────────────────────────── */
 .app-footer {
   position: absolute;
-  bottom: 0;
-  left: 0;
+  bottom: 0; left: 0;
   width: 100%;
-  height: 65px;
-  background: white;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  height: 68px;
+  background: #fff;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
   display: flex;
   align-items: center;
   justify-content: space-around;
-  z-index: 10;
-  box-sizing: border-box;
-  padding: 0 8px;
+  z-index: 20;
+  padding: 0 4px env(safe-area-inset-bottom, 0);
 }
 
 .footer-btn {
@@ -150,27 +178,141 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   background: none;
   border: none;
-  cursor: pointer;
   padding: 8px 4px;
-  border-radius: 12px;
-  transition: background 0.15s;
-  color: #aaa;
+  border-radius: var(--radius-md);
+  color: var(--gray-400);
+  transition: color 0.15s, background 0.15s;
+  min-height: 52px;
 }
-/* ===== KARTICA ZA LOKACIJU (POPUP) OBAVEZNO PREKO MAPE ===== */
+
+.footer-btn:active { background: var(--green-50); }
+.footer-btn.active { color: var(--green-500); }
+
+.footer-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.footer-icon svg { width: 22px; height: 22px; fill: currentColor; }
+.footer-btn.active .footer-icon { transform: scale(1.1); }
+
+.footer-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+
+/* ── LOCATION CARD POPUP ─────────────────────────────────────── */
 app-location-details-card {
   position: absolute !important;
-  bottom: 80px; 
-  left: 15px;
-  right: 15px;
-  z-index: 9999 !important; 
+  bottom: 80px;
+  left: 12px;
+  right: 12px;
+  z-index: 9999 !important;
   display: block;
 }
 
-.footer-btn:active { background: #f0fdf4; }
-.footer-btn.active { color: #22c55e; }
-.footer-btn.active .footer-icon { transform: scale(1.15); }
-.footer-icon { font-size: 22px; transition: transform 0.2s; line-height: 1; }
-.footer-label { font-size: 10px; font-weight: 700; letter-spacing: 0.3px; }
+/* ── CUSTOM MAP PINS ─────────────────────────────────────────── */
+.map-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  border: 2px solid rgba(255,255,255,0.6);
+}
+.map-pin-inner {
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-pin-inner svg { width: 16px; height: 16px; fill: #fff; }
+
+.pin-beach    { background: var(--cat-beach);    }
+.pin-nature   { background: var(--cat-nature);   }
+.pin-culture  { background: var(--cat-culture);  }
+.pin-food     { background: var(--cat-food);     }
+.pin-nightlife{ background: var(--cat-nightlife);}
+.pin-activity { background: var(--cat-activity); }
+.pin-events   { background: var(--cat-events);   }
+
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .app-header {
+    height: 64px;
+    padding: 0 24px;
+  }
+  .logo-text { font-size: 22px; }
+  .top-ui-layer { top: 76px; padding: 0 16px; }
+  .search-container { max-width: 500px; margin: 0 auto; }
+}
+
+/* ── DESKTOP — two-column layout ────────────────────────────── */
+@media (min-width: 900px) {
+  .map-wrapper {
+    flex-direction: row;
+  }
+
+  /* Left sidebar */
+  .app-header {
+    position: fixed;
+    top: 0; left: 0;
+    width: 380px;
+    height: 64px;
+    z-index: 30;
+    box-shadow: none;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .top-ui-layer {
+    position: fixed;
+    top: 72px;
+    left: 8px;
+    width: 364px;
+    padding: 0 8px;
+    z-index: 20;
+  }
+
+  /* Map fills the right side */
+  .map-container {
+    position: fixed;
+    top: 0;
+    left: 380px;
+    width: calc(100vw - 380px);
+    height: 100vh;
+    z-index: 1;
+  }
+
+  /* Location card appears in sidebar */
+  app-location-details-card {
+    position: fixed !important;
+    bottom: 80px;
+    left: 8px;
+    right: auto;
+    width: 364px;
+    z-index: 9999 !important;
+  }
+
+  /* Footer becomes a vertical left-side nav */
+  .app-footer {
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 380px;
+    height: 68px;
+    z-index: 30;
+    box-shadow: 0 -1px 0 var(--gray-100);
+  }
+
+  .logo-text { font-size: 22px; }
+}
