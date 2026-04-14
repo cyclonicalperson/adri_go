@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
@@ -23,17 +23,17 @@ export class LocationListComponent implements OnInit {
   constructor(
     private router: Router,
     private locationService: LocationService,
-    private authService: AuthService
-  ) {}
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit(): void { this.loadLocations(); }
 
   loadLocations(): void {
     this.isLoading = true;
-    this.errorMessage = '';
     this.locationService.getLocations().subscribe({
-      next: (res) => { this.locations = res.data; this.isLoading = false; },
-      error: () => { this.errorMessage = 'Greška pri učitavanju lokacija.'; this.isLoading = false; }
+      next: (res) => { this.locations = res.data; this.isLoading = false; this.cdr.markForCheck(); },
+      error: () => { this.errorMessage = 'Greška pri učitavanju lokacija.'; this.isLoading = false; this.cdr.markForCheck(); }
     });
   }
 

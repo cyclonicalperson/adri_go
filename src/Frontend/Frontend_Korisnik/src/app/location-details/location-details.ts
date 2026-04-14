@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -32,8 +32,9 @@ export class LocationDetailsComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private locationService: LocationService,
-    public  authService: AuthService
-  ) {}
+    public authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -44,16 +45,18 @@ export class LocationDetailsComponent implements OnInit {
         this.location  = loc;
         this.images    = this.locationService.parseImages(loc.images);
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('getLocationById error:', err);
         this.errorMessage = 'Lokacija nije pronađena.';
-        this.isLoading    = false;
+        this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
 
     this.locationService.getReviews(id).subscribe({
-      next:  (res) => { this.reviews = res.data ?? []; },
+      next: (res) => { this.reviews = res.data ?? []; this.cdr.markForCheck(); },
       error: (err) => console.error('getReviews error:', err)
     });
 
