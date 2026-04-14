@@ -13,80 +13,110 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _dbContext;
         private readonly JwtService _jwtService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthController> _logger;
 
-
-        // Sada ubrizgavamo i JwtService pored AppDbContext
-        public AuthController(AppDbContext dbContext, JwtService jwtService, IConfiguration configuration)
+        public AuthController(
+            AppDbContext dbContext,
+            JwtService jwtService,
+            IConfiguration configuration,
+            ILogger<AuthController> logger)
         {
             _dbContext = dbContext;
             _jwtService = jwtService;
             _configuration = configuration;
+            _logger = logger;
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request)
         {
-            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            // Tražimo korisnika u bazi, učitavamo i njegove permisije
-            var adminUser = await _dbContext.AdminUsers
-                .Include(a => a.UserPermissions)
-                    .ThenInclude(up => up.Permission)
-                .AsTracking()
-                .FirstOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail);
-
-            // Proveravamo lozinku
-            if (adminUser is null || !PasswordHelper.Verify(request.Password, adminUser.PasswordHash))
+            try
             {
-                // Namerno ista poruka za oba slučaja — ne otkrivamo da li email postoji
-                return Unauthorized(new { message = "Neispravan email ili lozinka." });
-            }
+                var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
-            if (!string.Equals(adminUser.AccountStatus, "active", StringComparison.OrdinalIgnoreCase))
-            {
-                return Unauthorized(new
+                var adminUser = await _dbContext.AdminUsers
+                    .Where(x => x.Email.ToLower() == normalizedEmail)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.FullName,
+                        x.Email,
+                        x.PasswordHash,
+                        x.Role,
+                        x.AccountStatus,
+                        x.OrganizationId,
+                        x.IsIndividual
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (adminUser is null ||
+                    string.IsNullOrWhiteSpace(adminUser.PasswordHash) ||
+                    !PasswordHelper.Verify(request.Password, adminUser.PasswordHash))
                 {
-                    message = "Admin nalog nije aktivan.",
-                    status = adminUser.AccountStatus
+                    return Unauthorized(new { message = "Neispravan email ili lozinka." });
+                }
+
+                if (!string.Equals(adminUser.AccountStatus, "active", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Unauthorized(new
+                    {
+                        message = "Admin nalog nije aktivan.",
+                        status = adminUser.AccountStatus
+                    });
+                }
+
+                await _dbContext.AdminUsers
+                    .Where(a => a.Id == adminUser.Id)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(a => a.LastLoginAt, DateTime.UtcNow)
+                        .SetProperty(a => a.UpdatedAt, DateTime.UtcNow));
+
+                var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"] ?? "8");
+                var token = _jwtService.GenerateToken(
+                    adminUser.Id,
+                    adminUser.Email,
+                    adminUser.Role,
+                    adminUser.OrganizationId
+                );
+                var expiresAtUtc = DateTime.UtcNow.AddHours(expiresInHours);
+
+                var permissions = await _dbContext.AdminUserPermissions
+                    .Where(up => up.AdminUserId == adminUser.Id)
+                    .Join(
+                        _dbContext.AdminPermissions,
+                        up => up.PermissionId,
+                        permission => permission.Id,
+                        (_, permission) => permission.Code)
+                    .ToListAsync();
+
+                return Ok(new LoginResponseDto
+                {
+                    Token = token,
+                    ExpiresAtUtc = expiresAtUtc,
+                    User = new AuthenticatedAdminDto
+                    {
+                        Id = adminUser.Id,
+                        FullName = adminUser.FullName,
+                        Email = adminUser.Email,
+                        Role = adminUser.Role,
+                        AccountStatus = adminUser.AccountStatus,
+                        OrganizationId = adminUser.OrganizationId,
+                        IsIndividual = adminUser.IsIndividual,
+                        Permissions = permissions
+                    }
                 });
             }
-
-            // Beležimo poslednji login
-            adminUser.LastLoginAt = DateTime.UtcNow;
-            adminUser.UpdatedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync();
-
-            // NOVO: generišemo pravi JWT token
-            var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"] ?? "8");
-            var token = _jwtService.GenerateToken(
-                adminUser.Id,
-                adminUser.Email,
-                adminUser.Role,
-                adminUser.OrganizationId
-            );
-            var expiresAtUtc = DateTime.UtcNow.AddHours(expiresInHours);
-
-            // Sakupljamo nazive permisija korisnika
-            var permissions = adminUser.UserPermissions
-                .Select(up => up.Permission.Code)
-                .ToList();
-
-            return Ok(new LoginResponseDto
+            catch (Exception ex)
             {
-                Token = token,
-                ExpiresAtUtc = expiresAtUtc,
-                User = new AuthenticatedAdminDto
-                {
-                    Id = adminUser.Id,
-                    FullName = adminUser.FullName,
-                    Email = adminUser.Email,
-                    Role = adminUser.Role,
-                    AccountStatus = adminUser.AccountStatus,
-                    OrganizationId = adminUser.OrganizationId,
-                    IsIndividual = adminUser.IsIndividual,
-                    Permissions = permissions
-                }
-            });
+                _logger.LogError(ex, "Unexpected error during admin login for email {Email}.", request.Email);
+                return Problem(
+                    title: "Login failed",
+                    detail: "Doslo je do neocekivane greske prilikom prijave.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         }
     }
 }

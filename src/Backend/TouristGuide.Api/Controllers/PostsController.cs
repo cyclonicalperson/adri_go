@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
+using TouristGuide.Api.Interfaces;
 using TouristGuide.Api.Models;
 
 namespace TouristGuide.Api.Controllers
@@ -14,6 +15,7 @@ namespace TouristGuide.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
+
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
             "accommodation", "restaurant", "club", "cultural_site",
@@ -25,9 +27,10 @@ namespace TouristGuide.Api.Controllers
             "draft", "published", "archived"
         };
 
-        public PostsController(AppDbContext context)
+        public PostsController(AppDbContext context, IReviewService reviewService)
         {
             _context = context;
+            _reviewService = reviewService;
         }
 
         [HttpGet]
@@ -54,11 +57,7 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            var query = BuildFilteredPostsQuery(region_id, type, null, forcePublishedOnly: true, out var error);
-            if (error is not null)
-                return error;
-
-            return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
+            return await GetPublicPublishedOnly(region_id, type, page, pageSize);
         }
 
         [HttpGet("{id}")]
@@ -83,8 +82,8 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetReviews(uint id)
         {
-            var postExists = await _context.Posts.AnyAsync(p => p.Id == id && p.Status == "published");
-            if (!postExists)
+            var result = await _reviewService.GetReviewsByPostId(id);
+            if (!result.PostExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             var reviews = await _context.Reviews
@@ -104,8 +103,8 @@ namespace TouristGuide.Api.Controllers
 
             return Ok(new
             {
-                total = reviews.Count,
-                data = reviews
+                total = result.Reviews.Count,
+                data = result.Reviews
             });
         }
 
@@ -153,7 +152,7 @@ namespace TouristGuide.Api.Controllers
             return CreatedAtAction(
                 nameof(GetReviews),
                 new { id },
-                MapToReviewDto(review, tourist.Name)
+                result.Review
             );
         }
 
