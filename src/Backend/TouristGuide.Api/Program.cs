@@ -4,9 +4,13 @@
     using Microsoft.OpenApi.Models;
     using System.Text;
     using TouristGuide.Api.Data;
+    using TouristGuide.Api.Interfaces;
     using TouristGuide.Api.Services;
 
     var builder = WebApplication.CreateBuilder(args);
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+    builder.Logging.AddDebug();
 
     // ────────────────────────────────────────────────────────────
     // 1. CORS — dozvoljava frontendu da komunicira sa backendom
@@ -76,6 +80,7 @@
 
     // Naš JwtService — registrujemo ga da ga možemo ubrizgati u kontrolere
     builder.Services.AddScoped<JwtService>();
+    builder.Services.AddScoped<IReviewService, ReviewService>();
 
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
@@ -128,6 +133,7 @@
         ));
 
     var app = builder.Build();
+
 
     // ────────────────────────────────────────────────────────────
     // 5. MIDDLEWARE PIPELINE — redosled je bitan!

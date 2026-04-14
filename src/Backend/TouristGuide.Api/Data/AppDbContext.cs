@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Models;
+using RouteModel = TouristGuide.Api.Models.Route;
 
 namespace TouristGuide.Api.Data
 {
@@ -26,7 +27,7 @@ namespace TouristGuide.Api.Data
         public DbSet<PostTranslation> PostTranslations { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<PostTag> PostTags { get; set; }
-        public DbSet<Route> Routes { get; set; }
+        public DbSet<RouteModel> Routes { get; set; }
 
         // Turisti
         public DbSet<Tourist> Tourists { get; set; }
@@ -243,14 +244,14 @@ namespace TouristGuide.Api.Data
             // ════════════════════════════════════════════════════════════════
 
             // Route -> AdminUser (Restrict — admin ne smije biti obrisan dok ima rute)
-            modelBuilder.Entity<Route>()
+            modelBuilder.Entity<RouteModel>()
                 .HasOne(r => r.Admin)
                 .WithMany(a => a.Routes)
                 .HasForeignKey(r => r.AdminId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Route -> Region (nullable, ON DELETE SET NULL)
-            modelBuilder.Entity<Route>()
+            modelBuilder.Entity<RouteModel>()
                 .HasOne(r => r.Region)
                 .WithMany(reg => reg.Routes)
                 .HasForeignKey(r => r.RegionId)
