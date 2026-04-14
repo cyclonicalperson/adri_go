@@ -31,55 +31,6 @@ namespace TouristGuide.Api.Controllers
             _context = context;
         }
 
-        // ===== NOVO: Public endpoint za turistički frontend (bez logina) =====
-        [HttpGet("public")]
-        public async Task<IActionResult> GetPublic(
-            [FromQuery] uint? region_id,
-            [FromQuery] string? type,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
-        {
-            if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 20;
-
-            var query = _context.Posts
-                .Include(p => p.Admin)
-                .Include(p => p.Region)
-                .Where(p => p.Status == "published")
-                .AsQueryable();
-
-            if (region_id.HasValue)
-                query = query.Where(p => p.RegionId == region_id.Value);
-
-            if (!string.IsNullOrWhiteSpace(type))
-            {
-                var typeLower = type.ToLower().Trim();
-                if (!AllowedPostTypes.Contains(typeLower))
-                    return BadRequest(new { message = $"Nepoznat tip '{type}'." });
-                query = query.Where(p => p.PostType == typeLower);
-            }
-
-            var total = await query.CountAsync();
-
-            var posts = await query
-                .OrderByDescending(p => p.PublishedAt)
-                .ThenByDescending(p => p.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => MapToDto(p))
-                .ToListAsync();
-
-            return Ok(new
-            {
-                total,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)total / pageSize),
-                data = posts
-            });
-        }
-        // ===== KRAJ NOVOG KODA =====
-
         [HttpGet]
         [Authorize]
         public async Task<IActionResult> GetAll(
@@ -609,7 +560,7 @@ namespace TouristGuide.Api.Controllers
         private static ReviewDto MapToReviewDto(PostReview review, string? touristName = null) => new()
         {
             Id = review.Id,
-            TouristId = r.TouristId,
+            TouristId = review.TouristId,
             TouristName = touristName ?? review.Tourist?.Name ?? string.Empty,
             Rating = review.Rating,
             Comment = review.Comment,
