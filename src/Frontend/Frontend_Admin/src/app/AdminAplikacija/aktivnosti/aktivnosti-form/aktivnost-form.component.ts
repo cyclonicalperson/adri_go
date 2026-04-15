@@ -6,6 +6,8 @@ import { environment } from '@env/environment';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 interface SimpleObject { objectId: number; name: string; }
+// Lokacija (post) koji se prikazuje u dropdownu aktivnosti
+interface SimplePost { id: number; title: string; postType: string; }
 
 @Component({
   selector: 'app-aktivnost-form',
@@ -57,8 +59,14 @@ export class AktivnostFormComponent implements OnInit {
       status: ['PENDING'],
     });
 
-    this.http.get<{ data: SimpleObject[] }>(`${environment.apiUrl}/objects?pageSize=100`)
-      .subscribe(res => { this.objects = res.data; });
+    // Učitavamo sve ne-event postove kao listu lokacija za dropdown
+    this.http.get<{ data: SimplePost[] }>(`${environment.apiUrl}/posts?pageSize=100`)
+      .subscribe(res => {
+        // Filtriramo evente i mapiramo u SimpleObject format
+        this.objects = (res.data ?? [])
+          .filter((p: SimplePost) => p.postType !== 'event')
+          .map((p: SimplePost) => ({ objectId: p.id, name: p.title }));
+      });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;

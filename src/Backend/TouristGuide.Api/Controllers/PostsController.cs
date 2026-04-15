@@ -164,6 +164,11 @@ namespace TouristGuide.Api.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // AdminId se čita iz JWT tokena; ignorisati vrijednost iz tijela zahtjeva
+            var jwtAdminId = GetCurrentAdminId();
+            if (jwtAdminId.HasValue)
+                dto.AdminId = jwtAdminId.Value;
+
             var postTypeLower = dto.PostType.ToLower().Trim();
             if (!AllowedPostTypes.Contains(postTypeLower))
                 return BadRequest(new { message = $"Nepoznat tip '{dto.PostType}'. Dozvoljeni: {string.Join(", ", AllowedPostTypes)}" });
@@ -605,7 +610,14 @@ namespace TouristGuide.Api.Controllers
 
         private uint? GetRequiredTouristId() => GetAuthorizedTouristId();
 
-        private bool IsAdminUser()
+        private uint? GetCurrentAdminId()
+        {
+            var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                   ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return uint.TryParse(val, out var id) ? id : null;
+        }
+
+                private bool IsAdminUser()
         {
             var role = User.FindFirstValue(ClaimTypes.Role);
             return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)

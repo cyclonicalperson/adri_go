@@ -1,6 +1,12 @@
+/**
+ * review.service.ts
+ *
+ * Mapirano na /api/reviews (backend ReviewsController).
+ * Backend vraća AdminReviewListItemDto koji se mapira u Review interfejs.
+ */
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Review,
@@ -17,7 +23,7 @@ import {
 export class ReviewService {
   private readonly url = `${environment.apiUrl}/reviews`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   getAll(req: PageRequest & {
     status?: string;
@@ -27,28 +33,73 @@ export class ReviewService {
       .set('page', req.page)
       .set('pageSize', req.pageSize);
 
-    if (req.sortBy) params = params.set('sortBy', req.sortBy);
-    if (req.sortDir) params = params.set('sortDir', req.sortDir);
-    if (req.search) params = params.set('search', req.search);
-    if (req.status) params = params.set('status', req.status);
+    if (req.status)     params = params.set('status', req.status);
     if (req.entityType) params = params.set('entityType', req.entityType);
+    // Backend ne podrzava sortBy/search za reviews — ignorisemo
 
-    return this.http.get<PaginatedResponse<Review>>(this.url, { params });
+    return this.http.get<any>(this.url, { params }).pipe(
+      map(res => ({
+        data:       (res.data ?? []).map(backendToReview),
+        total:      res.total ?? 0,
+        page:       res.page ?? req.page,
+        pageSize:   res.pageSize ?? req.pageSize,
+        totalPages: res.totalPages ?? 1,
+      }))
+    );
   }
 
   getById(id: number): Observable<ApiResponse<Review>> {
-    return this.http.get<ApiResponse<Review>>(`${this.url}/${id}`);
+    // Backend nema GET /reviews/{id} — koristimo listu i filtriramo
+    return this.http.get<any>(this.url).pipe(
+      map(res => {
+        const found = (res.data ?? []).find((r: any) => r.reviewId === id || r.id === id);
+        return { data: found ? backendToReview(found) : null as any, success: !!found };
+      })
+    );
   }
 
   create(payload: CreateReviewRequest): Observable<ApiResponse<Review>> {
-    return this.http.post<ApiResponse<Review>>(this.url, payload);
+    // Kreiranje recenzija ide kroz /api/posts/{id}/reviews
+    const postId = payload.postId;
+    if (!postId) throw new Error('postId je obavezan za kreiranje recenzije.');
+    const body = { rating: payload.rating, comment: payload.comment };
+    return this.http.post<any>(`${environment.apiUrl}/posts/${postId}/reviews`, body).pipe(
+      map(res => ({ data: backendToReview(res), success: true }))
+    );
   }
 
   updateStatus(id: number, payload: UpdateReviewStatusRequest): Observable<ApiResponse<Review>> {
-    return this.http.patch<ApiResponse<Review>>(`${this.url}/${id}/status`, payload);
+    return this.http.patch<any>(`${this.url}/${id}/status`, {
+      status: payload.status,
+      rejectionReason: payload.rejectionReason,
+    }).pipe(
+      map(res => ({ data: backendToReview(res.data ?? res), success: res.success ?? true }))
+    );
   }
 
   delete(id: number): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.url}/${id}`);
+    return this.http.delete<any>(`${this.url}/${id}`).pipe(
+      map(res => ({ data: undefined, success: res.success ?? true }))
+    );
   }
+}
+
+/** Pretvara backend AdminReviewListItemDto ili ReviewDto u Review interfejs */
+function backendToReview(r: any): Review {
+  if (!r) return {} as Review;
+  return {
+    reviewId:    r.reviewId ?? r.id,
+    touristId:   r.touristId ?? null,
+    postId:      r.postId ?? null,
+    routeId:     r.routeId ?? null,
+    rating:      r.rating,
+    comment:     r.comment ?? null,
+    status:      r.status ?? 'PENDING',
+    createdAt:   r.createdAt,
+    touristName: r.touristName ?? r.user?.fullName ?? null,
+    user: r.touristId ? { userId: r.touristId, fullName: r.touristName ?? '' } : null,
+    entityType:  (r.entityType ?? (r.routeId ? 'ROUTE' : 'OBJECT')) as any,
+    entityName:  r.entityName ?? r.postTitle ?? r.routeName ?? null,
+    postType:    r.postType ?? null,
+  };
 }

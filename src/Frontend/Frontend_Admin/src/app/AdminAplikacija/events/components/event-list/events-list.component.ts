@@ -85,16 +85,16 @@ export class EventsListComponent implements OnInit {
     this.loading = true;
 
     let params = new HttpParams()
-      .set('postType', 'event')
+      .set('type', 'event')           // Backend: ?type=event (ne postType)
       .set('page', this.req.page)
       .set('pageSize', this.req.pageSize);
 
-    if (this.req.sortBy) params = params.set('sortBy', this.req.sortBy);
-    if (this.req.sortDir) params = params.set('sortDir', this.req.sortDir!);
-    if (this.req.search) params = params.set('search', this.req.search);
-    if (this.req.regionId) params = params.set('regionId', this.req.regionId);
-    if (this.req.status) params = params.set('status', this.req.status);
-    if (this.req.category) params = params.set('category', this.req.category);
+    if (this.req.sortBy)   params = params.set('sortBy', this.req.sortBy);
+    if (this.req.sortDir)  params = params.set('sortDir', this.req.sortDir!);
+    if (this.req.search)   params = params.set('search', this.req.search);
+    if (this.req.regionId) params = params.set('region_id', this.req.regionId); // Backend: region_id
+    if (this.req.status)   params = params.set('status', this.req.status);
+    // Napomena: backend ne filtrira po category (detalj iz JSON polja) — ignorišemo
 
     this.http.get<{ data: Post[]; total: number; totalPages: number }>(
       `${environment.apiUrl}/posts`, { params }

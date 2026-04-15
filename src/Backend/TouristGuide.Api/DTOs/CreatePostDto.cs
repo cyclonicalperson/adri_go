@@ -7,7 +7,7 @@ namespace TouristGuide.Api.DTOs
     /// </summary>
     public class CreatePostDto
     {
-        [Required(ErrorMessage = "admin_id je obavezan.")]
+        // AdminId se automatski čita iz JWT tokena u PostsController.Create
         public uint AdminId { get; set; }
 
         public uint? RegionId { get; set; }
