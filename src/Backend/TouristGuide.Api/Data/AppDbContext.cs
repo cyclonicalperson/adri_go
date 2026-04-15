@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Models;
+using Route = TouristGuide.Api.Models.Route;
 
 namespace TouristGuide.Api.Data
 {

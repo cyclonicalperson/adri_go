@@ -1,185 +1,143 @@
-.page-container {
-  min-height: 100vh;
+/* ============================================================
+   CHOOSE ROLE
+   ============================================================ */
+
+.role-container {
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  background-color: #ffffff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  padding: 40px 20px;
-  box-sizing: border-box;
+  font-family: var(--font-sans);
+  background: var(--gray-900);
+  padding: 0 20px 40px;
 }
 
-.content-wrapper {
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  flex-direction: column;
+.header-area {
+  padding: 56px 0 32px;
 }
 
-/* Tipografija */
-.title {
+.header-area h1 {
+  font-family: var(--font-display);
   font-size: 26px;
   font-weight: 800;
-  color: #1a1a1a;
-  margin: 0 0 10px 0;
+  color: #fff;
+  margin: 0 0 8px;
   line-height: 1.2;
 }
 
-.subtitle {
-  font-size: 14px;
-  color: #666;
-  margin: 0 0 30px 0;
+.header-area p { font-size: 14px; color: rgba(255,255,255,0.65); margin: 0; line-height: 1.5; }
+
+/* ── ROLE CARDS ──────────────────────────────────────────────── */
+.role-cards { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+
+.role-card {
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+  position: relative;
+}
+.role-card:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.2); }
+.role-card.selected {
+  background: rgba(34,197,94,0.15);
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 1px var(--green-500), 0 8px 24px rgba(34,197,94,0.2);
+}
+
+.role-icon-box {
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.10);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.role-icon-box svg { width: 26px; height: 26px; fill: rgba(255,255,255,0.7); }
+.role-card.selected .role-icon-box {
+  background: var(--green-500);
+}
+.role-card.selected .role-icon-box svg { fill: #fff; }
+
+.role-text h3 {
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 6px;
+}
+.role-text p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin: 0;
   line-height: 1.5;
 }
 
-/* Kartice za uloge */
-.role-card {
-  display: flex;
-  align-items: flex-start;
-  padding: 20px;
-  border: 1px solid #e0e0e0;
-  border-radius: 16px;
-  margin-bottom: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  background-color: #ffffff;
-}
-
-/* Stil kada je kartica izabrana (Aktivna) */
-.role-card.active {
-  border: 2px solid #22c55e; /* Zeleni okvir */
-  background-color: #eefaf2; /* Blaga zelena pozadina */
-}
-
-/* Ikonice sa leve strane */
-.icon-wrapper {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-right: 15px;
-  flex-shrink: 0;
-}
-
-.tourist-icon {
-  background-color: #22c55e;
-}
-
-.tourist-icon .inner-circle {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background-color: transparent;
-}
-
-.admin-icon {
-  background-color: #f0f0f0;
-  font-size: 20px;
-}
-
-/* Tekst unutar kartice */
-.card-text {
-  flex: 1;
-}
-
-.card-text h3 {
-  margin: 0 0 5px 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #22c55e; /* Zelena za aktivan naslov */
-}
-
-.card-text h3.text-dark {
-  color: #1a1a1a; /* Crna za neaktivan naslov */
-}
-
-.card-text p {
-  margin: 0;
-  font-size: 13px;
-  color: #777;
-  line-height: 1.4;
-}
-
-/* Zelena kvačica (Checkmark) gore desno */
 .check-mark {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 20px;
-  height: 20px;
-  background-color: transparent;
-  border: 1px solid #22c55e;
+  top: 16px; right: 16px;
+  width: 24px; height: 24px;
   border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  background: var(--green-500);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: all 0.2s ease;
 }
-
-.check-mark span {
-  color: #22c55e;
-  font-size: 12px;
-  font-weight: bold;
+.role-card.selected .check-mark {
+  opacity: 1;
+  transform: scale(1);
 }
+.check-mark svg { width: 14px; height: 14px; fill: #fff; }
 
-/* Napomena (Info box) */
-.info-box {
+/* ── NOTE ────────────────────────────────────────────────────── */
+.admin-note {
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: 6px;
   display: flex;
+  gap: 10px;
   align-items: flex-start;
-  padding: 15px;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  margin-top: 10px;
-  margin-bottom: 30px;
-  background-color: #fafafa;
 }
+.note-dot { width: 8px; height: 8px; background: var(--green-500); border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.admin-note p { font-size: 12px; color: rgba(255,255,255,0.55); margin: 0; line-height: 1.5; }
+.admin-note strong { color: rgba(255,255,255,0.75); }
 
-.green-dot {
-  width: 8px;
-  height: 8px;
-  background-color: #22c55e;
-  border-radius: 50%;
-  margin-top: 5px;
-  margin-right: 10px;
-  flex-shrink: 0;
-}
-
-.info-box p {
-  margin: 0;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.5;
-}
-
-/* Dugme Continue */
-.btn {
+/* ── CONTINUE BTN ────────────────────────────────────────────── */
+.continue-btn {
   width: 100%;
+  margin-top: 28px;
   padding: 16px;
+  background: var(--green-500);
+  color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
+  font-family: inherit;
+  box-shadow: var(--shadow-green);
   display: flex;
-  justify-content: center;
   align-items: center;
-  transition: opacity 0.2s ease;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s, transform 0.15s;
 }
+.continue-btn:hover  { opacity: 0.92; transform: translateY(-1px); }
+.continue-btn:active { opacity: 0.85; transform: scale(0.98); }
+.continue-btn svg { width: 18px; height: 18px; fill: #fff; }
 
-.btn:active {
-  opacity: 0.8;
-}
-
-.btn-primary {
-  background-color: #22c55e;
-  color: #ffffff;
-  margin-top: auto; /* Gura dugme na dno ako ima prostora */
-}
-
-.btn-primary .arrow {
-  margin-left: 8px;
-  font-size: 18px;
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .role-container {
+    max-width: 500px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 0 32px 48px;
+  }
 }

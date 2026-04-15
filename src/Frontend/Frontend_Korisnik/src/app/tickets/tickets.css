@@ -120,3 +120,12 @@
 .past-header { margin-top: 10px; }
 .ticket-card.past { opacity: 0.8; }
 .grayscale { filter: grayscale(1); }
+/* ── DESKTOP ─────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .tickets-container {
+    max-width: 720px;
+    margin: 0 auto;
+    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+    background: var(--gray-50, #f8fafc);
+  }
+}

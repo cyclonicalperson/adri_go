@@ -38,7 +38,7 @@ namespace TouristGuide.Api.Controllers
             {
                 Name = dto.Name.Trim(),
                 Email = normalizedEmail,
-                PasswordHash = dto.Password,
+                PasswordHash = PasswordHelper.Hash(dto.Password),
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

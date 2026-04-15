@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
+using TouristGuide.Api.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,8 +78,16 @@ builder.Services.AddAuthorization();
 // Naš JwtService — registrujemo ga da ga možemo ubrizgati u kontrolere
 builder.Services.AddScoped<JwtService>();
 
+// Potrebno za AdminIdentityService koji cita JWT claims van kontrolera
+builder.Services.AddHttpContextAccessor();
+// Pomocni servis koji odredjuje identitet prijavljenog admina iz tokena
+builder.Services.AddScoped<AdminIdentityService>();
+
 // Servis za lokacije (Admin panel)
 builder.Services.AddScoped<ILocationService, LocationService>();
+
+// Servis za Review-ove
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

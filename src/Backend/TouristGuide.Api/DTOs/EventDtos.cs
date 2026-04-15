@@ -1,82 +1,134 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace TouristGuide.Api.DTOs
 {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Konvencija za pohranu event-specifičnih polja u JSON 'details' kolonu:
+    //
+    //   {
+    //     "startAt":   "2025-07-15T20:00:00",
+    //     "endAt":     "2025-07-15T23:00:00",
+    //     "ticketUrl": "https://tickets.example.com/event/42",
+    //     "category":  "CONCERT"           // CONCERT | SPORT | THEATER | FESTIVAL | OTHER
+    //   }
+    //
+    // Ova konvencija je stabilna i ne zahtijeva izmjenu DB šeme.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// DTO koji se vraća frontendu za jedan događaj.
+    /// Odgovara modelu TouristEvent na Angular frontendu.
+    /// </summary>
     public class EventDto
     {
-        public uint EventId { get; set; }
-        public uint? DestinationId { get; set; }
-        public uint? ObjectId { get; set; }
-        public uint? OrganizationId { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Category { get; set; } = "OTHER";
-        public string Description { get; set; } = string.Empty;
-        public DateTime StartAt { get; set; }
-        public DateTime EndAt { get; set; }
-        public string? TicketUrl { get; set; }
-        public decimal? Latitude { get; set; }
+        public uint EventId       { get; set; }   // alias za Id — frontend koristi eventId
+        public uint ObjectId      { get; set; }   // isti kao EventId, frontend ponekad šalje objectId
+        public uint? RegionId     { get; set; }
+        public string? RegionName { get; set; }
+
+        public string Title       { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? Address    { get; set; }
+        public decimal? Latitude  { get; set; }
         public decimal? Longitude { get; set; }
-        public uint CreatedBy { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public EventLookupDto? Destination { get; set; }
-        public EventLookupDto? Object { get; set; }
-        public List<EventMediaDto>? Media { get; set; }
+        public string? Images     { get; set; }
+        public string Status      { get; set; } = "draft";
+
+        // ── Event-specifična polja iz JSON 'details' kolone ──────────────────
+        public DateTime? StartAt   { get; set; }
+        public DateTime? EndAt     { get; set; }
+        public string? TicketUrl  { get; set; }
+
+        /// <summary>CONCERT | SPORT | THEATER | FESTIVAL | OTHER</summary>
+        public string Category    { get; set; } = "OTHER";
+
+        // ── Statistike ────────────────────────────────────────────────────────
+        public uint ViewCount    { get; set; }
+        public uint LikeCount    { get; set; }
+        public uint SaveCount    { get; set; }
+        public uint ReviewCount  { get; set; }
+        public decimal? AvgRating { get; set; }
+
+        public DateTime? PublishedAt { get; set; }
+        public DateTime CreatedAt   { get; set; }
+        public DateTime UpdatedAt   { get; set; }
     }
 
-    public class EventLookupDto
-    {
-        public uint Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
-
-    public class EventMediaDto
-    {
-        public uint MediaId { get; set; }
-        public string Url { get; set; } = string.Empty;
-        public string? Caption { get; set; }
-        public int SortOrder { get; set; }
-    }
-
+    /// <summary>
+    /// DTO koji admin/turista šalje pri KREIRANJU novog događaja (POST /api/events).
+    /// </summary>
     public class CreateEventDto
     {
-        public uint? DestinationId { get; set; }
-        public uint? ObjectId { get; set; }
-
-        [Required]
+        [Required(ErrorMessage = "Naslov je obavezan.")]
         [MaxLength(300)]
-        public string Name { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(50)]
+        public uint? RegionId    { get; set; }
+        public string? Description { get; set; }
+        public string? Address   { get; set; }
+        public decimal? Lat      { get; set; }
+        public decimal? Lng      { get; set; }
+        public string? Images    { get; set; }
+
+        // ── Event-specifična polja ─────────────────────────────────────────────
+        public DateTime? StartAt  { get; set; }
+        public DateTime? EndAt    { get; set; }
+        public string? TicketUrl { get; set; }
+
+        /// <summary>CONCERT | SPORT | THEATER | FESTIVAL | OTHER</summary>
         public string Category { get; set; } = "OTHER";
 
-        [Required]
-        public string Description { get; set; } = string.Empty;
-
-        [Required]
-        public DateTime StartAt { get; set; }
-
-        [Required]
-        public DateTime EndAt { get; set; }
-
-        [MaxLength(500)]
-        public string? TicketUrl { get; set; }
-
-        public decimal? Latitude { get; set; }
-        public decimal? Longitude { get; set; }
+        /// <summary>draft | published | archived</summary>
+        public string Status { get; set; } = "draft";
     }
 
+    /// <summary>
+    /// DTO koji admin šalje pri IZMJENI događaja (PUT /api/events/{id}).
+    /// Sva polja su opcionalna — šalješ samo ono što mijenjaš.
+    /// </summary>
     public class UpdateEventDto
     {
-        public uint? DestinationId { get; set; }
-        public uint? ObjectId { get; set; }
-        public string? Name { get; set; }
-        public string? Category { get; set; }
+        [MaxLength(300)]
+        public string? Title       { get; set; }
+        public uint? RegionId      { get; set; }
         public string? Description { get; set; }
-        public DateTime? StartAt { get; set; }
-        public DateTime? EndAt { get; set; }
+        public string? Address     { get; set; }
+        public decimal? Lat        { get; set; }
+        public decimal? Lng        { get; set; }
+        public string? Images      { get; set; }
+        public DateTime? StartAt   { get; set; }
+        public DateTime? EndAt     { get; set; }
+        public string? TicketUrl   { get; set; }
+        public string? Category    { get; set; }
+        public string? Status      { get; set; }
+    }
+
+    /// <summary>
+    /// Interna pomoćna klasa za deserijalizaciju 'details' JSON kolone.
+    /// </summary>
+    internal class EventDetails
+    {
+        public DateTime? StartAt  { get; set; }
+        public DateTime? EndAt    { get; set; }
         public string? TicketUrl { get; set; }
-        public decimal? Latitude { get; set; }
-        public decimal? Longitude { get; set; }
+        public string Category   { get; set; } = "OTHER";
+
+        public static EventDetails? FromJson(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<EventDetails>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { return null; }
+    }
+
+        public string ToJson() =>
+            JsonSerializer.Serialize(this, new JsonSerializerOptions
+    {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
     }
 }

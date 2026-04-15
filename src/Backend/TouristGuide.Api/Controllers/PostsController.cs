@@ -14,7 +14,6 @@ namespace TouristGuide.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
-
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
             "accommodation", "restaurant", "club", "cultural_site",
@@ -55,7 +54,7 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            var query = BuildFilteredPostsQuery(region_id, type, null, forcePublishedOnly: true, out var error);
+            var query = BuildFilteredPostsQuery(region_id, type, "published", forcePublishedOnly: true, out var error);
             if (error is not null)
                 return error;
 
@@ -88,14 +87,14 @@ namespace TouristGuide.Api.Controllers
             if (!postExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var reviews = await _context.PostReviews
+            var reviews = await _context.Reviews
                 .Where(r => r.PostId == id && r.IsApproved)
                 .Include(r => r.Tourist)
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new ReviewDto
                 {
                     Id = r.Id,
-                    TouristId = r.TouristId,
+                    TouristId = r.TouristId ?? 0,
                     TouristName = r.Tourist != null ? r.Tourist.Name ?? string.Empty : string.Empty,
                     Rating = r.Rating,
                     Comment = r.Comment,
@@ -130,23 +129,23 @@ namespace TouristGuide.Api.Controllers
             if (tourist is null)
                 return Unauthorized(new { message = "Turista nije pronadjen ili nije aktivan." });
 
-            var reviewExists = await _context.PostReviews
+            var reviewExists = await _context.Reviews
                 .AnyAsync(r => r.PostId == id && r.TouristId == touristId.Value);
 
             if (reviewExists)
                 return Conflict(new { message = "Turista je vec ostavio recenziju za ovu objavu." });
 
-            var review = new PostReview
+            var review = new Review
             {
                 PostId = id,
                 TouristId = touristId.Value,
-                Rating = dto.Rating,
+                Rating = (byte)dto.Rating,
                 Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
                 IsApproved = true,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.PostReviews.Add(review);
+            _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
 
             await RefreshReviewStats(post);
@@ -557,10 +556,10 @@ namespace TouristGuide.Api.Controllers
             UpdatedAt = post.UpdatedAt
         };
 
-        private static ReviewDto MapToReviewDto(PostReview review, string? touristName = null) => new()
+        private static ReviewDto MapToReviewDto(Review review, string? touristName = null) => new()
         {
             Id = review.Id,
-            TouristId = review.TouristId,
+            TouristId = review.TouristId ?? 0,
             TouristName = touristName ?? review.Tourist?.Name ?? string.Empty,
             Rating = review.Rating,
             Comment = review.Comment,
@@ -569,10 +568,10 @@ namespace TouristGuide.Api.Controllers
 
         private async Task RefreshReviewStats(Post post)
         {
-            post.AvgRating = await _context.PostReviews
+            post.AvgRating = await _context.Reviews
                 .Where(r => r.PostId == post.Id && r.IsApproved)
                 .AverageAsync(r => (decimal?)r.Rating);
-            post.ReviewCount = (uint)await _context.PostReviews.CountAsync(r => r.PostId == post.Id && r.IsApproved);
+            post.ReviewCount = (uint)await _context.Reviews.CountAsync(r => r.PostId == post.Id && r.IsApproved);
             post.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

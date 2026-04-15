@@ -1,116 +1,166 @@
+/* ============================================================
+   SIDE MENU
+   ============================================================ */
+
 .menu-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  inset: 0;
+  background: rgba(15,23,42,0.45);
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fadeOverlay 0.2s ease;
 }
 
+@keyframes fadeOverlay { from { opacity: 0 } to { opacity: 1 } }
+
 .menu-content {
-  width: 80%;
+  width: 82%;
   max-width: 300px;
   height: 100%;
-  background: white;
-  box-shadow: -5px 0 25px rgba(0,0,0,0.2);
+  background: #fff;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.18);
   display: flex;
   flex-direction: column;
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.28s cubic-bezier(0.34,1.26,0.64,1);
+  overflow: hidden;
 }
 
 @keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from { transform: translateX(100%); opacity: 0.8; }
+  to   { transform: translateX(0);    opacity: 1;   }
 }
 
+/* ── USER HEADER ─────────────────────────────────────────────── */
 .user-header {
-  background-color: #22c55e;
-  padding: 45px 20px 25px;
-  color: white;
+  background: linear-gradient(135deg, var(--green-600) 0%, var(--green-500) 100%);
+  padding: 48px 20px 28px;
+  color: #fff;
   position: relative;
-  border-bottom-left-radius: 25px;
-  border-bottom-right-radius: 25px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.user-info h3 { margin: 0; font-size: 18px; font-weight: 700; }
-.user-info p { margin: 4px 0 0; font-size: 14px; opacity: 0.9; }
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 2.5px solid rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.user-avatar svg { width: 26px; height: 26px; fill: #fff; }
+
+.user-info { flex: 1; min-width: 0; }
+.user-info h3 { margin: 0; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-info p  { margin: 3px 0 0; font-size: 13px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .close-x {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: none;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,0.18);
   border: none;
-  color: white;
-  font-size: 24px;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: background 0.2s;
 }
+.close-x:hover { background: rgba(255,255,255,0.28); }
+.close-x svg { width: 16px; height: 16px; fill: #fff; }
 
+/* ── MENU ITEMS ──────────────────────────────────────────────── */
 .menu-items {
-  padding: 20px 15px;
+  padding: 16px 12px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  overflow-y: auto;
 }
 
-/* Stil za svaku stavku (dugme) */
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 14px 18px;
-  background: #f8f9fa;
+  gap: 14px;
+  padding: 13px 16px;
+  background: none;
   border: none;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   font-weight: 600;
-  color: #333;
+  font-size: 14px;
+  color: var(--gray-700);
   width: 100%;
   text-align: left;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.2s;
+  transition: background 0.15s, color 0.15s;
 }
 
-/* Feedback pri kliku na mobilnom */
-.menu-item:active {
-  background-color: #e2e6ea;
-  transform: scale(0.98);
-}
+.menu-item:hover  { background: var(--gray-50); }
+.menu-item:active { background: var(--green-50); color: var(--green-600); }
 
-.icon {
-  font-size: 20px;
-  width: 24px;
-  display: inline-block;
-  text-align: center;
+.item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
 }
+.item-icon svg { width: 18px; height: 18px; fill: var(--gray-500); }
 
-.divider {
-  height: 1px;
-  background: #eee;
-  margin: 10px 10px;
-}
+/* Color-coded icons */
+.menu-item:hover .item-icon.icon-account   { background: #dbeafe; }
+.menu-item:hover .item-icon.icon-account svg { fill: #2563eb; }
+.menu-item:hover .item-icon.icon-saved    { background: #dcfce7; }
+.menu-item:hover .item-icon.icon-saved svg { fill: var(--green-600); }
+.menu-item:hover .item-icon.icon-calendar { background: #fef9c3; }
+.menu-item:hover .item-icon.icon-calendar svg { fill: #92400e; }
+.menu-item:hover .item-icon.icon-tickets  { background: #fce7f3; }
+.menu-item:hover .item-icon.icon-tickets svg { fill: #9d174d; }
+.menu-item:hover .item-icon.icon-notif    { background: #ffedd5; }
+.menu-item:hover .item-icon.icon-notif svg { fill: #c2410c; }
+.menu-item:hover .item-icon.icon-settings { background: var(--gray-100); }
+.menu-item:hover .item-icon.icon-settings svg { fill: var(--gray-600); }
 
-.footer {
-  padding: 20px;
-}
+.divider { height: 1px; background: var(--gray-100); margin: 8px 8px; }
+
+/* ── FOOTER ──────────────────────────────────────────────────── */
+.menu-footer { padding: 16px 12px 24px; }
 
 .logout-btn {
   width: 100%;
-  padding: 16px;
-  background: #22c55e;
-  color: white;
+  padding: 14px;
+  background: var(--green-500);
+  color: #fff;
   border: none;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--shadow-green);
+  transition: opacity 0.2s;
+  font-family: inherit;
 }
-
-.logout-btn:active {
-  opacity: 0.85;
-  transform: scale(0.98);
-}
+.logout-btn:hover  { opacity: 0.92; }
+.logout-btn:active { opacity: 0.82; transform: scale(0.98); }
+.logout-btn svg { width: 18px; height: 18px; fill: #fff; }

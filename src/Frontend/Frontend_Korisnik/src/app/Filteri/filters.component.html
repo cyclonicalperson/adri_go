@@ -1,67 +1,87 @@
 <div class="filters-container">
+
+  <!-- HEADER -->
   <div class="header">
-    <button class="icon-btn" (click)="closeFilters()">✕</button>
+    <button class="close-btn" (click)="closeFilters()">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
     <h1>Filters</h1>
     <button class="clear-btn" (click)="clearAll()">
-      <span class="refresh-icon">↺</span> Clear All
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      Clear All
     </button>
   </div>
 
   <div class="scroll-content">
+
+    <!-- CATEGORY -->
     <section>
       <div class="section-header">
-        <span class="section-icon category-bg">☂️</span>
+        <span class="section-icon category-bg">
+          <svg viewBox="0 0 24 24"><path d="M12 2l-5.5 9h11z M17.5 13c-2.49 0-4.5 2.01-4.5 4.5S15.01 22 17.5 22 22 19.99 22 17.5 19.99 13 17.5 13zM3 21.5h8v-8H3v8z"/></svg>
+        </span>
         <h2>Category</h2>
       </div>
       <div class="chips-grid">
-        <div *ngFor="let cat of categories" 
-             class="chip" 
-             [class.active]="cat.selected"
-             (click)="toggleCategory(cat)">
-          <span class="chip-icon">{{cat.icon}}</span>
-          {{cat.label}}
-        </div>
+        <button *ngFor="let cat of categories"
+          class="chip"
+          [class.active]="cat.selected"
+          (click)="toggleCategory(cat)">
+          <span class="chip-icon">
+            <svg viewBox="0 0 24 24" *ngIf="cat.id === 'beaches'"><path d="M13.127 14.56l1.43-1.43 6.44 6.443L19.57 21zm4.293-5.73l2.86-2.86c-3.95-3.95-10.35-3.96-14.3-.02 3.93-1.3 8.31-.25 11.44 2.88zM5.95 5.98c-3.94 3.95-3.93 10.35.02 14.3l2.86-2.86C5.7 14.29 4.65 9.91 5.95 5.98zm.02-.02l-.01.01c-.38 3.01 1.17 6.88 4.7 10.41l5.39-5.39c-3.53-3.53-7.4-5.09-10.08-5.03z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="cat.id === 'restaurants'"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="cat.id === 'culture'"><path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="cat.id === 'nature'"><path d="M17 8C8 10 5.9 16.17 3.82 21H5.1c.8-1.73 1.87-3.11 3.1-4.1C9.38 17.91 10.5 18.8 12 19c2.83.33 4.76-1.42 7-2 .57-.15 1.13-.24 1.7-.29C22.21 16.09 22.92 14.41 23 13c.08-1.35-.4-3.07-3-4.5C20 8.5 18.5 7.64 17 8z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="cat.id === 'activities'"><path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="cat.id === 'events'"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+          </span>
+          {{ cat.label }}
+        </button>
       </div>
     </section>
 
+    <!-- DISTANCE -->
     <section>
       <div class="section-header">
-        <span class="section-icon distance-bg">📍</span>
+        <span class="section-icon distance-bg">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        </span>
         <h2>Distance</h2>
       </div>
       <div class="slider-box">
         <div class="slider-labels">
           <span>Radius</span>
-          <span class="highlight">{{radius}} km</span>
+          <span class="highlight">{{ radius }} km</span>
         </div>
-        <input type="range" min="1" max="50" [(ngModel)]="radius" class="custom-slider">
-        <div class="range-markers">
-          <span>1 KM</span>
-          <span>25 KM</span>
-          <span>50 KM</span>
-        </div>
+        <input type="range" class="custom-slider" min="1" max="50" [(ngModel)]="radius" step="1">
+        <div class="range-markers"><span>1 KM</span><span>25 KM</span><span>50 KM</span></div>
       </div>
     </section>
 
+    <!-- RATING -->
     <section>
       <div class="section-header">
-        <span class="section-icon rating-bg">⭐</span>
+        <span class="section-icon rating-bg">
+          <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        </span>
         <h2>Minimal rating</h2>
       </div>
       <div class="rating-grid">
-        <div *ngFor="let r of [1,2,3,4,5]" 
-             class="rating-card" 
-             [class.active]="minRating === r"
-             (click)="setRating(r)">
-          <span class="star">⭐</span>
-          {{r}}+
-        </div>
+        <button *ngFor="let r of [1,2,3,4,5]" class="rating-card"
+          [class.active]="minRating === r"
+          (click)="setRating(r)">
+          <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          {{ r }}+
+        </button>
       </div>
     </section>
 
+    <!-- AVAILABILITY -->
     <section>
       <div class="section-header">
-        <span class="section-icon availability-bg">🌗</span>
+        <span class="section-icon availability-bg">
+          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+        </span>
         <h2>Availability</h2>
       </div>
       <div class="toggle-card">
@@ -76,25 +96,31 @@
       </div>
     </section>
 
+    <!-- PERIOD -->
     <section>
       <div class="section-header">
-        <span class="section-icon period-bg">🗓️</span>
+        <span class="section-icon period-bg">
+          <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+        </span>
         <h2>Period for events</h2>
       </div>
       <div class="date-picker-row">
         <div class="date-input">
           <label>FROM</label>
-          <input type="text" placeholder="Choose date" [(ngModel)]="fromDate">
+          <input type="date" [(ngModel)]="fromDate">
         </div>
         <div class="date-input">
           <label>TO</label>
-          <input type="text" placeholder="Choose date" [(ngModel)]="toDate">
+          <input type="date" [(ngModel)]="toDate">
         </div>
       </div>
     </section>
+
   </div>
 
+  <!-- FOOTER -->
   <div class="footer">
     <button class="apply-btn" (click)="applyFilters()">Apply Filters</button>
   </div>
+
 </div>

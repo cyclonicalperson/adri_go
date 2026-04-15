@@ -1,118 +1,117 @@
-
-
 <div class="list-container">
+
+  <!-- HEADER -->
   <div class="header-bar">
     <div class="logo">
-      <span class="logo-icon">🌍</span> AdriGo
+      <span class="logo-icon-box">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </span>
+      <span class="logo-text">AdriGo</span>
     </div>
-    <button class="menu-btn" (click)="toggleMenu()">☰</button>
+    <button class="menu-btn" (click)="toggleMenu()">
+      <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
   </div>
 
+  <!-- SEARCH -->
   <div class="search-section">
     <div class="search-row">
       <div class="search-input-wrapper">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        </span>
         <input type="text" placeholder="Location...">
         <button class="filter-icon-btn" (click)="openFilters()">
-          <span class="filter-icon">⚲</span>
+          <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
         </button>
       </div>
       <button class="map-view-btn" (click)="goToMap()">
-        🗺️
+        <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
       </button>
     </div>
     <button class="main-search-btn">Search</button>
   </div>
 
-  <!-- Feedback poruka za like/save -->
-  <div *ngIf="feedbackMessage" style="
-    background: #e8f5e9;
-    color: #2e7d32;
-    padding: 8px 14px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    font-size: 0.9rem;
-    text-align: center;
-  ">
-    {{ feedbackMessage }}
-  </div>
+  <!-- Feedback -->
+  <div class="feedback-msg" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
   <!-- Loading -->
-  <div *ngIf="isLoading" style="text-align:center; padding: 40px; color: #888;">
-    <div style="font-size: 2rem; margin-bottom: 10px;">⏳</div>
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="loading-icon"></div>
     Loading locations...
   </div>
 
   <!-- Error -->
-  <div *ngIf="errorMessage && !isLoading" style="
-    background: #fde8e8;
-    color: #c0392b;
-    padding: 12px;
-    border-radius: 8px;
-    margin: 10px 0;
-    text-align: center;
-  ">
+  <div class="error-state" *ngIf="errorMessage && !isLoading">
     {{ errorMessage }}
-    <button (click)="loadLocations()" style="margin-left: 10px; cursor: pointer;">
-      Pokušaj ponovo
-    </button>
+    <button (click)="loadLocations()" style="margin-left:10px;cursor:pointer;text-decoration:underline;background:none;border:none;color:inherit;font-weight:700;">Retry</button>
   </div>
 
-  <!-- Prazna lista -->
-  <div *ngIf="!isLoading && !errorMessage && locations.length === 0" style="
-    text-align: center; padding: 40px; color: #888;
-  ">
-    Nema lokacija za prikaz.
+  <!-- Empty -->
+  <div class="empty-state" *ngIf="!isLoading && !errorMessage && locations.length === 0">
+    No locations found.
   </div>
 
-  <!-- Lista lokacija -->
+  <!-- List -->
   <h2 class="section-title" *ngIf="!isLoading && locations.length > 0">Near you</h2>
 
   <div class="scroll-area">
     <div class="location-card" *ngFor="let loc of locations">
+
       <div class="image-wrapper">
         <img [src]="getFirstImage(loc)" [alt]="loc.title">
-        <span class="category-badge">{{ loc.postType }}</span>
+        <div class="image-gradient"></div>
 
-        <!-- Dugmad za like i save -->
-        <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;">
-          <button
-            (click)="onLike(loc, $event)"
-            title="Like"
-            style="background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem;"
-          >❤️</button>
-          <button
-            (click)="onSave(loc, $event)"
-            title="Save"
-            style="background: rgba(255,255,255,0.85); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem;"
-          >🔖</button>
+        <span class="category-badge">
+          <span class="cat-dot"></span>
+          {{ loc.postType }}
+        </span>
+
+        <div class="action-btns">
+          <button class="action-btn" (click)="onLike(loc, $event)" title="Like">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          </button>
+          <button class="action-btn" (click)="onSave(loc, $event)" title="Save">
+            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+          </button>
         </div>
       </div>
-      
+
       <div class="card-content">
         <div class="title-row">
           <h3>{{ loc.title }}</h3>
           <div class="rating-badge">
-            ⭐ {{ loc.avgRating ? (loc.avgRating | number:'1.1-1') : 'N/A' }}
+            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            {{ loc.avgRating ? (loc.avgRating | number:'1.1-1') : 'N/A' }}
           </div>
         </div>
 
         <div class="info-row">
-          <span *ngIf="loc.regionName">📍 {{ loc.regionName }}</span>
-          <span>❤️ {{ loc.likeCount }} &nbsp; 💬 {{ loc.reviewCount }}</span>
+          <span class="info-item" *ngIf="loc.regionName">
+            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            {{ loc.regionName }}
+          </span>
+          <span class="info-item">
+            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            {{ loc.likeCount }}
+          </span>
+          <span class="info-item">
+            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+            {{ loc.reviewCount }}
+          </span>
         </div>
 
         <div class="divider"></div>
 
         <button class="view-details-btn" (click)="viewDetails(loc.id)">
-          VIEW DETAILS <span class="arrow">→</span>
+          VIEW DETAILS
+          <span class="arrow-icon">
+            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </span>
         </button>
       </div>
     </div>
   </div>
 
-  <app-side-menu 
-    *ngIf="isMenuOpen" 
-    (onClose)="isMenuOpen = false">
-  </app-side-menu>
+  <app-side-menu *ngIf="isMenuOpen" (onClose)="isMenuOpen = false"></app-side-menu>
 </div>

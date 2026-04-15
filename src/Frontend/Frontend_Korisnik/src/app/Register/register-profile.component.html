@@ -1,127 +1,109 @@
-
-
 <div class="page-container">
-  <div class="header">
+  <div class="register-card">
+
     <h1 class="title">Create your profile</h1>
     <p class="subtitle">Discover Montenegro your way</p>
-  </div>
 
-  <!-- Prikaz greške iz backenda -->
-  <div *ngIf="errorMessage" style="
-    background: #fde8e8;
-    color: #c0392b;
-    border: 1px solid #e74c3c;
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: 0.9rem;
-  ">
-    {{ errorMessage }}
-  </div>
-
-  <form [formGroup]="profileForm" (ngSubmit)="onCreateAccount()">
-    <div class="form-section">
-      <div class="form-group">
-        <label for="fullName">Full name</label>
-        <div class="input-wrapper">
-          <span class="icon">👤</span>
-          <input 
-            type="text" 
-            id="fullName" 
-            formControlName="fullName" 
-            placeholder="exp. Marko Marković"
-          >
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="emailOrPhone">Email or phone</label>
-        <div class="input-wrapper">
-          <span class="icon">✉</span>
-          <input 
-            type="text" 
-            id="emailOrPhone" 
-            formControlName="emailOrPhone" 
-            placeholder="example@example.com"
-          >
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="password">Password</label>
-        <div class="input-wrapper">
-          <span class="icon">🔒</span>
-          <input 
-            type="password" 
-            id="password" 
-            formControlName="password" 
-            placeholder="Minimum 8 characters"
-          >
-        </div>
-      </div>
-
-      <div class="form-group language-group">
-        <label for="language">Language</label>
-        <div class="input-wrapper language-wrapper">
-          <span class="icon">🌐</span>
-          <input 
-            type="text" 
-            id="language" 
-            formControlName="language" 
-            readonly
-          >
-          <span class="arrow">▼</span>
-        </div>
-      </div>
+    <!-- Error -->
+    <div *ngIf="errorMessage" style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
+      {{ errorMessage }}
     </div>
 
-    <div class="interests-section">
-      <h2 class="section-title">What are you most interested in?</h2>
-      <p class="section-subtitle">Select at least 2 options for better recommendations.</p>
-      
+    <form [formGroup]="profileForm" (ngSubmit)="onCreateAccount()">
+
+      <!-- Full Name -->
+      <div class="form-group">
+        <label class="field-label" for="fullName">
+          <span class="label-icon lbl-green"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+          Full name
+        </label>
+        <div class="input-wrapper">
+          <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+          <input type="text" id="fullName" formControlName="fullName" placeholder="exp. Marko Marković">
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label class="field-label" for="emailOrPhone">
+          <span class="label-icon lbl-gray"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
+          Email or phone
+        </label>
+        <div class="input-wrapper">
+          <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
+          <input type="text" id="emailOrPhone" formControlName="emailOrPhone" placeholder="example@example.com">
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label class="field-label" for="password">
+          <span class="label-icon lbl-green"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
+          Password
+        </label>
+        <div class="input-wrapper">
+          <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
+          <input type="password" id="password" formControlName="password" placeholder="Minimum 8 characters">
+        </div>
+      </div>
+
+      <!-- Language -->
+      <div class="form-group">
+        <label class="field-label" for="language">
+          <span class="label-icon lbl-amber"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg></span>
+          Language
+        </label>
+        <div class="input-wrapper">
+          <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96z"/></svg></span>
+          <input type="text" id="language" formControlName="language" readonly>
+        </div>
+      </div>
+
+      <!-- INTERESTS -->
+      <p class="interests-heading">What are you most interested in?</p>
+      <p class="interests-sub">Select at least 2 options for better recommendations.</p>
+
       <div class="interests-grid">
-        <div 
-          *ngFor="let interest of interests" 
-          class="interest-card" 
-          [class.active]="isInterestSelected(interest.id)"
-          (click)="toggleInterest(interest.id)"
-        >
-          <div class="interest-icon-wrapper">
-            <span class="interest-icon">{{interest.icon}}</span>
-          </div>
-          <span class="interest-label">{{interest.label}}</span>
+        <button type="button" class="interest-chip" *ngFor="let interest of interests"
+          [class.selected]="isInterestSelected(interest.id)"
+          (click)="toggleInterest(interest.id)">
+          <span class="chip-icon-box">
+            <svg viewBox="0 0 24 24" *ngIf="interest.id === 'nature'"><path d="M17 8C8 10 5.9 16.17 3.82 21H5.1c.8-1.73 1.87-3.11 3.1-4.1C9.38 17.91 10.5 18.8 12 19c2.83.33 4.76-1.42 7-2 .57-.15 1.13-.24 1.7-.29C22.21 16.09 22.92 14.41 23 13c.08-1.35-.4-3.07-3-4.5C20 8.5 18.5 7.64 17 8z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="interest.id === 'food'"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="interest.id === 'beaches'"><path d="M13.127 14.56l1.43-1.43 6.44 6.443L19.57 21zm4.293-5.73l2.86-2.86c-3.95-3.95-10.35-3.96-14.3-.02 3.93-1.3 8.31-.25 11.44 2.88zM5.95 5.98c-3.94 3.95-3.93 10.35.02 14.3l2.86-2.86C5.7 14.29 4.65 9.91 5.95 5.98zm.02-.02l-.01.01c-.38 3.01 1.17 6.88 4.7 10.41l5.39-5.39c-3.53-3.53-7.4-5.09-10.08-5.03z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="interest.id === 'history'"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="interest.id === 'nightlife'"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>
+            <svg viewBox="0 0 24 24" *ngIf="interest.id === 'photography'"><path d="M12 15.2c-1.77 0-3.2-1.43-3.2-3.2 0-1.77 1.43-3.2 3.2-3.2 1.77 0 3.2 1.43 3.2 3.2 0 1.77-1.43 3.2-3.2 3.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+          </span>
+          {{ interest.label }}
+        </button>
+      </div>
+
+      <!-- LOCATION PERMIT -->
+      <div class="permit-card">
+        <span class="permit-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        </span>
+        <div class="permit-text">
+          <h4>Location permit</h4>
+          <p>Use of your location allows us to show you the nearest attractions, beaches and restaurants in real time. Your privacy is a priority.</p>
         </div>
       </div>
-    </div>
 
-    <div class="location-permit-card">
-      <div class="location-icon-wrapper">
-        <span class="location-icon">📍</span>
+      <!-- TERMS -->
+      <div class="terms-row">
+        <input type="checkbox" class="terms-checkbox" formControlName="termsAccepted" id="terms">
+        <label for="terms" class="terms-text">
+          I agree with the <a href="#">Terms of Use</a> and the <a href="#">Privacy Policy</a> of the Digital Tourist Map of Montenegro.
+        </label>
       </div>
-      <div class="location-text">
-        <h3>Location permit</h3>
-        <p>Use of your location by us allows us to show you the nearest attractions, beaches and restaurants in real life time. Your privacy is a priority.</p>
-      </div>
-    </div>
 
-    <div class="terms-group">
-      <label class="terms-checkbox-label">
-        <input type="checkbox" formControlName="termsAccepted">
-        <span class="terms-text">
-          I agree with the 
-          <a href="#" class="terms-link">Terms of Use</a> and the 
-          <a href="#" class="terms-link">Privacy Policy</a> 
-          of the Digital Tourist Map of Montenegro.
-        </span>
-      </label>
-    </div>
+      <button type="submit" class="submit-btn" [disabled]="!profileForm.valid || isLoading">
+        {{ isLoading ? 'Creating account...' : 'Create account' }}
+      </button>
 
-    <button type="submit" class="btn btn-primary" [disabled]="!profileForm.valid || isLoading">
-      {{ isLoading ? 'Creating account...' : 'Create account' }}
-    </button>
-  </form>
+      <p class="login-link">Already have an account? <a (click)="goToLogin()" style="cursor:pointer;">Log In</a></p>
 
-  <p class="login-footer-text">
-    Already have an account? <a (click)="goToLogin()" class="login-link">Log In</a>
-  </p>
+    </form>
+  </div>
 </div>
