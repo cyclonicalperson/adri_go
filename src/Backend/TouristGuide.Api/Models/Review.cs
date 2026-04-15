@@ -4,8 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TouristGuide.Api.Models
 {
     /// <summary>
-    /// Aktivni model recenzije za objavu (post) ili rutu (route).
-    /// Mapira review tabelu i koristi status kao primarni signal moderacije.
+    /// Recenzija turista za objavu (post) ili rutu (route).
+    /// Zamjenjuje stari PostReview model — dodano route_id i status polje (v2).
     /// </summary>
     [Table("review")]
     public class Review
@@ -26,24 +26,25 @@ namespace TouristGuide.Api.Models
         [Column("route_id")]
         public uint? RouteId { get; set; }
 
-        /// <summary>Ocena 1-5</summary>
+        /// <summary>Ocjena 1–5</summary>
         [Column("rating")]
         public byte Rating { get; set; }
 
         [Column("comment")]
         public string? Comment { get; set; }
 
-        /// <summary>PENDING | APPROVED | REJECTED - primarna kolona za moderaciju</summary>
+        /// <summary>PENDING | APPROVED | REJECTED — primarna kolona za moderaciju</summary>
         [Column("status")]
         public string Status { get; set; } = "PENDING";
 
-        /// <summary>Legacy kolona - koristiti Status za moderaciju</summary>
+        /// <summary>Legacy kolona — koristiti Status za moderaciju</summary>
         [Column("is_approved")]
         public bool IsApproved { get; set; } = false;
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // Navigation
         public Tourist? Tourist { get; set; }
         public Post? Post { get; set; }
         public Route? Route { get; set; }

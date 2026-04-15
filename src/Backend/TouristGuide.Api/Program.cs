@@ -78,6 +78,11 @@ builder.Services.AddAuthorization();
 // Naš JwtService — registrujemo ga da ga možemo ubrizgati u kontrolere
 builder.Services.AddScoped<JwtService>();
 
+// Potrebno za AdminIdentityService koji cita JWT claims van kontrolera
+builder.Services.AddHttpContextAccessor();
+// Pomocni servis koji odredjuje identitet prijavljenog admina iz tokena
+builder.Services.AddScoped<AdminIdentityService>();
+
 // Servis za lokacije (Admin panel)
 builder.Services.AddScoped<ILocationService, LocationService>();
 

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
@@ -7,7 +8,7 @@ using TouristGuide.Api.Services;
 namespace TouristGuide.Api.Controllers
 {
     [ApiController]
-    [Route("api/auth")]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly AppDbContext _dbContext;
@@ -37,21 +38,14 @@ namespace TouristGuide.Api.Controllers
             {
                 var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
+                // Tražimo korisnika u bazi, učitavamo i njegove permisije
                 var adminUser = await _dbContext.AdminUsers
-                    .Where(x => x.Email.ToLower() == normalizedEmail)
-                    .Select(x => new
-                    {
-                        x.Id,
-                        x.FullName,
-                        x.Email,
-                        x.PasswordHash,
-                        x.Role,
-                        x.AccountStatus,
-                        x.OrganizationId,
-                        x.IsIndividual
-                    })
-                    .FirstOrDefaultAsync();
+                    .Include(a => a.UserPermissions)
+                        .ThenInclude(up => up.Permission)
+                    .AsTracking()
+                    .FirstOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail);
 
+                // Proveravamo lozinku
                 if (adminUser is null ||
                     string.IsNullOrWhiteSpace(adminUser.PasswordHash) ||
                     !PasswordHelper.Verify(request.Password, adminUser.PasswordHash))
@@ -68,12 +62,12 @@ namespace TouristGuide.Api.Controllers
                     });
                 }
 
-                await _dbContext.AdminUsers
-                    .Where(a => a.Id == adminUser.Id)
-                    .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(a => a.LastLoginAt, DateTime.UtcNow)
-                        .SetProperty(a => a.UpdatedAt, DateTime.UtcNow));
+                // Beležimo poslednji login
+                adminUser.LastLoginAt = DateTime.UtcNow;
+                adminUser.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
 
+                // Generišemo JWT token
                 var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"] ?? "8");
                 var token = _jwtService.GenerateToken(
                     adminUser.Id,
@@ -83,14 +77,10 @@ namespace TouristGuide.Api.Controllers
                 );
                 var expiresAtUtc = DateTime.UtcNow.AddHours(expiresInHours);
 
-                var permissions = await _dbContext.AdminUserPermissions
-                    .Where(up => up.AdminUserId == adminUser.Id)
-                    .Join(
-                        _dbContext.AdminPermissions,
-                        up => up.PermissionId,
-                        permission => permission.Id,
-                        (_, permission) => permission.Code)
-                    .ToListAsync();
+                // Sakupljamo nazive permisija korisnika
+                var permissions = adminUser.UserPermissions
+                    .Select(up => up.Permission.Code)
+                    .ToList();
 
                 return Ok(new LoginResponseDto
                 {

@@ -23,6 +23,10 @@ namespace TouristGuide.Api.Models
         [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
 
+        /// <summary>NULL = email nije verifikovan</summary>
+        [Column("email_verified_at")]
+        public DateTime? EmailVerifiedAt { get; set; }
+
         [Required]
         [Column("password_hash")]
         [MaxLength(255)]
