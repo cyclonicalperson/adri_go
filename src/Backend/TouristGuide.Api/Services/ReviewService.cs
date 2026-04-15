@@ -94,7 +94,7 @@ namespace TouristGuide.Api.Services
             {
                 PostId = postId,
                 TouristId = touristId,
-                Rating = dto.Rating,
+                Rating = (byte)dto.Rating,
                 Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
                 Status = ApprovedReviewStatus,
                 IsApproved = true,

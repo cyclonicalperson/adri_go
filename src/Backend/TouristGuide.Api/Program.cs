@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
+using TouristGuide.Api.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,6 +80,9 @@ builder.Services.AddScoped<JwtService>();
 
 // Servis za lokacije (Admin panel)
 builder.Services.AddScoped<ILocationService, LocationService>();
+
+// Servis za Review-ove
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

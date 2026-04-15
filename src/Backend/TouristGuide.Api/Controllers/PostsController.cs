@@ -15,6 +15,7 @@ namespace TouristGuide.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IReviewService _reviewService;
 
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
@@ -57,7 +58,10 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            return await GetPublicPublishedOnly(region_id, type, page, pageSize);
+            var query = BuildFilteredPostsQuery(region_id, type, "published", forcePublishedOnly: true, out var error);
+            if (error is not null)
+                return error;
+            return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
         }
 
         [HttpGet("{id}")]
@@ -152,7 +156,7 @@ namespace TouristGuide.Api.Controllers
             return CreatedAtAction(
                 nameof(GetReviews),
                 new { id },
-                result.Review
+                MapToReviewDto(review, tourist.Name)
             );
         }
 
