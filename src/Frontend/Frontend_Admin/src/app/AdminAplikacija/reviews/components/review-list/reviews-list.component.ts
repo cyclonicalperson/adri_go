@@ -27,16 +27,13 @@ export class ReviewsListComponent implements OnInit {
   req: PageRequest & {
     status?: ReviewStatus;
     entityType?: ReviewEntityType;
-    postId?: number;
-    routeId?: number;
   } = { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' };
 
   constructor(
     private service: ReviewService,
     private auth: AuthService,
-  ) { }
+  ) {}
 
-  /** Only superadmin may permanently delete a review */
   get canDelete(): boolean { return this.auth.isSuperAdmin; }
 
   ngOnInit(): void { this.load(); this.loadCounts(); }
@@ -73,10 +70,7 @@ export class ReviewsListComponent implements OnInit {
   }
 
   onEntityTypeChange(t: string): void {
-    this.req = {
-      ...this.req, entityType: (t as ReviewEntityType) || undefined,
-      postId: undefined, routeId: undefined, page: 1,
-    };
+    this.req = { ...this.req, entityType: (t as ReviewEntityType) || undefined, page: 1 };
     this.load();
   }
 
@@ -95,24 +89,51 @@ export class ReviewsListComponent implements OnInit {
   openModeration(r: Review): void { this.moderateTarget = r; }
   closeModeration(): void { this.moderateTarget = null; }
 
-  /** Inline quick-approve from table row — available to all with review permission */
+  /** Inline quick-approve — azurira status i uklanja sa liste ako postoji statusfilter */
   updateStatus(r: Review, status: ReviewStatus): void {
-    this.service.updateStatus(r.reviewId, { status }).subscribe(() => {
-      r.status = status;
-      this.loadCounts();
+    this.service.updateStatus(r.reviewId, { status }).subscribe({
+      next: () => {
+        // Ako je aktivan filter po statusu i novi status ne odgovara, ukloni sa liste
+        if (this.req.status && this.req.status !== status) {
+          this.reviews = this.reviews.filter(x => x.reviewId !== r.reviewId);
+          this.total = Math.max(0, this.total - 1);
+        } else {
+          // Samo promijeni status u listi
+          const idx = this.reviews.findIndex(x => x.reviewId === r.reviewId);
+          if (idx !== -1) this.reviews[idx] = { ...this.reviews[idx], status };
+        }
+        this.loadCounts();
+      },
+      error: () => {},
     });
   }
 
+  /** Iz moderation panela — uvijek ukloni sa liste i zatvori panel */
   onStatusUpdated(payload: { review: Review; status: ReviewStatus }): void {
     this.service.updateStatus(payload.review.reviewId, { status: payload.status })
-      .subscribe(() => { this.moderateTarget = null; this.load(); this.loadCounts(); });
+      .subscribe({
+        next: () => {
+          this.moderateTarget = null;
+          // Ukloni sa tekuće liste (bez full reload ako je filter aktivan)
+          this.reviews = this.reviews.filter(x => x.reviewId !== payload.review.reviewId);
+          this.total = Math.max(0, this.total - 1);
+          this.loadCounts();
+        },
+        error: () => { this.moderateTarget = null; },
+      });
   }
 
-  /** Hard delete — superadmin only. Component also hides the button via canDelete. */
   deleteReview(r: Review): void {
     if (!this.canDelete) return;
     if (!confirm(`Trajno obriši recenziju od "${r.touristName ?? r.user?.fullName ?? 'Anoniman'}"?`)) return;
-    this.service.delete(r.reviewId).subscribe(() => { this.load(); this.loadCounts(); });
+    this.service.delete(r.reviewId).subscribe({
+      next: () => {
+        this.reviews = this.reviews.filter(x => x.reviewId !== r.reviewId);
+        this.total = Math.max(0, this.total - 1);
+        this.loadCounts();
+      },
+      error: () => {},
+    });
   }
 
   printReport(): void { window.print(); }
@@ -147,7 +168,6 @@ export class ReviewsListComponent implements OnInit {
     return pages;
   }
 
-  // ── Display helpers ────────────────────────────────────────────────────
   statusBadgeClass(s: ReviewStatus): string {
     return { PENDING: 'badge-amber', APPROVED: 'badge-green', REJECTED: 'badge-red' }[s] ?? 'badge-gray';
   }

@@ -22,26 +22,32 @@ export class ZahteviComponent implements OnInit {
   selected: RegistrationRequest | null = null;
   detailOpen = false;
 
-  // Counts per status
+  // ── Brojevi kartica — iste kao na Admini stranici ─────────────────────
+  // Kartica 1: Na čekanju (registracioni zahtevi pending)
   pendingCount = 0;
-  approvedCount = 0;
-  rejectedCount = 0;
+  // Kartica 2: Aktivni admini (isto kao na Admini stranici)
+  activeAdminCount = 0;
+  // Kartica 3: Suspendovani admini (isto kao na Admini stranici)
+  suspendedAdminCount = 0;
+  // Kartica 4: Ukupno zahteva
   allCount = 0;
 
-  // Filters
+  // Lokalni filteri za prikaz u tabeli
+  approvedCount = 0;
+  rejectedCount = 0;
+
   activeStatus: FilterStatus = 'pending';
   searchQuery = '';
 
   page = 1;
   pageSize = 10;
 
-  // Reject flow
   rejectDialogOpen = false;
   rejectReason = '';
   rejectTarget: RegistrationRequest | null = null;
   processing = false;
 
-  constructor(private service: UserService) { }
+  constructor(private service: UserService) {}
 
   ngOnInit(): void {
     this.load();
@@ -66,12 +72,19 @@ export class ZahteviComponent implements OnInit {
   }
 
   private loadCounts(): void {
+    // Brojevi zahteva po statusu
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' })
       .subscribe(r => { this.pendingCount = r.total; this.recomputeAll(); });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'approved' })
       .subscribe(r => { this.approvedCount = r.total; this.recomputeAll(); });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'rejected' })
       .subscribe(r => { this.rejectedCount = r.total; this.recomputeAll(); });
+
+    // Aktivni i suspendovani admini — iste kartice kao na Admini stranici
+    this.service.getAll({ page: 1, pageSize: 1000 }).subscribe(res => {
+      this.activeAdminCount    = res.data.filter(u => u.accountStatus === 'active').length;
+      this.suspendedAdminCount = res.data.filter(u => u.accountStatus === 'suspended').length;
+    });
   }
 
   private recomputeAll(): void {
@@ -141,7 +154,6 @@ export class ZahteviComponent implements OnInit {
     });
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────
   get pageNumbers(): number[] {
     const pages: number[] = [];
     for (let i = Math.max(1, this.page - 2); i <= Math.min(this.totalPages, this.page + 2); i++) {
@@ -170,7 +182,6 @@ export class ZahteviComponent implements OnInit {
     return `🏢 ${r.organizationName ?? 'Organizacija'}`;
   }
 
-  /** Check if request has an attached document (mock: always true for demo) */
   hasDocument(r: RegistrationRequest): boolean {
     return !!(r as any).documentUrl;
   }
