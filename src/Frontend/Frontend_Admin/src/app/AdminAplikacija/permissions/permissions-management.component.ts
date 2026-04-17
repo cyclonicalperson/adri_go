@@ -81,6 +81,9 @@ export class PermissionsManagementComponent implements OnInit {
       next: res => { this.regions = res.data; },
       error: () => { this.regions = []; },
     });
+
+    // Load persistent permission change log
+    this.loadChangeLog();
   }
 
   private buildGroups(perms: Permission[]): PermissionGroup[] {
@@ -208,37 +211,56 @@ export class PermissionsManagementComponent implements OnInit {
   }
 
   grantAll(): void {
+    if (!this.selectedUser) return;
     this.activePermCodes = new Set(this.allPermissions.map(p => p.code));
+    this.refreshPermCount(this.selectedUser.userId, null); // null = recompute from activePermCodes
   }
 
   revokeAll(): void {
+    if (!this.selectedUser) return;
     this.activePermCodes = new Set();
+    this.refreshPermCount(this.selectedUser.userId, null);
   }
 
   // ── Log izmjena ────────────────────────────────────────────────────────
   private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {
-    this.changeLog.unshift({
+    const entry: ChangeLogEntry = {
       icon: type === 'grant' ? '✅' : '✗',
       label: type === 'grant' ? 'Dozvola dodata' : 'Dozvola uklonjena',
       user: 'Ja',
       perm: permCode,
       entity: targetName,
-      time: 'Upravo',
+      time: new Date().toLocaleString('sr-RS'),
       type,
-    });
-    // Ograniči log na 20 unosa
-    if (this.changeLog.length > 20) this.changeLog = this.changeLog.slice(0, 20);
+    };
+    this.changeLog.unshift(entry);
+    if (this.changeLog.length > 50) this.changeLog = this.changeLog.slice(0, 50);
+
+    // Persist to backend (mock stores in localStorage)
+    this.http.post(`${environment.apiUrl}/permission-log`, entry).subscribe();
   }
 
-  // Ažurira permissionCount u listi korisnika odmah (bez čekanja reload-a)
-  private refreshPermCount(userId: number, delta: number): void {
+  // Load persistent log from backend on init
+  private loadChangeLog(): void {
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/permission-log`).subscribe({
+      next: res => { this.changeLog = res.data ?? []; },
+      error: () => { this.changeLog = []; },
+    });
+  }
+
+  // Ažurira permissionCount u listi korisnika odmah
+  // delta=null means recompute from current activePermCodes
+  private refreshPermCount(userId: number, delta: number | null): void {
+    const newCount = delta === null
+      ? this.activePermCodes.size
+      : Math.max(0, (this.users.find(u => u.userId === userId)?.permissionCount ?? 0) + delta);
+
     const idx = this.users.findIndex(u => u.userId === userId);
     if (idx !== -1) {
-      const current = this.users[idx].permissionCount ?? 0;
-      this.users[idx] = { ...this.users[idx], permissionCount: Math.max(0, current + delta) };
-      if (this.selectedUser?.userId === userId) {
-        this.selectedUser = { ...this.selectedUser, permissionCount: Math.max(0, current + delta) };
-      }
+      this.users[idx] = { ...this.users[idx], permissionCount: newCount };
+    }
+    if (this.selectedUser?.userId === userId) {
+      this.selectedUser = { ...this.selectedUser, permissionCount: newCount };
     }
   }
 

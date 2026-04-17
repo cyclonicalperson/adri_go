@@ -73,7 +73,7 @@
       <span class="search-icon">🔍</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretraži lokacije po nazivu, gradu…"
+             placeholder="Pretraži destinacije po nazivu, gradu…"
              [value]="req.search ?? ''"
              (input)="onSearch($any($event.target).value)" />
     </div>
@@ -118,7 +118,7 @@
   <div class="panel">
     <div class="panel-header">
       <div>
-        <div class="panel-title">Sve lokacije</div>
+        <div class="panel-title">Sve destinacije</div>
         <div class="panel-sub">{{ total }} rezultata · stranica {{ req.page }} od {{ totalPages }}</div>
       </div>
       <div class="view-toggle">

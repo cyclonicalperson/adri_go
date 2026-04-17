@@ -159,7 +159,7 @@
           <td style="font-size:12px;color:#6b7280">
             {{ e.region?.name ?? '—' }}
           </td>
-          <td style="font-size:12px;font-weight:600">—</td>
+          <td style="font-size:12px;font-weight:600">{{ e.adminName ?? '—' }}</td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
               <button class="btn-icon map-btn" title="Mapa" (click)="showOnMap(e)">🗺️</button>

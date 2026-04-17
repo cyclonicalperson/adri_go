@@ -54,12 +54,24 @@
             <div class="notif-desc">{{ n.body }}</div>
             <div class="notif-time">{{ n.time }}</div>
           </div>
-          @if (!n.isRead) {
-          <div class="notif-unread-dot"></div>
-          }
+          <div class="notif-item-actions">
+            @if (!n.isRead) {
+            <div class="notif-unread-dot"></div>
+            }
+            <button class="notif-delete-btn"
+                    title="Obriši obaveštenje"
+                    (click)="deleteNotification(n, $event)">
+              ✕
+            </button>
+          </div>
         </div>
         }
       </div>
+      @if (notifications.length > 0) {
+      <div class="notif-panel-footer">
+        <button class="notif-clear-all" (click)="clearAllNotifications()">🗑️ Obriši sva obaveštenja</button>
+      </div>
+      }
     </div>
     }
 

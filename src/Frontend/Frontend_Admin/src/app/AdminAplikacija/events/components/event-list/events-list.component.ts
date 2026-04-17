@@ -84,31 +84,50 @@ export class EventsListComponent implements OnInit {
   load(): void {
     this.loading = true;
 
-    let params = new HttpParams()
-      .set('type', 'event')           // Backend: ?type=event (ne postType)
-      .set('page', this.req.page)
-      .set('pageSize', this.req.pageSize);
+    // We load a large page (200) to support client-side category filtering
+    // because the backend stores category inside a JSON details field and cannot filter on it
+    const fetchSize = this.req.category ? 200 : this.req.pageSize;
 
-    if (this.req.sortBy)   params = params.set('sortBy', this.req.sortBy);
-    if (this.req.sortDir)  params = params.set('sortDir', this.req.sortDir!);
-    if (this.req.search)   params = params.set('search', this.req.search);
-    if (this.req.regionId) params = params.set('region_id', this.req.regionId); // Backend: region_id
-    if (this.req.status)   params = params.set('status', this.req.status);
-    // Napomena: backend ne filtrira po category (detalj iz JSON polja) — ignorišemo
+    let params = new HttpParams()
+      .set('type', 'event')
+      .set('page', 1)
+      .set('pageSize', fetchSize);
+
+    if (this.req.sortBy) params = params.set('sortBy', this.req.sortBy);
+    if (this.req.sortDir) params = params.set('sortDir', this.req.sortDir!);
+    if (this.req.search) params = params.set('search', this.req.search);
+    if (this.req.regionId) params = params.set('region_id', this.req.regionId);
+    if (this.req.status) params = params.set('status', this.req.status);
 
     this.http.get<{ data: Post[]; total: number; totalPages: number }>(
       `${environment.apiUrl}/posts`, { params }
     ).subscribe({
       next: res => {
-        this.events = res.data;
-        this.total = res.total;
-        this.totalPages = res.totalPages;
+        let all = res.data;
+
+        // Client-side category filter (backend can't filter on JSON details field)
+        if (this.req.category) {
+          all = all.filter(e => this.eventCategory(e) === this.req.category);
+        }
 
         const now = new Date();
-        this.upcomingCount = res.data.filter(e => this.eventStart(e) > now).length;
-        this.ongoingCount = res.data.filter(e => this.eventStart(e) <= now && this.eventEnd(e) >= now).length;
-        this.pastCount = res.data.filter(e => this.eventEnd(e) < now).length;
-        this.draftCount = res.data.filter(e => e.status === 'draft').length;
+        this.upcomingCount = all.filter(e => this.eventStart(e) > now).length;
+        this.ongoingCount = all.filter(e => this.eventStart(e) <= now && this.eventEnd(e) >= now).length;
+        this.pastCount = all.filter(e => this.eventEnd(e) < now).length;
+        this.draftCount = all.filter(e => e.status === 'draft').length;
+
+        // Manual pagination when category filter is active
+        if (this.req.category) {
+          this.total = all.length;
+          this.totalPages = Math.max(1, Math.ceil(all.length / this.req.pageSize));
+          const start = (this.req.page - 1) * this.req.pageSize;
+          this.events = all.slice(start, start + this.req.pageSize);
+        } else {
+          this.events = all;
+          this.total = res.total;
+          this.totalPages = res.totalPages;
+        }
+
         this.loading = false;
       },
       error: () => { this.loading = false; },

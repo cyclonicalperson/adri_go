@@ -52,7 +52,7 @@ export class DashboardComponent implements OnInit {
   pendingRequests: PendingRequest[] = [];
   activityLog: ActivityEntry[] = [];
 
-  // Hardkodovane preferencije i breakdown ostaju kao placeholder (nema API za to)
+  // Hardkodovane preferencije ostaju kao placeholder (nema API za to)
   readonly preferences = [
     { label: '🏨 Smeštaj', pct: 38, color: '#22c55e' },
     { label: '🎭 Kultura', pct: 24, color: '#3b82f6' },
@@ -61,23 +61,15 @@ export class DashboardComponent implements OnInit {
     { label: '🍴 Hrana', pct: 8, color: '#ef4444' },
   ];
 
-  readonly categoryBreakdown = [
-    { label: 'Smeštaj', icon: '🏨', pct: 31, color: '#22c55e' },
-    { label: 'Restoran', icon: '🍽️', pct: 15, color: '#3b82f6' },
-    { label: 'Atrakcije', icon: '🌟', pct: 15, color: '#f59e0b' },
-    { label: 'Kulturni objekti', icon: '🏛️', pct: 15, color: '#8b5cf6' },
-    { label: 'Sportski objekti', icon: '⚽', pct: 8, color: '#ec4899' },
-    { label: 'Dogadjaji', icon: '🎟️', pct: 8, color: '#06b6d4' },
-    { label: 'Klubovi', icon: '🎵', pct: 5, color: '#f97316' },
-    { label: 'Ostalo', icon: '📍', pct: 3, color: '#d1d5db' },
-  ];
+  // Computed from real posts data — filled in loadSecondaryData()
+  categoryBreakdown: { label: string; icon: string; count: number; pct: number; color: string }[] = [];
 
   constructor(
     public auth: AuthService,
     private analytics: AnalyticsService,
     private userService: UserService,
     private http: HttpClient,
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.config = this.loadConfig();
@@ -91,18 +83,18 @@ export class DashboardComponent implements OnInit {
     const fmt = (d: Date) => d.toISOString().split('T')[0];
 
     forkJoin({
-      stats:     this.analytics.getDashboardStats().pipe(catchError(() => of({ data: null } as any))),
-      visits:    this.analytics.getDailyVisits(fmt(from), fmt(today)).pipe(catchError(() => of({ data: [] } as any))),
-      objects:   this.analytics.getPopularPosts(5).pipe(catchError(() => of({ data: [] } as any))),
-      events:    this.analytics.getPopularEvents(5).pipe(catchError(() => of({ data: [] } as any))),
+      stats: this.analytics.getDashboardStats().pipe(catchError(() => of({ data: null } as any))),
+      visits: this.analytics.getDailyVisits(fmt(from), fmt(today)).pipe(catchError(() => of({ data: [] } as any))),
+      objects: this.analytics.getPopularPosts(5).pipe(catchError(() => of({ data: [] } as any))),
+      events: this.analytics.getPopularEvents(5).pipe(catchError(() => of({ data: [] } as any))),
       movements: this.analytics.getTouristMovements().pipe(catchError(() => of({ data: [] } as any))),
     }).subscribe({
       next: res => {
-        this.stats         = res.stats?.data ?? null;
-        this.visits        = res.visits?.data ?? [];
+        this.stats = res.stats?.data ?? null;
+        this.visits = res.visits?.data ?? [];
         this.popularObjects = res.objects?.data ?? [];
-        this.popularEvents  = res.events?.data ?? [];
-        this.movements      = res.movements?.data ?? [];
+        this.popularEvents = res.events?.data ?? [];
+        this.movements = res.movements?.data ?? [];
         this.loading = false;
 
         this.loadSecondaryData();
@@ -112,13 +104,41 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadSecondaryData(): void {
-    // Pinovi za mapu lokacija
+    // Pinovi za mapu lokacija + raspored po tipu
     this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
       params: new HttpParams().set('page', 1).set('pageSize', 200)
     }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
-      this.allPosts = (r.data ?? [])
+      const all = r.data ?? [];
+      this.allPosts = all
         .filter((p: any) => p.lat && p.lng && p.postType !== 'event')
         .map((p: any) => ({ id: p.id ?? p.postId, title: p.title, postType: p.postType, lat: +p.lat, lng: +p.lng }));
+
+      // Compute categoryBreakdown from actual post types
+      const nonEvents = all.filter((p: any) => p.postType !== 'event');
+      const total = nonEvents.length || 1;
+      const typeConfig: Record<string, { label: string; icon: string; color: string }> = {
+        accommodation: { label: 'Smeštaj', icon: '🏨', color: '#22c55e' },
+        restaurant: { label: 'Restoran', icon: '🍽️', color: '#3b82f6' },
+        attraction: { label: 'Atrakcije', icon: '🌟', color: '#f59e0b' },
+        cultural_site: { label: 'Kulturni objekti', icon: '🏛️', color: '#8b5cf6' },
+        sports_facility: { label: 'Sportski objekti', icon: '⚽', color: '#ec4899' },
+        club: { label: 'Klubovi', icon: '🎵', color: '#f97316' },
+        monument: { label: 'Spomenici', icon: '🗿', color: '#06b6d4' },
+        shop: { label: 'Prodavnice', icon: '🛍️', color: '#84cc16' },
+        other: { label: 'Ostalo', icon: '📍', color: '#d1d5db' },
+      };
+      const counts: Record<string, number> = {};
+      for (const p of nonEvents) { counts[p.postType] = (counts[p.postType] ?? 0) + 1; }
+      this.categoryBreakdown = Object.entries(counts)
+        .filter(([, cnt]) => cnt > 0)
+        .sort(([, a], [, b]) => b - a)
+        .map(([type, cnt]) => ({
+          label: typeConfig[type]?.label ?? type,
+          icon: typeConfig[type]?.icon ?? '📍',
+          count: cnt,
+          pct: Math.round((cnt / total) * 100),
+          color: typeConfig[type]?.color ?? '#d1d5db',
+        }));
     });
 
     // Pending registration requests (samo superadmin)
@@ -128,11 +148,11 @@ export class DashboardComponent implements OnInit {
         .pipe(catchError(() => of({ data: [] } as any)))
         .subscribe(r => {
           this.pendingRequests = (r.data ?? []).map((req: any) => ({
-            id:      req.id,
-            icon:    req.isIndividual ? '👤' : '🏢',
-            iconBg:  req.isIndividual ? '#eff6ff' : '#f0fdf4',
-            title:   req.fullName,
-            meta:    (req.organizationName ?? 'Fizičko lice') + ' · Registracija',
+            id: req.id,
+            icon: req.isIndividual ? '👤' : '🏢',
+            iconBg: req.isIndividual ? '#eff6ff' : '#f0fdf4',
+            title: req.fullName,
+            meta: (req.organizationName ?? 'Fizičko lice') + ' · Registracija',
           }));
         });
     }
@@ -142,11 +162,11 @@ export class DashboardComponent implements OnInit {
       params: new HttpParams().set('page', 1).set('pageSize', 5)
     }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
       this.activityLog = (r.data ?? []).slice(0, 5).map((p: any) => ({
-        icon:  p.postType === 'event' ? '🎟️' : '📍',
-        bg:    p.postType === 'event' ? '#fffbeb' : '#f0fdf4',
+        icon: p.postType === 'event' ? '🎟️' : '📍',
+        bg: p.postType === 'event' ? '#fffbeb' : '#f0fdf4',
         title: p.status === 'published' ? 'Objavljeno' : 'Kreirano (nacrt)',
-        text:  p.title + ' — ' + (p.region?.name ?? p.regionName ?? ''),
-        time:  this.timeAgo(p.createdAt),
+        text: p.title + ' — ' + (p.region?.name ?? p.regionName ?? ''),
+        time: this.timeAgo(p.createdAt),
       }));
     });
 
@@ -155,7 +175,7 @@ export class DashboardComponent implements OnInit {
       params: new HttpParams().set('page', 1).set('pageSize', 5)
     }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
       this.topActivities = (r.data ?? []).slice(0, 5).map((a: any) => ({
-        id:   a.id ?? a.activityId,
+        id: a.id ?? a.activityId,
         name: a.name,
       }));
     });
@@ -169,9 +189,9 @@ export class DashboardComponent implements OnInit {
         return {
           name,
           initials: name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase(),
-          comment:  rv.comment ?? '',
-          stars:    '★'.repeat(rv.rating ?? 0) + '☆'.repeat(Math.max(0, 5 - (rv.rating ?? 0))),
-          status:   rv.status ?? 'PENDING',
+          comment: rv.comment ?? '',
+          stars: '★'.repeat(rv.rating ?? 0) + '☆'.repeat(Math.max(0, 5 - (rv.rating ?? 0))),
+          status: rv.status ?? 'PENDING',
         };
       });
     });
@@ -189,10 +209,10 @@ export class DashboardComponent implements OnInit {
     return this.movements
       .filter(m => m.latitude && m.longitude)
       .map(m => ({
-        id:       m.regionId,
-        lat:      m.latitude,
-        lng:      m.longitude,
-        label:    `${m.regionName} (${m.visitCount} poseta)`,
+        id: m.regionId,
+        lat: m.latitude,
+        lng: m.longitude,
+        label: `${m.regionName} (${m.visitCount} poseta)`,
         category: `${m.visitCount} poseta`,
       }));
   }
@@ -200,10 +220,10 @@ export class DashboardComponent implements OnInit {
   get locationMarkers(): MapMarker[] {
     if (this.allPosts.length) {
       return this.allPosts.map(p => ({
-        id:       p.id,
-        lat:      p.lat,
-        lng:      p.lng,
-        label:    p.title,
+        id: p.id,
+        lat: p.lat,
+        lng: p.lng,
+        label: p.title,
         category: p.postType,
       }));
     }
@@ -215,10 +235,10 @@ export class DashboardComponent implements OnInit {
     return this.movements
       .filter(m => m.latitude && m.longitude)
       .map(m => ({
-        lat:       m.latitude,
-        lng:       m.longitude,
+        lat: m.latitude,
+        lng: m.longitude,
         intensity: m.visitCount / max,
-        label:     `${m.regionName}: ${m.visitCount} poseta`,
+        label: `${m.regionName}: ${m.visitCount} poseta`,
       }));
   }
 
