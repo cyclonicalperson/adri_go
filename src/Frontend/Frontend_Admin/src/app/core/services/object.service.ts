@@ -111,6 +111,10 @@ export class ObjectService {
       address:          payload.address,
       lat:              payload.latitude,
       lng:              payload.longitude,
+      externalUrl:      payload.website ?? null,
+      openingHours:     payload.workingHours ? { text: payload.workingHours } : null,
+      details:          payload.phone ? { phone: payload.phone } : null,
+      images:           payload.media?.map(m => m.url) ?? [],
       status:           'draft',
     };
     return this.http.post<any>(this.url, body).pipe(
@@ -120,14 +124,19 @@ export class ObjectService {
 
   update(id: number, payload: UpdateObjectRequest): Observable<ApiResponse<TouristObject>> {
     const body: any = {};
-    if (payload.name)        body['title']    = payload.name;
-    if (payload.category)    body['postType'] = CATEGORY_TO_POST_TYPE[payload.category] ?? 'other';
-    if (payload.description) body['description'] = payload.description;
-    if (payload.address)     body['address']  = payload.address;
-    if (payload.latitude)    body['lat']      = payload.latitude;
-    if (payload.longitude)   body['lng']      = payload.longitude;
+    if (payload.name !== undefined) body['title'] = payload.name;
+    if (payload.category !== undefined) body['postType'] = CATEGORY_TO_POST_TYPE[payload.category] ?? 'other';
+    if (payload.description !== undefined) body['description'] = payload.description;
+    if (payload.address !== undefined) body['address'] = payload.address;
+    if (payload.latitude !== undefined) body['lat'] = payload.latitude;
+    if (payload.longitude !== undefined) body['lng'] = payload.longitude;
+    if (payload.website !== undefined) body['externalUrl'] = payload.website;
+    if (payload.workingHours !== undefined) body['openingHours'] = payload.workingHours ? { text: payload.workingHours } : null;
+    if (payload.phone !== undefined) body['details'] = payload.phone ? { phone: payload.phone } : null;
+    if (payload.media !== undefined) body['images'] = payload.media.map(m => m.url);
+    if (payload.status !== undefined) body['status'] = payload.status;
     const rid = payload.regionId ?? payload.destinationId;
-    if (rid)                 body['regionId'] = rid;
+    if (rid !== undefined) body['regionId'] = rid;
 
     return this.http.put<any>(`${this.url}/${id}`, body).pipe(
       map(res => ({ data: postToObject(res.data ?? res), success: true }))
@@ -157,13 +166,18 @@ function postToObject(p: any): TouristObject {
     longitude:     p.lng ?? p.longitude ?? 0,
     phone:         '',
     website:       p.externalUrl ?? '',
-    workingHours:  '',
+    workingHours:  p.openingHours?.text ?? '',
     createdBy:     p.adminId ?? 0,
     createdAt:     p.createdAt ?? '',
     destination:   regionData ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     region:        regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     averageRating: p.avgRating ?? null,
     reviewCount:   p.reviewCount ?? 0,
+    media:         (p.images ?? []).map((url: string, idx: number) => ({
+      mediaId: idx + 1,
+      url,
+      sortOrder: idx,
+    })),
     // Čuvamo originalnu status vrijednost (za filter u UI)
     ...(p.status ? { status: p.status } : {}),
   } as any;

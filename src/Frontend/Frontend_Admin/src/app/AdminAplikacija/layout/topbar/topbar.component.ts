@@ -71,13 +71,13 @@ export class TopbarComponent implements OnInit {
   // ── Naslov stranice ───────────────────────────────────────────────────
   private readonly titleMap: Record<string, { title: string; sub: string }> = {
     '/admin/dashboard': { title: 'Dashboard', sub: 'Pregled platforme' },
-    '/admin/lokacije': { title: 'Lokacije', sub: 'Upravljanje lokacijama' },
+    '/admin/lokacije': { title: 'Destinacije', sub: 'Upravljanje destinacijama' },
     '/admin/aktivnosti': { title: 'Aktivnosti', sub: 'Upravljanje aktivnostima' },
     '/admin/events': { title: 'Dogadjaji', sub: 'Upravljanje dogadjajima' },
     '/admin/reviews': { title: 'Recenzije', sub: 'Moderacija recenzija' },
     '/admin/users': { title: 'Admini', sub: 'Upravljanje administratorima' },
     '/admin/permissions': { title: 'Dozvole', sub: 'Upravljanje dozvolama' },
-    '/admin/map-admin': { title: 'Mapa', sub: 'Interaktivna mapa lokacija' },
+    '/admin/map-admin': { title: 'Mapa', sub: 'Interaktivna mapa destinacija' },
     '/admin/profile': { title: 'Moj profil', sub: 'Podaci o nalogu' },
     '/admin/zahtevi': { title: 'Zahtevi za registraciju', sub: 'Pregled i odobravanje zahteva' },
   };

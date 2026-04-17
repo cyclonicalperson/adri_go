@@ -113,25 +113,20 @@ export class UsersListComponent implements OnInit {
 
   // ── Suspend / Activate ────────────────────────────────────────────────
   toggleSuspend(u: User): void {
+    const actionLabel = u.isActive ? 'suspendujete' : 'aktivirate';
+    const confirmed = window.confirm(`Da li ste sigurni da želite da ${actionLabel} nalog "${u.fullName}"?`);
+    if (!confirmed) return;
+
     const action$ = u.isActive
       ? this.service.suspend(u.userId)
       : this.service.activate(u.userId);
 
     action$.subscribe({
       next: res => {
-        // Ažuriramo lokalno bez reload-a stranice — odmah mijenjamo status
         const updated = res.data;
         const idx = this.users.findIndex(x => x.userId === u.userId);
-        if (idx !== -1 && updated) {
-          this.users[idx] = { ...this.users[idx], ...updated, isActive: updated.accountStatus === 'active' };
-        } else if (idx !== -1) {
-          // Fallback: toggle ručno
-          this.users[idx] = {
-            ...this.users[idx],
-            accountStatus: u.isActive ? 'suspended' : 'active',
-            isActive: !u.isActive,
-          };
-        }
+        if (idx !== -1 && updated) this.users[idx] = { ...this.users[idx], ...updated, isActive: updated.accountStatus === 'active' };
+        this.load();
         this.loadCounts();
       },
       error: () => { },

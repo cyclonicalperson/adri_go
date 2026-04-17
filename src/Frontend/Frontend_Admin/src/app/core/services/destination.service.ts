@@ -70,10 +70,10 @@ export class DestinationService {
 
   update(id: number, payload: UpdateDestinationRequest): Observable<ApiResponse<Destination>> {
     const body: any = {};
-    if (payload.name)      body['name'] = payload.name;
-    if (payload.type)      body['type'] = payload.type.toLowerCase();
-    if (payload.latitude)  body['lat']  = payload.latitude;
-    if (payload.longitude) body['lng']  = payload.longitude;
+    if (payload.name !== undefined) body['name'] = payload.name;
+    if (payload.type !== undefined) body['type'] = payload.type.toLowerCase();
+    if (payload.latitude !== undefined) body['lat'] = payload.latitude;
+    if (payload.longitude !== undefined) body['lng'] = payload.longitude;
     return this.http.put<any>(`${this.url}/${id}`, body).pipe(
       map(res => ({ data: regionToDestination(res.data ?? res), success: true }))
     );

@@ -54,7 +54,7 @@ export class SidebarComponent implements OnInit {
   get mainItems(): NavItem[] {
     return [
       { label: 'Dashboard', route: '/admin/dashboard', icon: '📊' },
-      { label: 'Lokacije', route: '/admin/lokacije', icon: '🏢' },
+      { label: 'Destinacije', route: '/admin/lokacije', icon: '🏢' },
       { label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' },
       { label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' },
       { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.pendingReviewsBadge },

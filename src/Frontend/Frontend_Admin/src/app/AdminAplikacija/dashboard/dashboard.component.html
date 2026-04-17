@@ -379,6 +379,9 @@
       <div class="panel widget">
         <div class="panel-header"><div class="panel-title">Sklonosti turista</div></div>
         <div class="panel-body">
+          @if (preferences.length === 0) {
+          <div class="state-msg">Nema pregleda.</div>
+          }
           @for (p of preferences; track p.label) {
           <div class="pref-item">
             <div class="pref-header"><span class="pref-label">{{ p.label }}</span><span class="pref-pct">{{ p.pct }}%</span></div>
@@ -394,6 +397,9 @@
       <div class="panel widget">
         <div class="panel-header"><div class="panel-title">Po gradu</div><div class="panel-sub">Distribucija pregleda</div></div>
         <div class="panel-body">
+          @if (cityBreakdown.length === 0) {
+          <div class="state-msg">Nema pregleda.</div>
+          }
           @for (c of cityBreakdown; track c.label) {
           <div class="pref-item">
             <div class="pref-header"><span class="pref-label">{{ c.label }}</span><span class="pref-pct">{{ c.pct }}%</span></div>

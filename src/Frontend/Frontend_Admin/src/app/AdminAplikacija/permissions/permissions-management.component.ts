@@ -212,13 +212,21 @@ export class PermissionsManagementComponent implements OnInit {
 
   grantAll(): void {
     if (!this.selectedUser) return;
+    const previous = new Set(this.activePermCodes);
     this.activePermCodes = new Set(this.allPermissions.map(p => p.code));
+    this.allPermissions
+      .filter(p => !previous.has(p.code))
+      .forEach(p => this.addLog('grant', p.code, this.selectedUser?.fullName ?? ''));
     this.refreshPermCount(this.selectedUser.userId, null); // null = recompute from activePermCodes
   }
 
   revokeAll(): void {
     if (!this.selectedUser) return;
+    const previous = new Set(this.activePermCodes);
     this.activePermCodes = new Set();
+    this.allPermissions
+      .filter(p => previous.has(p.code))
+      .forEach(p => this.addLog('revoke', p.code, this.selectedUser?.fullName ?? ''));
     this.refreshPermCount(this.selectedUser.userId, null);
   }
 

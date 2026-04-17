@@ -52,14 +52,8 @@ export class DashboardComponent implements OnInit {
   pendingRequests: PendingRequest[] = [];
   activityLog: ActivityEntry[] = [];
 
-  // Hardkodovane preferencije ostaju kao placeholder (nema API za to)
-  readonly preferences = [
-    { label: '🏨 Smeštaj', pct: 38, color: '#22c55e' },
-    { label: '🎭 Kultura', pct: 24, color: '#3b82f6' },
-    { label: '⚽ Sport', pct: 18, color: '#f59e0b' },
-    { label: '💆 Wellness', pct: 12, color: '#8b5cf6' },
-    { label: '🍴 Hrana', pct: 8, color: '#ef4444' },
-  ];
+  preferences: { label: string; pct: number; color: string }[] = [];
+  cityBreakdown: { label: string; pct: number; color: string; views: number }[] = [];
 
   // Computed from real posts data — filled in loadSecondaryData()
   categoryBreakdown: { label: string; icon: string; count: number; pct: number; color: string }[] = [];
@@ -138,6 +132,39 @@ export class DashboardComponent implements OnInit {
           count: cnt,
           pct: Math.round((cnt / total) * 100),
           color: typeConfig[type]?.color ?? '#d1d5db',
+        }));
+
+      const typeViews: Record<string, number> = {};
+      let totalViews = 0;
+      for (const p of nonEvents) {
+        const views = Number(p.viewCount ?? 0);
+        totalViews += views;
+        typeViews[p.postType] = (typeViews[p.postType] ?? 0) + views;
+      }
+      this.preferences = Object.entries(typeViews)
+        .filter(([, views]) => views > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([type, views]) => ({
+          label: `${typeConfig[type]?.icon ?? '📍'} ${typeConfig[type]?.label ?? type}`,
+          pct: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0,
+          color: typeConfig[type]?.color ?? '#d1d5db',
+        }));
+    });
+
+    this.analytics.getRegionPopularity().pipe(catchError(() => of({ data: [] } as any))).subscribe(r => {
+      const data = r.data ?? [];
+      const allViews = data.reduce((sum: number, x: any) => sum + Number(x.totalViews ?? 0), 0);
+      const palette = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+      this.cityBreakdown = data
+        .filter((x: any) => Number(x.totalViews ?? 0) > 0)
+        .sort((a: any, b: any) => Number(b.totalViews ?? 0) - Number(a.totalViews ?? 0))
+        .slice(0, 6)
+        .map((x: any, i: number) => ({
+          label: x.name,
+          views: Number(x.totalViews ?? 0),
+          pct: allViews > 0 ? Math.round((Number(x.totalViews ?? 0) / allViews) * 100) : 0,
+          color: palette[i % palette.length],
         }));
     });
 

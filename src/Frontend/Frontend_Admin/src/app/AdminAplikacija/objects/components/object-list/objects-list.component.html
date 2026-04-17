@@ -3,8 +3,8 @@
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="onStatusFilter('')">
-      <div class="num">{{ total }}</div>
-      <div class="lbl">Ukupno lokacija</div>
+      <div class="num">{{ globalTotal }}</div>
+      <div class="lbl">Ukupno destinacija</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'active'" (click)="onStatusFilter('active')">
       <div class="num" style="color:#15803d">{{ activeCount }}</div>
@@ -26,7 +26,7 @@
   <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!req.category" (click)="onCategoryChange('')">
-      Sve ({{ total }})
+      Sve ({{ globalTotal }})
     </button>
     <button class="ftab" [class.active]="req.category === 'HOTEL'" (click)="onCategoryChange('HOTEL')">
       🏨 Hoteli
@@ -123,14 +123,13 @@
       </div>
       <div class="view-toggle">
         <button class="view-btn active" title="Lista">☰</button>
-        <button class="view-btn" title="Grid">⊞</button>
       </div>
     </div>
 
     <table>
       <thead>
         <tr>
-          <th (click)="onSortCol('name')">Lokacija <span class="sort">↕</span></th>
+          <th (click)="onSortCol('name')">Destinacija <span class="sort">↕</span></th>
           <th>Kategorija</th>
           <th (click)="onSortCol('address')">Grad / GPS <span class="sort">↕</span></th>
           <th>Aktivnosti</th>
@@ -197,6 +196,10 @@
             <span class="badge badge-green">✅ Aktivna</span>
             } @else if (objectStatus(o) === 'draft') {
             <span class="badge badge-amber">⏳ Na čekanju</span>
+            <div style="margin-top:6px;display:flex;gap:6px">
+              <button class="btn-icon approve-btn" title="Odobri" (click)="approve(o)">✅</button>
+              <button class="btn-icon danger" title="Odbij" (click)="reject(o)">❌</button>
+            </div>
             } @else {
             <span class="badge badge-gray">📦 Arhivirana</span>
             }
@@ -218,7 +221,7 @@
     </table>
 
     <div class="pagination">
-      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} lokacija</div>
+      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} destinacija</div>
       <div class="pg-btns">
         <button class="pg-btn" [disabled]="req.page === 1" (click)="onPage(req.page - 1)">←</button>
         @for (p of pageNumbers; track p) {

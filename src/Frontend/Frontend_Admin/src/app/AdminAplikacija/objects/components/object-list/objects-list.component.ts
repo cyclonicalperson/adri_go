@@ -27,6 +27,7 @@ export class ObjectsListComponent implements OnInit {
   activeCount = 0;
   pendingCount = 0;
   inactiveCount = 0;
+  globalTotal = 0;
 
   req: PageRequest & { category?: string; regionId?: number; status?: string } = {
     page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc',
@@ -43,6 +44,7 @@ export class ObjectsListComponent implements OnInit {
       this.regions = res.data;
     });
     this.load();
+    this.loadGlobalCounts();
   }
 
   load(): void {
@@ -52,12 +54,21 @@ export class ObjectsListComponent implements OnInit {
         this.objects = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
-        this.activeCount = res.data.filter(o => this.objectStatus(o) === 'published').length;
-        this.pendingCount = res.data.filter(o => this.objectStatus(o) === 'draft').length;
-        this.inactiveCount = res.data.filter(o => this.objectStatus(o) === 'archived').length;
         this.loading = false;
       },
       error: () => { this.loading = false; },
+    });
+  }
+
+  private loadGlobalCounts(): void {
+    const baseReq = { page: 1, pageSize: 500, sortBy: 'createdAt', sortDir: 'desc' as const };
+    this.service.getAll(baseReq).subscribe({
+      next: res => {
+        this.globalTotal = res.total;
+        this.activeCount = res.data.filter(o => this.objectStatus(o) === 'published').length;
+        this.pendingCount = res.data.filter(o => this.objectStatus(o) === 'draft').length;
+        this.inactiveCount = res.data.filter(o => this.objectStatus(o) === 'archived').length;
+      },
     });
   }
 
@@ -69,11 +80,13 @@ export class ObjectsListComponent implements OnInit {
   onCategoryChange(cat: string): void {
     this.req = { ...this.req, category: cat || undefined, page: 1 };
     this.load();
+    this.loadGlobalCounts();
   }
 
   onDestinationChange(id: string): void {
     this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
+    this.loadGlobalCounts();
   }
 
   onStatusFilter(val: string): void {
@@ -86,6 +99,7 @@ export class ObjectsListComponent implements OnInit {
     (this.req as any)['status'] = statusMap[val] || undefined;
     this.req = { ...this.req, page: 1 };
     this.load();
+    this.loadGlobalCounts();
   }
 
   onSort(val: string): void {
@@ -119,6 +133,30 @@ export class ObjectsListComponent implements OnInit {
     this.service.delete(this.deleteTarget.objectId).subscribe(() => {
       this.deleteTarget = null;
       this.load();
+    });
+  }
+
+  approve(o: TouristObject): void {
+    if (this.objectStatus(o) !== 'draft') return;
+    if (!window.confirm(`Da li ste sigurni da želite da odobrite "${o.name}"?`)) return;
+    this.service.update(o.objectId, { status: 'published' }).subscribe({
+      next: () => {
+        (o as any).status = 'published';
+        this.load();
+        this.loadGlobalCounts();
+      },
+    });
+  }
+
+  reject(o: TouristObject): void {
+    if (this.objectStatus(o) !== 'draft') return;
+    if (!window.confirm(`Da li ste sigurni da želite da odbijete "${o.name}"?`)) return;
+    this.service.update(o.objectId, { status: 'archived' }).subscribe({
+      next: () => {
+        (o as any).status = 'archived';
+        this.load();
+        this.loadGlobalCounts();
+      },
     });
   }
 

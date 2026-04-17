@@ -215,6 +215,17 @@ export class EventsListComponent implements OnInit {
       .subscribe(() => { this.deleteTarget = null; this.load(); });
   }
 
+  setEventStatus(e: Post, status: PostStatus): void {
+    const action = status === 'published' ? 'odobrite' : 'odbijete';
+    if (!window.confirm(`Da li ste sigurni da želite da ${action} događaj "${e.title}"?`)) return;
+    this.http.put(`${environment.apiUrl}/posts/${e.postId}`, { status }).subscribe({
+      next: () => {
+        e.status = status;
+        this.load();
+      },
+    });
+  }
+
   printReport(): void { window.print(); }
 
   exportCsv(): void {

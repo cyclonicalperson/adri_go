@@ -1,6 +1,4 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
-import { HttpEventType } from '@angular/common/http';
-import { MediaUploadService } from '@core/services/media-upload.service';
 import { Media } from '@core/models/destination.model';
 
 @Component({
@@ -20,7 +18,7 @@ export class MediaUploaderComponent implements OnInit {
   progress = 0;
   error: string | null = null;
 
-  constructor(private uploadService: MediaUploadService) { }
+  constructor() { }
 
   ngOnInit(): void { }
 
@@ -33,27 +31,25 @@ export class MediaUploaderComponent implements OnInit {
     this.progress = 0;
     this.error = null;
 
-    this.uploadService.upload(this.entityType, this.entityId, file).subscribe({
-      next: ev => {
-        if (ev.type === HttpEventType.UploadProgress && ev.total) {
-          this.progress = Math.round(100 * ev.loaded / ev.total);
-        }
-        if (ev.type === HttpEventType.Response) {
-          const newMedia = [...this.media, ev.body!.data];
-          this.mediaChange.emit(newMedia);
-          this.uploading = false;
-        }
-      },
-      error: err => {
-        this.error = err.message;
-        this.uploading = false;
-      },
-    });
+    const reader = new FileReader();
+    reader.onload = () => {
+      const newItem: Media = {
+        mediaId: Date.now(),
+        url: String(reader.result ?? ''),
+        sortOrder: this.media.length,
+      };
+      this.progress = 100;
+      this.mediaChange.emit([...this.media, newItem]);
+      this.uploading = false;
+    };
+    reader.onerror = () => {
+      this.error = 'Greška pri učitavanju slike.';
+      this.uploading = false;
+    };
+    reader.readAsDataURL(file);
   }
 
   remove(mediaId: number): void {
-    this.uploadService.delete(mediaId).subscribe(() => {
-      this.mediaChange.emit(this.media.filter(m => m.mediaId !== mediaId));
-    });
+    this.mediaChange.emit(this.media.filter(m => m.mediaId !== mediaId));
   }
 }

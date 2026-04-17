@@ -1214,7 +1214,7 @@
 
 .cat-row {
   display: grid;
-  grid-template-columns: 150px 1fr 38px;
+  grid-template-columns: 150px 1fr auto;
   align-items: center;
   gap: 10px;
 
@@ -1245,5 +1245,6 @@
     font-weight: 700;
     color: #6b7280;
     text-align: right;
+    white-space: nowrap;
   }
 }

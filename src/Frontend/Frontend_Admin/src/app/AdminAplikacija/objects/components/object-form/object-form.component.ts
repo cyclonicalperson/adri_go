@@ -108,7 +108,7 @@ export class ObjectFormComponent implements OnInit {
     this.saving = true;
     this.error = null;
 
-    const payload = { ...this.form.value, activityIds: this.selectedActivityIds };
+    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media: this.media };
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)
