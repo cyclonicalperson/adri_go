@@ -49,8 +49,6 @@ export class AktivnostFormComponent implements OnInit {
       name: ['', Validators.required],
       category: ['SPORT', Validators.required],
       description: ['', Validators.required],
-      imageUrl: [''],
-      color: [''],
       duration: [''],
       difficulty: [''],
       maxCapacity: [null],
@@ -79,8 +77,6 @@ export class AktivnostFormComponent implements OnInit {
           const a = res.data;
           this.form.patchValue({
             name: a.name, category: a.category, description: a.description,
-            imageUrl: a.imageUrl ?? '',
-            color: a.color ?? '',
             duration: a.duration, difficulty: a.difficulty, maxCapacity: a.maxCapacity,
             tags: Array.isArray(a.tags) ? a.tags.join(', ') : (a.tags ?? ''),
             objectId: a.objectId,
@@ -104,11 +100,10 @@ export class AktivnostFormComponent implements OnInit {
 
     const raw = this.form.value;
     const payload = {
-      name: raw.name,
-      category: raw.category,
-      description: raw.description ?? '',
-      imageUrl: (raw.imageUrl as string)?.trim() || null,
-      color: (raw.color as string)?.trim() || null,
+      ...raw,
+      tags: raw.tags
+        ? (raw.tags as string).split(',').map((t: string) => t.trim()).filter(Boolean)
+        : [],
     };
 
     const url = this.isEdit

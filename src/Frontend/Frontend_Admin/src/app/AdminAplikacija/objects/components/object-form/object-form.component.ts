@@ -115,11 +115,11 @@ export class ObjectFormComponent implements OnInit {
       : this.service.create(payload);
 
     req$.subscribe({
-      next: () => this.router.navigate(['/admin/destinacije']),
+      next: () => this.router.navigate(['/admin/lokacije']),
       error: (err: any) => { this.error = err.message ?? 'Greška pri čuvanju.'; this.saving = false; },
     });
   }
 
-  cancel(): void { this.router.navigate(['/admin/destinacije']); }
+  cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
 }

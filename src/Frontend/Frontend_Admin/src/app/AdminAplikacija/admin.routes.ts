@@ -10,8 +10,7 @@ export const ADMIN_ROUTES: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', loadChildren: () => import('./dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES) },
       // ── Sadržaj ──────────────────────────────────────────────────────
-      { path: 'destinacije', loadChildren: () => import('./objects/objects.routes').then(m => m.OBJECTS_ROUTES) },
-      { path: 'lokacije', redirectTo: 'destinacije', pathMatch: 'full' },
+      { path: 'lokacije', loadChildren: () => import('./objects/objects.routes').then(m => m.OBJECTS_ROUTES) },
       { path: 'aktivnosti', loadChildren: () => import('./aktivnosti/aktivnosti.routes').then(m => m.AKTIVNOSTI_ROUTES) },
       { path: 'events', loadChildren: () => import('./events/events.routes').then(m => m.EVENTS_ROUTES) },
       { path: 'reviews', loadChildren: () => import('./reviews/reviews.routes').then(m => m.REVIEWS_ROUTES) },
@@ -28,7 +27,7 @@ export const ADMIN_ROUTES: Routes = [
       // ── Legacy redirecti ─────────────────────────────────────────────
       { path: 'analytics', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'turisti-list', redirectTo: 'turisti', pathMatch: 'full' },
-      { path: 'objects', redirectTo: 'destinacije' },
+      { path: 'objects', redirectTo: 'lokacije' },
     ],
   },
 ];

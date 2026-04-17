@@ -47,7 +47,7 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int pageSize = 10)
         {
             var query = _context.Tags
-                .Where(t => t.Category != null && ActivityTagHelper.IsActivityTag(t.Category))
+                .Where(t => t.Category == "aktivnost")
                 .AsQueryable();
 
             // ── Filtriranje po ulozi ──────────────────────────────────────────
@@ -74,11 +74,9 @@ namespace TouristGuide.Api.Controllers
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(t => t.Name.Contains(search));
 
-            if (!string.IsNullOrWhiteSpace(category) && !string.Equals(category, "OTHER", StringComparison.OrdinalIgnoreCase))
-            {
-                var catUpper = category.Trim().ToUpperInvariant();
-                query = query.Where(t => ActivityTagHelper.GetActivitySubtype(t.Category) == catUpper);
-            }
+            if (!string.IsNullOrWhiteSpace(category) && category != "OTHER")
+                query = query.Where(t => t.Category != null &&
+                    t.Category.ToLower().Contains(category.ToLower()));
 
             var total = await query.CountAsync();
 
@@ -121,24 +119,25 @@ namespace TouristGuide.Api.Controllers
                 {
                     activityId   = t.Id,
                     name         = t.Name,
-                    category     = ActivityTagHelper.GetActivitySubtype(t.Category),
+                    category     = t.Category ?? "OTHER",
                     description  = "",
-                    imageUrl     = t.ImageUrl,
-                    color        = t.Color,
                     lat          = prviPost?.Lat,
                     lng          = prviPost?.Lng,
                     locationName = prviPost?.Region?.Name ?? prviPost?.Address ?? "",
                     viewCount    = (uint)veze.Sum(pt => (long)pt.Post.ViewCount),
                     linkedPosts  = veze.Count,
+                    // Aktivnost je "approved" ako ima vezanih postova
                     status       = veze.Count > 0 ? "approved" : "pending"
                 };
             }).ToList();
 
-            var actBase = _context.Tags.AsQueryable()
-                .Where(t => t.Category != null && ActivityTagHelper.IsActivityTag(t.Category));
-            var sportCount    = await actBase.CountAsync(t => ActivityTagHelper.GetActivitySubtype(t.Category) == "SPORT");
-            var natureCount   = await actBase.CountAsync(t => ActivityTagHelper.GetActivitySubtype(t.Category) == "ADVENTURE");
-            var wellnessCount = await actBase.CountAsync(t => ActivityTagHelper.GetActivitySubtype(t.Category) == "WELLNESS");
+            // Statistike za header kartice (ukupan broj po tipu)
+            var sportCount    = await _context.Tags.CountAsync(t =>
+                t.Category != null && t.Category.ToLower().Contains("sport"));
+            var natureCount   = await _context.Tags.CountAsync(t =>
+                t.Category != null && t.Category.ToLower().Contains("adventure"));
+            var wellnessCount = await _context.Tags.CountAsync(t =>
+                t.Category != null && t.Category.ToLower().Contains("wellness"));
 
             return Ok(new
             {
@@ -163,7 +162,7 @@ namespace TouristGuide.Api.Controllers
                 .Include(t => t.PostTags)
                     .ThenInclude(pt => pt.Post)
                         .ThenInclude(p => p.Region)
-                .FirstOrDefaultAsync(t => t.Id == id && t.Category != null && ActivityTagHelper.IsActivityTag(t.Category));
+                .FirstOrDefaultAsync(t => t.Id == id && t.Category == "aktivnost");
 
             if (tag == null)
                 return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
@@ -188,10 +187,8 @@ namespace TouristGuide.Api.Controllers
                 {
                     activityId   = tag.Id,
                     name         = tag.Name,
-                    category     = ActivityTagHelper.GetActivitySubtype(tag.Category),
+                    category     = tag.Category ?? "OTHER",
                     description  = "",
-                    imageUrl     = tag.ImageUrl,
-                    color        = tag.Color,
                     lat          = prviPost?.Lat,
                     lng          = prviPost?.Lng,
                     locationName = prviPost?.Region?.Name ?? prviPost?.Address ?? ""
@@ -212,9 +209,7 @@ namespace TouristGuide.Api.Controllers
             var noviTag = new Tag
             {
                 Name     = dto.Name.Trim(),
-                Category = ActivityTagHelper.FormatActivityCategory(dto.Category),
-                Color    = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim(),
-                ImageUrl = string.IsNullOrWhiteSpace(dto.ImageUrl) ? null : dto.ImageUrl.Trim()
+                Category = "aktivnost"
             };
 
             _context.Tags.Add(noviTag);
@@ -232,8 +227,6 @@ namespace TouristGuide.Api.Controllers
             var tag = await _context.Tags.FindAsync(id);
             if (tag == null)
                 return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
-            if (tag.Category == null || !ActivityTagHelper.IsActivityTag(tag.Category))
-                return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
             if (!_adminIdentityService.IsSuperAdmin())
             {
@@ -250,12 +243,6 @@ namespace TouristGuide.Api.Controllers
 
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 tag.Name = dto.Name.Trim();
-            if (dto.Category != null)
-                tag.Category = ActivityTagHelper.FormatActivityCategory(dto.Category);
-            if (dto.Color != null)
-                tag.Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim();
-            if (dto.ImageUrl != null)
-                tag.ImageUrl = string.IsNullOrWhiteSpace(dto.ImageUrl) ? null : dto.ImageUrl.Trim();
 
             await _context.SaveChangesAsync();
             return Ok(new { success = true });
@@ -269,8 +256,6 @@ namespace TouristGuide.Api.Controllers
         {
             var tag = await _context.Tags.FindAsync(id);
             if (tag == null)
-                return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
-            if (tag.Category == null || !ActivityTagHelper.IsActivityTag(tag.Category))
                 return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
             if (!_adminIdentityService.IsSuperAdmin())
@@ -297,7 +282,5 @@ namespace TouristGuide.Api.Controllers
         public string Name { get; set; } = "";
         public string? Category { get; set; }
         public string? Description { get; set; }
-        public string? Color { get; set; }
-        public string? ImageUrl { get; set; }
     }
 }

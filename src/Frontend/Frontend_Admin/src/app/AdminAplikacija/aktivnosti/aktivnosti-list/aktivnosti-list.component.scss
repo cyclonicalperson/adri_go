@@ -1,27 +1,6 @@
 @use 'variables' as *;
 @use 'list-page' as *;
 
-.item-thumb .thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 11px;
-}
-
-.detail-hero {
-  margin: -8px 0 12px;
-  border-radius: 10px;
-  overflow: hidden;
-  max-height: 180px;
-}
-
-.detail-hero-img {
-  width: 100%;
-  height: 160px;
-  object-fit: cover;
-  display: block;
-}
-
 // Wellness type badge (not in list-page)
 .type-wellness {
   background: #f3e8ff;

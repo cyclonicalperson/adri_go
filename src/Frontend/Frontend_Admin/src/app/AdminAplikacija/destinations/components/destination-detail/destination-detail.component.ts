@@ -87,6 +87,6 @@ export class DestinationDetailComponent implements OnInit {
   }
 
   goObject(obj: TouristObject): void {
-    this.router.navigate(['/admin/destinacije', obj.objectId]);
+    this.router.navigate(['/admin/objects', obj.objectId]);
   }
 }
