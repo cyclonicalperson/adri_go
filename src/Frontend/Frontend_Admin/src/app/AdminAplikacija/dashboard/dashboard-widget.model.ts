@@ -6,7 +6,7 @@ export type WidgetId =
   | 'kpi_stats'
   | 'visits_chart'
   | 'category_donut'
-  | 'top_lokacije'
+  | 'top_destinacije'
   | 'top_dogadjaji'
   | 'top_aktivnosti'
   | 'pending_requests'
@@ -49,7 +49,7 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   {
     id: 'kpi_stats',
     label: 'KPI Kartice',
-    description: 'Brzi pregled: lokacije, aktivnosti, dogadjaji, recenzije.',
+    description: 'Brzi pregled: destinacije, aktivnosti, dogadjaji, recenzije.',
     icon: '📊',
     defaultSpan: 2,
     adminOnly: false,
@@ -65,15 +65,15 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   {
     id: 'category_donut',
     label: 'Raspored po kategoriji',
-    description: 'Donut grafikon distribucije lokacija po kategoriji.',
+    description: 'Donut grafikon distribucije destinacija po kategoriji.',
     icon: '🍩',
     defaultSpan: 1,
     adminOnly: false,
   },
   {
-    id: 'top_lokacije',
-    label: 'Top lokacije',
-    description: 'Najpopularnije lokacije po broju pregleda.',
+    id: 'top_destinacije',
+    label: 'Top destinacije',
+    description: 'Najpopularnije destinacije po broju pregleda.',
     icon: '🏢',
     defaultSpan: 1,
     adminOnly: false,
@@ -128,8 +128,8 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   },
   {
     id: 'tourist_map',
-    label: 'Mapa lokacija',
-    description: 'Interaktivna mapa svih lokacija na platformi.',
+    label: 'Mapa destinacija',
+    description: 'Interaktivna mapa svih destinacija na platformi.',
     icon: '🗺️',
     defaultSpan: 2,
     adminOnly: false,
@@ -169,7 +169,7 @@ export const DEFAULT_LAYOUT_ADMIN: DashboardConfig = {
     { id: 'kpi_stats', span: 2 },
     { id: 'visits_chart', span: 2 },
     { id: 'pending_requests', span: 1 },
-    { id: 'top_lokacije', span: 1 },
+    { id: 'top_destinacije', span: 1 },
     { id: 'category_donut', span: 1 },
     { id: 'activity_log', span: 1 },
     { id: 'tourist_map', span: 2 },
@@ -185,7 +185,7 @@ export const DEFAULT_LAYOUT_ORG: DashboardConfig = {
   slots: [
     { id: 'kpi_stats', span: 2 },
     { id: 'visits_chart', span: 2 },
-    { id: 'top_lokacije', span: 1 },
+    { id: 'top_destinacije', span: 1 },
     { id: 'category_donut', span: 1 },
     { id: 'tourist_map', span: 2 },
     { id: 'activity_log', span: 1 },

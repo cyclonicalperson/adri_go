@@ -120,9 +120,9 @@ export class ObjectsListComponent implements OnInit {
     this.load();
   }
 
-  goNew(): void { this.router.navigate(['/admin/lokacije/new']); }
-  goEdit(o: TouristObject): void { this.router.navigate(['/admin/lokacije', o.objectId, 'edit']); }
-  goDetail(o: TouristObject): void { this.router.navigate(['/admin/lokacije', o.objectId]); }
+  goNew(): void { this.router.navigate(['/admin/destinacije/new']); }
+  goEdit(o: TouristObject): void { this.router.navigate(['/admin/destinacije', o.objectId, 'edit']); }
+  goDetail(o: TouristObject): void { this.router.navigate(['/admin/destinacije', o.objectId]); }
   goMap(o: TouristObject): void { this.router.navigate(['/admin/map-admin']); }
 
   confirmDelete(o: TouristObject): void { this.deleteTarget = o; }

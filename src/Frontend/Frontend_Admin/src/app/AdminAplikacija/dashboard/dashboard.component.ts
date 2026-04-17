@@ -277,11 +277,23 @@ export class DashboardComponent implements OnInit {
   private loadConfig(): DashboardConfig {
     try {
       const raw = localStorage.getItem(this.storageKey());
-      if (raw) return JSON.parse(raw) as DashboardConfig;
+      if (raw) return this.migrateWidgetIds(JSON.parse(raw) as DashboardConfig);
     } catch { /* ignore */ }
     return this.isSuperAdmin
       ? { slots: [...DEFAULT_LAYOUT_ADMIN.slots] }
       : { slots: [...DEFAULT_LAYOUT_ORG.slots] };
+  }
+
+  /** Stari layout koristio je top_lokacije — mapiramo na top_destinacije */
+  private migrateWidgetIds(cfg: DashboardConfig): DashboardConfig {
+    const map: Record<string, WidgetId> = { top_lokacije: 'top_destinacije' };
+    return {
+      ...cfg,
+      slots: cfg.slots.map(s => ({
+        span: s.span,
+        id: (map[s.id as string] ?? s.id) as WidgetId,
+      })),
+    };
   }
 
   saveConfig(): void { localStorage.setItem(this.storageKey(), JSON.stringify(this.config)); }
@@ -328,7 +340,8 @@ export class DashboardComponent implements OnInit {
   }
 
   widgetLabel(id: WidgetId): string {
-    return WIDGET_CATALOGUE.find(w => w.id === id)?.label ?? id;
+    const mapped = id === ('top_lokacije' as WidgetId) ? 'top_destinacije' : id;
+    return WIDGET_CATALOGUE.find(w => w.id === mapped)?.label ?? id;
   }
 
   get availableToAdd(): WidgetDef[] {

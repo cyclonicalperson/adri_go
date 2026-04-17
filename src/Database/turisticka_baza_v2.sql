@@ -276,8 +276,9 @@ CREATE TABLE post_translation (
 CREATE TABLE tag (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,
-    category    VARCHAR(100) COMMENT 'aktivnost, amenity, stil...',
-    color       VARCHAR(7)   COMMENT 'hex boja za UI'
+    category    VARCHAR(100) COMMENT 'aktivnost, aktivnost:TIP, amenity, stil...',
+    color       VARCHAR(7)   COMMENT 'hex boja za UI',
+    image_url   VARCHAR(500) NULL COMMENT 'slika aktivnosti (admin UI)'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -699,27 +700,27 @@ INSERT INTO region (name, type, description, country, lat, lng, cover_image) VAL
 --  TAGOVI
 -- ============================================================
 
-INSERT INTO tag (name, category, color) VALUES
-('Outdoor',         'aktivnost',  '#2D9E4F'),
-('Porodično',       'stil',       '#4A90E2'),
-('Romantično',      'stil',       '#E24A7C'),
-('Besplatno',       'cijena',     '#27AE60'),
-('Parking',         'amenity',    '#7F8C8D'),
-('WiFi',            'amenity',    '#2980B9'),
-('Pješačenje',      'aktivnost',  '#8E44AD'),
-('Biciklizam',      'aktivnost',  '#E67E22'),
-('Plivanje',        'aktivnost',  '#16A085'),
-('UNESCO',          'oznaka',     '#C0392B'),
-('Historijsko',     'oznaka',     '#D35400'),
-('Restoran',        'tip',        '#E74C3C'),
-('Kafić',           'tip',        '#935116'),
-('Noćni život',     'aktivnost',  '#8E44AD'),
-('Sport',           'aktivnost',  '#2ECC71'),
-('Adrenalin',       'aktivnost',  '#E74C3C'),
-('Priroda',         'aktivnost',  '#27AE60'),
-('Kulturno',        'oznaka',     '#9B59B6'),
-('Muzika',          'aktivnost',  '#1ABC9C'),
-('Gastronomija',    'aktivnost',  '#F39C12');
+INSERT INTO tag (name, category, color, image_url) VALUES
+('Outdoor',         'aktivnost:ADVENTURE',  '#2D9E4F', 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=400'),
+('Porodično',       'stil',       '#4A90E2', NULL),
+('Romantično',      'stil',       '#E24A7C', NULL),
+('Besplatno',       'cijena',     '#27AE60', NULL),
+('Parking',         'amenity',    '#7F8C8D', NULL),
+('WiFi',            'amenity',    '#2980B9', NULL),
+('Pješačenje',      'aktivnost:ADVENTURE',  '#8E44AD', 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400'),
+('Biciklizam',      'aktivnost:SPORT',      '#E67E22', 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=400'),
+('Plivanje',        'aktivnost:SPORT',      '#16A085', 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=400'),
+('UNESCO',          'oznaka',     '#C0392B', NULL),
+('Historijsko',     'oznaka',     '#D35400', NULL),
+('Restoran',        'tip',        '#E74C3C', NULL),
+('Kafić',           'tip',        '#935116', NULL),
+('Noćni život',     'aktivnost:NIGHTLIFE',  '#8E44AD', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400'),
+('Sport',           'aktivnost:SPORT',      '#2ECC71', 'https://images.unsplash.com/photo-1461896836934-668605480?w=400'),
+('Adrenalin',       'aktivnost:ADVENTURE',  '#E74C3C', 'https://images.unsplash.com/photo-1522163182402-834f871fd851?w=400'),
+('Priroda',         'aktivnost:ADVENTURE',  '#27AE60', 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400'),
+('Kulturno',        'oznaka',     '#9B59B6', NULL),
+('Muzika',          'aktivnost:CULTURE',    '#1ABC9C', 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400'),
+('Gastronomija',    'aktivnost:DINING',     '#F39C12', 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400');
 
 
 -- ============================================================

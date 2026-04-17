@@ -309,7 +309,7 @@ const ADMIN_NOTIFICATIONS: Record<number, any[]> = {
     { id: 3, adminUserId: 1, type: 'pending_review', title: 'Negativna recenzija', body: 'Recenzija sa ocenom 2/5 za Club Aquarius.', payload: { url: '/admin/reviews' }, isRead: true, createdAt: '2025-05-01T08:00:00', sentAt: null, time: 'Pre 2 sata' },
   ],
   2: [
-    { id: 4, adminUserId: 2, type: 'post_approved', title: 'Muzej Žabljaka odobren', body: 'Vaša objava "Muzej Žabljaka" je odobrena.', payload: { url: '/admin/lokacije' }, isRead: false, createdAt: '2024-03-09T11:00:00', sentAt: null, time: 'Pre 3 sata' },
+    { id: 4, adminUserId: 2, type: 'post_approved', title: 'Muzej Žabljaka odobren', body: 'Vaša objava "Muzej Žabljaka" je odobrena.', payload: { url: '/admin/destinacije' }, isRead: false, createdAt: '2024-03-09T11:00:00', sentAt: null, time: 'Pre 3 sata' },
     { id: 5, adminUserId: 2, type: 'system', title: 'Dobrodošli na platformu', body: 'Vaš nalog je aktivan.', payload: { url: '/admin/dashboard' }, isRead: true, createdAt: '2024-01-15T10:00:00', sentAt: null, time: 'Pre 7 meseci' },
   ],
 };
@@ -343,18 +343,18 @@ const DAILY_VISITS = Array.from({ length: 30 }, (_, i) => ({
 
 // ── Activities ────────────────────────────────────────────────────────────────
 const ACTIVITIES = [
-  { activityId: 1, name: 'Pešačenje', category: 'ADVENTURE', description: 'Pešačke ture kroz NP Durmitor.', lat: 43.1500, lng: 19.0167, locationName: 'NP Durmitor' },
-  { activityId: 2, name: 'Ski i snowboard', category: 'SPORT', description: 'Skijanje na Savinom Kuku.', lat: 43.1789, lng: 19.0456, locationName: 'Savin Kuk' },
-  { activityId: 3, name: 'Rafting', category: 'ADVENTURE', description: 'Rafting na reci Tari.', lat: 43.2000, lng: 19.2500, locationName: 'Kanjon Tare' },
-  { activityId: 4, name: 'Paraglajding', category: 'ADVENTURE', description: 'Let paraglajderom sa Žabljaka.', lat: 43.1556, lng: 19.1225, locationName: 'Žabljak' },
-  { activityId: 5, name: 'Spa i wellness', category: 'WELLNESS', description: 'Wellness tretmani u hotelima.', lat: 43.1378, lng: 19.0644, locationName: 'Hotel Jezera' },
-  { activityId: 6, name: 'Kulinarske ture', category: 'DINING', description: 'Degustacija crnogorske kuhinje.', lat: 43.1556, lng: 19.1225, locationName: 'Žabljak' },
-  { activityId: 7, name: 'Poseta vinskim podrumima', category: 'DINING', description: 'Obilazak vinskih podruma.', lat: 42.2864, lng: 18.8400, locationName: 'Budva' },
-  { activityId: 8, name: 'Ronjenje', category: 'SPORT', description: 'Ronjenje u Jadranskom moru.', lat: 42.2820, lng: 18.8390, locationName: 'Budva' },
-  { activityId: 9, name: 'Noćna razgledanja', category: 'SIGHTSEEING', description: 'Vodjene noćne ture kroz gradove.', lat: 42.4247, lng: 18.7712, locationName: 'Kotor' },
-  { activityId: 10, name: 'Fotografske ture', category: 'SIGHTSEEING', description: 'Foto-ture na najlepšim lokacijama.', lat: 43.1378, lng: 19.0644, locationName: 'Crno jezero' },
-  { activityId: 11, name: 'Biciklizam', category: 'SPORT', description: 'Mountain bike staze kroz Durmitor.', lat: 43.1500, lng: 19.0167, locationName: 'NP Durmitor' },
-  { activityId: 12, name: 'Kupovina suvenira', category: 'SHOPPING', description: 'Lokalne radionice i suvenirnice.', lat: 43.1556, lng: 19.1225, locationName: 'Žabljak' },
+  { activityId: 1, name: 'Pešačenje', category: 'ADVENTURE', description: 'Pešačke ture kroz NP Durmitor.', lat: 43.1500, lng: 19.0167, locationName: 'NP Durmitor', imageUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=200&q=80', color: '#15803d', viewCount: 1240, status: 'approved' },
+  { activityId: 2, name: 'Ski i snowboard', category: 'SPORT', description: 'Skijanje na Savinom Kuku.', lat: 43.1789, lng: 19.0456, locationName: 'Savin Kuk', imageUrl: 'https://images.unsplash.com/photo-1551524164-687a55dd1126?w=200&q=80', color: '#1e40af', viewCount: 2103, status: 'approved' },
+  { activityId: 3, name: 'Rafting', category: 'ADVENTURE', description: 'Rafting na reci Tari.', lat: 43.2000, lng: 19.2500, locationName: 'Kanjon Tare', imageUrl: 'https://images.unsplash.com/photo-1530866495561-af356b2b582c?w=200&q=80', color: '#15803d', viewCount: 890, status: 'approved' },
+  { activityId: 4, name: 'Paraglajding', category: 'ADVENTURE', description: 'Let paraglajderom sa Žabljaka.', lat: 43.1556, lng: 19.1225, locationName: 'Žabljak', imageUrl: 'https://images.unsplash.com/photo-1506976785307-87327e8ad8c0?w=200&q=80', color: '#15803d', viewCount: 445, status: 'approved' },
+  { activityId: 5, name: 'Spa i wellness', category: 'WELLNESS', description: 'Wellness tretmani u hotelima.', lat: 43.1378, lng: 19.0644, locationName: 'Hotel Jezera', imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=200&q=80', color: '#7e22ce', viewCount: 678, status: 'approved' },
+  { activityId: 6, name: 'Kulinarske ture', category: 'DINING', description: 'Degustacija crnogorske kuhinje.', lat: 43.1556, lng: 19.1225, locationName: 'Žabljak', imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&q=80', color: '#b45309', viewCount: 512, status: 'approved' },
+  { activityId: 7, name: 'Poseta vinskim podrumima', category: 'DINING', description: 'Obilazak vinskih podruma.', lat: 42.2864, lng: 18.8400, locationName: 'Budva', imageUrl: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=200&q=80', color: '#b45309', viewCount: 334, status: 'approved' },
+  { activityId: 8, name: 'Ronjenje', category: 'SPORT', description: 'Ronjenje u Jadranskom moru.', lat: 42.2820, lng: 18.8390, locationName: 'Budva', imageUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=80', color: '#1e40af', viewCount: 1567, status: 'approved' },
+  { activityId: 9, name: 'Noćna razgledanja', category: 'SIGHTSEEING', description: 'Vodjene noćne ture kroz gradove.', lat: 42.4247, lng: 18.7712, locationName: 'Kotor', imageUrl: 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=200&q=80', color: '#0f766e', viewCount: 721, status: 'approved' },
+  { activityId: 10, name: 'Fotografske ture', category: 'SIGHTSEEING', description: 'Foto-ture na najlepšim lokacijama.', lat: 43.1378, lng: 19.0644, locationName: 'Crno jezero', imageUrl: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=200&q=80', color: '#0f766e', viewCount: 412, status: 'approved' },
+  { activityId: 11, name: 'Biciklizam', category: 'SPORT', description: 'Mountain bike staze kroz Durmitor.', lat: 43.1500, lng: 19.0167, locationName: 'NP Durmitor', imageUrl: 'https://images.unsplash.com/photo-1544191696-57a3a8c0c0c0?w=200&q=80', color: '#1e40af', viewCount: 998, status: 'approved' },
+  { activityId: 12, name: 'Kupovina suvenira', category: 'SHOPPING', description: 'Lokalne radionice i suvenirnice.', lat: 43.1556, lng: 19.1225, locationName: 'Žabljak', imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&q=80', color: '#c2410c', viewCount: 223, status: 'approved' },
 ];
 
 // =============================================================================
@@ -589,7 +589,11 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
     let list = [...ACTIVITIES];
     const cat = params.get('category'); if (cat) list = list.filter(a => a.category === cat);
     const q = params.get('search'); if (q) list = list.filter(a => a.name.toLowerCase().includes(q.toLowerCase()));
-    return ok(paginate(list, page, pageSize));
+    const sportCount = ACTIVITIES.filter(a => a.category === 'SPORT').length;
+    const natureCount = ACTIVITIES.filter(a => a.category === 'ADVENTURE').length;
+    const wellnessCount = ACTIVITIES.filter(a => a.category === 'WELLNESS').length;
+    const paged = paginate(list, page, pageSize);
+    return ok({ ...paged, sportCount, natureCount, wellnessCount });
   }
   if (url.match(/\/activities\/(\d+)$/) && req.method === 'GET') {
     return ok({ data: ACTIVITIES.find(a => a.activityId === +url.split('/').pop()!) ?? null, success: true });

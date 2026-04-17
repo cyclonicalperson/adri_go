@@ -71,6 +71,7 @@ export class TopbarComponent implements OnInit {
   // ── Naslov stranice ───────────────────────────────────────────────────
   private readonly titleMap: Record<string, { title: string; sub: string }> = {
     '/admin/dashboard': { title: 'Dashboard', sub: 'Pregled platforme' },
+    '/admin/destinacije': { title: 'Destinacije', sub: 'Upravljanje destinacijama' },
     '/admin/lokacije': { title: 'Destinacije', sub: 'Upravljanje destinacijama' },
     '/admin/aktivnosti': { title: 'Aktivnosti', sub: 'Upravljanje aktivnostima' },
     '/admin/events': { title: 'Dogadjaji', sub: 'Upravljanje dogadjajima' },

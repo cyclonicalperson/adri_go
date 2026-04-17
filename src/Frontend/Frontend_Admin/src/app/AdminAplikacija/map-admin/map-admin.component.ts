@@ -183,7 +183,7 @@ export class MapAdminComponent implements OnInit {
       if (post?.postType === 'event') {
         this.router.navigate(['/admin/events', id, 'edit']);
       } else {
-        this.router.navigate(['/admin/lokacije', id]);
+        this.router.navigate(['/admin/destinacije', id]);
       }
     }
   }

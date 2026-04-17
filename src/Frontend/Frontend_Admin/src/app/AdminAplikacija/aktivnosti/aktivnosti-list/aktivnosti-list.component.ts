@@ -14,13 +14,14 @@ interface BackendActivity {
   id: number;            // tag.id
   activityId?: number;   // alias (mock koristi activityId)
   name: string;
-  category: string;      // tag.category — može biti SPORT, ADVENTURE, aktivnost...
+  category: string;      // podtip (SPORT, ADVENTURE…) — backend vraća samo subtype
   description?: string;
   lat?: number | null;
   lng?: number | null;
   locationName?: string;
+  imageUrl?: string | null;
   color?: string;        // tag.color
-  status?: string;       // iz mock-a
+  status?: string;       // 'approved' | 'pending'
   viewCount?: number;
 }
 
@@ -89,24 +90,34 @@ export class AktivnostiListComponent implements OnInit {
     if (this.activeCategory) params = params.set('category', this.activeCategory);
     if (this.activeStatus) params = params.set('status', this.activeStatus);
 
-    this.http.get<{ data: BackendActivity[]; total: number; totalPages: number }>(
+    this.http.get<{
+      data: BackendActivity[];
+      total: number;
+      totalPages: number;
+      sportCount?: number;
+      natureCount?: number;
+      wellnessCount?: number;
+    }>(
       `${environment.apiUrl}/activities`, { params }
     ).subscribe({
       next: res => {
         this.activities = (res.data ?? []).map(a => ({
           ...a,
-          // Normalizujemo id — backend vraća 'id', mock može imati 'activityId'
           id: a.id ?? a.activityId ?? 0,
           activityId: a.id ?? a.activityId ?? 0,
         }));
         this.total = res.total;
         this.totalPages = res.totalPages;
 
-        // Računamo stat counts iz svih učitanih aktivnosti
-        // (kada nema filtera — prikazujemo ukupne; kad je filter aktivan — djelimične)
-        this.sportCount = this.activities.filter(a => this.normCat(a.category) === 'SPORT').length;
-        this.natureCount = this.activities.filter(a => this.normCat(a.category) === 'ADVENTURE').length;
-        this.wellnessCount = this.activities.filter(a => this.normCat(a.category) === 'WELLNESS').length;
+        if (res.sportCount != null && res.natureCount != null && res.wellnessCount != null) {
+          this.sportCount = res.sportCount;
+          this.natureCount = res.natureCount;
+          this.wellnessCount = res.wellnessCount;
+        } else {
+          this.sportCount = this.activities.filter(a => this.normCat(a.category) === 'SPORT').length;
+          this.natureCount = this.activities.filter(a => this.normCat(a.category) === 'ADVENTURE').length;
+          this.wellnessCount = this.activities.filter(a => this.normCat(a.category) === 'WELLNESS').length;
+        }
 
         this.loading = false;
       },
@@ -223,5 +234,25 @@ export class AktivnostiListComponent implements OnInit {
 
   locationName(a: BackendActivity): string {
     return a.locationName ?? '—';
+  }
+
+  thumbContent(a: BackendActivity): { kind: 'img'; src: string; alt: string } | { kind: 'emoji'; text: string } {
+    const u = (a.imageUrl ?? '').trim();
+    if (u) return { kind: 'img', src: u, alt: a.name };
+    return { kind: 'emoji', text: this.categoryIcon(a.category) };
+  }
+
+  statusLabel(s: string | undefined): string {
+    const x = (s ?? '').toLowerCase();
+    if (x === 'approved') return '✅ Odobreno';
+    if (x === 'pending') return '⏳ Na čekanju';
+    return s ?? '—';
+  }
+
+  statusBadgeClass(s: string | undefined): string {
+    const x = (s ?? '').toLowerCase();
+    if (x === 'approved') return 'badge-green';
+    if (x === 'pending') return 'badge-amber';
+    return 'badge-gray';
   }
 }

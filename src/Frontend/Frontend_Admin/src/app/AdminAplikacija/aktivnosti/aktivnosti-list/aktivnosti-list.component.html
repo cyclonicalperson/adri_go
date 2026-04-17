@@ -106,11 +106,18 @@
         </tr>
       </thead>
       <tbody>
-        @for (a of activities; track a.activityId) {
+        @for (a of activities; track a.id) {
+        @let thumb = thumbContent(a);
         <tr>
           <td>
             <div class="item-cell">
-              <div class="item-thumb">{{ categoryIcon(a.category) }}</div>
+              <div class="item-thumb">
+                @if (thumb.kind === 'img') {
+                <img [src]="thumb.src" [alt]="thumb.alt" class="thumb-img" loading="lazy" />
+                } @else {
+                {{ thumb.text }}
+                }
+              </div>
               <div>
                 <div class="item-name">{{ a.name }}</div>
                 <div class="item-desc">{{ a.description | truncate:55 }}</div>
@@ -130,10 +137,10 @@
             — standalone
           </td>
           <td>
-            <span style="font-weight:700;font-size:14px;color:#111827">—</span>
+            <span style="font-weight:700;font-size:14px;color:#111827">{{ a.viewCount ?? '—' }}</span>
           </td>
           <td>
-            <span class="badge badge-green">✅ Odobreno</span>
+            <span class="badge" [class]="statusBadgeClass(a.status)">{{ statusLabel(a.status) }}</span>
           </td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
@@ -173,7 +180,11 @@
       <button class="btn-close" (click)="closeDetail()">✕</button>
     </div>
     <div class="detail-body">
+      @if (detailActivity.imageUrl) {
+      <div class="detail-hero"><img [src]="detailActivity.imageUrl" alt="" class="detail-hero-img" /></div>
+      } @else {
       <div class="detail-icon">{{ categoryIcon(detailActivity.category) }}</div>
+      }
       <div class="detail-name">{{ detailActivity.name }}</div>
       <div class="detail-cat">
         <span class="type-tag" [class]="typeBadgeClass(detailActivity.category)">{{ categoryLabel(detailActivity.category) }}</span>

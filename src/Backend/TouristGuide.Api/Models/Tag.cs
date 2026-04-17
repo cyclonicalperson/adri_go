@@ -25,6 +25,11 @@ namespace TouristGuide.Api.Models
         [MaxLength(7)]
         public string? Color { get; set; }
 
+        /// <summary>URL slike (aktivnosti u admin UI)</summary>
+        [Column("image_url")]
+        [MaxLength(500)]
+        public string? ImageUrl { get; set; }
+
         // Navigation
         public ICollection<PostTag> PostTags { get; set; } = new List<PostTag>();
     }
