@@ -111,12 +111,20 @@ export class UsersListComponent implements OnInit {
   goNew(): void { this.router.navigate(['/admin/users/new']); }
   goEdit(u: User): void { this.router.navigate(['/admin/users', u.userId, 'edit']); }
 
-  // ── Suspend / Activate ────────────────────────────────────────────────
-  toggleSuspend(u: User): void {
-    const actionLabel = u.isActive ? 'suspendujete' : 'aktivirate';
-    const confirmed = window.confirm(`Da li ste sigurni da želite da ${actionLabel} nalog "${u.fullName}"?`);
-    if (!confirmed) return;
+  // ── Suspend / Activate with ConfirmDialog ─────────────────────────────
+  suspendTarget: User | null = null;
+  activateTarget: User | null = null;
 
+  confirmToggleSuspend(u: User): void {
+    if (u.isActive) this.suspendTarget = u;
+    else this.activateTarget = u;
+  }
+  cancelSuspend(): void { this.suspendTarget = null; }
+  cancelActivate(): void { this.activateTarget = null; }
+
+  doToggleSuspend(u: User): void {
+    this.suspendTarget = null;
+    this.activateTarget = null;
     const action$ = u.isActive
       ? this.service.suspend(u.userId)
       : this.service.activate(u.userId);
@@ -132,6 +140,8 @@ export class UsersListComponent implements OnInit {
       error: () => { },
     });
   }
+
+  toggleSuspend(u: User): void { this.confirmToggleSuspend(u); }
 
   // ── Delete ────────────────────────────────────────────────────────────
   confirmDelete(u: User): void { this.deleteTarget = u; }

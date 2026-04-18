@@ -285,3 +285,19 @@
   </div>
 </div>
 }
+
+<app-confirm-dialog [visible]="!!statusChangeTarget && statusChangeValue === 'published'"
+                    title="Odobri dogadjaj"
+                    [message]="'Odobrite dogadjaj &quot;' + (statusChangeTarget?.title ?? '') + '&quot;? Biće vidljiv turistima.'"
+                    confirmLabel="Odobri"
+                    [danger]="false"
+                    (confirmed)="doStatusChange()"
+                    (cancelled)="cancelStatusChange()" />
+
+<app-confirm-dialog [visible]="!!statusChangeTarget && statusChangeValue === 'archived'"
+                    title="Odbij dogadjaj"
+                    [message]="'Odbijte dogadjaj &quot;' + (statusChangeTarget?.title ?? '') + '&quot;? Biće arhiviran.'"
+                    confirmLabel="Odbij"
+                    [danger]="true"
+                    (confirmed)="doStatusChange()"
+                    (cancelled)="cancelStatusChange()" />

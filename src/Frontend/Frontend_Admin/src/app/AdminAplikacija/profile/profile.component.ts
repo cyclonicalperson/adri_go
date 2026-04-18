@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { UserService } from '@core/services/user.service';
@@ -8,12 +8,17 @@ import { UserPermission } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { DecimalPipe } from '@angular/common';
 
-/** Proširena verzija AuthUser-a sa opcionim poljima koja možda postoje u localStorage-u */
+function passwordMatchValidator(g: AbstractControl): ValidationErrors | null {
+  const pw = g.get('newPassword')?.value;
+  const cpw = g.get('confirmPassword')?.value;
+  return pw && cpw && pw !== cpw ? { mismatch: true } : null;
+}
+
 interface ExtendedUser {
   userId: number;
   fullName: string;
   email: string;
-  role: 'superadmin' | 'admin';   // DB ENUM vrednosti
+  role: 'superadmin' | 'admin';
   organizationId: number | null;
   isIndividual: boolean;
   accountStatus: 'active' | 'suspended' | 'pending';
@@ -33,13 +38,19 @@ export class ProfileComponent implements OnInit {
 
   editMode = false;
   saving = false;
+  saveError: string | null = null;
   editForm!: FormGroup;
 
-  // Dozvole koje je superadmin dodelio ovom adminu
+  // Password change
+  pwMode = false;
+  pwSaving = false;
+  pwError: string | null = null;
+  pwSuccess: string | null = null;
+  pwForm!: FormGroup;
+
   userPermissions: UserPermission[] = [];
   permsLoading = false;
 
-  // Statistike platforme za superadmin prikaz — punjene iz API-ja
   platformStats = { admins: 0, posts: 0, routes: 0, pending: 0 };
   statsLoading = false;
 
@@ -50,7 +61,6 @@ export class ProfileComponent implements OnInit {
     private fb: FormBuilder,
     private router: Router,
   ) {
-    // Postavi user u konstruktoru — auth je dostupan pre field initializera
     this.user = this.authService.currentUser as ExtendedUser | null;
   }
 
@@ -60,12 +70,16 @@ export class ProfileComponent implements OnInit {
       email: [this.user?.email ?? '', [Validators.required, Validators.email]],
     });
 
-    // Učitaj dozvole samo za admin (ne superadmin — superadmin ima sve)
+    this.pwForm = this.fb.group({
+      currentPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', Validators.required],
+    }, { validators: passwordMatchValidator });
+
     if (!this.isSuperAdmin && this.user?.userId) {
       this.loadPermissions(this.user.userId);
     }
 
-    // Učitaj statistike platforme za superadmin
     if (this.isSuperAdmin) {
       this.statsLoading = true;
       this.analytics.getDashboardStats().subscribe({
@@ -86,10 +100,7 @@ export class ProfileComponent implements OnInit {
   private loadPermissions(userId: number): void {
     this.permsLoading = true;
     this.userService.getUserPermissions(userId).subscribe({
-      next: res => {
-        this.userPermissions = res.data;
-        this.permsLoading = false;
-      },
+      next: res => { this.userPermissions = res.data; this.permsLoading = false; },
       error: () => { this.permsLoading = false; },
     });
   }
@@ -102,39 +113,30 @@ export class ProfileComponent implements OnInit {
   }
 
   get roleLabel(): string {
-    const map: Record<string, string> = {
-      superadmin: 'Super Administrator',
-      admin: 'Administrator',
-    };
+    const map: Record<string, string> = { superadmin: 'Super Administrator', admin: 'Administrator' };
     return map[this.user?.role ?? ''] ?? (this.user?.role ?? '');
   }
 
-  get roleBadgeClass(): string {
-    return this.isSuperAdmin ? 'badge-red' : 'badge-blue';
-  }
+  get roleBadgeClass(): string { return this.isSuperAdmin ? 'badge-red' : 'badge-blue'; }
 
-  /** Naziv organizacije — iz punog objekta ili fallback na ID */
   get orgName(): string | null {
     if (this.user?.organization?.name) return this.user.organization.name;
     if (this.user?.organizationId) return `Org #${this.user.organizationId}`;
     return null;
   }
 
-  /** Grupiši dozvole po kategoriji za lepši prikaz */
   get permsByCategory(): { category: string; label: string; icon: string; perms: UserPermission[] }[] {
     const categoryMeta: Record<string, { label: string; icon: string }> = {
       content: { label: 'Sadržaj', icon: '📝' },
       analytics: { label: 'Analitika', icon: '📊' },
       users: { label: 'Korisnici', icon: '👥' },
     };
-
     const grouped = new Map<string, UserPermission[]>();
     for (const up of this.userPermissions) {
       const cat = up.permission.category;
       if (!grouped.has(cat)) grouped.set(cat, []);
       grouped.get(cat)!.push(up);
     }
-
     return Array.from(grouped.entries()).map(([cat, perms]) => ({
       category: cat,
       label: categoryMeta[cat]?.label ?? cat,
@@ -143,19 +145,66 @@ export class ProfileComponent implements OnInit {
     }));
   }
 
+  // ── Profile edit ──────────────────────────────────────────────────────
   saveProfile(): void {
     if (this.editForm.invalid) return;
     this.saving = true;
-    // TODO: Poziv API PATCH /admin-users/:id
-    setTimeout(() => {
-      this.saving = false;
-      this.editMode = false;
-    }, 600);
+    this.saveError = null;
+
+    const payload = {
+      fullName: this.editForm.value.fullName,
+      email: this.editForm.value.email,
+    };
+
+    // Use PATCH /admin-users/me — works for any role (no superadmin required)
+    this.userService.updateSelf(payload).subscribe({
+      next: res => {
+        this.saving = false;
+        this.editMode = false;
+        if (this.user) this.user = { ...this.user, ...payload };
+        const current = this.authService.currentUser;
+        if (current) {
+          const updated = { ...current, ...payload };
+          (this.authService as any)['_currentUser$']?.next(updated);
+          try { localStorage.setItem('tg_user', JSON.stringify(updated)); } catch { /* ignore */ }
+        }
+      },
+      error: (err: any) => {
+        this.saveError = err?.error?.message ?? 'Greška pri čuvanju podataka.';
+        this.saving = false;
+      },
+    });
   }
 
+  cancelEdit(): void { this.editMode = false; this.saveError = null; this.editForm.reset({ fullName: this.user?.fullName, email: this.user?.email }); }
+
+  // ── Password change ───────────────────────────────────────────────────
+  openPwMode(): void { this.pwMode = true; this.pwError = null; this.pwSuccess = null; this.pwForm.reset(); }
+  cancelPw(): void { this.pwMode = false; this.pwError = null; this.pwSuccess = null; }
+
   changePassword(): void {
-    alert('Promena lozinke — u razvoju.');
+    if (this.pwForm.invalid) { this.pwForm.markAllAsTouched(); return; }
+    this.pwSaving = true;
+    this.pwError = null;
+    this.pwSuccess = null;
+
+    const { currentPassword, newPassword } = this.pwForm.value;
+    this.userService.changePassword(currentPassword, newPassword).subscribe({
+      next: () => {
+        this.pwSaving = false;
+        this.pwSuccess = 'Lozinka je uspješno promijenjena.';
+        this.pwForm.reset();
+        setTimeout(() => { this.pwMode = false; this.pwSuccess = null; }, 2000);
+      },
+      error: (err: any) => {
+        this.pwError = err?.error?.message ?? 'Greška pri promjeni lozinke.';
+        this.pwSaving = false;
+      },
+    });
   }
+
+  f(name: string) { return this.editForm.get(name)!; }
+  pw(name: string) { return this.pwForm.get(name)!; }
 
   logout(): void { this.authService.logout(); }
 }

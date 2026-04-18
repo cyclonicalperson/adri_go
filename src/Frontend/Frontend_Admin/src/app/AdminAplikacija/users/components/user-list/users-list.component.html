@@ -158,3 +158,19 @@
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
+
+<app-confirm-dialog [visible]="!!suspendTarget"
+                    title="Suspenduj nalog"
+                    [message]="'Suspendovati nalog admina &quot;' + (suspendTarget?.fullName ?? '') + '&quot;? Admin više neće moći da se prijavi.'"
+                    confirmLabel="Suspenduj"
+                    [danger]="true"
+                    (confirmed)="doToggleSuspend(suspendTarget!)"
+                    (cancelled)="cancelSuspend()" />
+
+<app-confirm-dialog [visible]="!!activateTarget"
+                    title="Aktiviraj nalog"
+                    [message]="'Aktivirati nalog admina &quot;' + (activateTarget?.fullName ?? '') + '&quot;?'"
+                    confirmLabel="Aktiviraj"
+                    [danger]="false"
+                    (confirmed)="doToggleSuspend(activateTarget!)"
+                    (cancelled)="cancelActivate()" />

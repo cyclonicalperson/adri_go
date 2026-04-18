@@ -99,11 +99,13 @@ export class EventsListComponent implements OnInit {
     if (this.req.regionId) params = params.set('region_id', this.req.regionId);
     if (this.req.status) params = params.set('status', this.req.status);
 
-    this.http.get<{ data: Post[]; total: number; totalPages: number }>(
+    this.http.get<{ data: any[]; total: number; totalPages: number }>(
       `${environment.apiUrl}/posts`, { params }
     ).subscribe({
       next: res => {
-        let all = res.data;
+        // Normalize: backend returns 'id', model uses 'postId'
+        const normalize = (p: any): Post => ({ ...p, postId: p.postId ?? p.id });
+        let all: Post[] = (res.data ?? []).map(normalize);
 
         // Client-side category filter (backend can't filter on JSON details field)
         if (this.req.category) {
@@ -215,16 +217,29 @@ export class EventsListComponent implements OnInit {
       .subscribe(() => { this.deleteTarget = null; this.load(); });
   }
 
-  setEventStatus(e: Post, status: PostStatus): void {
-    const action = status === 'published' ? 'odobrite' : 'odbijete';
-    if (!window.confirm(`Da li ste sigurni da želite da ${action} događaj "${e.title}"?`)) return;
+  // ── Status change with ConfirmDialog ───────────────────────────────────
+  statusChangeTarget: Post | null = null;
+  statusChangeValue: PostStatus | null = null;
+
+  requestStatusChange(e: Post, status: PostStatus): void {
+    this.statusChangeTarget = e;
+    this.statusChangeValue = status;
+  }
+  cancelStatusChange(): void { this.statusChangeTarget = null; this.statusChangeValue = null; }
+
+  doStatusChange(): void {
+    const e = this.statusChangeTarget;
+    const status = this.statusChangeValue;
+    this.statusChangeTarget = null;
+    this.statusChangeValue = null;
+    if (!e || !status) return;
     this.http.put(`${environment.apiUrl}/posts/${e.postId}`, { status }).subscribe({
-      next: () => {
-        e.status = status;
-        this.load();
-      },
+      next: () => { e.status = status; this.load(); },
     });
   }
+
+  // Kept for HTML backward compat — now opens ConfirmDialog instead
+  setEventStatus(e: Post, status: PostStatus): void { this.requestStatusChange(e, status); }
 
   printReport(): void { window.print(); }
 

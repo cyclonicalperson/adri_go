@@ -84,9 +84,9 @@ namespace TouristGuide.Api.Controllers
             query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
             {
                 ("name", "asc") => query.OrderBy(t => t.Name),
-                ("name", _)     => query.OrderByDescending(t => t.Name),
-                (_, "asc")      => query.OrderBy(t => t.Id),
-                _               => query.OrderByDescending(t => t.Id)
+                ("name", _) => query.OrderByDescending(t => t.Name),
+                (_, "asc") => query.OrderBy(t => t.Id),
+                _ => query.OrderByDescending(t => t.Id)
             };
 
             if (page < 1) page = 1;
@@ -117,24 +117,26 @@ namespace TouristGuide.Api.Controllers
 
                 return new
                 {
-                    activityId   = t.Id,
-                    name         = t.Name,
-                    category     = t.Category ?? "OTHER",
-                    description  = "",
-                    lat          = prviPost?.Lat,
-                    lng          = prviPost?.Lng,
+                    id = t.Id,
+                    activityId = t.Id,
+                    name = t.Name,
+                    category = t.Category ?? "OTHER",
+                    color = t.Color ?? "#6b7280",
+                    description = "",
+                    lat = prviPost?.Lat,
+                    lng = prviPost?.Lng,
                     locationName = prviPost?.Region?.Name ?? prviPost?.Address ?? "",
-                    viewCount    = (uint)veze.Sum(pt => (long)pt.Post.ViewCount),
-                    linkedPosts  = veze.Count,
+                    viewCount = (uint)veze.Sum(pt => (long)pt.Post.ViewCount),
+                    linkedPosts = veze.Count,
                     // Aktivnost je "approved" ako ima vezanih postova
-                    status       = veze.Count > 0 ? "approved" : "pending"
+                    status = veze.Count > 0 ? "approved" : "pending"
                 };
             }).ToList();
 
             // Statistike za header kartice (ukupan broj po tipu)
-            var sportCount    = await _context.Tags.CountAsync(t =>
+            var sportCount = await _context.Tags.CountAsync(t =>
                 t.Category != null && t.Category.ToLower().Contains("sport"));
-            var natureCount   = await _context.Tags.CountAsync(t =>
+            var natureCount = await _context.Tags.CountAsync(t =>
                 t.Category != null && t.Category.ToLower().Contains("adventure"));
             var wellnessCount = await _context.Tags.CountAsync(t =>
                 t.Category != null && t.Category.ToLower().Contains("wellness"));
@@ -145,7 +147,7 @@ namespace TouristGuide.Api.Controllers
                 total,
                 page,
                 pageSize,
-                totalPages    = (int)Math.Ceiling((double)total / pageSize),
+                totalPages = (int)Math.Ceiling((double)total / pageSize),
                 sportCount,
                 natureCount,
                 wellnessCount
@@ -185,12 +187,12 @@ namespace TouristGuide.Api.Controllers
             {
                 data = new
                 {
-                    activityId   = tag.Id,
-                    name         = tag.Name,
-                    category     = tag.Category ?? "OTHER",
-                    description  = "",
-                    lat          = prviPost?.Lat,
-                    lng          = prviPost?.Lng,
+                    activityId = tag.Id,
+                    name = tag.Name,
+                    category = tag.Category ?? "OTHER",
+                    description = "",
+                    lat = prviPost?.Lat,
+                    lng = prviPost?.Lng,
                     locationName = prviPost?.Region?.Name ?? prviPost?.Address ?? ""
                 },
                 success = true
@@ -208,7 +210,7 @@ namespace TouristGuide.Api.Controllers
 
             var noviTag = new Tag
             {
-                Name     = dto.Name.Trim(),
+                Name = dto.Name.Trim(),
                 Category = "aktivnost"
             };
 

@@ -98,7 +98,7 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] string? to)
         {
             var fromDate = DateTime.TryParse(from, out var fd) ? fd : DateTime.UtcNow.AddDays(-30);
-            var toDate   = DateTime.TryParse(to,   out var td) ? td : DateTime.UtcNow;
+            var toDate = DateTime.TryParse(to, out var td) ? td : DateTime.UtcNow;
 
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
@@ -110,11 +110,15 @@ namespace TouristGuide.Api.Controllers
 
             var grouped = await query
                 .GroupBy(v => v.CreatedAt.Date)
-                .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
+                .Select(g => new { date = g.Key, count = g.Count() })
                 .OrderBy(x => x.date)
                 .ToListAsync();
 
-            return Ok(new { data = grouped, success = true });
+            var result = grouped
+                .Select(x => new { date = x.date.ToString("yyyy-MM-dd"), count = x.count })
+                .ToList();
+
+            return Ok(new { data = result, success = true });
         }
 
         // ── GET /api/analytics/popular/posts ─────────────────────────────────
@@ -192,13 +196,13 @@ namespace TouristGuide.Api.Controllers
                 .Where(r => r.IsActive)
                 .Select(r => new
                 {
-                    regionId   = r.Id,
-                    name       = r.Name,
-                    type       = r.Type,
-                    numPosts   = r.Posts.Count(p => p.Status == "published"),
+                    regionId = r.Id,
+                    name = r.Name,
+                    type = r.Type,
+                    numPosts = r.Posts.Count(p => p.Status == "published"),
                     totalViews = r.Posts.Sum(p => (int?)p.ViewCount) ?? 0,
                     totalLikes = r.Posts.Sum(p => (int?)p.LikeCount) ?? 0,
-                    avgRating  = r.Posts.Any(p => p.AvgRating != null)
+                    avgRating = r.Posts.Any(p => p.AvgRating != null)
                         ? r.Posts.Where(p => p.AvgRating != null).Average(p => (double?)p.AvgRating)
                         : (double?)null
                 })
@@ -224,10 +228,10 @@ namespace TouristGuide.Api.Controllers
                 })
                 .Select(g => new
                 {
-                    regionId   = g.Key.RegionId,
+                    regionId = g.Key.RegionId,
                     regionName = g.Key.RegionName,
-                    latitude   = g.Key.Lat,
-                    longitude  = g.Key.Lng,
+                    latitude = g.Key.Lat,
+                    longitude = g.Key.Lng,
                     visitCount = g.Count()
                 })
                 .OrderByDescending(m => m.visitCount)

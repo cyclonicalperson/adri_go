@@ -110,7 +110,7 @@
         <tr>
           <td>
             <div class="item-cell">
-              <div class="item-thumb">{{ categoryIcon(a.category) }}</div>
+              <div class="item-thumb">{{ categoryIcon(a) }}</div>
               <div>
                 <div class="item-name">{{ a.name }}</div>
                 <div class="item-desc">{{ a.description | truncate:55 }}</div>
@@ -118,8 +118,8 @@
             </div>
           </td>
           <td>
-            <span class="type-badge" [class]="typeBadgeClass(a.category)">
-              {{ categoryIcon(a.category) }} {{ categoryLabel(a.category) }}
+            <span class="type-badge" [class]="typeBadgeClass(a)">
+              {{ categoryIcon(a) }} {{ categoryLabel(a) }}
             </span>
           </td>
           <td>
@@ -173,10 +173,10 @@
       <button class="btn-close" (click)="closeDetail()">✕</button>
     </div>
     <div class="detail-body">
-      <div class="detail-icon">{{ categoryIcon(detailActivity.category) }}</div>
+      <div class="detail-icon">{{ categoryIcon(detailActivity) }}</div>
       <div class="detail-name">{{ detailActivity.name }}</div>
       <div class="detail-cat">
-        <span class="type-tag" [class]="typeBadgeClass(detailActivity.category)">{{ categoryLabel(detailActivity.category) }}</span>
+        <span class="type-tag" [class]="typeBadgeClass(detailActivity)">{{ categoryLabel(detailActivity) }}</span>
       </div>
       <div class="detail-rows">
         <div class="detail-row">
@@ -238,10 +238,10 @@
 <!-- ── DELETE DIALOG ──────────────────────────────────────────────────── -->
 @if (deleteTarget) {
 <app-confirm-dialog [visible]="true"
-  title="Obriši aktivnost"
-  [message]="'Da li ste sigurni da želite da obrišete ‹' + deleteTarget.name + '›?'"
-  confirmLabel="Obriši"
-  [danger]="true"
-  (confirmed)="doDelete()"
-  (cancelled)="cancelDelete()" />
+                    title="Obriši aktivnost"
+                    [message]="'Da li ste sigurni da želite da obrišete ‹' + deleteTarget.name + '›?'"
+                    confirmLabel="Obriši"
+                    [danger]="true"
+                    (confirmed)="doDelete()"
+                    (cancelled)="cancelDelete()" />
 }

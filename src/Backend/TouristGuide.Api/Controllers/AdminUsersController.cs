@@ -58,12 +58,12 @@ namespace TouristGuide.Api.Controllers
 
             query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
             {
-                ("email", "asc")      => query.OrderBy(u => u.Email),
-                ("email", "desc")     => query.OrderByDescending(u => u.Email),
-                ("fullname", "asc")   => query.OrderBy(u => u.FullName),
-                ("fullname", "desc")  => query.OrderByDescending(u => u.FullName),
-                ("createdat", "asc")  => query.OrderBy(u => u.CreatedAt),
-                _                     => query.OrderByDescending(u => u.CreatedAt),
+                ("email", "asc") => query.OrderBy(u => u.Email),
+                ("email", "desc") => query.OrderByDescending(u => u.Email),
+                ("fullname", "asc") => query.OrderBy(u => u.FullName),
+                ("fullname", "desc") => query.OrderByDescending(u => u.FullName),
+                ("createdat", "asc") => query.OrderBy(u => u.CreatedAt),
+                _ => query.OrderByDescending(u => u.CreatedAt),
             };
 
             var total = await query.CountAsync();
@@ -302,6 +302,64 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { success = true, message = "Permisija je uklonjena." });
         }
 
+        // ── PATCH /api/admin-users/me — Self profile update (any admin) ────────
+        [HttpPatch("me")]
+        [Authorize(Roles = "admin,superadmin")]
+        public async Task<IActionResult> UpdateSelf([FromBody] UpdateSelfDto dto)
+        {
+            var adminId = GetCurrentAdminId();
+            if (adminId is null) return Unauthorized();
+
+            var user = await _db.AdminUsers
+                .Include(u => u.Organization)
+                .FirstOrDefaultAsync(u => u.Id == adminId.Value);
+
+            if (user is null) return NotFound();
+
+            if (!string.IsNullOrWhiteSpace(dto.FullName))
+                user.FullName = dto.FullName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                var normalized = dto.Email.Trim().ToLowerInvariant();
+                if (await _db.AdminUsers.AnyAsync(u => u.Email == normalized && u.Id != adminId.Value))
+                    return Conflict(new { message = "Email adresa je već zauzeta." });
+                user.Email = normalized;
+            }
+
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { data = MapToDto(user), success = true });
+        }
+
+        // ── PATCH /api/admin-users/me/password — Change own password ─────────
+        [HttpPatch("me/password")]
+        [Authorize(Roles = "admin,superadmin")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.CurrentPassword) || string.IsNullOrWhiteSpace(dto.NewPassword))
+                return BadRequest(new { message = "Trenutna i nova lozinka su obavezne." });
+
+            if (dto.NewPassword.Length < 8)
+                return BadRequest(new { message = "Nova lozinka mora imati najmanje 8 karaktera." });
+
+            var adminId = GetCurrentAdminId();
+            if (adminId is null) return Unauthorized();
+
+            var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == adminId.Value);
+            if (user is null) return NotFound();
+
+            if (!PasswordHelper.Verify(dto.CurrentPassword, user.PasswordHash ?? ""))
+                return BadRequest(new { message = "Trenutna lozinka nije ispravna." });
+
+            user.PasswordHash = PasswordHelper.Hash(dto.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Lozinka je uspješno promijenjena." });
+        }
+
         // ── Helpers ────────────────────────────────────────────────────────────
         private bool IsSuperAdmin() =>
             string.Equals(User.FindFirstValue(ClaimTypes.Role), "superadmin", StringComparison.OrdinalIgnoreCase);
@@ -364,5 +422,17 @@ namespace TouristGuide.Api.Controllers
     {
         public uint PermissionId { get; set; }
         public uint? RegionId { get; set; }
+    }
+
+    public class UpdateSelfDto
+    {
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
+    }
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

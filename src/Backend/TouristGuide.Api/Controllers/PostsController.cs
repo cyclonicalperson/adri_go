@@ -43,6 +43,14 @@ namespace TouristGuide.Api.Controllers
             if (error is not null)
                 return error;
 
+            // Regular admins only see their own posts
+            if (!IsSuperAdmin())
+            {
+                var adminId = GetCurrentAdminId();
+                if (adminId.HasValue)
+                    query = query!.Where(p => p.AdminId == adminId.Value);
+            }
+
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
         }
 
@@ -617,7 +625,13 @@ namespace TouristGuide.Api.Controllers
             return uint.TryParse(val, out var id) ? id : null;
         }
 
-                private bool IsAdminUser()
+        private bool IsSuperAdmin()
+        {
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            return string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsAdminUser()
         {
             var role = User.FindFirstValue(ClaimTypes.Role);
             return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)

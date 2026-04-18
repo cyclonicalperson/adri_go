@@ -30,7 +30,7 @@ import { AdminRole } from '../auth/auth.service';
 export class UserService {
   private readonly url = `${environment.apiUrl}/admin-users`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   // ── Admin Users ────────────────────────────────────────────────────────────
   getAll(req: PageRequest & {
@@ -42,19 +42,19 @@ export class UserService {
       .set('page', req.page)
       .set('pageSize', req.pageSize);
 
-    if (req.sortBy)         params = params.set('sortBy', req.sortBy);
-    if (req.sortDir)        params = params.set('sortDir', req.sortDir!);
-    if (req.search)         params = params.set('search', req.search);
-    if (req.role)           params = params.set('role', req.role);
-    if (req.accountStatus)  params = params.set('accountStatus', req.accountStatus);
+    if (req.sortBy) params = params.set('sortBy', req.sortBy);
+    if (req.sortDir) params = params.set('sortDir', req.sortDir!);
+    if (req.search) params = params.set('search', req.search);
+    if (req.role) params = params.set('role', req.role);
+    if (req.accountStatus) params = params.set('accountStatus', req.accountStatus);
     if (req.organizationId) params = params.set('organizationId', req.organizationId);
 
     return this.http.get<any>(this.url, { params }).pipe(
       map(res => ({
-        data:       (res.data ?? []).map(mapUser),
-        total:      res.total ?? 0,
-        page:       res.page ?? req.page,
-        pageSize:   res.pageSize ?? req.pageSize,
+        data: (res.data ?? []).map(mapUser),
+        total: res.total ?? 0,
+        page: res.page ?? req.page,
+        pageSize: res.pageSize ?? req.pageSize,
         totalPages: res.totalPages ?? 1,
       }))
     );
@@ -75,6 +75,20 @@ export class UserService {
   update(id: number, payload: UpdateUserRequest): Observable<ApiResponse<User>> {
     return this.http.put<any>(`${this.url}/${id}`, payload).pipe(
       map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  /** Update own profile (any admin, calls PATCH /admin-users/me) */
+  updateSelf(payload: { fullName?: string; email?: string }): Observable<ApiResponse<User>> {
+    return this.http.patch<any>(`${this.url}/me`, payload).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  /** Change own password (calls PATCH /admin-users/me/password) */
+  changePassword(currentPassword: string, newPassword: string): Observable<ApiResponse<void>> {
+    return this.http.patch<any>(`${this.url}/me/password`, { currentPassword, newPassword }).pipe(
+      map(res => ({ data: undefined, success: res.success ?? true }))
     );
   }
 
@@ -154,7 +168,7 @@ export class UserService {
         if (req.status) filtered = list.filter((r: any) => r.status === req.status);
 
         const total = filtered.length;
-        const page  = req.page;
+        const page = req.page;
         const pageSize = req.pageSize;
         const data = filtered
           .slice((page - 1) * pageSize, page * pageSize)
@@ -199,6 +213,12 @@ export class UserService {
       `${environment.apiUrl}/admin-notifications/read-all`, {}
     ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
   }
+
+  deleteNotification(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<any>(
+      `${environment.apiUrl}/admin-notifications/${id}`
+    ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
+  }
 }
 
 // ── Mapiranje funkcije ─────────────────────────────────────────────────────
@@ -206,37 +226,37 @@ export class UserService {
 function mapUser(u: any): User {
   if (!u) return {} as User;
   return {
-    userId:        u.userId ?? u.id,
+    userId: u.userId ?? u.id,
     organizationId: u.organizationId ?? null,
-    fullName:      u.fullName ?? u.full_name ?? '',
-    email:         u.email ?? '',
+    fullName: u.fullName ?? u.full_name ?? '',
+    email: u.email ?? '',
     emailVerifiedAt: u.emailVerifiedAt ?? null,
-    role:          u.role as AdminRole,
-    isIndividual:  u.isIndividual ?? true,
+    role: u.role as AdminRole,
+    isIndividual: u.isIndividual ?? true,
     accountStatus: u.accountStatus ?? 'pending',
-    profileImage:  u.profileImage ?? null,
-    lastLoginAt:   u.lastLoginAt ?? null,
-    createdAt:     u.createdAt ?? '',
-    isActive:      u.isActive ?? u.accountStatus === 'active',
+    profileImage: u.profileImage ?? null,
+    lastLoginAt: u.lastLoginAt ?? null,
+    createdAt: u.createdAt ?? '',
+    isActive: u.isActive ?? u.accountStatus === 'active',
     permissionCount: u.permissionCount ?? 0,
-    organization:  u.organization ?? null,
+    organization: u.organization ?? null,
   };
 }
 
 function mapRegistration(r: any): RegistrationRequest {
   if (!r) return {} as RegistrationRequest;
   return {
-    id:                r.id,
-    fullName:          r.fullName ?? '',
-    email:             r.email ?? '',
-    isIndividual:      r.isIndividual ?? !r.isOrganization,
-    organizationName:  r.organizationName ?? null,
+    id: r.id,
+    fullName: r.fullName ?? '',
+    email: r.email ?? '',
+    isIndividual: r.isIndividual ?? !r.isOrganization,
+    organizationName: r.organizationName ?? null,
     organizationEmail: r.organizationEmail ?? null,
-    emailVerifiedAt:   r.emailVerifiedAt ?? null,
-    status:            r.status ?? 'pending',
-    rejectionReason:   r.rejectionReason ?? null,
-    submittedAt:       r.submittedAt ?? r.submitted_at ?? '',
-    reviewedAt:        r.reviewedAt ?? null,
-    reviewedBy:        r.reviewedBy ?? null,
+    emailVerifiedAt: r.emailVerifiedAt ?? null,
+    status: r.status ?? 'pending',
+    rejectionReason: r.rejectionReason ?? null,
+    submittedAt: r.submittedAt ?? r.submitted_at ?? '',
+    reviewedAt: r.reviewedAt ?? null,
+    reviewedBy: r.reviewedBy ?? null,
   };
 }

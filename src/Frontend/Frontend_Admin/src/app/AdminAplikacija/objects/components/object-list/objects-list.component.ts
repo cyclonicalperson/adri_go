@@ -136,29 +136,35 @@ export class ObjectsListComponent implements OnInit {
     });
   }
 
-  approve(o: TouristObject): void {
-    if (this.objectStatus(o) !== 'draft') return;
-    if (!window.confirm(`Da li ste sigurni da želite da odobrite "${o.name}"?`)) return;
+  // ── Approve / Reject with ConfirmDialog ───────────────────────────────
+  approveTarget: TouristObject | null = null;
+  rejectTarget: TouristObject | null = null;
+
+  confirmApprove(o: TouristObject): void { if (this.objectStatus(o) === 'draft') this.approveTarget = o; }
+  cancelApprove(): void { this.approveTarget = null; }
+  doApprove(): void {
+    if (!this.approveTarget) return;
+    const o = this.approveTarget;
+    this.approveTarget = null;
     this.service.update(o.objectId, { status: 'published' }).subscribe({
-      next: () => {
-        (o as any).status = 'published';
-        this.load();
-        this.loadGlobalCounts();
-      },
+      next: () => { (o as any).status = 'published'; this.load(); this.loadGlobalCounts(); },
     });
   }
 
-  reject(o: TouristObject): void {
-    if (this.objectStatus(o) !== 'draft') return;
-    if (!window.confirm(`Da li ste sigurni da želite da odbijete "${o.name}"?`)) return;
+  confirmReject(o: TouristObject): void { if (this.objectStatus(o) === 'draft') this.rejectTarget = o; }
+  cancelReject(): void { this.rejectTarget = null; }
+  doReject(): void {
+    if (!this.rejectTarget) return;
+    const o = this.rejectTarget;
+    this.rejectTarget = null;
     this.service.update(o.objectId, { status: 'archived' }).subscribe({
-      next: () => {
-        (o as any).status = 'archived';
-        this.load();
-        this.loadGlobalCounts();
-      },
+      next: () => { (o as any).status = 'archived'; this.load(); this.loadGlobalCounts(); },
     });
   }
+
+  // Keep old names as aliases so HTML buttons can call approve(o)/reject(o)
+  approve(o: TouristObject): void { this.confirmApprove(o); }
+  reject(o: TouristObject): void { this.confirmReject(o); }
 
   printReport(): void { window.print(); }
   exportCsv(): void { /* TODO: implement CSV export */ }

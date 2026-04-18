@@ -237,9 +237,25 @@
 </div>
 
 <app-confirm-dialog [visible]="!!deleteTarget"
-                    title="Obriši lokaciju"
+                    title="Obriši destinaciju"
                     [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
                     confirmLabel="Obriši"
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
+
+<app-confirm-dialog [visible]="!!approveTarget"
+                    title="Odobri destinaciju"
+                    [message]="'Odobrite destinaciju &quot;' + (approveTarget?.name ?? '') + '&quot;? Biće vidljiva turistima.'"
+                    confirmLabel="Odobri"
+                    [danger]="false"
+                    (confirmed)="doApprove()"
+                    (cancelled)="cancelApprove()" />
+
+<app-confirm-dialog [visible]="!!rejectTarget"
+                    title="Odbij destinaciju"
+                    [message]="'Odbijte destinaciju &quot;' + (rejectTarget?.name ?? '') + '&quot;? Biće arhivirana.'"
+                    confirmLabel="Odbij"
+                    [danger]="true"
+                    (confirmed)="doReject()"
+                    (cancelled)="cancelReject()" />

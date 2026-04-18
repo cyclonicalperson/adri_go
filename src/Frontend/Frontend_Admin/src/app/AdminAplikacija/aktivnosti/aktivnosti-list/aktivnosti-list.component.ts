@@ -104,9 +104,9 @@ export class AktivnostiListComponent implements OnInit {
 
         // Računamo stat counts iz svih učitanih aktivnosti
         // (kada nema filtera — prikazujemo ukupne; kad je filter aktivan — djelimične)
-        this.sportCount = this.activities.filter(a => this.normCat(a.category) === 'SPORT').length;
-        this.natureCount = this.activities.filter(a => this.normCat(a.category) === 'ADVENTURE').length;
-        this.wellnessCount = this.activities.filter(a => this.normCat(a.category) === 'WELLNESS').length;
+        this.sportCount = this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
+        this.natureCount = this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
+        this.wellnessCount = this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
 
         this.loading = false;
       },
@@ -157,7 +157,7 @@ export class AktivnostiListComponent implements OnInit {
       lat: this.mapActivity.lat,
       lng: this.mapActivity.lng,
       label: this.mapActivity.name,
-      category: this.categoryLabel(this.mapActivity.category),
+      category: this.categoryLabel(this.mapActivity),
     }];
   }
 
@@ -193,27 +193,46 @@ export class AktivnostiListComponent implements OnInit {
   }
 
   // ── Display helpers ───────────────────────────────────────────────────
-  categoryIcon(cat: string): string {
+  // NOTE: Backend DB always stores category='aktivnost' for all activity tags.
+  // We infer display category from the tag name keywords.
+  private inferCat(a: BackendActivity): string {
+    const n = (a.name ?? '').toLowerCase();
+    if (/ski|snowboard|sport|tenis|fudbal|košarka|plivanje|planinar|bicikl|ronjenje|surfing|golf|trčanje/.test(n)) return 'SPORT';
+    if (/rafting|treking|planin|penjanje|avantur|zipline|paraglajd|kajak|jezer|priroda/.test(n)) return 'ADVENTURE';
+    if (/wellness|spa|masaž|relaks|yoga|meditacija|sauna/.test(n)) return 'WELLNESS';
+    if (/shoppin|kupovina|suveniri|tržnica|prodavnica/.test(n)) return 'SHOPPING';
+    if (/restoran|kafić|kulinar|hrana|degustaci|vinski|gastro|večera/.test(n)) return 'DINING';
+    if (/noćn|klub|muzika|koncert|zabav/.test(n)) return 'NIGHTLIFE';
+    if (/razgledanje|tura|vođen|muzej|galerija|fotograf|historij/.test(n)) return 'SIGHTSEEING';
+    if (/kultura|pozorište|festival|izložba/.test(n)) return 'CULTURE';
+    return 'OTHER';
+  }
+
+  categoryIcon(a: BackendActivity): string {
     const map: Record<string, string> = {
-      SPORT: '🎾', ADVENTURE: '⛰️', WELLNESS: '💆',
+      SPORT: '🏊', ADVENTURE: '⛰️', WELLNESS: '💆',
       SHOPPING: '🛍️', DINING: '🍽️', NIGHTLIFE: '🎶',
-      SIGHTSEEING: '📸', CULTURE: '🎭', OTHER: '📌', AKTIVNOST: '📌',
+      SIGHTSEEING: '📸', CULTURE: '🎭', OTHER: '🎯',
     };
-    return map[this.normCat(cat)] ?? '📌';
+    return map[this.inferCat(a)] ?? '🎯';
   }
 
-  categoryLabel(cat: string): string {
-    const found = this.categoryOptions.find(o => o.value === this.normCat(cat));
-    return found ? found.label.replace(/^[^\s]+ /, '') : (cat || 'Aktivnost');
+  categoryLabel(a: BackendActivity): string {
+    const map: Record<string, string> = {
+      SPORT: 'Sport', ADVENTURE: 'Priroda / Avantura', WELLNESS: 'Wellness',
+      SHOPPING: 'Shopping', DINING: 'Ishrana', NIGHTLIFE: 'Noćni život',
+      SIGHTSEEING: 'Razgledanje', CULTURE: 'Kultura', OTHER: 'Aktivnost',
+    };
+    return map[this.inferCat(a)] ?? 'Aktivnost';
   }
 
-  typeBadgeClass(cat: string): string {
+  typeBadgeClass(a: BackendActivity): string {
     const map: Record<string, string> = {
       SPORT: 'type-sport', ADVENTURE: 'type-priroda', WELLNESS: 'type-wellness',
       SHOPPING: 'type-shopping', DINING: 'type-restoran', NIGHTLIFE: 'type-noćni',
-      CULTURE: 'type-kultura',
+      SIGHTSEEING: 'type-kultura', CULTURE: 'type-kultura', OTHER: 'type-ostalo',
     };
-    return map[this.normCat(cat)] ?? 'type-ostalo';
+    return map[this.inferCat(a)] ?? 'type-ostalo';
   }
 
   gpsText(a: BackendActivity): string {
