@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
+using TouristGuide.Api.Interfaces;
 using TouristGuide.Api.Models;
 
 namespace TouristGuide.Api.Controllers
@@ -14,6 +15,7 @@ namespace TouristGuide.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IReviewService _reviewService;
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
             "accommodation", "restaurant", "club", "cultural_site",
@@ -25,9 +27,10 @@ namespace TouristGuide.Api.Controllers
             "draft", "published", "archived"
         };
 
-        public PostsController(AppDbContext context)
+        public PostsController(AppDbContext context, IReviewService reviewService)
         {
             _context = context;
+            _reviewService = reviewService;
         }
 
         [HttpGet]
@@ -83,29 +86,14 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetReviews(uint id)
         {
-            var postExists = await _context.Posts.AnyAsync(p => p.Id == id && p.Status == "published");
-            if (!postExists)
+            var result = await _reviewService.GetReviewsByPostId(id);
+            if (!result.PostExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
-
-            var reviews = await _context.Reviews
-                .Where(r => r.PostId == id && r.IsApproved)
-                .Include(r => r.Tourist)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new ReviewDto
-                {
-                    Id = r.Id,
-                    TouristId = r.TouristId ?? 0,
-                    TouristName = r.Tourist != null ? r.Tourist.Name ?? string.Empty : string.Empty,
-                    Rating = r.Rating,
-                    Comment = r.Comment,
-                    CreatedAt = r.CreatedAt
-                })
-                .ToListAsync();
 
             return Ok(new
             {
-                total = reviews.Count,
-                data = reviews
+                total = result.Reviews.Count,
+                data = result.Reviews
             });
         }
 
@@ -121,39 +109,23 @@ namespace TouristGuide.Api.Controllers
             if (touristId is null)
                 return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
-            if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+            var result = await _reviewService.CreateReview(id, touristId.Value, dto);
 
-            var tourist = await _context.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value && t.IsActive);
-            if (tourist is null)
-                return Unauthorized(new { message = "Turista nije pronadjen ili nije aktivan." });
-
-            var reviewExists = await _context.Reviews
-                .AnyAsync(r => r.PostId == id && r.TouristId == touristId.Value);
-
-            if (reviewExists)
-                return Conflict(new { message = "Turista je vec ostavio recenziju za ovu objavu." });
-
-            var review = new Review
+            if (!result.Succeeded)
             {
-                PostId = id,
-                TouristId = touristId.Value,
-                Rating = (byte)dto.Rating,
-                Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
-                IsApproved = true,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Reviews.Add(review);
-            await _context.SaveChangesAsync();
-
-            await RefreshReviewStats(post);
+                return result.Failure switch
+                {
+                    CreateReviewFailure.PostNotFound => NotFound(new { message = result.Message }),
+                    CreateReviewFailure.TouristNotFound => Unauthorized(new { message = result.Message }),
+                    CreateReviewFailure.DuplicateReview => Conflict(new { message = result.Message }),
+                    _ => BadRequest(new { message = "Recenziju nije moguce sacuvati." })
+                };
+            }
 
             return CreatedAtAction(
                 nameof(GetReviews),
                 new { id },
-                MapToReviewDto(review, tourist.Name)
+                result.Review
             );
         }
 
@@ -419,12 +391,10 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPost("{id}/view")]
-        [Authorize(Roles = "tourist")]
+        [AllowAnonymous]
         public async Task<IActionResult> RegisterView(uint id)
         {
-            var touristId = GetRequiredTouristId();
-            if (touristId is null)
-                return Unauthorized(new { message = "Turista nije autentifikovan." });
+            var touristId = GetAuthorizedTouristId();
 
             var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
             if (post is null)
@@ -433,7 +403,7 @@ namespace TouristGuide.Api.Controllers
             _context.PostViews.Add(new PostView
             {
                 PostId = id,
-                TouristId = touristId.Value,
+                TouristId = touristId,
                 CreatedAt = DateTime.UtcNow
             });
 
@@ -454,6 +424,7 @@ namespace TouristGuide.Api.Controllers
             error = null;
 
             var query = _context.Posts
+                .AsNoTracking()
                 .Include(p => p.Admin)
                 .Include(p => p.Region)
                 .AsQueryable();
@@ -475,7 +446,9 @@ namespace TouristGuide.Api.Controllers
 
             if (forcePublishedOnly)
             {
-                query = query.Where(p => p.Status == "published");
+                query = query.Where(p =>
+                    p.Status == "published" &&
+                    (p.RegionId == null || (p.Region != null && p.Region.IsActive)));
                 return query;
             }
 
