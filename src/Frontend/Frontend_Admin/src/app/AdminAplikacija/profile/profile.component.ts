@@ -184,21 +184,39 @@ export class ProfileComponent implements OnInit {
 
   changePassword(): void {
     if (this.pwForm.invalid) { this.pwForm.markAllAsTouched(); return; }
+
+    const { newPassword } = this.pwForm.value;
+    if (newPassword && newPassword.length < 8) {
+      this.pwError = 'Nova lozinka mora imati najmanje 8 karaktera.';
+      return;
+    }
+
+    if (this.pwForm.hasError('mismatch')) {
+      this.pwError = 'Lozinke se ne podudaraju.';
+      return;
+    }
+
     this.pwSaving = true;
     this.pwError = null;
     this.pwSuccess = null;
 
-    const { currentPassword, newPassword } = this.pwForm.value;
+    const { currentPassword } = this.pwForm.value;
     this.userService.changePassword(currentPassword, newPassword).subscribe({
       next: () => {
         this.pwSaving = false;
         this.pwSuccess = 'Lozinka je uspješno promijenjena.';
         this.pwForm.reset();
-        setTimeout(() => { this.pwMode = false; this.pwSuccess = null; }, 2000);
+        setTimeout(() => { this.pwMode = false; this.pwSuccess = null; }, 2500);
       },
       error: (err: any) => {
-        this.pwError = err?.error?.message ?? 'Greška pri promjeni lozinke.';
         this.pwSaving = false;
+        const msg = err?.error?.message ?? '';
+        // Backend vraća specifičnu poruku za pogrešnu lozinku
+        if (msg.toLowerCase().includes('ispravna') || msg.toLowerCase().includes('incorrect') || err?.status === 400) {
+          this.pwError = msg || 'Trenutna lozinka nije ispravna.';
+        } else {
+          this.pwError = msg || 'Greška pri promjeni lozinke. Pokušajte ponovo.';
+        }
       },
     });
   }

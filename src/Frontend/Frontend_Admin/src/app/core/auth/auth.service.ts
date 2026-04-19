@@ -41,8 +41,8 @@ export interface AuthResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private http         = inject(HttpClient);
-  private router       = inject(Router);
+  private http = inject(HttpClient);
+  private router = inject(Router);
   private tokenStorage = inject(TokenStorageService);
 
   private _currentUser$ = new BehaviorSubject<AuthUser | null>(
@@ -58,16 +58,16 @@ export class AuthService {
       map(res => {
         // Backend (pravi): { token, expiresAtUtc, user: { id, fullName, email, role, ... } }
         // Mock:            { accessToken, user: { userId, ... } }
-        const raw  = res.user ?? {};
+        const raw = res.user ?? {};
         const user: AuthUser = {
-          userId:        raw.userId   ?? raw.id   ?? raw.Id   ?? 0,
-          fullName:      raw.fullName ?? raw.FullName ?? '',
-          email:         raw.email    ?? raw.Email ?? '',
-          role:          (raw.role    ?? raw.Role ?? 'admin') as AdminRole,
+          userId: raw.userId ?? raw.id ?? raw.Id ?? 0,
+          fullName: raw.fullName ?? raw.FullName ?? '',
+          email: raw.email ?? raw.Email ?? '',
+          role: (raw.role ?? raw.Role ?? 'admin') as AdminRole,
           organizationId: raw.organizationId ?? raw.OrganizationId ?? null,
-          isIndividual:  raw.isIndividual ?? raw.IsIndividual ?? true,
+          isIndividual: raw.isIndividual ?? raw.IsIndividual ?? true,
           accountStatus: (raw.accountStatus ?? raw.AccountStatus ?? 'active') as any,
-          permissions:   raw.permissions ?? raw.Permissions ?? [],
+          permissions: raw.permissions ?? raw.Permissions ?? [],
         };
         return {
           accessToken: res.accessToken ?? res.token ?? res.Token ?? '',
@@ -75,9 +75,12 @@ export class AuthService {
         } as AuthResponse;
       }),
       tap(res => {
-        this.tokenStorage.saveToken(res.accessToken);
-        this.tokenStorage.saveUser(res.user);
-        this._currentUser$.next(res.user);
+        // Suspended admin ne smije dobiti token
+        if (res.user.accountStatus !== 'suspended') {
+          this.tokenStorage.saveToken(res.accessToken);
+          this.tokenStorage.saveUser(res.user);
+          this._currentUser$.next(res.user);
+        }
       })
     );
   }

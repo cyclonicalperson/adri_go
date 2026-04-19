@@ -1,5 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { AuthService } from '@core/auth/auth.service';
 import { UserService } from '@core/services/user.service';
 import { ReviewService } from '@core/services/review.service';
@@ -17,7 +19,8 @@ interface NavItem {
   styleUrl: './sidebar.component.scss',
   imports: [RouterLink, RouterLinkActive],
 })
-export class SidebarComponent implements OnInit {
+export class SidebarComponent implements OnInit, OnDestroy {
+  private routerSub?: Subscription;
   @Input() collapsed = false;
   @Output() collapsedChange = new EventEmitter<boolean>();
   @Output() navClick = new EventEmitter<void>();
@@ -29,10 +32,19 @@ export class SidebarComponent implements OnInit {
     public auth: AuthService,
     private userService: UserService,
     private reviewService: ReviewService,
+    private router: Router,
   ) { }
 
   ngOnInit(): void {
     this.loadBadges();
+    // Osvježi badge-ove nakon svake navigacije
+    this.routerSub = this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd)
+    ).subscribe(() => this.loadBadges());
+  }
+
+  ngOnDestroy(): void {
+    this.routerSub?.unsubscribe();
   }
 
   private loadBadges(): void {

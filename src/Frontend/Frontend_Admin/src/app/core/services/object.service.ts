@@ -22,36 +22,36 @@ import {
 
 // Mapiranje iz frontend kategorije u backend post_type
 const CATEGORY_TO_POST_TYPE: Record<string, string> = {
-  HOTEL:       'accommodation',
-  APARTMENT:   'accommodation',
-  RESTAURANT:  'restaurant',
-  CAFE:        'restaurant',
-  CLUB:        'club',
-  SHOP:        'shop',
-  CULTURAL:    'cultural_site',
-  MONUMENT:    'monument',
-  SPORT:       'sports_facility',
-  NATURE:      'attraction',
-  OTHER:       'other',
+  HOTEL: 'accommodation',
+  APARTMENT: 'accommodation',
+  RESTAURANT: 'restaurant',
+  CAFE: 'restaurant',
+  CLUB: 'club',
+  SHOP: 'shop',
+  CULTURAL: 'cultural_site',
+  MONUMENT: 'monument',
+  SPORT: 'sports_facility',
+  NATURE: 'attraction',
+  OTHER: 'other',
 };
 
 const POST_TYPE_TO_CATEGORY: Record<string, string> = {
-  accommodation:    'HOTEL',
-  restaurant:       'RESTAURANT',
-  club:             'CLUB',
-  shop:             'SHOP',
-  cultural_site:    'CULTURAL',
-  monument:         'MONUMENT',
-  sports_facility:  'SPORT',
-  attraction:       'NATURE',
-  other:            'OTHER',
+  accommodation: 'HOTEL',
+  restaurant: 'RESTAURANT',
+  club: 'CLUB',
+  shop: 'SHOP',
+  cultural_site: 'CULTURAL',
+  monument: 'MONUMENT',
+  sports_facility: 'SPORT',
+  attraction: 'NATURE',
+  other: 'OTHER',
 };
 
 @Injectable({ providedIn: 'root' })
 export class ObjectService {
   private readonly url = `${environment.apiUrl}/posts`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getAll(
     req: PageRequest & { destinationId?: number; regionId?: number; category?: string; status?: string }
@@ -60,34 +60,38 @@ export class ObjectService {
       .set('page', req.page)
       .set('pageSize', req.pageSize);
 
-    if (req.sortBy)  params = params.set('sortBy', req.sortBy);
+    if (req.sortBy) params = params.set('sortBy', req.sortBy);
     if (req.sortDir) params = params.set('sortDir', req.sortDir!);
-    if (req.search)  params = params.set('search', req.search);
+    if (req.search) params = params.set('search', req.search);
 
     // Filtriramo po regionId
     const rid = req.regionId ?? req.destinationId;
     if (rid) params = params.set('region_id', rid);
 
     // Mapiramo kategoriju u post_type
-    if (req.category && req.category !== 'OTHER') {
+    if (req.category) {
       const pt = CATEGORY_TO_POST_TYPE[req.category];
       if (pt) params = params.set('type', pt);
     }
 
     // Status filter (draft/published/archived)
     if (req.status) params = params.set('status', req.status);
+    // Kad je status prazan string, ne šaljemo parametar (backend vraća sve)
 
     return this.http.get<any>(this.url, { params }).pipe(
       map(res => {
         // Backend vraća sve tipove — filtriramo na klijentskoj strani da izuzmemo event
         const allPosts: any[] = res.data ?? [];
         const nonEvents = allPosts.filter((p: any) => p.postType !== 'event');
+        // Ako nema type filtera, total je veći od stvarnog (uključuje events na serveru)
+        // Koristimo nonEvents.length za tačan total kad radimo client-side filter
+        const adjustedTotal = nonEvents.length < allPosts.length ? nonEvents.length : (res.total ?? nonEvents.length);
         return {
-          data:       nonEvents.map(postToObject),
-          total:      res.total ?? nonEvents.length,
-          page:       res.page ?? req.page,
-          pageSize:   res.pageSize ?? req.pageSize,
-          totalPages: res.totalPages ?? 1,
+          data: nonEvents.map(postToObject),
+          total: adjustedTotal,
+          page: res.page ?? req.page,
+          pageSize: res.pageSize ?? req.pageSize,
+          totalPages: Math.ceil(adjustedTotal / (req.pageSize || 10)),
         };
       })
     );
@@ -96,7 +100,7 @@ export class ObjectService {
   getById(id: number): Observable<ApiResponse<TouristObject>> {
     return this.http.get<any>(`${this.url}/${id}`).pipe(
       map(res => ({
-        data:    postToObject(res.data ?? res),
+        data: postToObject(res.data ?? res),
         success: res.success ?? true,
       }))
     );
@@ -104,18 +108,18 @@ export class ObjectService {
 
   create(payload: CreateObjectRequest): Observable<ApiResponse<TouristObject>> {
     const body: any = {
-      regionId:         payload.regionId ?? payload.destinationId,
-      title:            payload.name,
-      postType:         CATEGORY_TO_POST_TYPE[payload.category] ?? 'other',
-      description:      payload.description,
-      address:          payload.address,
-      lat:              payload.latitude,
-      lng:              payload.longitude,
-      externalUrl:      payload.website ?? null,
-      openingHours:     payload.workingHours ? { text: payload.workingHours } : null,
-      details:          payload.phone ? { phone: payload.phone } : null,
-      images:           payload.media?.map(m => m.url) ?? [],
-      status:           'draft',
+      regionId: payload.regionId ?? payload.destinationId,
+      title: payload.name,
+      postType: CATEGORY_TO_POST_TYPE[payload.category] ?? 'other',
+      description: payload.description,
+      address: payload.address,
+      lat: payload.latitude,
+      lng: payload.longitude,
+      externalUrl: payload.website ?? null,
+      openingHours: payload.workingHours ? { text: payload.workingHours } : null,
+      details: payload.phone ? { phone: payload.phone } : null,
+      images: payload.media?.map(m => m.url) ?? [],
+      status: 'draft',
     };
     return this.http.post<any>(this.url, body).pipe(
       map(res => ({ data: postToObject(res.data ?? res), success: true }))
@@ -155,30 +159,37 @@ function postToObject(p: any): TouristObject {
   if (!p) return {} as TouristObject;
   const regionData = p.region ?? null;
   return {
-    objectId:      p.id ?? p.postId,
+    objectId: p.id ?? p.postId,
     destinationId: p.regionId ?? 0,
-    regionId:      p.regionId,
-    name:          p.title ?? '',
-    category:      (POST_TYPE_TO_CATEGORY[p.postType] ?? 'OTHER') as any,
-    description:   p.description ?? '',
-    address:       p.address ?? '',
-    latitude:      p.lat ?? p.latitude ?? 0,
-    longitude:     p.lng ?? p.longitude ?? 0,
-    phone:         '',
-    website:       p.externalUrl ?? '',
-    workingHours:  p.openingHours?.text ?? '',
-    createdBy:     p.adminId ?? 0,
-    createdAt:     p.createdAt ?? '',
-    destination:   regionData ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
-    region:        regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
+    regionId: p.regionId,
+    name: p.title ?? '',
+    category: (POST_TYPE_TO_CATEGORY[p.postType] ?? 'OTHER') as any,
+    description: p.description ?? '',
+    address: p.address ?? '',
+    latitude: p.lat ?? p.latitude ?? 0,
+    longitude: p.lng ?? p.longitude ?? 0,
+    phone: '',
+    website: p.externalUrl ?? '',
+    workingHours: p.openingHours?.text ?? '',
+    createdBy: p.adminId ?? 0,
+    createdAt: p.createdAt ?? '',
+    destination: regionData ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
+    region: regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     averageRating: p.avgRating ?? null,
-    reviewCount:   p.reviewCount ?? 0,
-    media:         (p.images ?? []).map((url: string, idx: number) => ({
-      mediaId: idx + 1,
-      url,
-      sortOrder: idx,
-    })),
+    reviewCount: p.reviewCount ?? 0,
+    media: (() => {
+      let imgs: string[] = [];
+      if (Array.isArray(p.images)) imgs = p.images;
+      else if (typeof p.images === 'string' && p.images) {
+        try { imgs = JSON.parse(p.images); } catch { imgs = []; }
+      }
+      return imgs.map((url: string, idx: number) => ({
+        mediaId: idx + 1,
+        url,
+        sortOrder: idx,
+      }));
+    })()
     // Čuvamo originalnu status vrijednost (za filter u UI)
-    ...(p.status ? { status: p.status } : {}),
+    ,...(p.status ? { status: p.status } : {}),
   } as any;
 }

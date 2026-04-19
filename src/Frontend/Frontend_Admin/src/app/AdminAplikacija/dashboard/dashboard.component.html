@@ -126,6 +126,7 @@
           <div class="panel-title">Turistički pregled</div>
           <div class="panel-sub">Na osnovu podataka iz baze</div>
         </div>
+        @if (isSuperAdmin) {
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">👣</div>
@@ -143,6 +144,25 @@
             <div class="kpi-lbl">Recenzija na čekanju</div>
           </div>
         </div>
+        } @else {
+        <div class="kpi-row">
+          <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
+            <div class="kpi-icon-wrap">📝</div>
+            <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
+            <div class="kpi-lbl">Mojih objava</div>
+          </div>
+          <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
+            <div class="kpi-icon-wrap">⭐</div>
+            <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
+            <div class="kpi-lbl">Recenzija na čekanju</div>
+          </div>
+          <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
+            <div class="kpi-icon-wrap">📍</div>
+            <div class="kpi-val">{{ totalVisits }}</div>
+            <div class="kpi-lbl">Poseta na mojim obj.</div>
+          </div>
+        </div>
+        }
       </div>
       }
 
@@ -161,33 +181,28 @@
         <div class="panel-body">
           <div class="chart-wrap">
             <div class="chart-y-axis">
-              <span>{{ maxVisitCount }}</span>
-              <span>{{ Math.round(maxVisitCount * 0.66) }}</span>
-              <span>{{ Math.round(maxVisitCount * 0.33) }}</span>
+              <span>{{ maxVisit30 }}</span>
+              <span>{{ Math.round(maxVisit30 * 0.66) }}</span>
+              <span>{{ Math.round(maxVisit30 * 0.33) }}</span>
               <span>0</span>
             </div>
             <div class="chart-area">
-              @if (visits.length > 0) {
-              @for (v of visits; track v.date; let i = $index) {
+              @for (v of visits30; track v.date) {
               <div class="bar bar-green"
-                   [style.height.%]="barHeight(v.count)"
+                   [style.height.%]="barHeight30(v.count)"
+                   [class.bar-empty]="v.count === 0"
                    [attr.data-tooltip]="formatBarDate(v.date) + ': ' + v.count + ' pregleda'"></div>
-              }
-              } @else {
-              <div class="state-msg" style="text-align:center;padding:40px 0;color:#9ca3af;font-size:13px">Nema podataka o posetama.</div>
               }
             </div>
           </div>
           <div class="chart-labels">
-            @if (visits.length >= 7) {
-            <span>{{ visits[0]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length/6)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length/3)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length/2)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length*2/3)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length*5/6)]?.date?.slice(5) }}</span>
-            <span>{{ visits[visits.length - 1]?.date?.slice(5) }}</span>
-            }
+            <span>{{ visits30[0]?.date?.slice(5) }}</span>
+            <span>{{ visits30[5]?.date?.slice(5) }}</span>
+            <span>{{ visits30[10]?.date?.slice(5) }}</span>
+            <span>{{ visits30[15]?.date?.slice(5) }}</span>
+            <span>{{ visits30[20]?.date?.slice(5) }}</span>
+            <span>{{ visits30[25]?.date?.slice(5) }}</span>
+            <span>{{ visits30[29]?.date?.slice(5) }}</span>
           </div>
         </div>
       </div>
@@ -299,8 +314,8 @@
               <div class="req-meta">{{ req.meta }}</div>
             </div>
             <div class="req-actions">
-              <button class="btn btn-xs btn-approve">✓</button>
-              <button class="btn btn-xs btn-reject">✗</button>
+              <button class="btn btn-xs btn-approve" (click)="approveRequest(req); $event.stopPropagation()">✓</button>
+              <button class="btn btn-xs btn-reject" (click)="rejectRequest(req); $event.stopPropagation()">✗</button>
             </div>
           </div>
           }

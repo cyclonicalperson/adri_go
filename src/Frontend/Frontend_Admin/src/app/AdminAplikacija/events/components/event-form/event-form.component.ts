@@ -67,9 +67,11 @@ export class EventFormComponent implements OnInit {
       this.destinations = res.data;
     });
 
-    // Učitaj objekte za dropdown
-    this.objectService.getAll({ page: 1, pageSize: 200 }).subscribe(res => {
-      this.objects = res.data;
+    // Učitaj sve ne-event postove direktno — izbjegava category filter bug u ObjectService
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts?page=1&pageSize=200`).subscribe(res => {
+      this.objects = (res.data ?? [])
+        .filter((p: any) => p.postType !== 'event')
+        .map((p: any) => ({ objectId: p.id ?? p.postId, name: p.title } as any));
     });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
@@ -95,12 +97,13 @@ export class EventFormComponent implements OnInit {
 
           this.form.patchValue({
             title: post.title ?? '',
+            // Backend serijalizuje camelCase: startAt/endAt (ne eventStart/eventEnd)
             category: det.category ?? 'OTHER',
             description: post.description ?? '',
             regionId: post.regionId ?? null,
-            objectId: det.objectId ?? post.objectId ?? null,
-            startAt: fmtDt(det.eventStart),
-            endAt: fmtDt(det.eventEnd),
+            objectId: det.objectId ?? det.relatedObjectId ?? null,
+            startAt: fmtDt(det.startAt ?? det.eventStart),
+            endAt: fmtDt(det.endAt ?? det.eventEnd),
             ticketUrl: det.ticketUrl ?? post.externalUrl ?? '',
             externalUrl: post.externalUrl ?? '',
             lat: post.lat ?? null,
@@ -134,9 +137,10 @@ export class EventFormComponent implements OnInit {
     // Backend /api/posts PUT/POST prihvata PostType, Details itd.
     const details = JSON.stringify({
       category: raw.category,
-      eventStart: raw.startAt ? new Date(raw.startAt).toISOString() : null,
-      eventEnd: raw.endAt ? new Date(raw.endAt).toISOString() : null,
+      startAt: raw.startAt ? new Date(raw.startAt).toISOString() : null,
+      endAt: raw.endAt ? new Date(raw.endAt).toISOString() : null,
       ticketUrl: raw.ticketUrl || null,
+      objectId: raw.objectId || null,
     });
 
     const body: any = {

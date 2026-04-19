@@ -99,6 +99,7 @@ export class DashboardComponent implements OnInit {
 
   private loadSecondaryData(): void {
     // Pinovi za mapu lokacija + raspored po tipu
+    // Regularni admin dobija samo svoje postove od backend-a (po JWT)
     this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
       params: new HttpParams().set('page', 1).set('pageSize', 200)
     }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
@@ -339,12 +340,53 @@ export class DashboardComponent implements OnInit {
   }
 
   barHeight(count: number): number {
-    if (!this.visits.length) return 0;
+    if (!this.visits.length || count === 0) return 2; // 2px minimum so bar is visible as a line
     const max = Math.max(...this.visits.map(v => v.count), 1);
-    return Math.max(8, Math.round((count / max) * 100));
+    return Math.round((count / max) * 100);
   }
 
   barColor(i: number): string { return ['bar-green', 'bar-blue', 'bar-amber'][i % 3]; }
+
+  // ── Visits: uvijek 30 dana, prazni dani = 0 ───────────────────────────
+  get visits30(): { date: string; count: number }[] {
+    const map = new Map(this.visits.map(v => [v.date, v.count]));
+    const result: { date: string; count: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      result.push({ date: key, count: map.get(key) ?? 0 });
+    }
+    return result;
+  }
+
+  get maxVisit30(): number {
+    return Math.max(...this.visits30.map(v => v.count), 1);
+  }
+
+  barHeight30(count: number): number {
+    if (count === 0) return 2;
+    return Math.round((count / this.maxVisit30) * 100);
+  }
+
+  // ── Approve / Reject zahteva iz dashboard widgeta ─────────────────────
+  approveRequest(req: PendingRequest): void {
+    this.userService.approveRegistration(req.id).subscribe({
+      next: () => {
+        this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
+        if (this.stats) this.stats = { ...this.stats, pendingRegistrations: Math.max(0, (this.stats.pendingRegistrations ?? 1) - 1) };
+      },
+    });
+  }
+
+  rejectRequest(req: PendingRequest): void {
+    this.userService.rejectRegistration(req.id, { rejectionReason: 'Odbijeno od strane superadmina.' }).subscribe({
+      next: () => {
+        this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
+        if (this.stats) this.stats = { ...this.stats, pendingRegistrations: Math.max(0, (this.stats.pendingRegistrations ?? 1) - 1) };
+      },
+    });
+  }
 
   timeAgo(dateStr: string): string {
     if (!dateStr) return '—';

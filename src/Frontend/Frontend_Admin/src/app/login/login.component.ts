@@ -39,17 +39,23 @@ export class LoginComponent {
     this.auth.login(this.form.value).subscribe({
       next: res => {
         this.loading = false;
-        // DB ENUM vrednosti: 'superadmin' | 'admin'
-        if (res.user.role === 'superadmin' || res.user.role === 'admin') {
-          this.router.navigate(['/admin/dashboard']);
-        } else {
-          // Fallback za buduće role
-          this.router.navigate(['/admin/dashboard']);
+        // Provjeri accountStatus - suspended admin ne smije ući
+        if (res.user.accountStatus === 'suspended') {
+          this.error = 'Vaš nalog je suspendovan. Kontaktirajte administratora.';
+          this.auth.logout();
+          return;
         }
+        this.router.navigate(['/admin/dashboard']);
       },
       error: err => {
         this.loading = false;
-        this.error = err.error?.message ?? err.message ?? 'Pogrešan email ili lozinka.';
+        // Backend vraća status field za suspended
+        const status = err.error?.status;
+        if (status === 'suspended') {
+          this.error = 'Vaš nalog je suspendovan. Kontaktirajte administratora.';
+        } else {
+          this.error = err.error?.message ?? 'Pogrešan email ili lozinka.';
+        }
       },
     });
   }

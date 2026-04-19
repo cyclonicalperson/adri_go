@@ -45,9 +45,8 @@
         </div>
 
         <div class="field">
-          <label class="label">Opis *</label>
+          <label class="label">Opis</label>
           <textarea class="input textarea"
-                    [class.invalid]="f('description').invalid && f('description').touched"
                     formControlName="description"
                     placeholder="Kratak opis aktivnosti..."
                     rows="4"></textarea>
@@ -136,8 +135,8 @@
         <div class="field">
           <label class="label">Status aktivnosti</label>
           <select class="input" formControlName="status">
-            <option value="PENDING">⏳ Na čekanju (čeka odobrenje)</option>
-            <option value="APPROVED">✅ Odobreno</option>
+            <option value="pending">⏳ Na čekanju (čeka odobrenje)</option>
+            <option value="approved">✅ Odobreno</option>
             <option value="INACTIVE">❌ Neaktivno</option>
           </select>
         </div>

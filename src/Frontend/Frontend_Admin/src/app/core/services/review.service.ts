@@ -23,28 +23,47 @@ import {
 export class ReviewService {
   private readonly url = `${environment.apiUrl}/reviews`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getAll(req: PageRequest & {
     status?: string;
     entityType?: string;
   }): Observable<PaginatedResponse<Review>> {
     let params = new HttpParams()
-      .set('page', req.page)
-      .set('pageSize', req.pageSize);
+      .set('page', 1)                          // fetch all, sort client-side
+      .set('pageSize', 1000);
 
-    if (req.status)     params = params.set('status', req.status);
+    if (req.status) params = params.set('status', req.status);
     if (req.entityType) params = params.set('entityType', req.entityType);
-    // Backend ne podrzava sortBy/search za reviews — ignorisemo
 
     return this.http.get<any>(this.url, { params }).pipe(
-      map(res => ({
-        data:       (res.data ?? []).map(backendToReview),
-        total:      res.total ?? 0,
-        page:       res.page ?? req.page,
-        pageSize:   res.pageSize ?? req.pageSize,
-        totalPages: res.totalPages ?? 1,
-      }))
+      map(res => {
+        let data: Review[] = (res.data ?? []).map(backendToReview);
+
+        // Client-side sort (backend doesn't support sortBy)
+        const sortBy = req.sortBy ?? 'createdAt';
+        const sortDir = req.sortDir ?? 'desc';
+        data = data.sort((a, b) => {
+          let va: any, vb: any;
+          if (sortBy === 'rating') { va = a.rating ?? 0; vb = b.rating ?? 0; }
+          else if (sortBy === 'createdAt') { va = new Date(a.createdAt).getTime(); vb = new Date(b.createdAt).getTime(); }
+          else { va = a.createdAt; vb = b.createdAt; }
+          return sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+        });
+
+        // Manual pagination after sort
+        const total = data.length;
+        const page = req.page ?? 1;
+        const pageSize = req.pageSize ?? 10;
+        const paged = data.slice((page - 1) * pageSize, page * pageSize);
+        return {
+          data: paged,
+          total,
+          page,
+          pageSize,
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        };
+      })
     );
   }
 
@@ -88,18 +107,18 @@ export class ReviewService {
 function backendToReview(r: any): Review {
   if (!r) return {} as Review;
   return {
-    reviewId:    r.reviewId ?? r.id,
-    touristId:   r.touristId ?? null,
-    postId:      r.postId ?? null,
-    routeId:     r.routeId ?? null,
-    rating:      r.rating,
-    comment:     r.comment ?? null,
-    status:      r.status ?? 'PENDING',
-    createdAt:   r.createdAt,
+    reviewId: r.reviewId ?? r.id,
+    touristId: r.touristId ?? null,
+    postId: r.postId ?? null,
+    routeId: r.routeId ?? null,
+    rating: r.rating,
+    comment: r.comment ?? null,
+    status: r.status ?? 'PENDING',
+    createdAt: r.createdAt,
     touristName: r.touristName ?? r.user?.fullName ?? null,
     user: r.touristId ? { userId: r.touristId, fullName: r.touristName ?? '' } : null,
-    entityType:  (r.entityType ?? (r.routeId ? 'ROUTE' : 'OBJECT')) as any,
-    entityName:  r.entityName ?? r.postTitle ?? r.routeName ?? null,
-    postType:    r.postType ?? null,
+    entityType: (r.entityType ?? (r.routeId ? 'ROUTE' : 'OBJECT')) as any,
+    entityName: r.entityName ?? r.postTitle ?? r.routeName ?? null,
+    postType: r.postType ?? null,
   };
 }

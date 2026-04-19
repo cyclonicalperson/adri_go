@@ -193,9 +193,13 @@ export class AktivnostiListComponent implements OnInit {
   }
 
   // ── Display helpers ───────────────────────────────────────────────────
-  // NOTE: Backend DB always stores category='aktivnost' for all activity tags.
-  // We infer display category from the tag name keywords.
+  // Backend now returns actual subcategory in 'category' field (stored in tag.Color).
+  // We still use inferCat as fallback for old tags that have no subcategory stored.
   private inferCat(a: BackendActivity): string {
+    // If category is a known subcategory, use it directly
+    const known = ['SPORT', 'ADVENTURE', 'WELLNESS', 'SHOPPING', 'DINING', 'NIGHTLIFE', 'SIGHTSEEING', 'CULTURE'];
+    if (known.includes((a.category ?? '').toUpperCase())) return a.category!.toUpperCase();
+    // Fallback: infer from name
     const n = (a.name ?? '').toLowerCase();
     if (/ski|snowboard|sport|tenis|fudbal|košarka|plivanje|planinar|bicikl|ronjenje|surfing|golf|trčanje/.test(n)) return 'SPORT';
     if (/rafting|treking|planin|penjanje|avantur|zipline|paraglajd|kajak|jezer|priroda/.test(n)) return 'ADVENTURE';

@@ -3,7 +3,7 @@
   <!-- ── STATS ────────────────────────────────────────────────────────── -->
   <div class="stats-strip" style="grid-template-columns: repeat(4, 1fr)">
     <div class="stat-chip">
-      <div class="num">{{ total }}</div>
+      <div class="num">{{ totalAll }}</div>
       <div class="lbl">Ukupno recenzija</div>
     </div>
     <div class="stat-chip">
@@ -26,7 +26,7 @@
   <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!req.status" (click)="onStatusChange('')">
-      Sve ({{ total }})
+      Sve ({{ totalAll }})
     </button>
     <button class="ftab" [class.active]="req.status === 'PENDING'" (click)="onStatusChange('PENDING')">
       ⏳ Na čekanju ({{ pendingCount }})

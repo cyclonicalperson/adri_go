@@ -8,18 +8,18 @@
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
       <div class="num" style="color:#15803d">{{ upcomingCount }}</div>
-      <div class="lbl">Objavljeni</div>
+      <div class="lbl">Objavljeno</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
       <div class="num" style="color:#d97706">{{ draftCount }}</div>
-      <div class="lbl">Na čekanju</div>
+      <div class="lbl">Nacrt</div>
       @if (draftCount > 0) {
-      <div class="trend warn">⚠ Traži pregled</div>
+      <div class="trend warn">⚠ Čeka pregled</div>
       }
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'archived'" (click)="filterByStatus('archived')">
       <div class="num" style="color:#6b7280">{{ pastCount }}</div>
-      <div class="lbl">Arhivirani</div>
+      <div class="lbl">Arhivirano</div>
     </div>
   </div>
 
@@ -147,7 +147,6 @@
             </span>
           </td>
           <td>
-            <span class="badge" [class]="statusBadge(e)">{{ statusLabel(e) }}</span>
             <span class="badge" [class]="postStatusBadgeClass(e.status)">{{ postStatusLabel(e.status) }}</span>
             @if (e.status === 'draft') {
             <div style="margin-top:6px;display:flex;gap:6px">

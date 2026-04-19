@@ -47,13 +47,13 @@ namespace TouristGuide.Api.Controllers
                 .Take(pageSize)
                 .Select(r => new
                 {
-                    regionId  = r.Id,
-                    name      = r.Name,
-                    type      = r.Type,
-                    country   = r.Country,
-                    lat       = r.Lat,
-                    lng       = r.Lng,
-                    isActive  = r.IsActive,
+                    regionId = r.Id,
+                    name = r.Name,
+                    type = r.Type,
+                    country = r.Country,
+                    lat = r.Lat,
+                    lng = r.Lng,
+                    isActive = r.IsActive,
                     createdAt = r.CreatedAt
                 })
                 .ToListAsync();
@@ -72,13 +72,13 @@ namespace TouristGuide.Api.Controllers
             {
                 data = new
                 {
-                    regionId  = r.Id,
-                    name      = r.Name,
-                    type      = r.Type,
-                    country   = r.Country,
-                    lat       = r.Lat,
-                    lng       = r.Lng,
-                    isActive  = r.IsActive,
+                    regionId = r.Id,
+                    name = r.Name,
+                    type = r.Type,
+                    country = r.Country,
+                    lat = r.Lat,
+                    lng = r.Lng,
+                    isActive = r.IsActive,
                     createdAt = r.CreatedAt
                 },
                 success = true
@@ -115,8 +115,8 @@ namespace TouristGuide.Api.Controllers
             if (dto.Name is not null) region.Name = dto.Name.Trim();
             if (dto.Type is not null) region.Type = dto.Type.Trim();
             if (dto.Country is not null) region.Country = dto.Country.Trim();
-            if (dto.Lat.HasValue)      region.Lat = dto.Lat;
-            if (dto.Lng.HasValue)      region.Lng = dto.Lng;
+            if (dto.Lat.HasValue) region.Lat = dto.Lat;
+            if (dto.Lng.HasValue) region.Lng = dto.Lng;
             if (dto.IsActive.HasValue) region.IsActive = dto.IsActive.Value;
 
             await _db.SaveChangesAsync();
@@ -167,10 +167,10 @@ namespace TouristGuide.Api.Controllers
                 .ThenBy(p => p.Label)
                 .Select(p => new
                 {
-                    id          = p.Id,
-                    code        = p.Code,
-                    label       = p.Label,
-                    category    = p.Category,
+                    id = p.Id,
+                    code = p.Code,
+                    label = p.Label,
+                    category = p.Category,
                     description = p.Description
                 })
                 .ToListAsync();
@@ -200,14 +200,14 @@ namespace TouristGuide.Api.Controllers
                 .Select(o => new
                 {
                     organizationId = o.Id,
-                    name           = o.Name,
-                    type           = o.Type,
-                    contactEmail   = o.ContactEmail,
-                    phone          = o.Phone,
-                    address        = o.Address,
-                    website        = o.Website,
-                    isVerified     = o.IsVerified,
-                    createdAt      = o.CreatedAt
+                    name = o.Name,
+                    type = o.Type,
+                    contactEmail = o.ContactEmail,
+                    phone = o.Phone,
+                    address = o.Address,
+                    website = o.Website,
+                    isVerified = o.IsVerified,
+                    createdAt = o.CreatedAt
                 })
                 .ToListAsync();
 
@@ -270,15 +270,15 @@ namespace TouristGuide.Api.Controllers
                 .Take(50)
                 .Select(n => new
                 {
-                    id          = n.Id,
+                    id = n.Id,
                     adminUserId = n.AdminUserId,
-                    type        = n.Type,
-                    title       = n.Title,
-                    body        = n.Body,
-                    payload     = n.Payload,
-                    isRead      = n.IsRead,
-                    createdAt   = n.CreatedAt,
-                    sentAt      = n.SentAt
+                    type = n.Type,
+                    title = n.Title,
+                    body = n.Body,
+                    payload = n.Payload,
+                    isRead = n.IsRead,
+                    createdAt = n.CreatedAt,
+                    sentAt = n.SentAt
                 })
                 .ToListAsync();
 
@@ -312,6 +312,23 @@ namespace TouristGuide.Api.Controllers
             await _db.AdminNotifications
                 .Where(n => n.AdminUserId == adminId.Value && !n.IsRead)
                 .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
+
+            return Ok(new { data = (object?)null, success = true });
+        }
+
+        // DELETE /api/admin-notifications/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(uint id)
+        {
+            var adminId = GetCurrentAdminId();
+            if (adminId is null) return Unauthorized();
+
+            var notif = await _db.AdminNotifications
+                .FirstOrDefaultAsync(n => n.Id == id && n.AdminUserId == adminId.Value);
+            if (notif is null) return NotFound(new { message = "Notifikacija nije pronađena." });
+
+            _db.AdminNotifications.Remove(notif);
+            await _db.SaveChangesAsync();
 
             return Ok(new { data = (object?)null, success = true });
         }

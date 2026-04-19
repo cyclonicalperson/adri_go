@@ -29,6 +29,8 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? status,
             [FromQuery] string? entityType,
+            [FromQuery] string? sortBy,
+            [FromQuery] string? sortDir,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -46,14 +48,24 @@ namespace TouristGuide.Api.Controllers
             {
                 filtered = entityType.ToUpperInvariant() switch
                 {
-                    "ROUTE"  => filtered.Where(r => r.RouteId.HasValue && !r.PostId.HasValue),
-                    "EVENT"  => filtered.Where(r => r.PostType == "event"),
+                    "ROUTE" => filtered.Where(r => r.RouteId.HasValue && !r.PostId.HasValue),
+                    "EVENT" => filtered.Where(r => r.PostType == "event"),
                     "OBJECT" => filtered.Where(r => r.PostId.HasValue && r.PostType != "event"),
-                    _        => filtered
+                    _ => filtered
                 };
             }
 
             var list = filtered.ToList();
+
+            // Sortiranje
+            list = (sortBy?.ToLower(), sortDir?.ToLower()) switch
+            {
+                ("rating", "asc") => list.OrderBy(r => r.Rating).ToList(),
+                ("rating", _) => list.OrderByDescending(r => r.Rating).ToList(),
+                ("createdat", "asc") => list.OrderBy(r => r.CreatedAt).ToList(),
+                _ => list.OrderByDescending(r => r.CreatedAt).ToList(),
+            };
+
             var total = list.Count;
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 10;
@@ -63,19 +75,19 @@ namespace TouristGuide.Api.Controllers
                 .Take(pageSize)
                 .Select(r => new
                 {
-                    reviewId    = r.ReviewId,
-                    touristId   = r.TouristId,
+                    reviewId = r.ReviewId,
+                    touristId = r.TouristId,
                     touristName = r.TouristName,
-                    postId      = r.PostId,
-                    routeId     = r.RouteId,
-                    rating      = r.Rating,
-                    comment     = r.Comment,
-                    status      = r.Status,
-                    createdAt   = r.CreatedAt,
-                    entityType  = r.RouteId.HasValue && !r.PostId.HasValue ? "ROUTE"
+                    postId = r.PostId,
+                    routeId = r.RouteId,
+                    rating = r.Rating,
+                    comment = r.Comment,
+                    status = r.Status,
+                    createdAt = r.CreatedAt,
+                    entityType = r.RouteId.HasValue && !r.PostId.HasValue ? "ROUTE"
                                 : r.PostType == "event" ? "EVENT" : "OBJECT",
-                    entityName  = r.PostTitle ?? r.RouteName,
-                    postType    = r.PostType
+                    entityName = r.PostTitle ?? r.RouteName,
+                    postType = r.PostType
                 })
                 .ToList();
 

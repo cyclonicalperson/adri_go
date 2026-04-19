@@ -16,6 +16,7 @@ import { ReviewModerationComponent } from '../review-moderation/review-moderatio
 export class ReviewsListComponent implements OnInit {
   reviews: Review[] = [];
   total = 0;
+  totalAll = 0;  // ukupan broj svih recenzija, bez filtera
   totalPages = 1;
   loading = true;
   moderateTarget: Review | null = null;
@@ -32,11 +33,11 @@ export class ReviewsListComponent implements OnInit {
   constructor(
     private service: ReviewService,
     private auth: AuthService,
-  ) {}
+  ) { }
 
   get canDelete(): boolean { return this.auth.isSuperAdmin; }
 
-  ngOnInit(): void { this.load(); this.loadCounts(); }
+  ngOnInit(): void { this.load(); this.loadCounts(); this.loadTotalAll(); }
 
   load(): void {
     this.loading = true;
@@ -49,6 +50,10 @@ export class ReviewsListComponent implements OnInit {
       },
       error: () => { this.loading = false; },
     });
+  }
+
+  private loadTotalAll(): void {
+    this.service.getAll({ page: 1, pageSize: 1 }).subscribe(r => { this.totalAll = r.total; });
   }
 
   private loadCounts(): void {
@@ -103,8 +108,9 @@ export class ReviewsListComponent implements OnInit {
           if (idx !== -1) this.reviews[idx] = { ...this.reviews[idx], status };
         }
         this.loadCounts();
+        this.loadTotalAll();
       },
-      error: () => {},
+      error: () => { },
     });
   }
 
@@ -132,7 +138,7 @@ export class ReviewsListComponent implements OnInit {
         this.total = Math.max(0, this.total - 1);
         this.loadCounts();
       },
-      error: () => {},
+      error: () => { },
     });
   }
 

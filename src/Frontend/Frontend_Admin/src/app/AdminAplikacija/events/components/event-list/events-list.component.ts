@@ -112,10 +112,10 @@ export class EventsListComponent implements OnInit {
           all = all.filter(e => this.eventCategory(e) === this.req.category);
         }
 
-        const now = new Date();
-        this.upcomingCount = all.filter(e => this.eventStart(e) > now).length;
-        this.ongoingCount = all.filter(e => this.eventStart(e) <= now && this.eventEnd(e) >= now).length;
-        this.pastCount = all.filter(e => this.eventEnd(e) < now).length;
+        // DB statusi — jedini relevantan prikaz za admin panel
+        this.upcomingCount = all.filter(e => e.status === 'published').length;
+        this.ongoingCount = all.filter(e => e.status === 'published').length; // alias
+        this.pastCount = all.filter(e => e.status === 'archived').length;
         this.draftCount = all.filter(e => e.status === 'draft').length;
 
         // Manual pagination when category filter is active
@@ -137,14 +137,20 @@ export class EventsListComponent implements OnInit {
   }
 
   // ── Event date helpers ────────────────────────────────────────────────────
+  private parseDet(e: Post): any {
+    let det = e.details as any;
+    if (typeof det === 'string') { try { det = JSON.parse(det); } catch { det = {}; } }
+    return det ?? {};
+  }
+
   eventStart(e: Post): Date {
-    const ds = e.details as any;
-    return ds?.eventStart ? new Date(ds.eventStart) : new Date(e.createdAt);
+    const ds = this.parseDet(e);
+    return ds?.startAt ? new Date(ds.startAt) : (ds?.eventStart ? new Date(ds.eventStart) : new Date(e.createdAt));
   }
 
   eventEnd(e: Post): Date {
-    const ds = e.details as any;
-    return ds?.eventEnd ? new Date(ds.eventEnd) : new Date(e.createdAt);
+    const ds = this.parseDet(e);
+    return ds?.endAt ? new Date(ds.endAt) : (ds?.eventEnd ? new Date(ds.eventEnd) : new Date(e.createdAt));
   }
 
   isUpcoming(e: Post): boolean { return this.eventStart(e) > new Date(); }
@@ -281,7 +287,11 @@ export class EventsListComponent implements OnInit {
   }
 
   eventCategory(e: Post): string {
-    return (e.details as any)?.category ?? '';
+    let det = e.details as any;
+    if (typeof det === 'string') {
+      try { det = JSON.parse(det); } catch { return ''; }
+    }
+    return det?.category ?? '';
   }
 
   categoryIcon(cat: string): string {

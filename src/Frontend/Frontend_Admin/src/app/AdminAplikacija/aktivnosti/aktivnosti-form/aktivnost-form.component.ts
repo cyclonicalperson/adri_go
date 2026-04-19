@@ -48,7 +48,7 @@ export class AktivnostFormComponent implements OnInit {
     this.form = this.fb.group({
       name: ['', Validators.required],
       category: ['SPORT', Validators.required],
-      description: ['', Validators.required],
+      description: [''],
       duration: [''],
       difficulty: [''],
       maxCapacity: [null],
@@ -56,7 +56,7 @@ export class AktivnostFormComponent implements OnInit {
       objectId: [null],
       latitude: [null],
       longitude: [null],
-      status: ['PENDING'],
+      status: ['pending'],
     });
 
     // Učitavamo sve ne-event postove kao listu lokacija za dropdown
@@ -76,13 +76,13 @@ export class AktivnostFormComponent implements OnInit {
         .subscribe(res => {
           const a = res.data;
           this.form.patchValue({
-            name: a.name, category: a.category, description: a.description,
+            name: a.name, category: a.category, description: a.description ?? '',
             duration: a.duration, difficulty: a.difficulty, maxCapacity: a.maxCapacity,
             tags: Array.isArray(a.tags) ? a.tags.join(', ') : (a.tags ?? ''),
             objectId: a.objectId,
             latitude: a.latitude ?? a.lat ?? null,
             longitude: a.longitude ?? a.lng ?? null,
-            status: a.status,
+            status: (a.status ?? 'pending').toLowerCase(),
           });
           const lat = a.latitude ?? a.lat;
           const lng = a.longitude ?? a.lng;
@@ -99,11 +99,12 @@ export class AktivnostFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
-    const payload = {
-      ...raw,
-      tags: raw.tags
-        ? (raw.tags as string).split(',').map((t: string) => t.trim()).filter(Boolean)
-        : [],
+    const payload: any = {
+      name: raw.name,
+      category: raw.category,
+      status: raw.status,
+      latitude: raw.latitude,
+      longitude: raw.longitude,
     };
 
     const url = this.isEdit

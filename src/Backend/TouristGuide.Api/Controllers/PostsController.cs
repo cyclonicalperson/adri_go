@@ -36,6 +36,9 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] uint? region_id,
             [FromQuery] string? type,
             [FromQuery] string? status,
+            [FromQuery] string? sortBy,
+            [FromQuery] string? sortDir,
+            [FromQuery] string? search,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
@@ -51,7 +54,11 @@ namespace TouristGuide.Api.Controllers
                     query = query!.Where(p => p.AdminId == adminId.Value);
             }
 
-            return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
+            // Search filter
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query!.Where(p => p.Title.Contains(search) || (p.Description != null && p.Description.Contains(search)));
+
+            return Ok(await BuildPagedPostsResponse(query!, page, pageSize, sortBy, sortDir));
         }
 
         [HttpGet("public")]
@@ -209,9 +216,9 @@ namespace TouristGuide.Api.Controllers
                 Address = dto.Address?.Trim(),
                 ExternalUrl = dto.ExternalUrl?.Trim(),
                 ExternalUrlLabel = dto.ExternalUrlLabel?.Trim(),
-                Images = dto.Images,
-                OpeningHours = dto.OpeningHours,
-                Details = dto.Details,
+                Images = dto.ImagesToString(),
+                OpeningHours = dto.OpeningHoursToString(),
+                Details = dto.DetailsToString(),
                 Status = statusLower,
                 PublishedAt = statusLower == "published" ? now : null,
                 CreatedAt = now,
@@ -284,13 +291,13 @@ namespace TouristGuide.Api.Controllers
                 post.ExternalUrlLabel = dto.ExternalUrlLabel.Trim();
 
             if (dto.Images is not null)
-                post.Images = dto.Images;
+                post.Images = dto.ImagesToString();
 
             if (dto.OpeningHours is not null)
-                post.OpeningHours = dto.OpeningHours;
+                post.OpeningHours = dto.OpeningHoursToString();
 
             if (dto.Details is not null)
-                post.Details = dto.Details;
+                post.Details = dto.DetailsToString();
 
             if (dto.Status is not null)
             {
@@ -503,23 +510,35 @@ namespace TouristGuide.Api.Controllers
 
                 query = query.Where(p => p.Status == statusLower);
             }
-            else
-            {
-                query = query.Where(p => p.Status == "published");
-            }
+            // NOTE: No default status filter — admin panel shows all statuses unless explicitly filtered
 
             return query;
         }
 
-        private async Task<object> BuildPagedPostsResponse(IQueryable<Post> query, int page, int pageSize)
+        private async Task<object> BuildPagedPostsResponse(
+            IQueryable<Post> query, int page, int pageSize,
+            string? sortBy = null, string? sortDir = null)
         {
             if (page < 1) page = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
             var total = await query.CountAsync();
+
+            // Sortiranje
+            query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
+            {
+                ("title", "asc") => query.OrderBy(p => p.Title),
+                ("title", _) => query.OrderByDescending(p => p.Title),
+                ("viewcount", "asc") => query.OrderBy(p => p.ViewCount),
+                ("viewcount", _) => query.OrderByDescending(p => p.ViewCount),
+                ("createdat", "asc") => query.OrderBy(p => p.CreatedAt),
+                ("createdat", _) => query.OrderByDescending(p => p.CreatedAt),
+                ("updatedat", "asc") => query.OrderBy(p => p.UpdatedAt),
+                ("updatedat", _) => query.OrderByDescending(p => p.UpdatedAt),
+                _ => query.OrderByDescending(p => p.CreatedAt),
+            };
+
             var posts = await query
-                .OrderByDescending(p => p.PublishedAt)
-                .ThenByDescending(p => p.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

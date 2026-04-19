@@ -133,7 +133,11 @@
             <span style="font-weight:700;font-size:14px;color:#111827">—</span>
           </td>
           <td>
+            @if (a.status === 'pending') {
+            <span class="badge badge-amber">⏳ Na čekanju</span>
+            } @else {
             <span class="badge badge-green">✅ Odobreno</span>
+            }
           </td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">

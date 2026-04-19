@@ -244,16 +244,24 @@ export class PermissionsManagementComponent implements OnInit {
     this.changeLog.unshift(entry);
     if (this.changeLog.length > 50) this.changeLog = this.changeLog.slice(0, 50);
 
-    // Persist to backend (mock stores in localStorage)
-    this.http.post(`${environment.apiUrl}/permission-log`, entry).subscribe();
+    // Persist in localStorage (nema backend endpoint za permission log)
+    this.saveChangeLog();
   }
 
-  // Load persistent log from backend on init
+  private saveChangeLog(): void {
+    try {
+      localStorage.setItem('th_permission_log', JSON.stringify(this.changeLog));
+    } catch { /* ignore */ }
+  }
+
+  // Učitaj log iz localStorage pri inicijalizaciji
   private loadChangeLog(): void {
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/permission-log`).subscribe({
-      next: res => { this.changeLog = res.data ?? []; },
-      error: () => { this.changeLog = []; },
-    });
+    try {
+      const raw = localStorage.getItem('th_permission_log');
+      this.changeLog = raw ? JSON.parse(raw) : [];
+    } catch {
+      this.changeLog = [];
+    }
   }
 
   // Ažurira permissionCount u listi korisnika odmah

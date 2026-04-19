@@ -96,8 +96,10 @@ export class ObjectsListComponent implements OnInit {
       pending: 'draft',
       inactive: 'archived',
     };
-    (this.req as any)['status'] = statusMap[val] || undefined;
-    this.req = { ...this.req, page: 1 };
+    const mapped = statusMap[val];
+    // Moramo kreirati nov objekat i eksplicitno ukloniti status kad je prazan
+    const { status: _removed, ...rest } = this.req as any;
+    this.req = mapped ? { ...rest, status: mapped, page: 1 } : { ...rest, page: 1 };
     this.load();
     this.loadGlobalCounts();
   }
