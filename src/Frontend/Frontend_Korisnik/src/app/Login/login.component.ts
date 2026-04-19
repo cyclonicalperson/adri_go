@@ -37,24 +37,18 @@ export class LoginComponent implements OnInit {
 
     const { emailOrPhone, password } = this.loginForm.value;
 
-    // Try JWT-enabled endpoint first (tourist-auth), fall back to simple tourists endpoint
+    // Koristimo ISKLJUČIVO novi JWT endpoint
     this.authService.loginWithToken(emailOrPhone, password).subscribe({
       next: () => {
         this.isLoading = false;
+        // Uspešno smo dobili token, idemo na mapu!
         this.router.navigate(['/map-home']);
       },
-      error: () => {
-        // Fallback to simple endpoint (no JWT)
-        this.authService.login(emailOrPhone, password).subscribe({
-          next: () => {
-            this.isLoading = false;
-            this.router.navigate(['/map-home']);
-          },
-          error: (err) => {
-            this.isLoading = false;
-            this.errorMessage = err?.error?.message || 'Pogrešan email ili lozinka.';
-          }
-        });
+      error: (err) => {
+        this.isLoading = false;
+        // Ako pukne, ispisujemo grešku na ekran da znamo šta se dešava
+        console.error('Login error:', err);
+        this.errorMessage = err?.error?.message || 'Pogrešan email ili lozinka.';
       }
     });
   }

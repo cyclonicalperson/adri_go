@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { LocationService, Location } from '../services/location.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-saved-locations',
@@ -9,53 +11,84 @@ import { Router } from '@angular/router';
   templateUrl: './saved-locations.html',
   styleUrls: ['./saved-locations.css']
 })
-export class SavedLocationsComponent {
+export class SavedLocationsComponent implements OnInit {
   activeFilter: string = 'All';
-  
-  // Default slika (fallback zaštita ako neka slika nekada ne uspe da se učita)
   defaultImage: string = 'assets/plaza.jpg';
+  isLoading: boolean = true;
+  
+  // URL tvog .NET Backenda za slike
+  readonly IMAGE_BASE_URL = 'http://localhost:5125/'; 
 
-  savedItems = [
-    {
-      id: 101,
-      title: 'Emerald Bay Coastal Trail',
-      category: 'Nature',
-      rating: 4.8,
-      reviews: 1240,
-      distance: 1.2,
-      status: 'Open Now',
-      isOpen: true,
-      imageUrl: 'assets/emerald-bay.jpg'
-    },
-    {
-      id: 102,
-      title: 'Old Town Heritage Museum',
-      category: 'Culture',
-      rating: 4.8,
-      reviews: 856,
-      distance: 0.5,
-      status: 'Closed',
-      isOpen: false,
-      imageUrl: 'assets/museum.jpg'
-    },
-    {
-      id: 103,
-      title: "The Fisherman's Wharf",
-      category: 'Food',
-      rating: 4.8,
-      reviews: 2105,
-      distance: 2.8,
-      status: 'Open Now',
-      isOpen: true,
-      imageUrl: 'assets/plaza.jpg' // <-- Vraćena slika za treću lokaciju!
+  savedItems: any[] = [];
+
+  constructor(
+    private router: Router,
+    private locationService: LocationService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit() {
+    // Provera da li je korisnik ulogovan pre nego što uopšte tražimo podatke
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
     }
-  ];
+    this.loadSavedLocations();
+  }
 
-  constructor(private router: Router) {}
+  loadSavedLocations() {
+    this.isLoading = true;
+    
+    // Pozivamo novi endpoint koji vraća listu DTO objekata
+    this.locationService.getMySavedPosts().subscribe({
+      next: (posts: Location[]) => {
+        this.savedItems = posts.map(post => {
+          
+          // Obrada slika
+          const imagesArr = this.locationService.parseImages(post.images);
+          let firstImage = imagesArr.length > 0 ? imagesArr[0] : this.defaultImage;
 
+          if (firstImage !== this.defaultImage && !firstImage.startsWith('http')) {
+            const cleanPath = firstImage.startsWith('/') ? firstImage.substring(1) : firstImage;
+            firstImage = `${this.IMAGE_BASE_URL}${cleanPath}`;
+          }
+
+          // Mapiranje na format koji tvoj HTML očekuje
+          return {
+            id: post.id,
+            title: post.title,
+            category: post.postType || 'Unknown',
+            rating: post.avgRating || 0,
+            reviews: post.reviewCount || 0,
+            distance: 1.5, 
+            status: post.status?.toLowerCase() === 'published' ? 'Open Now' : 'Closed',
+            isOpen: post.status?.toLowerCase() === 'published',
+            imageUrl: firstImage
+          };
+        });
+        
+        this.isLoading = false;
+        this.cdr.markForCheck(); // Osiguravamo da Angular primeti promenu podataka
+      },
+      error: (err: any) => {
+        console.error('Greška pri učitavanju sačuvanih lokacija:', err);
+        this.isLoading = false;
+        if (err.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
+        }
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  // Dinamičko filtriranje
   get filteredItems() {
     if (this.activeFilter === 'All') return this.savedItems;
-    return this.savedItems.filter(item => item.category === this.activeFilter);
+    return this.savedItems.filter(item => 
+      item.category.toLowerCase() === this.activeFilter.toLowerCase()
+    );
   }
 
   setFilter(filter: string) {
@@ -72,5 +105,29 @@ export class SavedLocationsComponent {
 
   showOnMap() {
     this.router.navigate(['/map-home']);
+  }
+
+  // Brisanje iz sačuvanih (Unsave) koristeći Toggle endpoint
+  removeSaved(id: number, event: Event) {
+    event.stopPropagation(); // Sprečava otvaranje detalja
+
+    // OPTIMISTIC UPDATE: Sklanjamo odmah sa ekrana
+    const originalItems = [...this.savedItems];
+    this.savedItems = this.savedItems.filter(item => item.id !== id);
+
+    this.locationService.toggleSaveLocation(id).subscribe({
+      next: (res: any) => {
+        // Ako je res.isSaved true, znači da smo ga greškom opet dodali (malo verovatno)
+        console.log(`Status lokacije ${id}: ${res.message}`);
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        console.error('Greška pri brisanju sa servera:', err);
+        // Vraćamo na staro ako server javi grešku
+        this.savedItems = originalItems;
+        alert("Nije uspelo uklanjanje lokacije. Pokušajte ponovo.");
+        this.cdr.markForCheck();
+      }
+    });
   }
 }
