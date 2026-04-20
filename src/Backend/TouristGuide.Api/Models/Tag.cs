@@ -22,7 +22,7 @@ namespace TouristGuide.Api.Models
 
         /// <summary>Hex boja za UI (#RRGGBB)</summary>
         [Column("color")]
-        [MaxLength(7)]
+        [MaxLength(100)]
         public string? Color { get; set; }
 
         // Navigation

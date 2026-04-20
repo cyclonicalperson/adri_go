@@ -44,11 +44,7 @@ namespace TouristGuide.Api.Controllers
             {
                 Name = dto.Name.Trim(),
                 Email = normalizedEmail,
-<<<<<<< Updated upstream
                 PasswordHash = PasswordHelper.Hash(dto.Password),
-=======
-                PasswordHash = PasswordHelper.Hash(dto.Password), // Pretpostavljam da imaš metodu Hash
->>>>>>> Stashed changes
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -149,21 +145,25 @@ namespace TouristGuide.Api.Controllers
         // --- Pomoćna metoda za generisanje tokena ---
         private string GenerateJwtToken(Tourist tourist)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+            var secret = _configuration["Jwt:Secret"]
+                ?? throw new InvalidOperationException("Jwt:Secret nije postavljen.");
+
+            var key = Encoding.UTF8.GetBytes(secret);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim("id", tourist.Id.ToString()),
-                    new Claim(ClaimTypes.Email, tourist.Email),
-                    new Claim(ClaimTypes.Name, tourist.Name)
-                }),
-                Expires = DateTime.UtcNow.AddDays(7), // Token traje 7 dana
-                Issuer = jwtSettings["Issuer"],
-                Audience = jwtSettings["Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            new Claim("id", tourist.Id.ToString()),
+            new Claim(ClaimTypes.Email, tourist.Email),
+            new Claim(ClaimTypes.Name, tourist.Name)
+        }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();

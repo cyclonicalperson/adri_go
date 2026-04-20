@@ -3,8 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-// 👇 DODATO: Neophodno za čitanje foldera sa slikama
-using Microsoft.Extensions.FileProviders; 
+using Microsoft.Extensions.FileProviders;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
@@ -12,7 +11,7 @@ using TouristGuide.Api.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 // ────────────────────────────────────────────────────────────
-// 1. CORS — dozvoljava frontendu da komunicira sa backendom
+// 1. CORS
 // ────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
@@ -23,9 +22,9 @@ builder.Services.AddCors(options =>
                 "http://localhost:4200",   // Admin Angular app
                 "http://localhost:4201"    // Turista Angular app
             )
-            .AllowAnyHeader()    // Dozvoljava Authorization header
-            .AllowAnyMethod()    // Dozvoljava GET, POST, PUT, DELETE
-            .AllowCredentials(); // Dozvoljava slanje kolačića
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -50,9 +49,7 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Audience"],
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSecret)
-        ),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
         ClockSkew = TimeSpan.Zero
     };
 });
@@ -66,9 +63,10 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
-
-// Servis za Review-ove
 builder.Services.AddScoped<IReviewService, ReviewService>();
+
+// Seeder — kreira bazu i puni početnim podacima pri svakom pokretanju
+builder.Services.AddScoped<DatabaseSeeder>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -78,11 +76,7 @@ builder.Services.AddEndpointsApiExplorer();
 // ────────────────────────────────────────────────────────────
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "TouristGuide API",
-        Version = "v1"
-    });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "TouristGuide API", Version = "v1" });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -99,28 +93,34 @@ builder.Services.AddSwaggerGen(options =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
 
-// MySQL konekcija
+// ────────────────────────────────────────────────────────────
+// 5. POSTGRESQL KONEKCIJA (zamjena za MySQL)
+// ────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")
     ));
 
 var app = builder.Build();
 
 // ────────────────────────────────────────────────────────────
-// 5. MIDDLEWARE PIPELINE — Redosled je izuzetno bitan!
+// 6. AUTOMATSKI SEED BAZE PRI POKRETANJU
+// ────────────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
+}
+
+// ────────────────────────────────────────────────────────────
+// 7. MIDDLEWARE PIPELINE
 // ────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
@@ -130,15 +130,20 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// 👇 NOVO: Omogućava pristup osnovnim statičkim fajlovima (iz wwwroot)
+// Serviranje statičkih fajlova iz wwwroot
 app.UseStaticFiles();
 
-// 👇 NOVO: Omogućava direktan pristup tvom "images" folderu
-// 👇 Pametni deo: Proverava da li folder postoji, a ako ne, pravi ga!
+// Serviranje upload-ovanih slika iz /images foldera
 var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "images");
 if (!Directory.Exists(imagesPath))
-{
     Directory.CreateDirectory(imagesPath);
+
+// Kreiranje podfoldera
+foreach (var sub in new[] { "posts", "regions", "profiles" })
+{
+    var subPath = Path.Combine(imagesPath, sub);
+    if (!Directory.Exists(subPath))
+        Directory.CreateDirectory(subPath);
 }
 
 app.UseStaticFiles(new StaticFileOptions
@@ -150,9 +155,8 @@ app.UseStaticFiles(new StaticFileOptions
 // CORS mora biti PRE autentifikacije
 app.UseCors("AllowFrontends");
 
-// Autentifikacija PRE autorizacije
-app.UseAuthentication();  
-app.UseAuthorization();   
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.Run();
