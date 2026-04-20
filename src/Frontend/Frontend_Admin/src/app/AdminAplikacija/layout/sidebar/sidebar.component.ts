@@ -3,8 +3,7 @@ import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/ro
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { AuthService } from '@core/auth/auth.service';
-import { UserService } from '@core/services/user.service';
-import { ReviewService } from '@core/services/review.service';
+import { BadgeService } from '@core/services/badge.service';
 
 interface NavItem {
   label: string;
@@ -21,46 +20,42 @@ interface NavItem {
 })
 export class SidebarComponent implements OnInit, OnDestroy {
   private routerSub?: Subscription;
+  private badgeSubs: Subscription[] = [];
+
   @Input() collapsed = false;
   @Output() collapsedChange = new EventEmitter<boolean>();
   @Output() navClick = new EventEmitter<void>();
 
-  pendingReviewsBadge: number | null = null;
-  pendingZahteviNadge: number | null = null;
+  reviewBadge: number | null = null;
+  requestsBadge: number | null = null;
 
   constructor(
     public auth: AuthService,
-    private userService: UserService,
-    private reviewService: ReviewService,
     private router: Router,
+    private badgeService: BadgeService,
   ) { }
 
   ngOnInit(): void {
-    this.loadBadges();
-    // Osvježi badge-ove nakon svake navigacije
+    this.badgeService.startPolling();
+
+    this.badgeSubs.push(
+      this.badgeService.pendingReviews$.subscribe(n => {
+        this.reviewBadge = n > 0 ? n : null;
+      }),
+      this.badgeService.pendingRequests$.subscribe(n => {
+        this.requestsBadge = n > 0 ? n : null;
+      }),
+    );
+
     this.routerSub = this.router.events.pipe(
       filter(e => e instanceof NavigationEnd)
-    ).subscribe(() => this.loadBadges());
+    ).subscribe(() => this.badgeService.refresh());
   }
 
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
-  }
-
-  private loadBadges(): void {
-    // Pending reviews — vidljivo svim adminima
-    this.reviewService.getAll({ page: 1, pageSize: 1, status: 'PENDING' }).subscribe({
-      next: res => { this.pendingReviewsBadge = res.total > 0 ? res.total : null; },
-      error: () => { this.pendingReviewsBadge = null; },
-    });
-
-    // Pending zahtevi — samo superadmin
-    if (this.isSuperAdmin) {
-      this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }).subscribe({
-        next: res => { this.pendingZahteviNadge = res.total > 0 ? res.total : null; },
-        error: () => { this.pendingZahteviNadge = null; },
-      });
-    }
+    this.badgeSubs.forEach(s => s.unsubscribe());
+    this.badgeService.stopPolling();
   }
 
   get mainItems(): NavItem[] {
@@ -69,14 +64,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
       { label: 'Destinacije', route: '/admin/lokacije', icon: '🏢' },
       { label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' },
       { label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' },
-      { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.pendingReviewsBadge },
+      { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.reviewBadge },
     ];
   }
 
   get adminItems(): NavItem[] {
     return [
       { label: 'Admini', route: '/admin/users', icon: '👥' },
-      { label: 'Zahtevi', route: '/admin/zahtevi', icon: '📋', badge: this.pendingZahteviNadge },
+      { label: 'Zahtevi', route: '/admin/zahtevi', icon: '📋', badge: this.requestsBadge },
       { label: 'Dozvole', route: '/admin/permissions', icon: '🔐' },
     ];
   }

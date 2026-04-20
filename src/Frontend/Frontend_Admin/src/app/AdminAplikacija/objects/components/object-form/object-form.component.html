@@ -20,6 +20,9 @@
           <label class="label">Naziv *</label>
           <input class="input" [class.invalid]="f('name').invalid && f('name').touched"
                  formControlName="name" placeholder="npr. Hotel Kopaonik" />
+          @if (f('name').invalid && f('name').touched) {
+          <div class="field-error">Naziv je obavezan.</div>
+          }
         </div>
 
         <div class="row-2">
@@ -40,18 +43,29 @@
               <option [value]="r.regionId">{{ r.name }}</option>
               }
             </select>
+            @if (f('regionId').invalid && f('regionId').touched) {
+            <div class="field-error">Izaberite region.</div>
+            }
           </div>
         </div>
 
         <div class="field">
           <label class="label">Adresa *</label>
-          <input class="input" formControlName="address" placeholder="npr. Bulevar Zorana Đinđića 1" />
+          <input class="input" [class.invalid]="f('address').invalid && f('address').touched"
+                 formControlName="address" placeholder="npr. Bulevar Zorana Đinđića 1" />
+          @if (f('address').invalid && f('address').touched) {
+          <div class="field-error">Adresa je obavezna.</div>
+          }
         </div>
 
         <div class="field">
           <label class="label">Opis *</label>
           <textarea class="input textarea" formControlName="description"
+                    [class.invalid]="f('description').invalid && f('description').touched"
                     placeholder="Kratak opis objekta..." rows="4"></textarea>
+          @if (f('description').invalid && f('description').touched) {
+          <div class="field-error">Opis je obavezan.</div>
+          }
         </div>
 
         <div class="row-3">
@@ -79,6 +93,7 @@
       @if (isEdit) {
       <div class="card">
         <h3 class="card-title">Galerija slika</h3>
+        <p class="field-hint">Podržani su samo HTTP/HTTPS URL-ovi slika. Fajlovi sa lokalnog računara nisu podržani.</p>
         <app-media-uploader entityType="object"
                             [entityId]="id!"
                             [media]="media"
@@ -97,11 +112,19 @@
         <div class="row-2" style="margin-top: 12px;">
           <div class="field">
             <label class="label">Geografska širina *</label>
-            <input class="input" type="number" step="0.0001" formControlName="latitude" />
+            <input class="input" [class.invalid]="f('latitude').invalid && f('latitude').touched"
+                   type="number" step="0.0001" formControlName="latitude" />
+            @if (f('latitude').invalid && f('latitude').touched) {
+            <div class="field-error">Kliknite na mapu ili unesite koordinatu.</div>
+            }
           </div>
           <div class="field">
             <label class="label">Geografska dužina *</label>
-            <input class="input" type="number" step="0.0001" formControlName="longitude" />
+            <input class="input" [class.invalid]="f('longitude').invalid && f('longitude').touched"
+                   type="number" step="0.0001" formControlName="longitude" />
+            @if (f('longitude').invalid && f('longitude').touched) {
+            <div class="field-error">Kliknite na mapu ili unesite koordinatu.</div>
+            }
           </div>
         </div>
       </div>

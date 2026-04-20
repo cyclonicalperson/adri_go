@@ -102,9 +102,14 @@ export class AktivnostFormComponent implements OnInit {
     const payload: any = {
       name: raw.name,
       category: raw.category,
-      status: raw.status,
+      status: (raw.status ?? 'pending').toLowerCase(),
       latitude: raw.latitude,
       longitude: raw.longitude,
+      description: raw.description ?? null,
+      duration: raw.duration ?? null,
+      difficulty: raw.difficulty ?? null,
+      maxCapacity: raw.maxCapacity ?? null,
+      tags: raw.tags ?? null,
     };
 
     const url = this.isEdit

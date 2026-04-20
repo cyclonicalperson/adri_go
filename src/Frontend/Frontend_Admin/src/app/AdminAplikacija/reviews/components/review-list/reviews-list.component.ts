@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ReviewService } from '@core/services/review.service';
+import { BadgeService } from '@core/services/badge.service';
 import { AuthService } from '@core/auth/auth.service';
 import { Review, ReviewStatus, ReviewEntityType } from '@core/models/review.model';
 import { PageRequest } from '@core/models/api-response.model';
@@ -35,6 +36,7 @@ export class ReviewsListComponent implements OnInit {
   constructor(
     private service: ReviewService,
     private auth: AuthService,
+    private badges: BadgeService,
   ) { }
 
   get canDelete(): boolean { return this.auth.isSuperAdmin; }
@@ -111,6 +113,7 @@ export class ReviewsListComponent implements OnInit {
         }
         this.loadCounts();
         this.loadTotalAll();
+        this.badges.refresh();
       },
       error: () => { },
     });
@@ -148,6 +151,7 @@ export class ReviewsListComponent implements OnInit {
         this.total = Math.max(0, this.total - 1);
         this.loadCounts();
         this.loadTotalAll();
+        this.badges.refresh();
       },
       error: () => { },
     });

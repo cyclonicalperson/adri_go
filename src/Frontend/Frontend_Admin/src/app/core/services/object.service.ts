@@ -1,9 +1,10 @@
 /**
- * object.service.ts
- *
- * Mapirano na /api/posts (backend PostsController).
+ * object.service.ts — mapirano na /api/posts
  * "Objekti" su svi postovi čiji post_type NIJE "event".
- * Pretvara Post odgovor u TouristObject interfejs koji komponente očekuju.
+ *
+ * KRITIČNA ISPRAVKA: backend vraća openingHours i details kao JSON STRING
+ * (npr: '{"text":"08:00-22:00"}'), ne kao objekat. parseJsonField() ih parsira
+ * pre čitanja svojstava — ovo je bio uzrok zbog kojeg izmene nikad nisu bile vidljive.
  */
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -20,7 +21,6 @@ import {
   PageRequest,
 } from '../models/api-response.model';
 
-// Mapiranje iz frontend kategorije u backend post_type
 const CATEGORY_TO_POST_TYPE: Record<string, string> = {
   HOTEL: 'accommodation',
   APARTMENT: 'accommodation',
@@ -47,6 +47,19 @@ const POST_TYPE_TO_CATEGORY: Record<string, string> = {
   other: 'OTHER',
 };
 
+/**
+ * Parsira JSON string ili vraća objekat direktno.
+ * Backend čuva openingHours i details kao JSON string u TEXT koloni.
+ */
+function parseJsonField(val: any): any {
+  if (!val) return null;
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch { return null; }
+  }
+  return null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ObjectService {
   private readonly url = `${environment.apiUrl}/posts`;
@@ -64,28 +77,23 @@ export class ObjectService {
     if (req.sortDir) params = params.set('sortDir', req.sortDir!);
     if (req.search) params = params.set('search', req.search);
 
-    // Filtriramo po regionId
     const rid = req.regionId ?? req.destinationId;
     if (rid) params = params.set('region_id', rid);
 
-    // Mapiramo kategoriju u post_type
     if (req.category) {
       const pt = CATEGORY_TO_POST_TYPE[req.category];
       if (pt) params = params.set('type', pt);
     }
 
-    // Status filter (draft/published/archived)
     if (req.status) params = params.set('status', req.status);
-    // Kad je status prazan string, ne šaljemo parametar (backend vraća sve)
 
     return this.http.get<any>(this.url, { params }).pipe(
       map(res => {
-        // Backend vraća sve tipove — filtriramo na klijentskoj strani da izuzmemo event
         const allPosts: any[] = res.data ?? [];
         const nonEvents = allPosts.filter((p: any) => p.postType !== 'event');
-        // Ako nema type filtera, total je veći od stvarnog (uključuje events na serveru)
-        // Koristimo nonEvents.length za tačan total kad radimo client-side filter
-        const adjustedTotal = nonEvents.length < allPosts.length ? nonEvents.length : (res.total ?? nonEvents.length);
+        const adjustedTotal = nonEvents.length < allPosts.length
+          ? nonEvents.length
+          : (res.total ?? nonEvents.length);
         return {
           data: nonEvents.map(postToObject),
           total: adjustedTotal,
@@ -117,8 +125,10 @@ export class ObjectService {
       lng: payload.longitude,
       externalUrl: payload.website ?? null,
       openingHours: payload.workingHours ? { text: payload.workingHours } : null,
-      details: payload.phone ? { phone: payload.phone } : null,
-      images: payload.media?.map(m => m.url) ?? [],
+      details: payload.phone ? { phone: payload.phone, website: payload.website ?? null } : null,
+      images: (payload.media ?? [])
+        .filter(m => m.url && (m.url.startsWith('http://') || m.url.startsWith('https://')))
+        .map(m => m.url),
       status: 'draft',
     };
     return this.http.post<any>(this.url, body).pipe(
@@ -137,7 +147,9 @@ export class ObjectService {
     if (payload.website !== undefined) body['externalUrl'] = payload.website;
     if (payload.workingHours !== undefined) body['openingHours'] = payload.workingHours ? { text: payload.workingHours } : null;
     if (payload.phone !== undefined) body['details'] = payload.phone ? { phone: payload.phone } : null;
-    if (payload.media !== undefined) body['images'] = payload.media.map(m => m.url);
+    if (payload.media !== undefined) body['images'] = payload.media
+      .filter(m => m.url && (m.url.startsWith('http://') || m.url.startsWith('https://')))
+      .map(m => m.url);
     if (payload.status !== undefined) body['status'] = payload.status;
     const rid = payload.regionId ?? payload.destinationId;
     if (rid !== undefined) body['regionId'] = rid;
@@ -157,7 +169,20 @@ export class ObjectService {
 /** Pretvara backend Post u TouristObject interfejs */
 function postToObject(p: any): TouristObject {
   if (!p) return {} as TouristObject;
+
+  // KRITIČNO: backend vraca openingHours i details kao JSON string
+  const oh = parseJsonField(p.openingHours);
+  const det = parseJsonField(p.details);
+
   const regionData = p.region ?? null;
+
+  let imgs: string[] = [];
+  if (Array.isArray(p.images)) {
+    imgs = p.images;
+  } else if (typeof p.images === 'string' && p.images) {
+    try { imgs = JSON.parse(p.images); } catch { imgs = []; }
+  }
+
   return {
     objectId: p.id ?? p.postId,
     destinationId: p.regionId ?? 0,
@@ -168,28 +193,20 @@ function postToObject(p: any): TouristObject {
     address: p.address ?? '',
     latitude: p.lat ?? p.latitude ?? 0,
     longitude: p.lng ?? p.longitude ?? 0,
-    phone: '',
-    website: p.externalUrl ?? '',
-    workingHours: p.openingHours?.text ?? '',
+    phone: det?.phone ?? '',
+    website: p.externalUrl ?? det?.website ?? '',
+    workingHours: oh?.text ?? '',
     createdBy: p.adminId ?? 0,
     createdAt: p.createdAt ?? '',
     destination: regionData ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     region: regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     averageRating: p.avgRating ?? null,
     reviewCount: p.reviewCount ?? 0,
-    media: (() => {
-      let imgs: string[] = [];
-      if (Array.isArray(p.images)) imgs = p.images;
-      else if (typeof p.images === 'string' && p.images) {
-        try { imgs = JSON.parse(p.images); } catch { imgs = []; }
-      }
-      return imgs.map((url: string, idx: number) => ({
-        mediaId: idx + 1,
-        url,
-        sortOrder: idx,
-      }));
-    })()
-    // Čuvamo originalnu status vrijednost (za filter u UI)
-    ,...(p.status ? { status: p.status } : {}),
+    media: imgs.map((url: string, idx: number) => ({
+      mediaId: idx + 1,
+      url,
+      sortOrder: idx,
+    })),
+    ...(p.status ? { status: p.status } : {}),
   } as any;
 }

@@ -151,13 +151,20 @@ namespace TouristGuide.Api.Controllers
                 };
             }).ToList();
 
-            // Statistike za header kartice (ukupan broj po tipu)
+            // Statistike: subcategory je u Color polju formata "SUBCATEGORY|#hex|status"
             var sportCount = await _context.Tags.CountAsync(t =>
-                t.Category != null && t.Category.ToLower().Contains("sport"));
+                t.Category == "aktivnost" && t.Color != null && t.Color.ToUpper().StartsWith("SPORT|"));
             var natureCount = await _context.Tags.CountAsync(t =>
-                t.Category != null && t.Category.ToLower().Contains("adventure"));
+                t.Category == "aktivnost" && t.Color != null && (
+                    t.Color.ToUpper().StartsWith("ADVENTURE|") ||
+                    t.Color.ToUpper().StartsWith("NATURE|") ||
+                    t.Color.ToUpper().StartsWith("HIKING|")));
             var wellnessCount = await _context.Tags.CountAsync(t =>
-                t.Category != null && t.Category.ToLower().Contains("wellness"));
+                t.Category == "aktivnost" && t.Color != null && (
+                    t.Color.ToUpper().StartsWith("WELLNESS|") ||
+                    t.Color.ToUpper().StartsWith("SPA|")));
+            var pendingCount = await _context.Tags.CountAsync(t =>
+                t.Category == "aktivnost" && t.Color != null && t.Color.ToLower().EndsWith("|pending"));
 
             return Ok(new
             {
@@ -168,7 +175,8 @@ namespace TouristGuide.Api.Controllers
                 totalPages = (int)Math.Ceiling((double)total / pageSize),
                 sportCount,
                 natureCount,
-                wellnessCount
+                wellnessCount,
+                pendingCount
             });
         }
 

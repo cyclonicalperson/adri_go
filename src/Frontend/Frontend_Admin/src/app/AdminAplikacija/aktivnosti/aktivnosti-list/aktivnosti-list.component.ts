@@ -1,3 +1,4 @@
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -74,7 +75,7 @@ export class AktivnostiListComponent implements OnInit {
 
   constructor(private http: HttpClient, private router: Router) { }
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.initSearch(); this.load(); }
 
   load(): void {
     this.loading = true;
@@ -105,10 +106,11 @@ export class AktivnostiListComponent implements OnInit {
 
         // Računamo stat counts iz svih učitanih aktivnosti
         // (kada nema filtera — prikazujemo ukupne; kad je filter aktivan — djelimične)
-        this.sportCount = this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
-        this.natureCount = this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
-        this.wellnessCount = this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
-        this.pendingCount = this.activities.filter(a => a.status === 'pending').length;
+        // Koristimo backend counts koji su uvek tačni (sve stavke, ne samo tekuća stranica)
+        this.sportCount = (res as any).sportCount ?? this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
+        this.natureCount = (res as any).natureCount ?? this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
+        this.wellnessCount = (res as any).wellnessCount ?? this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
+        this.pendingCount = (res as any).pendingCount ?? this.activities.filter(a => a.status === 'pending').length;
 
         this.loading = false;
       },
@@ -121,7 +123,14 @@ export class AktivnostiListComponent implements OnInit {
     return (cat ?? '').toUpperCase();
   }
 
-  onSearch(q: string): void { this.searchQuery = q; this.page = 1; this.load(); }
+  private search$ = new Subject<string>();
+
+  private initSearch(): void {
+    this.search$.pipe(debounceTime(350), distinctUntilChanged())
+      .subscribe(q => { this.searchQuery = q; this.page = 1; this.load(); });
+  }
+
+  onSearch(q: string): void { this.search$.next(q); }
   setCategory(c: string): void { this.activeCategory = c; this.page = 1; this.load(); }
   setStatus(s: string): void { this.activeStatus = s; this.page = 1; this.load(); }
   onStatusChange(val: string): void { this.setStatus(val); }

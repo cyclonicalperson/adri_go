@@ -16,8 +16,16 @@ export class ImageGalleryComponent implements OnChanges {
   active = 0;
   lightboxOpen = false;
 
+  private prevMediaUrls: string[] = [];
+
   ngOnChanges(): void {
-    this.active = 0;
+    const newUrls = this.media.map(m => m.url);
+    const same = newUrls.length === this.prevMediaUrls.length &&
+      newUrls.every((u, i) => u === this.prevMediaUrls[i]);
+    if (!same) {
+      this.active = 0;
+      this.prevMediaUrls = newUrls;
+    }
   }
 
   get current(): Media | null {

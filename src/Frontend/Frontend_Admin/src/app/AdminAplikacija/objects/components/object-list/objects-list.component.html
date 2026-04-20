@@ -191,7 +191,7 @@
             <span style="color:#9ca3af">—</span>
             }
           </td>
-          <td>
+          <td (click)="$event.stopPropagation()">
             @if (objectStatus(o) === 'published') {
             <span class="badge badge-green">✅ Aktivna</span>
             } @else if (objectStatus(o) === 'draft') {

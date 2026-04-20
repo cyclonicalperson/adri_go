@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { BadgeService } from '@core/services/badge.service';
 import { UserService } from '@core/services/user.service';
 import { RegistrationRequest } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
@@ -47,7 +48,7 @@ export class ZahteviComponent implements OnInit {
   rejectTarget: RegistrationRequest | null = null;
   processing = false;
 
-  constructor(private service: UserService) {}
+  constructor(private service: UserService, private badgeService: BadgeService) { }
 
   ngOnInit(): void {
     this.load();
@@ -82,7 +83,7 @@ export class ZahteviComponent implements OnInit {
 
     // Aktivni i suspendovani admini — iste kartice kao na Admini stranici
     this.service.getAll({ page: 1, pageSize: 1000 }).subscribe(res => {
-      this.activeAdminCount    = res.data.filter(u => u.accountStatus === 'active').length;
+      this.activeAdminCount = res.data.filter(u => u.accountStatus === 'active').length;
       this.suspendedAdminCount = res.data.filter(u => u.accountStatus === 'suspended').length;
     });
   }
@@ -121,6 +122,7 @@ export class ZahteviComponent implements OnInit {
         this.closeDetail();
         this.load();
         this.loadCounts();
+        this.badgeService.refresh();
       },
       error: () => { this.processing = false; },
     });
@@ -149,6 +151,7 @@ export class ZahteviComponent implements OnInit {
         this.closeDetail();
         this.load();
         this.loadCounts();
+        this.badgeService.refresh();
       },
       error: () => { this.processing = false; },
     });

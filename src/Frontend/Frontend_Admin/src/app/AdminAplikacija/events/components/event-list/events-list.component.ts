@@ -1,3 +1,4 @@
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -75,6 +76,7 @@ export class EventsListComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.initSearch();
     this.regionService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.regions = res.data;
     });
@@ -160,9 +162,18 @@ export class EventsListComponent implements OnInit {
   }
 
   // ── Filters ───────────────────────────────────────────────────────────────
-  onSearch(q: string): void {
-    this.req = { ...this.req, search: q, page: 1 }; this.load();
+  private search$ = new Subject<string>();
+
+  private initSearch(): void {
+    this.search$.pipe(debounceTime(350), distinctUntilChanged())
+      .subscribe(q => { this.req = { ...this.req, search: q, page: 1 }; this.load(); });
   }
+
+  onSearch(q: string): void {
+    this.search$.next(q);
+  }
+
+
 
   onCategoryChange(cat: string): void {
     this.req = { ...this.req, category: cat || undefined, page: 1 }; this.load();

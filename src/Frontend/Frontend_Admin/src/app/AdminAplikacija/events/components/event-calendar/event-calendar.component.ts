@@ -42,14 +42,23 @@ export class EventCalendarComponent implements OnChanges {
     this.buildCalendar();
   }
 
+  private parseDetails(e: Post): any {
+    const d = e.details;
+    if (!d) return null;
+    if (typeof d === 'object') return d;
+    try { return JSON.parse(d as any); } catch { return null; }
+  }
+
   private eventStart(e: Post): Date {
-    const d = e.details as any;
-    return d?.eventStart ? new Date(d.eventStart) : new Date(e.createdAt);
+    const d = this.parseDetails(e);
+    const raw = d?.eventStart ?? d?.startAt;
+    return raw ? new Date(raw) : new Date(e.createdAt);
   }
 
   private eventEnd(e: Post): Date {
-    const d = e.details as any;
-    return d?.eventEnd ? new Date(d.eventEnd) : new Date(e.createdAt);
+    const d = this.parseDetails(e);
+    const raw = d?.eventEnd ?? d?.endAt;
+    return raw ? new Date(raw) : new Date(e.createdAt);
   }
 
   private buildCalendar(): void {

@@ -4,6 +4,7 @@ import { filter, map, startWith } from 'rxjs';
 import { AsyncPipe, DatePipe } from '@angular/common';
 import { inject } from '@angular/core';
 import { AuthService } from '@core/auth/auth.service';
+import { BadgeService } from '@core/services/badge.service';
 import { UserService } from '@core/services/user.service';
 import { AdminNotification } from '@core/models/user.model';
 
@@ -19,6 +20,7 @@ export class TopbarComponent implements OnInit {
   private router = inject(Router);
   auth = inject(AuthService);
   private userService = inject(UserService);
+  private badgeService = inject(BadgeService);
 
   notifications: AdminNotification[] = [];
   notifOpen = false;
@@ -48,6 +50,7 @@ export class TopbarComponent implements OnInit {
   markAllRead(): void {
     this.userService.markAllNotificationsRead().subscribe(() => {
       this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
+      this.badgeService.refresh();
     });
   }
 
