@@ -15,12 +15,16 @@ import { LocationDetailsComponent } from './location-details/location-details';
 import { AccountComponent } from './account/account';
 import { SavedLocationsComponent } from './saved-locations/saved-locations';
 import { CalendarComponent } from './calendar/calendar';
-import { TicketsComponent } from './tickets/tickets';
 import { NotificationsComponent } from './notifications/notifications';
 import { SettingsComponent } from './settings/settings';
 
+// 4. Importi za Account podstranice
+import { PersonalInfoComponent } from './PersonalInfo/personal-info.component';
+import { HelpComponent } from './Help/help.component';
+import { PrivacyComponent } from './Privacy/privacy.component';
+
 export const routes: Routes = [
-  // POČETNA RUTA: Otvara mapu direktno
+  // POČETNA RUTA
   { path: '', redirectTo: '/map-home', pathMatch: 'full' },
 
   // LOGIN & REGISTRACIJA
@@ -33,17 +37,21 @@ export const routes: Routes = [
   { path: 'location-list', component: LocationListComponent },
   { path: 'filters', component: FiltersComponent },
 
-  // DETALJI LOKACIJE (sa parametrom :id)
+  // DETALJI LOKACIJE
   { path: 'location-details/:id', component: LocationDetailsComponent },
 
-  // KORISNIČKI SERVISI (Stavke iz menija)
+  // KORISNIČKI SERVISI
   { path: 'account', component: AccountComponent },
   { path: 'saved', component: SavedLocationsComponent },
   { path: 'calendar', component: CalendarComponent },
-  { path: 'tickets', component: TicketsComponent },
   { path: 'notifications', component: NotificationsComponent },
   { path: 'settings', component: SettingsComponent },
 
-  // WILDCARD RUTA: Mora biti poslednja
+  // ACCOUNT PODSTRANICE
+  { path: 'account/personal-info', component: PersonalInfoComponent },
+  { path: 'account/help', component: HelpComponent },
+  { path: 'account/privacy', component: PrivacyComponent },
+
+  // WILDCARD — mora biti poslednja
   { path: '**', redirectTo: '/map-home' }
 ];

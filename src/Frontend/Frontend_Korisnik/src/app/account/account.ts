@@ -1,43 +1,60 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { UserService, UserProfile } from '../services/user.service';
 
 @Component({
   selector: 'app-account',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './account.html', // Promeni ovo
-  styleUrls: ['./account.css']   // Proveri i ovde da li treba da se obriše .component
+  templateUrl: './account.html',
+  styleUrls: ['./account.css']
 })
-export class AccountComponent {
-  
-  // Mock podaci o korisniku
-  userData = {
-    name: 'Jovan Dizdarević',
-    email: 'jovan@email.com',
-    profilePic: 'assets/profile.jpg', // Postavi neku sliku u assets folder
-    stats: {
-      saved: 12,
-      tickets: 4,
-      upcoming: 2
-    }
-  };
+export class AccountComponent implements OnInit {
 
-  constructor(private router: Router) {}
+  userData: UserProfile | null = null;
+  loading: boolean = true;
 
-  goBack() {
-    // Vraća korisnika na prethodnu stranu (npr. mapu ili listu)
-    window.history.back();
+  constructor(
+    private router: Router,
+    private userService: UserService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
+    this.loadUserData();
   }
 
+  loadUserData() {
+    this.loading = true;
+    this.userService.getUserProfile().subscribe({
+      next: (data) => {
+        this.userData = data;
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Greška:', err);
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getInitials(): string {
+    if (!this.userData?.fullName) return '?';
+    return this.userData.fullName.trim().charAt(0).toUpperCase();
+  }
+
+  goBack() { window.history.back(); }
+
   logout() {
-    console.log('Odjavljivanje korisnika...');
-    // Preusmeravanje na Login ekran
+    localStorage.removeItem('token');
     this.router.navigate(['/login']);
   }
 
-  // Funkcije za navigaciju (dodaj rute kasnije)
-  goToPersonalInfo() { console.log('Navigacija na lične podatke'); }
-  goToHelp() { console.log('Navigacija na pomoć'); }
-  goToPrivacy() { console.log('Navigacija na privatnost'); }
+  // Navigacija ka podstranicama
+  goToPersonalInfo() { this.router.navigate(['/account/personal-info']); }
+  goToHelp()         { this.router.navigate(['/account/help']); }
+  goToPrivacy()      { this.router.navigate(['/account/privacy']); }
 }

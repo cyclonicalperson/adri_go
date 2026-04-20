@@ -1,7 +1,10 @@
-﻿
-
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Models;
 using TouristGuide.Api.Services;
@@ -13,10 +16,13 @@ namespace TouristGuide.Api.Controllers
     public class TouristController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public TouristController(AppDbContext context)
+        // Dodali smo IConfiguration da bismo mogli da pročitamo JWT ključ iz appsettings.json
+        public TouristController(AppDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // POST /api/tourists/register
@@ -38,7 +44,11 @@ namespace TouristGuide.Api.Controllers
             {
                 Name = dto.Name.Trim(),
                 Email = normalizedEmail,
+<<<<<<< Updated upstream
                 PasswordHash = PasswordHelper.Hash(dto.Password),
+=======
+                PasswordHash = PasswordHelper.Hash(dto.Password), // Pretpostavljam da imaš metodu Hash
+>>>>>>> Stashed changes
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -47,8 +57,12 @@ namespace TouristGuide.Api.Controllers
             _context.Tourists.Add(tourist);
             await _context.SaveChangesAsync();
 
+            // Generišemo token odmah nakon uspešne registracije
+            var token = GenerateJwtToken(tourist);
+
             return Ok(new
             {
+                token = token, // Šaljemo token Angularu
                 tourist = new
                 {
                     id = tourist.Id,
@@ -82,8 +96,12 @@ namespace TouristGuide.Api.Controllers
             tourist.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            // Generišemo token prilikom logina
+            var token = GenerateJwtToken(tourist);
+
             return Ok(new
             {
+                token = token, // Šaljemo token Angularu
                 tourist = new
                 {
                     id = tourist.Id,
@@ -92,9 +110,69 @@ namespace TouristGuide.Api.Controllers
                 }
             });
         }
+
+        // GET /api/tourists/profile
+        [HttpGet("profile")]
+        [Authorize] // Samo korisnici sa validnim tokenom mogu ovde!
+        public async Task<IActionResult> GetProfile()
+        {
+            // Vadi Email iz tokena koji je poslat u zaglavlju
+            var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
+                         ?? User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                return Unauthorized(new { message = "Nevažeći token." });
+            }
+
+            // Tražimo baš tog korisnika u bazi
+            var tourist = await _context.Tourists.FirstOrDefaultAsync(t => t.Email == userEmail);
+
+            if (tourist == null)
+            {
+                return NotFound(new { message = "Korisnik nije pronađen." });
+            }
+
+            // Pravimo podatke specifično za njega
+            var userProfile = new
+            {
+                fullName = tourist.Name, // Sada će pisati pravo ime (npr. Arsa)
+                emailOrPhone = tourist.Email,
+                language = "English", // Ovo za sad možemo da ostavimo fiksno
+                interests = new[] { "nature", "nightlife" }, // I ovo ostavljamo za sad fiksno
+                stats = new { saved = 0, tickets = 0, upcoming = 0 } 
+            };
+
+            return Ok(userProfile);
+        }
+
+        // --- Pomoćna metoda za generisanje tokena ---
+        private string GenerateJwtToken(Tourist tourist)
+        {
+            var jwtSettings = _configuration.GetSection("JwtSettings");
+            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim("id", tourist.Id.ToString()),
+                    new Claim(ClaimTypes.Email, tourist.Email),
+                    new Claim(ClaimTypes.Name, tourist.Name)
+                }),
+                Expires = DateTime.UtcNow.AddDays(7), // Token traje 7 dana
+                Issuer = jwtSettings["Issuer"],
+                Audience = jwtSettings["Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
     }
 
-    // ─── DTOs (mogu biti i u zasebnom fajlu DTOs/TouristDtos.cs) ─────────────
+    // ─── DTOs ─────────────
     public class TouristRegisterDto
     {
         [System.ComponentModel.DataAnnotations.Required]

@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+// 👇 DODATO: Neophodno za čitanje foldera sa slikama
+using Microsoft.Extensions.FileProviders; 
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
@@ -11,7 +13,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ────────────────────────────────────────────────────────────
 // 1. CORS — dozvoljava frontendu da komunicira sa backendom
-//    Bez ovoga browser blokira sve zahteve (sigurnosna politika)
 // ────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
@@ -24,21 +25,18 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()    // Dozvoljava Authorization header
             .AllowAnyMethod()    // Dozvoljava GET, POST, PUT, DELETE
-            .AllowCredentials(); // Dozvoljava slanje kolačića (ako zatreba)
+            .AllowCredentials(); // Dozvoljava slanje kolačića
     });
 });
 
 // ────────────────────────────────────────────────────────────
 // 2. JWT AUTENTIFIKACIJA
-//    Ovde kažemo .NET-u: "Tokene proveri ovako"
 // ────────────────────────────────────────────────────────────
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
 
 builder.Services.AddAuthentication(options =>
 {
-    // Podrazumevana šema je JWT Bearer
-    // "Bearer" dolazi od toga što token "nosiš" (bear) uz zahtev
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
@@ -46,44 +44,27 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        // Proveravamo ko je izdao token (mora biti "TouristGuideApi")
         ValidateIssuer = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
-
-        // Proveravamo kome je token namenjen
         ValidateAudience = true,
         ValidAudience = builder.Configuration["Jwt:Audience"],
-
-        // Proveravamo da token nije istekao
         ValidateLifetime = true,
-
-        // Proveravamo digitalni potpis — najvažnija provera
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtSecret)
         ),
-
-        // Bez tolerancije na razliku u vremenu između servera
         ClockSkew = TimeSpan.Zero
     };
 });
 
-// Autorizacija — sistem dozvola na osnovu uloga
 builder.Services.AddAuthorization();
 
 // ────────────────────────────────────────────────────────────
 // 3. REGISTRACIJA SERVISA
 // ────────────────────────────────────────────────────────────
-
-// Naš JwtService — registrujemo ga da ga možemo ubrizgati u kontrolere
 builder.Services.AddScoped<JwtService>();
-
-// Potrebno za AdminIdentityService koji cita JWT claims van kontrolera
 builder.Services.AddHttpContextAccessor();
-// Pomocni servis koji odredjuje identitet prijavljenog admina iz tokena
 builder.Services.AddScoped<AdminIdentityService>();
-
-// Servis za lokacije (Admin panel)
 builder.Services.AddScoped<ILocationService, LocationService>();
 
 // Servis za Review-ove
@@ -94,7 +75,6 @@ builder.Services.AddEndpointsApiExplorer();
 
 // ────────────────────────────────────────────────────────────
 // 4. SWAGGER SA JWT PODRŠKOM
-//    Dodaje "Authorize" dugme u Swagger UI da možemo testirati
 // ────────────────────────────────────────────────────────────
 builder.Services.AddSwaggerGen(options =>
 {
@@ -104,7 +84,6 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1"
     });
 
-    // Definišemo kako se JWT šalje (u Authorization headeru)
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -115,24 +94,23 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Unesi JWT token ovako: Bearer {token}"
     });
 
-    // Kažemo Swagger-u da automatski šalje token uz zaštićene rute
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
+            new OpenApiSecurityScheme
             {
-                new OpenApiSecurityScheme
+                Reference = new OpenApiReference
                 {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
-// MySQL konekcija — ostaje isto
+// MySQL konekcija
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -142,7 +120,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 var app = builder.Build();
 
 // ────────────────────────────────────────────────────────────
-// 5. MIDDLEWARE PIPELINE — redosled je bitan!
+// 5. MIDDLEWARE PIPELINE — Redosled je izuzetno bitan!
 // ────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
@@ -152,12 +130,29 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// 👇 NOVO: Omogućava pristup osnovnim statičkim fajlovima (iz wwwroot)
+app.UseStaticFiles();
+
+// 👇 NOVO: Omogućava direktan pristup tvom "images" folderu
+// 👇 Pametni deo: Proverava da li folder postoji, a ako ne, pravi ga!
+var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "images");
+if (!Directory.Exists(imagesPath))
+{
+    Directory.CreateDirectory(imagesPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(imagesPath),
+    RequestPath = "/images"
+});
+
 // CORS mora biti PRE autentifikacije
 app.UseCors("AllowFrontends");
 
-// Autentifikacija PRE autorizacije — uvek ovim redom
-app.UseAuthentication();  // ← NOVO: "Ko si ti?"
-app.UseAuthorization();   // ← postojeće: "Šta smeš da radiš?"
+// Autentifikacija PRE autorizacije
+app.UseAuthentication();  
+app.UseAuthorization();   
 
 app.MapControllers();
 app.Run();

@@ -64,7 +64,7 @@ namespace TouristGuide.Api.Controllers
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(uint id)
         {
@@ -80,6 +80,34 @@ namespace TouristGuide.Api.Controllers
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             return Ok(MapToDto(post));
+        }
+
+        [HttpGet("my-saved")]
+        [Authorize]
+        public async Task<IActionResult> GetMySavedPosts()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) 
+                return Unauthorized(new { message = "Niste ulogovani ili fali ID u tokenu." });
+
+            if (!uint.TryParse(userIdClaim.Value, out uint touristId))
+                return BadRequest(new { message = "Neispravan format ID-ja korisnika." });
+
+            // 1. Vadimo iz baze, ali UKLJUČUJEMO i Region i Admina (kako bi MapToDto radio savršeno)
+            var savedItems = await _context.SavedPosts
+                .Where(sp => sp.TouristId == touristId)
+                .Include(sp => sp.Post)
+                    .ThenInclude(p => p.Admin)
+                .Include(sp => sp.Post)
+                    .ThenInclude(p => p.Region)
+                .ToListAsync();
+
+            // 2. Pretvaramo "sirove" bazične objekte u formatirane DTO objekte za Angular
+            var postsDto = savedItems.Select(sp => MapToDto(sp.Post)).ToList();
+
+            // 3. Vraćamo Angularu (Proveri samo da li tvoj Angular očekuje listu ili { data: lista })
+            // Ovde vraćamo čistu listu:
+            return Ok(postsDto); 
         }
 
         [HttpGet("{id}/reviews")]
@@ -189,6 +217,43 @@ namespace TouristGuide.Api.Controllers
                 MapToDto(post)
             );
         }
+
+        // 👇 DODAJ OVU FUNKCIJU OVDJE 👇
+        [HttpPost("{id:int}/toggle-save")]
+        [Authorize]
+        public async Task<IActionResult> ToggleSavePost(uint id)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) 
+                return Unauthorized(new { message = "Niste ulogovani." });
+            
+            if (!uint.TryParse(userIdClaim.Value, out uint touristId)) 
+                return BadRequest(new { message = "Neispravan format ID-ja." });
+
+            var post = await _context.Posts.FindAsync(id);
+            if (post == null) 
+                return NotFound(new { message = "Lokacija nije pronađena." });
+
+            var existingSave = await _context.SavedPosts
+                .FirstOrDefaultAsync(sp => sp.TouristId == touristId && sp.PostId == id);
+
+            if (existingSave != null)
+            {
+                // Uklanjamo iz sačuvanih
+                _context.SavedPosts.Remove(existingSave);
+                await _context.SaveChangesAsync();
+                return Ok(new { isSaved = false, message = "Uklonjeno iz sačuvanih." });
+            }
+            else
+            {
+                // Dodajemo u sačuvane
+                var newSave = new SavedPost { TouristId = touristId, PostId = id };
+                _context.SavedPosts.Add(newSave);
+                await _context.SaveChangesAsync();
+                return Ok(new { isSaved = true, message = "Dodato u sačuvane." });
+            }
+        }
+        // 👆 KRAJ DODAVANJA 👆
 
         [HttpPut("{id}")]
         [Authorize(Roles = "admin,superadmin")]

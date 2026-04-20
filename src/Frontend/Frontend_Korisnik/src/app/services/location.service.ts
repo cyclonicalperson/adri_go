@@ -30,6 +30,8 @@ export interface Location {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
+  isLiked?: boolean;
+  isSaved?: boolean;
 }
 
 export interface LocationsResponse {
@@ -115,12 +117,22 @@ export class LocationService {
   registerView(postId: number, touristId?: number): Observable<InteractionResponse> {
     return this.http.post<InteractionResponse>(`${this.apiUrl}/posts/${postId}/view`, {});
   }
-
+  // Povlači sve sačuvane postove ulogovanog korisnika
+  getMySavedPosts(): Observable<Location[]> {
+    return this.http.get<Location[]>(`${this.apiUrl}/posts/my-saved`); 
+  }
   parseImages(imagesJson?: string): string[] {
     if (!imagesJson) return [];
     try {
       const parsed = JSON.parse(imagesJson);
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
+  }
+  // Dodaj ovo u location.service.ts ako već nisi:
+  toggleSaveLocation(postId: number): Observable<{ isSaved: boolean, message: string }> {
+    return this.http.post<{ isSaved: boolean, message: string }>(
+      `${this.apiUrl}/posts/${postId}/toggle-save`, 
+      {}
+    );
   }
 }

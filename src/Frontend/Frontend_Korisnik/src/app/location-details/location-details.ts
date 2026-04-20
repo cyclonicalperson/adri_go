@@ -81,16 +81,36 @@ export class LocationDetailsComponent implements OnInit {
     });
   }
 
+  // NOVA onSave metoda
   onSave(): void {
-    const touristId = this.authService.touristId;
-    if (!touristId || !this.location) { this.router.navigate(['/login']); return; }
-    this.locationService.saveLocation(this.location.id, touristId).subscribe({
+    // 1. Provera da li je ulogovan. Ako nije, odmah na login!
+    if (!this.authService.isLoggedIn || !this.location) { 
+      this.router.navigate(['/login']); 
+      return; 
+    }
+
+    // 2. Ako jeste, gađamo onaj naš novi Toggle endpoint
+    this.locationService.toggleSaveLocation(this.location.id).subscribe({
       next: (res) => {
-        if (res.saveCount !== undefined && this.location) this.location.saveCount = res.saveCount;
+        // res.isSaved će biti true ako je upravo sačuvano, a false ako je obrisano
+        
+        // Možemo dodati "isSaved" flag na samu lokaciju kako bismo bojili srce u HTML-u
+        (this.location as any).isSaved = res.isSaved; 
+
+        // Ako želiš da prikažeš onaj tvoj saveMessage
         this.saveMessage = res.message;
         setTimeout(() => (this.saveMessage = ''), 3000);
+        
+        this.cdr.markForCheck();
       },
-      error: (err) => console.error('save error:', err)
+      error: (err) => {
+        console.error('Save error:', err);
+        // Bezbednosti radi, ako nam backend kaže 401 Unauthorized, šaljemo na login
+        if (err.status === 401) {
+          this.authService.logout(); // Opciono čišćenje memorije
+          this.router.navigate(['/login']);
+        }
+      }
     });
   }
 
