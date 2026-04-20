@@ -11,18 +11,22 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401) {
-        storage.clear();
-        router.navigate(['/login']);
+        // KRITIČNO: login zahtev ne sme biti preusmeren — obrađuje grešku sam.
+        // Suspended admin dobija 401 sa { status: 'suspended' } — login.component
+        // mora videti tu grešku, ne biti preusmjeren na /login gde već jeste.
+        const isLoginRequest = req.url.includes('/auth/login');
+        if (!isLoginRequest) {
+          storage.clear();
+          router.navigate(['/login']);
+        }
       }
 
       if (err.status === 403) {
         router.navigate(['/login']);
       }
 
-      const message =
-        err.error?.message ?? err.message ?? 'Nepoznata greška';
-
-      return throwError(() => new Error(message));
+      // Propusti originalni HttpErrorResponse da komponente mogu čitati err.error?.status
+      return throwError(() => err);
     })
   );
 };

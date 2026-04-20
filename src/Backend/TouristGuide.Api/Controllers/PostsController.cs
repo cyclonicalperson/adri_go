@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
+using TouristGuide.Api.Models;
 using TouristGuide.Api.DTOs;
 using TouristGuide.Api.Models;
 
@@ -83,6 +84,7 @@ namespace TouristGuide.Api.Controllers
             var post = await _context.Posts
                 .Include(p => p.Admin)
                 .Include(p => p.Region)
+                .Include(p => p.PostTags)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (post is null)
@@ -248,6 +250,7 @@ namespace TouristGuide.Api.Controllers
             var post = await _context.Posts
                 .Include(p => p.Admin)
                 .Include(p => p.Region)
+                .Include(p => p.PostTags)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (post is null)
@@ -309,6 +312,22 @@ namespace TouristGuide.Api.Controllers
                     post.PublishedAt = DateTime.UtcNow;
 
                 post.Status = statusLower;
+            }
+
+            // Ažuriranje aktivnosti (tag veza) — samo ako TagIds nije null
+            if (dto.TagIds is not null)
+            {
+                // Ukloni postojeće veze
+                var existingTags = await _context.PostTags.Where(pt => pt.PostId == id).ToListAsync();
+                _context.PostTags.RemoveRange(existingTags);
+
+                // Dodaj nove veze (samo tagovi koji postoje i kategorije su 'aktivnost')
+                foreach (var tagId in dto.TagIds.Distinct())
+                {
+                    var tagExists = await _context.Tags.AnyAsync(t => t.Id == tagId);
+                    if (tagExists)
+                        _context.PostTags.Add(new PostTag { PostId = id, TagId = tagId });
+                }
             }
 
             post.UpdatedAt = DateTime.UtcNow;
@@ -526,14 +545,16 @@ namespace TouristGuide.Api.Controllers
             // Sortiranje
             query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
             {
-                ("title", "asc") => query.OrderBy(p => p.Title),
-                ("title", _) => query.OrderByDescending(p => p.Title),
+                ("title" or "name", "asc") => query.OrderBy(p => p.Title),
+                ("title" or "name", _) => query.OrderByDescending(p => p.Title),
                 ("viewcount", "asc") => query.OrderBy(p => p.ViewCount),
                 ("viewcount", _) => query.OrderByDescending(p => p.ViewCount),
                 ("createdat", "asc") => query.OrderBy(p => p.CreatedAt),
                 ("createdat", _) => query.OrderByDescending(p => p.CreatedAt),
                 ("updatedat", "asc") => query.OrderBy(p => p.UpdatedAt),
                 ("updatedat", _) => query.OrderByDescending(p => p.UpdatedAt),
+                ("averagerating" or "rating", "asc") => query.OrderBy(p => p.AvgRating),
+                ("averagerating" or "rating", _) => query.OrderByDescending(p => p.AvgRating),
                 _ => query.OrderByDescending(p => p.CreatedAt),
             };
 

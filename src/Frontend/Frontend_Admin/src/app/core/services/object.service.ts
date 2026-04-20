@@ -151,6 +151,7 @@ export class ObjectService {
       .filter(m => m.url && (m.url.startsWith('http://') || m.url.startsWith('https://')))
       .map(m => m.url);
     if (payload.status !== undefined) body['status'] = payload.status;
+    if (payload.activityIds !== undefined) body['tagIds'] = payload.activityIds;
     const rid = payload.regionId ?? payload.destinationId;
     if (rid !== undefined) body['regionId'] = rid;
 
@@ -202,6 +203,7 @@ function postToObject(p: any): TouristObject {
     region: regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     averageRating: p.avgRating ?? null,
     reviewCount: p.reviewCount ?? 0,
+    activities: (p.tagIds ?? []).map((id: number) => ({ activityId: id })),
     media: imgs.map((url: string, idx: number) => ({
       mediaId: idx + 1,
       url,

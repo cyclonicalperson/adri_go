@@ -32,6 +32,9 @@ namespace TouristGuide.Api.DTOs
 
         public string? Status { get; set; }
 
+        /// <summary>Lista ID-ova aktivnosti (tag) koji se vezuju za post. Null = ne mijenjaj. Prazan niz = ukloni sve.</summary>
+        public List<uint>? TagIds { get; set; }
+
         // Helper: pretvara JsonNode u string za DB kolonu
         public string? ImagesToString() => NormalizeJson(Images);
         public string? OpeningHoursToString() => NormalizeJson(OpeningHours);

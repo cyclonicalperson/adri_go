@@ -70,6 +70,9 @@ namespace TouristGuide.Api.Controllers
                 query = query.Where(t => adminTagIds.Contains(t.Id));
             }
 
+            // Čuvamo query posle admin filtera za statistike (bez category/status filtera)
+            var adminFilteredQuery = query;
+
             // ── Dodatni filteri ───────────────────────────────────────────────
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(t => t.Name.Contains(search));
@@ -151,20 +154,18 @@ namespace TouristGuide.Api.Controllers
                 };
             }).ToList();
 
-            // Statistike: subcategory je u Color polju formata "SUBCATEGORY|#hex|status"
-            var sportCount = await _context.Tags.CountAsync(t =>
-                t.Category == "aktivnost" && t.Color != null && t.Color.ToUpper().StartsWith("SPORT|"));
-            var natureCount = await _context.Tags.CountAsync(t =>
-                t.Category == "aktivnost" && t.Color != null && (
-                    t.Color.ToUpper().StartsWith("ADVENTURE|") ||
-                    t.Color.ToUpper().StartsWith("NATURE|") ||
-                    t.Color.ToUpper().StartsWith("HIKING|")));
-            var wellnessCount = await _context.Tags.CountAsync(t =>
-                t.Category == "aktivnost" && t.Color != null && (
-                    t.Color.ToUpper().StartsWith("WELLNESS|") ||
-                    t.Color.ToUpper().StartsWith("SPA|")));
-            var pendingCount = await _context.Tags.CountAsync(t =>
-                t.Category == "aktivnost" && t.Color != null && t.Color.ToLower().EndsWith("|pending"));
+            // Statistike: koristimo isti query (sa admin filterom) za tačne counts
+            // query je već filtriran po admin-u ako nije superadmin
+            var baseQuery = adminFilteredQuery; // samo admin filter, bez category/status/search
+            var sportCount = await baseQuery.CountAsync(t => t.Color != null && t.Color.ToUpper().StartsWith("SPORT|"));
+            var natureCount = await baseQuery.CountAsync(t => t.Color != null && (
+                t.Color.ToUpper().StartsWith("ADVENTURE|") ||
+                t.Color.ToUpper().StartsWith("NATURE|") ||
+                t.Color.ToUpper().StartsWith("HIKING|")));
+            var wellnessCount = await baseQuery.CountAsync(t => t.Color != null && (
+                t.Color.ToUpper().StartsWith("WELLNESS|") ||
+                t.Color.ToUpper().StartsWith("SPA|")));
+            var pendingCount = await baseQuery.CountAsync(t => t.Color != null && t.Color.ToLower().EndsWith("|pending"));
 
             return Ok(new
             {

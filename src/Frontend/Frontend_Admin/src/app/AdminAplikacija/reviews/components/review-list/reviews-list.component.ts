@@ -111,8 +111,11 @@ export class ReviewsListComponent implements OnInit {
           const idx = this.reviews.findIndex(x => x.reviewId === r.reviewId);
           if (idx !== -1) this.reviews[idx] = { ...this.reviews[idx], status };
         }
-        this.loadCounts();
-        this.loadTotalAll();
+        // Kratka pauza da backend stigne da sačuva promenu pre reload-a
+        setTimeout(() => {
+          this.loadCounts();
+          this.loadTotalAll();
+        }, 150);
         this.badges.refresh();
       },
       error: () => { },
@@ -128,7 +131,8 @@ export class ReviewsListComponent implements OnInit {
           // Ukloni sa tekuće liste (bez full reload ako je filter aktivan)
           this.reviews = this.reviews.filter(x => x.reviewId !== payload.review.reviewId);
           this.total = Math.max(0, this.total - 1);
-          this.loadCounts();
+          setTimeout(() => { this.loadCounts(); this.loadTotalAll(); }, 150);
+          this.badges.refresh();
         },
         error: () => { this.moderateTarget = null; },
       });

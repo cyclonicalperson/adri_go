@@ -1,43 +1,26 @@
 <div class="page-content">
 
-  <!-- ── STATS ────────────────────────────────────────────────────────── -->
-  <div class="stats-strip" style="grid-template-columns: repeat(4, 1fr)">
-    <div class="stat-chip">
+  <!-- ── STATS ──────────────────────────────────────────────────────────── -->
+  <div class="stats-strip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
       <div class="trend warn">⚠ Traže pregled</div>
+      }
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'approved'" (click)="setStatus('approved')">
       <div class="num" style="color:#15803d">{{ approvedCount }}</div>
       <div class="lbl">Odobreno</div>
-      <div class="trend up">↑ Ukupno</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'rejected'" (click)="setStatus('rejected')">
       <div class="num" style="color:#ef4444">{{ rejectedCount }}</div>
       <div class="lbl">Odbijeno</div>
-      <div class="trend">Neispunili uslove</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === ''" (click)="setStatus('')">
       <div class="num">{{ allCount }}</div>
-      <div class="lbl">Svi zahtevi</div>
-      <div class="trend">Ukupno primljeno</div>
+      <div class="lbl">Ukupno primljeno</div>
     </div>
-  </div>
-
-  <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
-  <div class="filter-tabs">
-    <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
-      ⏳ Na čekanju ({{ pendingCount }})
-    </button>
-    <button class="ftab" [class.active]="activeStatus === 'approved'" (click)="setStatus('approved')">
-      ✅ Odobreno ({{ approvedCount }})
-    </button>
-    <button class="ftab" [class.active]="activeStatus === 'rejected'" (click)="setStatus('rejected')">
-      ❌ Odbijeno ({{ rejectedCount }})
-    </button>
-    <button class="ftab" [class.active]="activeStatus === ''" (click)="setStatus('')">
-      Svi zahtevi
-    </button>
   </div>
 
   <!-- ── TABLE ────────────────────────────────────────────────────────── -->
@@ -61,8 +44,6 @@
           <th>Podnosilac</th>
           <th>Tip</th>
           <th>Email</th>
-          <th>Verifikovan email</th>
-          <th>Dokument</th>
           <th>Podneseno</th>
           <th>Status</th>
           <th>Akcije</th>
@@ -77,29 +58,18 @@
               <div>
                 <div style="font-weight:700;font-size:13px">{{ r.fullName }}</div>
                 @if (!r.isIndividual && r.organizationName) {
-                <div style="font-size:11px;color:#6b7280">{{ r.organizationName }}</div>
+                <div style="font-size:11px;color:#6b7280">🏢 {{ r.organizationName }}</div>
                 }
               </div>
             </div>
           </td>
+          <td><span class="type-tag">{{ typeLabel(r) }}</span></td>
           <td>
-            <span class="type-tag">{{ typeLabel(r) }}</span>
-          </td>
-          <td style="font-size:12px;color:#6b7280">{{ r.email }}</td>
-          <td>
+            <div style="font-size:12px;color:#374151">{{ r.email }}</div>
             @if (r.emailVerifiedAt) {
-            <span class="badge badge-green">✅ Verifikovan</span>
+            <div style="font-size:11px;color:#16a34a">✅ Verifikovan</div>
             } @else {
-            <span class="badge badge-amber">⏳ Čeka</span>
-            }
-          </td>
-          <td>
-            @if (hasDocument(r)) {
-            <a [href]="documentUrl(r)" target="_blank" class="doc-link" (click)="$event.stopPropagation()">
-              📎 Priložen
-            </a>
-            } @else {
-            <span style="color:#9ca3af;font-size:12px">—</span>
+            <div style="font-size:11px;color:#d97706">⏳ Nije verifikovan</div>
             }
           </td>
           <td style="font-size:12px;color:#6b7280;white-space:nowrap">
@@ -121,131 +91,119 @@
         }
       </tbody>
     </table>
-
-    <div class="pagination">
-      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} zahteva</div>
-      <div class="pg-btns">
-        <button class="pg-btn" [disabled]="page === 1" (click)="onPage(page - 1)">←</button>
-        @for (p of pageNumbers; track p) {
-        <button class="pg-btn" [class.active]="p === page" (click)="onPage(p)">{{ p }}</button>
-        }
-        <button class="pg-btn" [disabled]="page === totalPages" (click)="onPage(page + 1)">→</button>
-      </div>
-    </div>
   </div>
+
+  @if (totalPages > 1) {
+  <div class="pagination">
+    <button class="pg-btn" [disabled]="page <= 1" (click)="goPage(page - 1)">←</button>
+    @for (n of pageNumbers; track n) {
+    <button class="pg-btn" [class.active]="n === page" (click)="goPage(n)">{{ n }}</button>
+    }
+    <button class="pg-btn" [disabled]="page >= totalPages" (click)="goPage(page + 1)">→</button>
+  </div>
+  }
 
   }
 
-</div>
+  <!-- ── DETAIL PANEL (slide-in sa desne strane) ────────────────────── -->
+  @if (selected) {
+  <div class="detail-overlay" (click)="closeDetail()">
+    <div class="detail-panel" (click)="$event.stopPropagation()">
 
-<!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
-@if (detailOpen && selected) {
-<div class="detail-overlay" (click)="closeDetail()">
-  <div class="detail-panel" (click)="$event.stopPropagation()">
+      <div class="detail-header">
+        <h3 class="detail-title">Detalji zahteva</h3>
+        <button class="btn-close" (click)="closeDetail()">✕</button>
+      </div>
 
-    <div class="detail-header">
-      <h3 class="detail-title">Zahtev za registraciju</h3>
-      <button class="btn-close" (click)="closeDetail()">✕</button>
-    </div>
+      <div class="detail-body">
+        <div class="detail-rows">
+          <div class="detail-row">
+            <span class="detail-lbl">Ime i prezime</span>
+            <span class="detail-val">{{ selected.fullName }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">Email</span>
+            <span class="detail-val">{{ selected.email }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">Tip naloga</span>
+            <span class="detail-val">{{ typeLabel(selected) }}</span>
+          </div>
+          @if (!selected.isIndividual && selected.organizationName) {
+          <div class="detail-row">
+            <span class="detail-lbl">Organizacija</span>
+            <span class="detail-val">{{ selected.organizationName }}</span>
+          </div>
+          }
+          @if (!selected.isIndividual && selected.organizationEmail) {
+          <div class="detail-row">
+            <span class="detail-lbl">Email org.</span>
+            <span class="detail-val">{{ selected.organizationEmail }}</span>
+          </div>
+          }
+          <div class="detail-row">
+            <span class="detail-lbl">Email verifikovan</span>
+            <span class="detail-val">{{ selected.emailVerifiedAt ? '✅ Da' : '⏳ Nije' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">Podneseno</span>
+            <span class="detail-val">{{ selected.submittedAt | dateLocal:'datetime' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">Status</span>
+            <span class="badge" [class]="statusClass(selected.status)">{{ statusLabel(selected.status) }}</span>
+          </div>
+          @if (selected.rejectionReason) {
+          <div class="detail-row">
+            <span class="detail-lbl">Razlog odbijanja</span>
+            <span class="detail-val" style="color:#ef4444">{{ selected.rejectionReason }}</span>
+          </div>
+          }
+        </div>
 
-    <div class="detail-body">
-
-      <div class="detail-avatar">{{ initials(selected.fullName) }}</div>
-      <div class="detail-name">{{ selected.fullName }}</div>
-      <div class="detail-type">{{ typeLabel(selected) }}</div>
-
-      <div class="detail-rows">
-        <div class="detail-row">
-          <span class="detail-label">Email</span>
-          <span class="detail-val">{{ selected.email }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Email verifikovan</span>
-          <span class="detail-val">
-            {{ selected.emailVerifiedAt ? ('✅ Da (' + (selected.emailVerifiedAt | dateLocal) + ')') : '⏳ Nije verifikovan' }}
-          </span>
-        </div>
-        @if (!selected.isIndividual) {
-        <div class="detail-row">
-          <span class="detail-label">Organizacija</span>
-          <span class="detail-val">{{ selected.organizationName ?? '—' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Email org.</span>
-          <span class="detail-val">{{ selected.organizationEmail ?? '—' }}</span>
-        </div>
-        }
-        <div class="detail-row">
-          <span class="detail-label">Podneseno</span>
-          <span class="detail-val">{{ selected.submittedAt | dateLocal:'datetime' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Status</span>
-          <span class="badge" [class]="statusClass(selected.status)">{{ statusLabel(selected.status) }}</span>
-        </div>
-        @if (selected.rejectionReason) {
-        <div class="detail-row">
-          <span class="detail-label">Razlog odbijanja</span>
-          <span class="detail-val" style="color:#ef4444">{{ selected.rejectionReason }}</span>
-        </div>
-        }
-        @if (selected.reviewedAt) {
-        <div class="detail-row">
-          <span class="detail-label">Pregledano</span>
-          <span class="detail-val">{{ selected.reviewedAt | dateLocal:'datetime' }}</span>
+        @if (selected.status === 'pending') {
+        <div class="detail-actions">
+          <button class="btn btn-primary" [disabled]="processing" (click)="approve(selected)">
+            {{ processing ? 'Obrada...' : '✅ Odobri zahtev' }}
+          </button>
+          <button class="btn btn-danger" [disabled]="processing" (click)="openRejectDialog(selected)">
+            ❌ Odbij zahtev
+          </button>
         </div>
         }
       </div>
 
-      <!-- Priloženi dokument -->
-      <div class="doc-section">
-        <div class="doc-section-title">📎 Priloženi dokument</div>
-        @if (hasDocument(selected)) {
-        <a [href]="documentUrl(selected)" target="_blank" class="doc-download">
-          Preuzmi dokument
-        </a>
-        } @else {
-        <div class="doc-missing">Podnosilac nije priložio dokument.</div>
-        }
+    </div>
+  </div>
+  }
+
+  <!-- ── REJECT DIALOG ─────────────────────────────────────────────────── -->
+  @if (rejectDialogOpen) {
+  <div class="detail-overlay" (click)="cancelReject()">
+    <div class="detail-panel" style="max-width:420px" (click)="$event.stopPropagation()">
+      <div class="detail-header">
+        <h3 class="detail-title">Odbij zahtev</h3>
+        <button class="btn-close" (click)="cancelReject()">✕</button>
       </div>
-
-    </div>
-
-    @if (selected.status === 'pending') {
-    <div class="detail-actions">
-      <button class="btn-reject" (click)="openRejectDialog(selected)" [disabled]="processing">
-        ❌ Odbij zahtev
-      </button>
-      <button class="btn-approve" (click)="approve(selected)" [disabled]="processing">
-        {{ processing ? 'Obrada...' : '✅ Odobri zahtev' }}
-      </button>
-    </div>
-    }
-
-  </div>
-</div>
-}
-
-<!-- ── REJECT DIALOG ─────────────────────────────────────────────────── -->
-@if (rejectDialogOpen && rejectTarget) {
-<div class="reject-overlay" (click)="cancelReject()">
-  <div class="reject-dialog" (click)="$event.stopPropagation()">
-    <h3 class="reject-title">Odbij zahtev</h3>
-    <p class="reject-sub">
-      Unosite razlog odbijanja za <strong>{{ rejectTarget.fullName }}</strong>.
-      Podnosilac će dobiti email obaveštenje.
-    </p>
-    <label class="reject-label">Razlog odbijanja (opcionalno)</label>
-    <textarea class="reject-textarea"
-              [(ngModel)]="rejectReason"
-              rows="3"
-              placeholder="npr. Nepotpuna dokumentacija, neispunjeni uslovi…"></textarea>
-    <div class="reject-actions">
-      <button class="btn-cancel-sm" (click)="cancelReject()">Otkaži</button>
-      <button class="btn-reject-confirm" (click)="submitReject()" [disabled]="processing">
-        {{ processing ? 'Slanje...' : 'Odbij zahtev' }}
-      </button>
+      <div class="detail-body">
+        <p style="margin:0 0 14px;color:#374151;font-size:14px">
+          Navedite razlog odbijanja zahteva od <strong>{{ rejectTarget?.fullName }}</strong>:
+        </p>
+        <textarea class="input textarea"
+                  [(ngModel)]="rejectReason"
+                  placeholder="npr. Nepotpuna dokumentacija..."
+                  rows="4"></textarea>
+        <div class="detail-actions" style="margin-top:16px">
+          <button class="btn btn-outline" (click)="cancelReject()">Otkaži</button>
+          <button class="btn btn-danger"
+                  [disabled]="!rejectReason.trim() || processing"
+                  (click)="submitReject()">
+            {{ processing ? 'Slanje...' : 'Pošalji odbijanje' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
+  }
+
 </div>
-}

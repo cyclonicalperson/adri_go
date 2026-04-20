@@ -71,8 +71,9 @@
     </select>
 
     <select class="filter-select" (change)="onSortChange($any($event.target).value)">
-      <option value="createdAt:desc">Sortiraj: Najnovije</option>
+      <option value="id:desc">Sortiraj: Najnovije</option>
       <option value="name:asc">Naziv A–Z</option>
+      <option value="name:desc">Naziv Z–A</option>
       <option value="viewCount:desc">Pregledi ↓</option>
     </select>
 
@@ -107,7 +108,7 @@
           <th>Tip</th>
           <th>Lokacija (GPS)</th>
           <th>Vezana lokacija</th>
-          <th (click)="onSortCol('viewCount')">Pregledi <span class="sort">↕</span></th>
+          <th>Pregledi</th>
           <th>Status / Dozvola</th>
           <th>Akcije</th>
         </tr>
