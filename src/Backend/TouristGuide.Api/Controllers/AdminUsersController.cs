@@ -282,7 +282,7 @@ namespace TouristGuide.Api.Controllers
             });
 
             await _db.SaveChangesAsync();
-            return Ok(new { success = true, message = "Permisija je dodijeljena." });
+            return Ok(new { success = true, message = "Permisija je dodeljena." });
         }
 
         // ── DELETE /api/admin-users/{userId}/permissions/{permissionId} ───────
@@ -357,7 +357,7 @@ namespace TouristGuide.Api.Controllers
             user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            return Ok(new { success = true, message = "Lozinka je uspješno promijenjena." });
+            return Ok(new { success = true, message = "Lozinka je uspešno promenjena." });
         }
 
         // ── Helpers ────────────────────────────────────────────────────────────

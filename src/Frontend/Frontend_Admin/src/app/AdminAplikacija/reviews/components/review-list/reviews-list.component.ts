@@ -6,12 +6,13 @@ import { PageRequest } from '@core/models/api-response.model';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { ReviewModerationComponent } from '../review-moderation/review-moderation.component';
+import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-reviews-list',
   templateUrl: './reviews-list.component.html',
   styleUrl: './reviews-list.component.scss',
-  imports: [TruncatePipe, DateLocalPipe, ReviewModerationComponent],
+  imports: [TruncatePipe, DateLocalPipe, ReviewModerationComponent, ConfirmDialogComponent],
 })
 export class ReviewsListComponent implements OnInit {
   reviews: Review[] = [];
@@ -20,6 +21,7 @@ export class ReviewsListComponent implements OnInit {
   totalPages = 1;
   loading = true;
   moderateTarget: Review | null = null;
+  deleteTarget: Review | null = null;
 
   pendingCount = 0;
   approvedCount = 0;
@@ -131,12 +133,21 @@ export class ReviewsListComponent implements OnInit {
 
   deleteReview(r: Review): void {
     if (!this.canDelete) return;
-    if (!confirm(`Trajno obriši recenziju od "${r.touristName ?? r.user?.fullName ?? 'Anoniman'}"?`)) return;
+    this.deleteTarget = r;
+  }
+
+  cancelDelete(): void { this.deleteTarget = null; }
+
+  confirmDelete(): void {
+    if (!this.deleteTarget) return;
+    const r = this.deleteTarget;
+    this.deleteTarget = null;
     this.service.delete(r.reviewId).subscribe({
       next: () => {
         this.reviews = this.reviews.filter(x => x.reviewId !== r.reviewId);
         this.total = Math.max(0, this.total - 1);
         this.loadCounts();
+        this.loadTotalAll();
       },
       error: () => { },
     });

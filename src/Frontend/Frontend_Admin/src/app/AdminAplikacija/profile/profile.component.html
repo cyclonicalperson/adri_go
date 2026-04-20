@@ -172,12 +172,20 @@
           <input class="input" type="password" formControlName="currentPassword"
                  [class.invalid]="pw('currentPassword').invalid && pw('currentPassword').touched"
                  placeholder="Unesite trenutnu lozinku" />
+          @if (pw('currentPassword').invalid && pw('currentPassword').touched) {
+          <div class="field-error">Trenutna lozinka je obavezna.</div>
+          }
         </div>
         <div class="field">
           <label class="label">Nova lozinka * (min. 8 karaktera)</label>
           <input class="input" type="password" formControlName="newPassword"
                  [class.invalid]="pw('newPassword').invalid && pw('newPassword').touched"
                  placeholder="Nova lozinka" />
+          @if (pw('newPassword').hasError('required') && pw('newPassword').touched) {
+          <div class="field-error">Nova lozinka je obavezna.</div>
+          } @else if (pw('newPassword').hasError('minlength') && pw('newPassword').touched) {
+          <div class="field-error">Lozinka mora imati najmanje 8 karaktera.</div>
+          }
         </div>
         <div class="field">
           <label class="label">Potvrdi novu lozinku *</label>

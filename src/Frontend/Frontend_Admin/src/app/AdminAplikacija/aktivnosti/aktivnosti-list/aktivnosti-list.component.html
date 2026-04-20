@@ -18,6 +18,13 @@
       <div class="num" style="color:#7e22ce">{{ wellnessCount }}</div>
       <div class="lbl">Wellness</div>
     </div>
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
+      <div class="num" style="color:#d97706">{{ pendingCount }}</div>
+      <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
+      <div class="trend warn">⚠ Čeka pregled</div>
+      }
+    </div>
   </div>
 
   <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->

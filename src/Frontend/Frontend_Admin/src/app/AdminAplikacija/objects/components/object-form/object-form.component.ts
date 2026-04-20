@@ -108,7 +108,12 @@ export class ObjectFormComponent implements OnInit {
     this.saving = true;
     this.error = null;
 
-    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media: this.media };
+    // Filtriramo media — ne šaljemo base64 DataURL na server (nisu persistentni)
+    // Samo HTTP/HTTPS URLovi su validni za čuvanje u bazi
+    const validMedia = this.media.filter(m =>
+      m.url && (m.url.startsWith('http://') || m.url.startsWith('https://'))
+    );
+    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media: validMedia };
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)
@@ -116,7 +121,7 @@ export class ObjectFormComponent implements OnInit {
 
     req$.subscribe({
       next: () => this.router.navigate(['/admin/lokacije']),
-      error: (err: any) => { this.error = err.message ?? 'Greška pri čuvanju.'; this.saving = false; },
+      error: (err: any) => { this.error = err?.error?.message ?? err?.message ?? 'Greška pri čuvanju.'; this.saving = false; },
     });
   }
 

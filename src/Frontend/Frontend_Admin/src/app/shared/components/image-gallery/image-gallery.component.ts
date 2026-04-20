@@ -47,4 +47,9 @@ export class ImageGalleryComponent implements OnChanges {
   onImgError(event: Event): void {
     (event.target as HTMLImageElement).src = this.fallback;
   }
+
+  /** Vraća true samo za http/https/data URLs - lokalni pathovi se ne mogu prikazati */
+  isValidUrl(url: string): boolean {
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:');
+  }
 }

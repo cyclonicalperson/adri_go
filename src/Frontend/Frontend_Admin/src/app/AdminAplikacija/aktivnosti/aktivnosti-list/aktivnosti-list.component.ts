@@ -48,6 +48,7 @@ export class AktivnostiListComponent implements OnInit {
   sportCount = 0;
   natureCount = 0;
   wellnessCount = 0;
+  pendingCount = 0;
 
   // Detail / Map / Delete paneli
   detailActivity: BackendActivity | null = null;
@@ -107,6 +108,7 @@ export class AktivnostiListComponent implements OnInit {
         this.sportCount = this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
         this.natureCount = this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
         this.wellnessCount = this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
+        this.pendingCount = this.activities.filter(a => a.status === 'pending').length;
 
         this.loading = false;
       },

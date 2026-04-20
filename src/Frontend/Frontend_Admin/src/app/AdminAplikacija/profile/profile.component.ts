@@ -204,7 +204,7 @@ export class ProfileComponent implements OnInit {
     this.userService.changePassword(currentPassword, newPassword).subscribe({
       next: () => {
         this.pwSaving = false;
-        this.pwSuccess = 'Lozinka je uspješno promijenjena.';
+        this.pwSuccess = 'Lozinka je uspešno promenjena.';
         this.pwForm.reset();
         setTimeout(() => { this.pwMode = false; this.pwSuccess = null; }, 2500);
       },
@@ -215,7 +215,7 @@ export class ProfileComponent implements OnInit {
         if (msg.toLowerCase().includes('ispravna') || msg.toLowerCase().includes('incorrect') || err?.status === 400) {
           this.pwError = msg || 'Trenutna lozinka nije ispravna.';
         } else {
-          this.pwError = msg || 'Greška pri promjeni lozinke. Pokušajte ponovo.';
+          this.pwError = msg || 'Greška pri promeni lozinke. Pokušajte ponovo.';
         }
       },
     });

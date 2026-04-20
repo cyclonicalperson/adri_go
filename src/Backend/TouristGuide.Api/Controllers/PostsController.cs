@@ -331,7 +331,7 @@ namespace TouristGuide.Api.Controllers
             _context.Posts.Remove(post);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = $"Objava '{post.Title}' (ID={id}) je uspesno obrisana." });
+            return Ok(new { message = $"Objava '{post.Title}' (ID={id}) je uspešno obrisana." });
         }
 
         [HttpPost("{id}/like")]
@@ -435,7 +435,7 @@ namespace TouristGuide.Api.Controllers
             await _context.SaveChangesAsync();
             await RefreshSaveCount(post);
 
-            return Ok(new { message = "Sacuvana objava je uklonjena.", saveCount = post.SaveCount });
+            return Ok(new { message = "Sačuvana objava je uklonjena.", saveCount = post.SaveCount });
         }
 
         [HttpPost("{id}/view")]
@@ -474,8 +474,7 @@ namespace TouristGuide.Api.Controllers
             error = null;
 
             var query = _context.Posts
-                .Include(p => p.Admin)
-                .Include(p => p.Region)
+                .AsNoTracking()
                 .AsQueryable();
 
             if (regionId.HasValue)
@@ -538,14 +537,40 @@ namespace TouristGuide.Api.Controllers
                 _ => query.OrderByDescending(p => p.CreatedAt),
             };
 
-            var posts = await query
+            var data = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(p => new PostDto
+                {
+                    Id = p.Id,
+                    AdminId = p.AdminId,
+                    AdminName = p.Admin != null ? p.Admin.FullName : string.Empty,
+                    RegionId = p.RegionId,
+                    RegionName = p.Region != null ? p.Region.Name : null,
+                    Title = p.Title,
+                    PostType = p.PostType,
+                    Description = p.Description,
+                    Latitude = p.Lat,
+                    Longitude = p.Lng,
+                    Lat = p.Lat,
+                    Lng = p.Lng,
+                    Address = p.Address,
+                    ExternalUrl = p.ExternalUrl,
+                    ExternalUrlLabel = p.ExternalUrlLabel,
+                    Images = p.Images,
+                    OpeningHours = p.OpeningHours,
+                    Details = p.Details,
+                    Status = p.Status,
+                    ViewCount = p.ViewCount,
+                    LikeCount = p.LikeCount,
+                    SaveCount = p.SaveCount,
+                    ReviewCount = p.ReviewCount,
+                    AvgRating = p.AvgRating,
+                    PublishedAt = p.PublishedAt,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
                 .ToListAsync();
-
-            var data = new List<PostDto>(posts.Count);
-            foreach (var post in posts)
-                data.Add(MapToDto(post));
 
             return new
             {

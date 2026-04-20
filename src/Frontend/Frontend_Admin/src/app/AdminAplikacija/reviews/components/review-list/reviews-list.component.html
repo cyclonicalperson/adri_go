@@ -181,3 +181,11 @@
                        (statusUpdated)="onStatusUpdated($event)"
                        (closed)="closeModeration()" />
 }
+
+<app-confirm-dialog [visible]="!!deleteTarget"
+                    title="Obriši recenziju"
+                    [message]="'Trajno obriši recenziju od &quot;' + (deleteTarget?.touristName ?? 'Anoniman') + '&quot;? Ova akcija se ne može poništiti.'"
+                    confirmLabel="Obriši"
+                    cancelLabel="Otkaži"
+                    (confirmed)="confirmDelete()"
+                    (cancelled)="cancelDelete()" />

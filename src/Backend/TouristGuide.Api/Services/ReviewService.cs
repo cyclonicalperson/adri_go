@@ -38,22 +38,23 @@ namespace TouristGuide.Api.Services
             return await query
                 .Include(r => r.Route)
                 .OrderByDescending(r => r.CreatedAt)
+                .Take(500)  // Limit za performanse — frontend radi client-side pagination
                 .Select(r => new AdminReviewListItemDto
                 {
-                    ReviewId    = r.Id,
-                    Rating      = r.Rating,
-                    Comment     = r.Comment,
-                    Status      = r.Status,
-                    CreatedAt   = r.CreatedAt,
-                    TouristId   = r.TouristId,
+                    ReviewId = r.Id,
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    Status = r.Status,
+                    CreatedAt = r.CreatedAt,
+                    TouristId = r.TouristId,
                     TouristName = r.Tourist != null ? r.Tourist.Name ?? string.Empty : string.Empty,
-                    PostId      = r.PostId,
-                    PostTitle   = r.Post != null ? r.Post.Title : null,
+                    PostId = r.PostId,
+                    PostTitle = r.Post != null ? r.Post.Title : null,
                     PostAdminId = r.Post != null ? r.Post.AdminId : (uint?)null,
-                    PostType    = r.Post != null ? r.Post.PostType : null,
-                    RouteId     = r.RouteId,
-                    RouteName   = r.Route != null ? r.Route.Name : null,
-                    EntityType  = r.RouteId != null && r.PostId == null ? "ROUTE"
+                    PostType = r.Post != null ? r.Post.PostType : null,
+                    RouteId = r.RouteId,
+                    RouteName = r.Route != null ? r.Route.Name : null,
+                    EntityType = r.RouteId != null && r.PostId == null ? "ROUTE"
                                 : r.Post != null && r.Post.PostType == "event" ? "EVENT"
                                 : "OBJECT"
                 })
