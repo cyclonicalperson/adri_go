@@ -81,10 +81,12 @@ export class ZahteviComponent implements OnInit {
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'rejected' })
       .subscribe(r => { this.rejectedCount = r.total; this.recomputeAll(); });
 
-    // Aktivni i suspendovani admini — iste kartice kao na Admini stranici
-    this.service.getAll({ page: 1, pageSize: 1000 }).subscribe(res => {
-      this.activeAdminCount = res.data.filter(u => u.accountStatus === 'active').length;
-      this.suspendedAdminCount = res.data.filter(u => u.accountStatus === 'suspended').length;
+    // Aktivni i suspendovani admini — koristimo backend total
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'active' }).subscribe(res => {
+      this.activeAdminCount = res.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'suspended' }).subscribe(res => {
+      this.suspendedAdminCount = res.total;
     });
   }
 

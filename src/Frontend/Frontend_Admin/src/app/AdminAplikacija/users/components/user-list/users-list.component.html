@@ -2,6 +2,14 @@
 
   <!-- ── STATS ────────────────────────────────────────────────────────── -->
   <div class="stats-strip" style="grid-template-columns: repeat(4, 1fr)">
+    <div class="stat-chip clickable" [class.active-chip]="activeTab === 'all'" (click)="setTab('all')">
+      <div class="num">{{ activeCount + suspendedCount }}</div>
+      <div class="lbl">Svi admini</div>
+    </div>
+    <div class="stat-chip clickable" [class.active-chip]="activeTab === 'active'" (click)="setTab('active')">
+      <div class="num" style="color:#15803d">{{ activeCount }}</div>
+      <div class="lbl">Aktivni</div>
+    </div>
     <div class="stat-chip">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
@@ -9,17 +17,9 @@
       <div class="trend warn">⚠ Čekaju odobrenje</div>
       }
     </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#15803d">{{ activeCount }}</div>
-      <div class="lbl">Aktivni admini</div>
-    </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="activeTab === 'suspended'" (click)="setTab('suspended')">
       <div class="num" style="color:#ef4444">{{ suspendedCount }}</div>
       <div class="lbl">Suspendovani</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num">{{ total }}</div>
-      <div class="lbl">Svi admini</div>
     </div>
   </div>
 

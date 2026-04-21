@@ -90,7 +90,7 @@
           <select class="input" formControlName="objectId">
             <option [ngValue]="null">— Standalone (bez vezane lokacije) —</option>
             @for (o of objects; track o.objectId) {
-            <option [value]="o.objectId">{{ o.name }}</option>
+            <option [ngValue]="o.objectId">{{ o.name }}</option>
             }
           </select>
         </div>

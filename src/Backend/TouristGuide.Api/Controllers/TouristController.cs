@@ -44,11 +44,7 @@ namespace TouristGuide.Api.Controllers
             {
                 Name = dto.Name.Trim(),
                 Email = normalizedEmail,
-<<<<<<< Updated upstream
                 PasswordHash = PasswordHelper.Hash(dto.Password),
-=======
-                PasswordHash = PasswordHelper.Hash(dto.Password), // Pretpostavljam da imaš metodu Hash
->>>>>>> Stashed changes
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -140,7 +136,7 @@ namespace TouristGuide.Api.Controllers
                 emailOrPhone = tourist.Email,
                 language = "English", // Ovo za sad možemo da ostavimo fiksno
                 interests = new[] { "nature", "nightlife" }, // I ovo ostavljamo za sad fiksno
-                stats = new { saved = 0, tickets = 0, upcoming = 0 } 
+                stats = new { saved = 0, tickets = 0, upcoming = 0 }
             };
 
             return Ok(userProfile);
@@ -149,8 +145,12 @@ namespace TouristGuide.Api.Controllers
         // --- Pomoćna metoda za generisanje tokena ---
         private string GenerateJwtToken(Tourist tourist)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+            var secret = _configuration["Jwt:Secret"]
+                ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
+            var key = Encoding.ASCII.GetBytes(secret);
+            var issuer = _configuration["Jwt:Issuer"] ?? "TouristGuideApi";
+            var audience = _configuration["Jwt:Audience"] ?? "TouristGuideClients";
+            var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"] ?? "8");
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -160,9 +160,9 @@ namespace TouristGuide.Api.Controllers
                     new Claim(ClaimTypes.Email, tourist.Email),
                     new Claim(ClaimTypes.Name, tourist.Name)
                 }),
-                Expires = DateTime.UtcNow.AddDays(7), // Token traje 7 dana
-                Issuer = jwtSettings["Issuer"],
-                Audience = jwtSettings["Audience"],
+                Expires = DateTime.UtcNow.AddHours(expiresInHours),
+                Issuer = issuer,
+                Audience = audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

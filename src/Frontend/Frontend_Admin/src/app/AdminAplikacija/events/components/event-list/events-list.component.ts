@@ -25,15 +25,16 @@ export class EventsListComponent implements OnInit {
   events: Post[] = [];
   regions: Region[] = [];
   total = 0;
+  globalTotal = 0;  // uvijek ukupan broj svih dogadjaja, ne mijenja se pri filteru
   totalPages = 1;
   loading = true;
   viewMode: ViewMode = 'table';
   deleteTarget: Post | null = null;
 
-  upcomingCount = 0;
+  upcomingCount = 0;  // published
   ongoingCount = 0;
-  pastCount = 0;
-  draftCount = 0;
+  pastCount = 0;      // archived
+  draftCount = 0;     // draft (= Na čekanju)
   activeStatusFilter = '';
 
   // Detail panel
@@ -80,19 +81,34 @@ export class EventsListComponent implements OnInit {
     this.regionService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.regions = res.data;
     });
+    this.loadCounts();
     this.load();
+  }
+
+  private loadCounts(): void {
+    // Stabilni countovi — nezavisni od aktivnih filtera, uvijek tačni
+    const base = new HttpParams().set('type', 'event').set('page', 1).set('pageSize', 1);
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base })
+      .subscribe(r => { this.globalTotal = r.total ?? 0; });
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'published') })
+      .subscribe(r => { this.upcomingCount = r.total ?? 0; this.ongoingCount = r.total ?? 0; });
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'draft') })
+      .subscribe(r => { this.draftCount = r.total ?? 0; });
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'archived') })
+      .subscribe(r => { this.pastCount = r.total ?? 0; });
   }
 
   load(): void {
     this.loading = true;
 
-    // We load a large page (200) to support client-side category filtering
-    // because the backend stores category inside a JSON details field and cannot filter on it
-    const fetchSize = this.req.category ? 200 : this.req.pageSize;
+    // Kada je aktivan category filter, učitavamo max dozvoljenih 100 zapisa
+    // jer backend čuva category unutar JSON details polja i ne može filtrirati na njemu.
+    // Manuelna paginacija se primjenjuje client-side na filtriranom skupu.
+    const fetchSize = this.req.category ? 100 : this.req.pageSize;
 
     let params = new HttpParams()
       .set('type', 'event')
-      .set('page', 1)
+      .set('page', this.req.category ? 1 : this.req.page)
       .set('pageSize', fetchSize);
 
     if (this.req.sortBy) params = params.set('sortBy', this.req.sortBy);
@@ -114,16 +130,12 @@ export class EventsListComponent implements OnInit {
           all = all.filter(e => this.eventCategory(e) === this.req.category);
         }
 
-        // DB statusi — jedini relevantan prikaz za admin panel
-        this.upcomingCount = all.filter(e => e.status === 'published').length;
-        this.ongoingCount = all.filter(e => e.status === 'published').length; // alias
-        this.pastCount = all.filter(e => e.status === 'archived').length;
-        this.draftCount = all.filter(e => e.status === 'draft').length;
-
-        // Manual pagination when category filter is active
+        // Manuelna paginacija kada je category filter aktivan
         if (this.req.category) {
           this.total = all.length;
           this.totalPages = Math.max(1, Math.ceil(all.length / this.req.pageSize));
+          // Osiguraj da page nije van opsega nakon filtera
+          if (this.req.page > this.totalPages) this.req = { ...this.req, page: 1 };
           const start = (this.req.page - 1) * this.req.pageSize;
           this.events = all.slice(start, start + this.req.pageSize);
         } else {
@@ -251,7 +263,11 @@ export class EventsListComponent implements OnInit {
     this.statusChangeValue = null;
     if (!e || !status) return;
     this.http.put(`${environment.apiUrl}/posts/${e.postId}`, { status }).subscribe({
-      next: () => { e.status = status; this.load(); },
+      next: () => {
+        e.status = status;
+        this.load();
+        this.loadCounts();  // ažuriraj kockice (draftCount, upcomingCount itd.)
+      },
     });
   }
 

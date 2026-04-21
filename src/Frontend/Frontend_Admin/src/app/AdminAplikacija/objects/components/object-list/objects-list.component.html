@@ -4,7 +4,7 @@
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="onStatusFilter('')">
       <div class="num">{{ globalTotal }}</div>
-      <div class="lbl">Ukupno destinacija</div>
+      <div class="lbl">Ukupno lokacija</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'active'" (click)="onStatusFilter('active')">
       <div class="num" style="color:#15803d">{{ activeCount }}</div>

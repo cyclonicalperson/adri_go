@@ -29,39 +29,25 @@ export class ReviewService {
     status?: string;
     entityType?: string;
   }, options?: { context?: any }): Observable<PaginatedResponse<Review>> {
+    // Šaljemo pravi pageSize backendu — backend radi server-side paginaciju
     let params = new HttpParams()
-      .set('page', 1)                          // fetch all, sort client-side
-      .set('pageSize', 1000);
+      .set('page', req.page ?? 1)
+      .set('pageSize', req.pageSize ?? 10);
 
+    if (req.sortBy) params = params.set('sortBy', req.sortBy);
+    if (req.sortDir) params = params.set('sortDir', req.sortDir!);
     if (req.status) params = params.set('status', req.status);
     if (req.entityType) params = params.set('entityType', req.entityType);
 
     return this.http.get<any>(this.url, { params, ...(options ?? {}) }).pipe(
       map(res => {
-        let data: Review[] = (res.data ?? []).map(backendToReview);
-
-        // Client-side sort (backend doesn't support sortBy)
-        const sortBy = req.sortBy ?? 'createdAt';
-        const sortDir = req.sortDir ?? 'desc';
-        data = data.sort((a, b) => {
-          let va: any, vb: any;
-          if (sortBy === 'rating') { va = a.rating ?? 0; vb = b.rating ?? 0; }
-          else if (sortBy === 'createdAt') { va = new Date(a.createdAt).getTime(); vb = new Date(b.createdAt).getTime(); }
-          else { va = a.createdAt; vb = b.createdAt; }
-          return sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
-        });
-
-        // Manual pagination after sort
-        const total = data.length;
-        const page = req.page ?? 1;
-        const pageSize = req.pageSize ?? 10;
-        const paged = data.slice((page - 1) * pageSize, page * pageSize);
+        const data: Review[] = (res.data ?? []).map(backendToReview);
         return {
-          data: paged,
-          total,
-          page,
-          pageSize,
-          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+          data,
+          total: res.total ?? data.length,        // uvijek koristimo backend total
+          page: res.page ?? (req.page ?? 1),
+          pageSize: res.pageSize ?? (req.pageSize ?? 10),
+          totalPages: res.totalPages ?? Math.max(1, Math.ceil((res.total ?? data.length) / (req.pageSize ?? 10))),
         };
       })
     );

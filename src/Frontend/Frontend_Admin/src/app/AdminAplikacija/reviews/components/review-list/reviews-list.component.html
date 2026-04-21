@@ -2,24 +2,24 @@
 
   <!-- ── STATS ────────────────────────────────────────────────────────── -->
   <div class="stats-strip" style="grid-template-columns: repeat(4, 1fr)">
-    <div class="stat-chip">
-      <div class="num">{{ totalAll }}</div>
+    <div class="stat-chip clickable" [class.active-chip]="!req.status" (click)="onStatusChange('')">
+      <div class="num">{{ approvedCount + pendingCount + rejectedCount }}</div>
       <div class="lbl">Ukupno recenzija</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'APPROVED'" (click)="onStatusChange('APPROVED')">
+      <div class="num" style="color:#15803d">{{ approvedCount }}</div>
+      <div class="lbl">Odobrene</div>
+    </div>
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'PENDING'" (click)="onStatusChange('PENDING')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
       @if (pendingCount > 0) {
       <div class="trend warn">⚠ Traži moderaciju</div>
       }
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'REJECTED'" (click)="onStatusChange('REJECTED')">
       <div class="num" style="color:#ef4444">{{ rejectedCount }}</div>
       <div class="lbl">Odbijene</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#15803d">{{ approvedCount }}</div>
-      <div class="lbl">Odobrene</div>
     </div>
   </div>
 

@@ -3,7 +3,7 @@
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="filterByStatus('')">
-      <div class="num">{{ total }}</div>
+      <div class="num">{{ globalTotal }}</div>
       <div class="lbl">Ukupno dogadjaja</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
@@ -12,7 +12,7 @@
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
       <div class="num" style="color:#d97706">{{ draftCount }}</div>
-      <div class="lbl">Nacrt</div>
+      <div class="lbl">Na čekanju</div>
       @if (draftCount > 0) {
       <div class="trend warn">⚠ Čeka pregled</div>
       }

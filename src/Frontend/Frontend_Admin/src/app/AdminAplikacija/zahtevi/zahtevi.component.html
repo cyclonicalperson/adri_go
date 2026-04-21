@@ -2,6 +2,10 @@
 
   <!-- ── STATS ──────────────────────────────────────────────────────────── -->
   <div class="stats-strip">
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === ''" (click)="setStatus('')">
+      <div class="num">{{ allCount }}</div>
+      <div class="lbl">Ukupno primljeno</div>
+    </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
@@ -16,10 +20,6 @@
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'rejected'" (click)="setStatus('rejected')">
       <div class="num" style="color:#ef4444">{{ rejectedCount }}</div>
       <div class="lbl">Odbijeno</div>
-    </div>
-    <div class="stat-chip clickable" [class.active-chip]="activeStatus === ''" (click)="setStatus('')">
-      <div class="num">{{ allCount }}</div>
-      <div class="lbl">Ukupno primljeno</div>
     </div>
   </div>
 
@@ -102,59 +102,63 @@
   }
   }
 
-  <!-- ── DETAIL MODAL (isto kao review moderation) ───────────────────── -->
+  <!-- ── DETAIL MODAL ───────────────────────────────────────────────────── -->
   @if (selected) {
-  <div class="overlay" (click)="closeDetail()">
-    <div class="panel modal-panel" (click)="$event.stopPropagation()">
+  <div class="detail-overlay" (click)="closeDetail()">
+    <div class="detail-panel" (click)="$event.stopPropagation()">
 
-      <div class="panel-header">
-        <h3 class="panel-title">Detalji zahteva</h3>
+      <div class="detail-header">
+        <div class="detail-title-row">
+          <div class="detail-avatar">{{ initials(selected.fullName) }}</div>
+          <div>
+            <div class="detail-name">{{ selected.fullName }}</div>
+            <div class="detail-type">{{ typeLabel(selected) }}</div>
+          </div>
+        </div>
         <button class="btn-close" (click)="closeDetail()">✕</button>
       </div>
 
-      <div class="panel-body">
-        <div class="req-info-grid">
-          <div class="req-row">
-            <span class="req-lbl">Ime i prezime</span>
-            <span class="req-val">{{ selected.fullName }}</span>
-          </div>
-          <div class="req-row">
-            <span class="req-lbl">Email</span>
-            <span class="req-val">{{ selected.email }}</span>
-          </div>
-          <div class="req-row">
-            <span class="req-lbl">Tip naloga</span>
-            <span class="req-val">{{ typeLabel(selected) }}</span>
+      <div class="detail-body">
+        <div class="detail-rows">
+          <div class="detail-row">
+            <span class="detail-lbl">📧 Email</span>
+            <span class="detail-val">{{ selected.email }}</span>
           </div>
           @if (!selected.isIndividual && selected.organizationName) {
-          <div class="req-row">
-            <span class="req-lbl">Organizacija</span>
-            <span class="req-val">{{ selected.organizationName }}</span>
+          <div class="detail-row">
+            <span class="detail-lbl">🏢 Organizacija</span>
+            <span class="detail-val">{{ selected.organizationName }}</span>
           </div>
           }
-          <div class="req-row">
-            <span class="req-lbl">Email verifikovan</span>
-            <span class="req-val">{{ selected.emailVerifiedAt ? '✅ Da' : '⏳ Nije' }}</span>
+          @if (!selected.isIndividual && selected.organizationEmail) {
+          <div class="detail-row">
+            <span class="detail-lbl">📧 Email org.</span>
+            <span class="detail-val">{{ selected.organizationEmail }}</span>
           </div>
-          <div class="req-row">
-            <span class="req-lbl">Podneseno</span>
-            <span class="req-val">{{ selected.submittedAt | dateLocal:'datetime' }}</span>
+          }
+          <div class="detail-row">
+            <span class="detail-lbl">✅ Email verif.</span>
+            <span class="detail-val">{{ selected.emailVerifiedAt ? 'Verifikovan' : 'Nije verifikovan' }}</span>
           </div>
-          <div class="req-row">
-            <span class="req-lbl">Status</span>
+          <div class="detail-row">
+            <span class="detail-lbl">🗓️ Podneseno</span>
+            <span class="detail-val">{{ selected.submittedAt | dateLocal:'datetime' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-lbl">📋 Status</span>
             <span class="badge" [class]="statusClass(selected.status)">{{ statusLabel(selected.status) }}</span>
           </div>
           @if (selected.rejectionReason) {
-          <div class="req-row">
-            <span class="req-lbl">Razlog odbijanja</span>
-            <span class="req-val" style="color:#ef4444">{{ selected.rejectionReason }}</span>
+          <div class="detail-row">
+            <span class="detail-lbl">❌ Razlog odb.</span>
+            <span class="detail-val" style="color:#ef4444">{{ selected.rejectionReason }}</span>
           </div>
           }
         </div>
       </div>
 
       @if (selected.status === 'pending') {
-      <div class="panel-actions">
+      <div class="detail-actions">
         <button class="btn-reject" [disabled]="processing" (click)="openRejectDialog(selected)">
           Odbij
         </button>
@@ -170,27 +174,23 @@
 
   <!-- ── REJECT DIALOG ─────────────────────────────────────────────────── -->
   @if (rejectDialogOpen) {
-  <div class="overlay" (click)="cancelReject()">
-    <div class="panel modal-panel" (click)="$event.stopPropagation()">
-      <div class="panel-header">
-        <h3 class="panel-title">Odbij zahtev</h3>
-        <button class="btn-close" (click)="cancelReject()">✕</button>
+  <div class="reject-overlay" (click)="cancelReject()">
+    <div class="reject-dialog" (click)="$event.stopPropagation()">
+      <div class="reject-title">Odbij zahtev</div>
+      <div class="reject-sub">
+        Navedite razlog odbijanja za <strong>{{ rejectTarget?.fullName }}</strong>:
       </div>
-      <div class="panel-body">
-        <p style="margin:0 0 14px;color:#374151;font-size:14px">
-          Navedite razlog odbijanja za <strong>{{ rejectTarget?.fullName }}</strong>:
-        </p>
-        <textarea class="input textarea"
-                  [(ngModel)]="rejectReason"
-                  placeholder="npr. Nepotpuna dokumentacija..."
-                  rows="4"></textarea>
-      </div>
-      <div class="panel-actions">
-        <button class="btn-pending" (click)="cancelReject()">Otkaži</button>
-        <button class="btn-reject"
+      <label class="reject-label">Razlog odbijanja *</label>
+      <textarea class="reject-textarea"
+                [(ngModel)]="rejectReason"
+                placeholder="npr. Nepotpuna dokumentacija..."
+                rows="4"></textarea>
+      <div class="reject-actions">
+        <button class="btn-cancel-sm" (click)="cancelReject()">Otkaži</button>
+        <button class="btn-reject-confirm"
                 [disabled]="!rejectReason.trim() || processing"
                 (click)="submitReject()">
-          {{ processing ? 'Slanje...' : 'Pošalji odbijanje' }}
+          {{ processing ? 'Slanje...' : 'Potvrdi odbijanje' }}
         </button>
       </div>
     </div>

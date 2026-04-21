@@ -79,7 +79,7 @@ export class AktivnostFormComponent implements OnInit {
             name: a.name, category: a.category, description: a.description ?? '',
             duration: a.duration, difficulty: a.difficulty, maxCapacity: a.maxCapacity,
             tags: Array.isArray(a.tags) ? a.tags.join(', ') : (a.tags ?? ''),
-            objectId: a.objectId,
+            objectId: a.postId ?? a.objectId ?? null,
             latitude: a.latitude ?? a.lat ?? null,
             longitude: a.longitude ?? a.lng ?? null,
             status: (a.status ?? 'pending').toLowerCase(),
@@ -99,17 +99,22 @@ export class AktivnostFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
+    const objectId = raw.objectId;
+
     const payload: any = {
       name: raw.name,
       category: raw.category,
       status: (raw.status ?? 'pending').toLowerCase(),
+      description: raw.description ?? '',
+      duration: raw.duration ?? '',
+      difficulty: raw.difficulty ?? '',
+      maxCapacity: raw.maxCapacity ?? null,
+      tags: raw.tags ?? '',
       latitude: raw.latitude,
       longitude: raw.longitude,
-      description: raw.description ?? null,
-      duration: raw.duration ?? null,
-      difficulty: raw.difficulty ?? null,
-      maxCapacity: raw.maxCapacity ?? null,
-      tags: raw.tags ?? null,
+      // Vezivanje za lokaciju: null znači standalone (odvezi), broj = veži
+      postId: objectId ?? null,
+      clearPost: objectId === null || objectId === undefined,
     };
 
     const url = this.isEdit

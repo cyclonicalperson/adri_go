@@ -2,8 +2,8 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip clickable" [class.active-chip]="!activeCategory" (click)="setCategory('')">
-      <div class="num">{{ total }}</div>
+    <div class="stat-chip clickable" [class.active-chip]="!activeCategory && !activeStatus" (click)="clearAllFilters()">
+      <div class="num">{{ globalTotal }}</div>
       <div class="lbl">Ukupno aktivnosti</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'SPORT'" (click)="setCategory('SPORT')">
@@ -30,7 +30,7 @@
   <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!activeCategory" (click)="setCategory('')">
-      Sve ({{ total }})
+      Sve ({{ globalTotal }})
     </button>
     @for (cat of categoryOptions.slice(1); track cat.value) {
     <button class="ftab" [class.active]="activeCategory === cat.value"
@@ -133,11 +133,15 @@
             <div style="font-weight:600;font-size:13px">{{ locationName(a) }}</div>
             <div style="font-size:11px;color:#6b7280">{{ gpsText(a) }}</div>
           </td>
-          <td style="font-size:13px;font-weight:600;color:#15803d">
-            — standalone
+          <td style="font-size:13px;font-weight:600;">
+            @if (a.locationName) {
+            <span style="color:#15803d">{{ a.locationName }}</span>
+            } @else {
+            <span style="color:#9ca3af">— standalone</span>
+            }
           </td>
           <td>
-            <span style="font-weight:700;font-size:14px;color:#111827">—</span>
+            <span style="font-weight:700;font-size:14px;color:#111827">{{ a.viewCount ?? 0 }}</span>
           </td>
           <td>
             @if (a.status === 'pending') {

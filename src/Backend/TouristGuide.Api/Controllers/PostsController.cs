@@ -39,6 +39,7 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] uint? region_id,
             [FromQuery] string? type,
+            [FromQuery] string? excludeType,
             [FromQuery] string? status,
             [FromQuery] string? sortBy,
             [FromQuery] string? sortDir,
@@ -49,6 +50,10 @@ namespace TouristGuide.Api.Controllers
             var query = BuildFilteredPostsQuery(region_id, type, status, forcePublishedOnly: false, out var error);
             if (error is not null)
                 return error;
+
+            // Isključi određeni tip (npr. excludeType=event za listu lokacija)
+            if (!string.IsNullOrWhiteSpace(excludeType))
+                query = query!.Where(p => p.PostType != excludeType.ToLower().Trim());
 
             // Regular admins only see their own posts
             if (!IsSuperAdmin())
@@ -233,43 +238,6 @@ namespace TouristGuide.Api.Controllers
                 MapToDto(post)
             );
         }
-
-        // 👇 DODAJ OVU FUNKCIJU OVDJE 👇
-        [HttpPost("{id:int}/toggle-save")]
-        [Authorize]
-        public async Task<IActionResult> ToggleSavePost(uint id)
-        {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) 
-                return Unauthorized(new { message = "Niste ulogovani." });
-            
-            if (!uint.TryParse(userIdClaim.Value, out uint touristId)) 
-                return BadRequest(new { message = "Neispravan format ID-ja." });
-
-            var post = await _context.Posts.FindAsync(id);
-            if (post == null) 
-                return NotFound(new { message = "Lokacija nije pronađena." });
-
-            var existingSave = await _context.SavedPosts
-                .FirstOrDefaultAsync(sp => sp.TouristId == touristId && sp.PostId == id);
-
-            if (existingSave != null)
-            {
-                // Uklanjamo iz sačuvanih
-                _context.SavedPosts.Remove(existingSave);
-                await _context.SaveChangesAsync();
-                return Ok(new { isSaved = false, message = "Uklonjeno iz sačuvanih." });
-            }
-            else
-            {
-                // Dodajemo u sačuvane
-                var newSave = new SavedPost { TouristId = touristId, PostId = id };
-                _context.SavedPosts.Add(newSave);
-                await _context.SaveChangesAsync();
-                return Ok(new { isSaved = true, message = "Dodato u sačuvane." });
-            }
-        }
-        // 👆 KRAJ DODAVANJA 👆
 
         [HttpPost("{id:int}/toggle-save")]
         [Authorize]

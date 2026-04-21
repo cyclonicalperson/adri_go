@@ -71,7 +71,8 @@ export class ObjectService {
   ): Observable<PaginatedResponse<TouristObject>> {
     let params = new HttpParams()
       .set('page', req.page)
-      .set('pageSize', req.pageSize);
+      .set('pageSize', req.pageSize)
+      .set('excludeType', 'event');  // isključi evente — oni imaju svoju listu
 
     if (req.sortBy) params = params.set('sortBy', req.sortBy);
     if (req.sortDir) params = params.set('sortDir', req.sortDir!);
@@ -89,17 +90,13 @@ export class ObjectService {
 
     return this.http.get<any>(this.url, { params }).pipe(
       map(res => {
-        const allPosts: any[] = res.data ?? [];
-        const nonEvents = allPosts.filter((p: any) => p.postType !== 'event');
-        const adjustedTotal = nonEvents.length < allPosts.length
-          ? nonEvents.length
-          : (res.total ?? nonEvents.length);
+        const posts: any[] = res.data ?? [];
         return {
-          data: nonEvents.map(postToObject),
-          total: adjustedTotal,
+          data: posts.map(postToObject),
+          total: res.total ?? posts.length,
           page: res.page ?? req.page,
           pageSize: res.pageSize ?? req.pageSize,
-          totalPages: Math.ceil(adjustedTotal / (req.pageSize || 10)),
+          totalPages: res.totalPages ?? Math.ceil((res.total ?? posts.length) / (req.pageSize || 10)),
         };
       })
     );

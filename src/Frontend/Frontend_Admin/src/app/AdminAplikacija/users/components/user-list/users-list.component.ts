@@ -45,10 +45,12 @@ export class UsersListComponent implements OnInit {
   }
 
   private loadCounts(): void {
-    // Globalni brojevi — nezavisni od filtera stranice
-    this.service.getAll({ page: 1, pageSize: 1000 }).subscribe(res => {
-      this.activeCount = res.data.filter(u => u.accountStatus === 'active').length;
-      this.suspendedCount = res.data.filter(u => u.accountStatus === 'suspended').length;
+    // Globalni brojevi — koristimo backend total, ne učitavamo sve zapise
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'active' }).subscribe(res => {
+      this.activeCount = res.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'suspended' }).subscribe(res => {
+      this.suspendedCount = res.total;
     });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }).subscribe({
       next: res => { this.pendingCount = res.total; },

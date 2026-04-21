@@ -36,6 +36,7 @@ interface BackendActivity {
 export class AktivnostiListComponent implements OnInit {
   activities: BackendActivity[] = [];
   total = 0;
+  globalTotal = 0;  // nikad se ne mijenja pri filteru
   totalPages = 1;
   page = 1;
   pageSize = 10;
@@ -77,7 +78,22 @@ export class AktivnostiListComponent implements OnInit {
 
   constructor(private http: HttpClient, private router: Router) { }
 
-  ngOnInit(): void { this.initSearch(); this.load(); }
+  ngOnInit(): void { this.initSearch(); this.loadGlobalTotal(); this.load(); }
+
+  /** Jednom poziva backend bez filtera da dobije tačan ukupan broj */
+  private loadGlobalTotal(): void {
+    this.http.get<{ total: number }>(
+      `${environment.apiUrl}/activities`, { params: new HttpParams().set('page', 1).set('pageSize', 1) }
+    ).subscribe({ next: res => { this.globalTotal = (res as any).total ?? 0; } });
+  }
+
+  /** Resetuje sve filtere i poziva load() jednom */
+  clearAllFilters(): void {
+    this.activeCategory = '';
+    this.activeStatus = '';
+    this.page = 1;
+    this.load();
+  }
 
   load(): void {
     this.loading = true;
@@ -99,16 +115,12 @@ export class AktivnostiListComponent implements OnInit {
       next: res => {
         this.activities = (res.data ?? []).map(a => ({
           ...a,
-          // Normalizujemo id — backend vraća 'id', mock može imati 'activityId'
           id: a.id ?? a.activityId ?? 0,
           activityId: a.id ?? a.activityId ?? 0,
         }));
         this.total = res.total;
         this.totalPages = res.totalPages;
 
-        // Računamo stat counts iz svih učitanih aktivnosti
-        // (kada nema filtera — prikazujemo ukupne; kad je filter aktivan — djelimične)
-        // Koristimo backend counts koji su uvek tačni (sve stavke, ne samo tekuća stranica)
         this.sportCount = (res as any).sportCount ?? this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
         this.natureCount = (res as any).natureCount ?? this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
         this.wellnessCount = (res as any).wellnessCount ?? this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;

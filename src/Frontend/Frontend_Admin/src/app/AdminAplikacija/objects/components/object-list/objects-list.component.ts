@@ -61,14 +61,18 @@ export class ObjectsListComponent implements OnInit {
   }
 
   private loadGlobalCounts(): void {
-    const baseReq = { page: 1, pageSize: 500, sortBy: 'createdAt', sortDir: 'desc' as const };
-    this.service.getAll(baseReq).subscribe({
-      next: res => {
-        this.globalTotal = res.total;
-        this.activeCount = res.data.filter(o => this.objectStatus(o) === 'published').length;
-        this.pendingCount = res.data.filter(o => this.objectStatus(o) === 'draft').length;
-        this.inactiveCount = res.data.filter(o => this.objectStatus(o) === 'archived').length;
-      },
+    // Koristimo backend status filter i total — ne učitavamo sve zapise
+    this.service.getAll({ page: 1, pageSize: 1, status: 'published' }).subscribe(res => {
+      this.activeCount = res.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, status: 'draft' }).subscribe(res => {
+      this.pendingCount = res.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, status: 'archived' }).subscribe(res => {
+      this.inactiveCount = res.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1 }).subscribe(res => {
+      this.globalTotal = res.total;
     });
   }
 
