@@ -1,4 +1,8 @@
-<div class="account-container">
+<div class="loader-container" *ngIf="loading">
+  <p>Loading profile...</p>
+</div>
+
+<div class="account-container" *ngIf="!loading && userData">
 
   <div class="header-bar">
     <button class="back-btn" (click)="goBack()">
@@ -9,35 +13,44 @@
 
   <div class="scroll-content">
 
-    <!-- User Card -->
     <div class="user-card">
       <div class="profile-pic-wrapper">
         <img *ngIf="userData.profilePic" [src]="userData.profilePic" alt="Profile" class="profile-pic">
-        <svg *ngIf="!userData.profilePic" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        
+        <div *ngIf="!userData.profilePic" class="initial-avatar">
+          {{ getInitials() }}
+        </div>
       </div>
       <div class="user-text">
-        <h2>{{userData.name}}</h2>
-        <p>{{userData.email}}</p>
+        <h2>{{userData.fullName}}</h2>
+        <p>{{userData.emailOrPhone}}</p>
       </div>
     </div>
 
-    <!-- Stats -->
+    <div class="interests-section" *ngIf="userData.interests && userData.interests.length > 0">
+      <h3 class="section-title" style="margin-top: 15px; margin-bottom: 10px;">My Interests</h3>
+      <div class="interest-chips">
+        <span *ngFor="let interest of userData.interests" class="chip">
+          {{ interest }}
+        </span>
+      </div>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-card">
-        <span class="stat-value">{{userData.stats.saved}}</span>
+        <span class="stat-value">{{userData.stats.saved || 0}}</span>
         <span class="stat-label">Saved</span>
       </div>
       <div class="stat-card">
-        <span class="stat-value">{{userData.stats.tickets}}</span>
+        <span class="stat-value">{{userData.stats.tickets || 0}}</span>
         <span class="stat-label">Tickets</span>
       </div>
       <div class="stat-card">
-        <span class="stat-value">{{userData.stats.upcoming}}</span>
+        <span class="stat-value">{{userData.stats.upcoming || 0}}</span>
         <span class="stat-label">Upcoming</span>
       </div>
     </div>
 
-    <!-- Management -->
     <section class="menu-section">
       <h3 class="section-title">Management</h3>
       <div class="menu-items-group">
@@ -51,7 +64,6 @@
       </div>
     </section>
 
-    <!-- Support & Privacy -->
     <section class="menu-section">
       <h3 class="section-title">Support & Privacy</h3>
       <div class="menu-items-group">

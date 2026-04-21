@@ -126,29 +126,14 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetReviews(uint id)
         {
-            var postExists = await _context.Posts.AnyAsync(p => p.Id == id && p.Status == "published");
-            if (!postExists)
+            var result = await _reviewService.GetReviewsByPostId(id);
+            if (!result.PostExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
-
-            var reviews = await _context.Reviews
-                .Where(r => r.PostId == id && r.IsApproved)
-                .Include(r => r.Tourist)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new ReviewDto
-                {
-                    Id = r.Id,
-                    TouristId = r.TouristId ?? 0,
-                    TouristName = r.Tourist != null ? r.Tourist.Name ?? string.Empty : string.Empty,
-                    Rating = r.Rating,
-                    Comment = r.Comment,
-                    CreatedAt = r.CreatedAt
-                })
-                .ToListAsync();
 
             return Ok(new
             {
-                total = reviews.Count,
-                data = reviews
+                total = result.Reviews.Count,
+                data = result.Reviews
             });
         }
 
@@ -163,39 +148,23 @@ namespace TouristGuide.Api.Controllers
             if (touristId is null)
                 return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
-            if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+            var result = await _reviewService.CreateReview(id, touristId.Value, dto);
 
-            var tourist = await _context.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value && t.IsActive);
-            if (tourist is null)
-                return Unauthorized(new { message = "Turista nije pronadjen ili nije aktivan." });
-
-            var reviewExists = await _context.Reviews
-                .AnyAsync(r => r.PostId == id && r.TouristId == touristId.Value);
-
-            if (reviewExists)
-                return Conflict(new { message = "Turista je vec ostavio recenziju za ovu objavu." });
-
-            var review = new Review
+            if (!result.Succeeded)
             {
-                PostId = id,
-                TouristId = touristId.Value,
-                Rating = (byte)dto.Rating,
-                Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
-                IsApproved = true,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Reviews.Add(review);
-            await _context.SaveChangesAsync();
-
-            await RefreshReviewStats(post);
+                return result.Failure switch
+                {
+                    CreateReviewFailure.PostNotFound => NotFound(new { message = result.Message }),
+                    CreateReviewFailure.TouristNotFound => Unauthorized(new { message = result.Message }),
+                    CreateReviewFailure.DuplicateReview => Conflict(new { message = result.Message }),
+                    _ => BadRequest(new { message = "Recenziju nije moguce sacuvati." })
+                };
+            }
 
             return CreatedAtAction(
                 nameof(GetReviews),
                 new { id },
-                MapToReviewDto(review, tourist.Name)
+                result.Review
             );
         }
 
@@ -264,6 +233,43 @@ namespace TouristGuide.Api.Controllers
                 MapToDto(post)
             );
         }
+
+        // 👇 DODAJ OVU FUNKCIJU OVDJE 👇
+        [HttpPost("{id:int}/toggle-save")]
+        [Authorize]
+        public async Task<IActionResult> ToggleSavePost(uint id)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) 
+                return Unauthorized(new { message = "Niste ulogovani." });
+            
+            if (!uint.TryParse(userIdClaim.Value, out uint touristId)) 
+                return BadRequest(new { message = "Neispravan format ID-ja." });
+
+            var post = await _context.Posts.FindAsync(id);
+            if (post == null) 
+                return NotFound(new { message = "Lokacija nije pronađena." });
+
+            var existingSave = await _context.SavedPosts
+                .FirstOrDefaultAsync(sp => sp.TouristId == touristId && sp.PostId == id);
+
+            if (existingSave != null)
+            {
+                // Uklanjamo iz sačuvanih
+                _context.SavedPosts.Remove(existingSave);
+                await _context.SaveChangesAsync();
+                return Ok(new { isSaved = false, message = "Uklonjeno iz sačuvanih." });
+            }
+            else
+            {
+                // Dodajemo u sačuvane
+                var newSave = new SavedPost { TouristId = touristId, PostId = id };
+                _context.SavedPosts.Add(newSave);
+                await _context.SaveChangesAsync();
+                return Ok(new { isSaved = true, message = "Dodato u sačuvane." });
+            }
+        }
+        // 👆 KRAJ DODAVANJA 👆
 
         [HttpPost("{id:int}/toggle-save")]
         [Authorize]

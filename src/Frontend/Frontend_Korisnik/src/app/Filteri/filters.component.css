@@ -39,7 +39,6 @@
 .close-btn:hover { background: var(--gray-200); }
 .close-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }
 
-.header-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .header h1 { font-size: 18px; margin: 0; font-weight: 800; color: var(--gray-900); }
 
 .clear-btn {
@@ -65,9 +64,12 @@
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  display: block; /* Osnova za mobile */
 }
-.scroll-content::-webkit-scrollbar { width: 4px; }
-.scroll-content::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+.scroll-content::-webkit-scrollbar { width: 6px; }
+.scroll-content::-webkit-scrollbar-track { background: transparent; }
+.scroll-content::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+.scroll-content::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
 
 section { margin-bottom: 28px; }
 
@@ -94,50 +96,169 @@ section { margin-bottom: 28px; }
 
 .section-header h2 { font-size: 15px; margin: 0; font-weight: 700; color: var(--gray-800); }
 
-/* ── CHIPS ───────────────────────────────────────────────────── */
-.chips-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+/* ── SEARCH BOX & RECOMMENDATIONS ─────────────────────── */
+.search-section {
+  margin-bottom: 24px;
+  position: relative;
+}
 
-.chip {
-  padding: 9px 16px;
-  border: 1.5px solid var(--gray-200);
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-600);
-  background: #fff;
-  cursor: pointer;
+.search-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 7px;
-  transition: all 0.18s ease;
-  font-family: inherit;
+  gap: 10px;
+  background: #f9fafb;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  transition: all 0.2s ease;
 }
-.chip:hover { border-color: var(--green-300); color: var(--green-700); background: var(--green-50); }
+
+.search-input-wrapper:focus-within {
+  border-color: var(--green-400);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.search-icon {
+  font-size: 16px;
+  opacity: 0.5;
+}
+
+.search-input-wrapper input {
+  border: none;
+  background: transparent;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--gray-800);
+  outline: none;
+}
+
+.search-input-wrapper input::placeholder {
+  color: var(--gray-400);
+  font-weight: 500;
+}
+
+.recommendations-box {
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  margin-top: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  overflow: hidden;
+  position: absolute;
+  width: 100%;
+  z-index: 10;
+}
+
+.rec-item {
+  padding: 12px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gray-600);
+  cursor: pointer;
+  border-bottom: 1px solid var(--gray-100);
+  transition: all 0.15s;
+}
+
+.rec-item:last-child {
+  border-bottom: none;
+}
+
+.rec-item:hover {
+  background: var(--green-50);
+  color: var(--green-700);
+  padding-left: 20px;
+}
+
+/* ── CHIPS (KATEGORIJE I PODKATEGORIJE) ──────────────────────── */
+.category-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chip {
+  padding: 12px 28px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-700);
+  background: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.chip:hover { 
+  border-color: var(--green-400); 
+  color: var(--green-700); 
+  background: var(--green-50); 
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(34, 197, 94, 0.15);
+}
+
 .chip.active {
   background: var(--green-500);
   color: #fff;
   border-color: var(--green-500);
-  box-shadow: 0 4px 12px rgba(34,197,94,0.25);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.35);
+  transform: translateY(-2px);
 }
-.chip-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.chip-icon svg { width: 12px; height: 12px; }
 
-/* Category-specific chip icon backgrounds */
-.chip-beach    .chip-icon { background: rgba(14,165,233,0.15); }
-.chip-beach    .chip-icon svg { fill: var(--cat-beach); }
-.chip-nature   .chip-icon { background: rgba(34,197,94,0.15); }
-.chip-nature   .chip-icon svg { fill: var(--cat-nature); }
-.chip-culture  .chip-icon { background: rgba(245,158,11,0.15); }
-.chip-culture  .chip-icon svg { fill: var(--cat-culture); }
-.chip-food     .chip-icon { background: rgba(239,68,68,0.15); }
-.chip-food     .chip-icon svg { fill: var(--cat-food); }
-.chip-activity .chip-icon { background: rgba(249,115,22,0.15); }
-.chip-activity .chip-icon svg { fill: var(--cat-activity); }
-.chip-events   .chip-icon { background: rgba(20,184,166,0.15); }
-.chip-events   .chip-icon svg { fill: var(--cat-events); }
+.chip-icon { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 18px;
+}
 
-.chip.active .chip-icon { background: rgba(255,255,255,0.25); }
-.chip.active .chip-icon svg { fill: #fff; }
+.sub-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px 12px;
+  background: #f8fafc;
+  border-radius: 16px;
+  width: 100%;
+}
+
+.sub-chip {
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  color: var(--gray-600);
+  border-radius: 30px;
+  margin: 0; 
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  cursor: pointer;
+}
+
+.sub-chip:hover {
+  border-color: var(--green-400);
+  color: var(--green-700);
+  transform: translateY(-1px);
+}
+
+.sub-chip.active {
+  background: var(--green-50);
+  color: var(--green-700);
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 1px var(--green-500);
+}
 
 /* ── SLIDER ──────────────────────────────────────────────────── */
 .slider-box { padding: 0 4px; }
@@ -191,17 +312,13 @@ section { margin-bottom: 28px; }
   font-family: inherit;
   background: #fff;
 }
-.rating-card:hover { border-color: var(--green-300); background: var(--green-50); color: var(--green-700); }
+.rating-card:hover { border-color: var(--green-300); background: var(--green-50); color: var(--green-700); transform: translateY(-2px); }
 .rating-card.active {
   border-color: var(--green-500);
   background: var(--green-50);
   color: var(--green-700);
   box-shadow: 0 0 0 2px rgba(34,197,94,0.2);
 }
-
-.star { display: block; font-size: 18px; margin-bottom: 4px; }
-.rating-card svg { width: 18px; height: 18px; fill: var(--warning); display: block; margin: 0 auto 4px; }
-.rating-card:not(.active) svg { fill: var(--gray-300); }
 
 /* ── TOGGLE CARD ─────────────────────────────────────────────── */
 .toggle-card {
@@ -212,12 +329,13 @@ section { margin-bottom: 28px; }
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-lg);
   background: #fff;
+  transition: box-shadow 0.2s ease;
 }
+.toggle-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
 
 .toggle-text h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--gray-800); }
 .toggle-text p  { margin: 3px 0 0; font-size: 12px; color: var(--gray-400); }
 
-/* Toggle switch */
 .switch { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
 
@@ -245,12 +363,14 @@ input:checked + .slider:before { transform: translateX(22px); }
   border: 1.5px dashed var(--gray-200);
   border-radius: var(--radius-md);
   text-align: center;
-  transition: border-color 0.2s;
+  transition: all 0.2s ease;
+  background: #fff;
 }
-.date-input:focus-within { border-color: var(--green-400); border-style: solid; }
+.date-input:hover { border-color: var(--green-300); background: #f9fafb; }
+.date-input:focus-within { border-color: var(--green-400); border-style: solid; background: #fff; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1); }
 
 .date-input label { display: block; font-size: 10px; color: var(--gray-400); font-weight: 800; letter-spacing: 0.5px; margin-bottom: 4px; text-transform: uppercase; }
-.date-input input { border: none; width: 100%; text-align: center; font-weight: 700; font-size: 14px; outline: none; font-family: inherit; color: var(--gray-800); background: transparent; }
+.date-input input { border: none; width: 100%; text-align: center; font-weight: 700; font-size: 14px; outline: none; font-family: inherit; color: var(--gray-800); background: transparent; cursor: pointer; }
 
 /* ── FOOTER ──────────────────────────────────────────────────── */
 .footer {
@@ -271,19 +391,87 @@ input:checked + .slider:before { transform: translateX(22px); }
   cursor: pointer;
   box-shadow: var(--shadow-green);
   font-family: inherit;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: all 0.2s ease;
 }
-.apply-btn:hover  { opacity: 0.92; transform: translateY(-1px); }
-.apply-btn:active { opacity: 0.85; transform: scale(0.98); }
+.apply-btn:hover  { 
+  background: var(--green-600);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+}
+.apply-btn:active { transform: translateY(0); }
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
+
+/* ── DESKTOP OPTIMIZACIJA (ŠIROKI MODAL SA 2 KOLONE) ─────────── */
 @media (min-width: 900px) {
-  .filters-container {
-    max-width: 560px;
-    margin: 0 auto;
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
-    height: 100vh;
+  /* Nova animacija prilagođena centralnom iskakujućem prozoru */
+  @keyframes modalFadeIn {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.98); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   }
-  .scroll-content { padding: 24px 28px; }
-  .footer         { padding: 16px 28px; }
+
+  .filters-container {
+    max-width: 860px; /* Znatno šire */
+    height: 85vh; /* Preko skoro celog ekrana, ali diše */
+    max-height: 900px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 28px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.15), 0 0 0 100vw rgba(0,0,0,0.04);
+    border: 1px solid var(--gray-200);
+    animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .header { 
+    padding: 24px 40px; 
+    border-top-left-radius: 28px;
+    border-top-right-radius: 28px;
+  }
+  .header h1 { font-size: 22px; }
+
+  .clear-btn { font-size: 15px; padding: 8px 14px; }
+
+  /* Magija: Sadržaj se deli u 2 kolone! */
+  .scroll-content { 
+    padding: 36px 40px; 
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0 40px; /* Horizontalni razmak između kolona */
+    align-items: start;
+  }
+
+  /* Search sekcija treba da zauzme punu širinu (obe kolone) */
+  .search-section { 
+    grid-column: 1 / -1; 
+    margin-bottom: 36px; 
+  }
+  
+  .search-input-wrapper { padding: 16px 20px; }
+  .search-input-wrapper input { font-size: 16px; }
+
+  section { margin-bottom: 40px; }
+  .section-header h2 { font-size: 16px; }
+
+  /* Podkategorije imaju malo više mesta da dišu */
+  .sub-chips-grid { padding: 20px 16px; gap: 12px; }
+  .sub-chip { font-size: 14.5px; padding: 10px 22px; }
+
+  /* Polja za datum veća i uočljivija */
+  .date-input { padding: 18px; }
+  .date-input input { font-size: 16px; }
+
+  .footer { 
+    padding: 24px 40px; 
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
+  }
+
+  /* Dugme za primenu filtera je centralizovano kao lepa "pilula" */
+  .apply-btn {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 18px;
+    font-size: 16px;
+    border-radius: 100px;
+  }
 }

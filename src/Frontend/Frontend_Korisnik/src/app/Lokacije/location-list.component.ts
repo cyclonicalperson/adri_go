@@ -14,6 +14,10 @@ import { AuthService } from '../services/auth.service';
 })
 export class LocationListComponent implements OnInit {
 
+
+  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
+
+  
   isMenuOpen = false;
   locations: Location[] = [];
   isLoading = false;
@@ -77,8 +81,34 @@ export class LocationListComponent implements OnInit {
   openFilters():   void { this.router.navigate(['/filters']); }
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
 
-  getFirstImage(loc: Location): string {
-    const imgs = this.locationService.parseImages(loc.images);
-    return imgs[0] || 'assets/Budva.jpg';
+  getFirstImage(loc: any): string {
+    // 1. Ako nema slike, vrati neku praznu/default sliku (stavi svoju putanju ako imaš placeholder)
+    if (!loc || !loc.images) {
+      return 'assets/placeholder.jpg'; 
+    }
+
+    let firstImg = '';
+
+    // 2. Proveravamo da li su slike string (JSON) ili već niz
+    if (typeof loc.images === 'string') {
+      try {
+        const parsed = JSON.parse(loc.images);
+        firstImg = parsed.length > 0 ? parsed[0] : '';
+      } catch {
+        firstImg = loc.images; // Ako je samo jedan obican string
+      }
+    } else if (Array.isArray(loc.images) && loc.images.length > 0) {
+      firstImg = loc.images[0];
+    }
+
+    if (!firstImg) return 'assets/placeholder.jpg';
+
+    // 3. ✨ GLAVNI DEO: Ako slika nema 'http', dodajemo backend putanju!
+    if (!firstImg.startsWith('http')) {
+      const cleanPath = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
+      return `${this.IMAGE_BASE_URL}${cleanPath}`;
+    }
+
+    return firstImg;
   }
 }

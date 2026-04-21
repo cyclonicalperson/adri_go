@@ -1,6 +1,5 @@
 <div class="list-container">
 
-  <!-- HEADER -->
   <div class="header-bar">
     <div class="logo">
       <span class="logo-icon-box">
@@ -13,7 +12,6 @@
     </button>
   </div>
 
-  <!-- SEARCH -->
   <div class="search-section">
     <div class="search-row">
       <div class="search-input-wrapper">
@@ -32,33 +30,28 @@
     <button class="main-search-btn">Search</button>
   </div>
 
-  <!-- Feedback -->
   <div class="feedback-msg" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
-  <!-- Loading -->
   <div class="loading-state" *ngIf="isLoading">
     <div class="loading-icon"></div>
     Loading locations...
   </div>
 
-  <!-- Error -->
   <div class="error-state" *ngIf="errorMessage && !isLoading">
     {{ errorMessage }}
     <button (click)="loadLocations()" style="margin-left:10px;cursor:pointer;text-decoration:underline;background:none;border:none;color:inherit;font-weight:700;">Retry</button>
   </div>
 
-  <!-- Empty -->
   <div class="empty-state" *ngIf="!isLoading && !errorMessage && locations.length === 0">
     No locations found.
   </div>
 
-  <!-- List -->
   <h2 class="section-title" *ngIf="!isLoading && locations.length > 0">Near you</h2>
 
   <div class="scroll-area">
     <div class="location-card" *ngFor="let loc of locations">
 
-      <div class="image-wrapper">
+      <div class="image-wrapper" (click)="viewDetails(loc.id)">
         <img [src]="getFirstImage(loc)" [alt]="loc.title">
         <div class="image-gradient"></div>
 
@@ -68,16 +61,29 @@
         </span>
 
         <div class="action-btns">
+          
           <button class="action-btn" (click)="onLike(loc, $event)" title="Like">
-            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            <svg viewBox="0 0 24 24" 
+                 [attr.fill]="loc.isLiked ? '#ef4444' : 'none'" 
+                 [attr.stroke]="loc.isLiked ? '#ef4444' : 'currentColor'" 
+                 stroke-width="2">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
           </button>
+
           <button class="action-btn" (click)="onSave(loc, $event)" title="Save">
-            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+            <svg viewBox="0 0 24 24" 
+                 [attr.fill]="loc.isSaved ? '#3b82f6' : 'none'" 
+                 [attr.stroke]="loc.isSaved ? '#3b82f6' : 'currentColor'" 
+                 stroke-width="2">
+              <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+            </svg>
           </button>
+
         </div>
       </div>
 
-      <div class="card-content">
+      <div class="card-content" (click)="viewDetails(loc.id)">
         <div class="title-row">
           <h3>{{ loc.title }}</h3>
           <div class="rating-badge">
@@ -103,7 +109,7 @@
 
         <div class="divider"></div>
 
-        <button class="view-details-btn" (click)="viewDetails(loc.id)">
+        <button class="view-details-btn">
           VIEW DETAILS
           <span class="arrow-icon">
             <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
