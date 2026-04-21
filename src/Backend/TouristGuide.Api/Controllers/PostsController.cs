@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
-using TouristGuide.Api.Models;
 using TouristGuide.Api.DTOs;
+using TouristGuide.Api.Interfaces;
 using TouristGuide.Api.Models;
 
 namespace TouristGuide.Api.Controllers
@@ -15,6 +15,8 @@ namespace TouristGuide.Api.Controllers
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IReviewService _reviewService;
+
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
             "accommodation", "restaurant", "club", "cultural_site",
@@ -26,9 +28,10 @@ namespace TouristGuide.Api.Controllers
             "draft", "published", "archived"
         };
 
-        public PostsController(AppDbContext context)
+        public PostsController(AppDbContext context, IReviewService reviewService)
         {
             _context = context;
+            _reviewService = reviewService;
         }
 
         [HttpGet]
@@ -77,7 +80,7 @@ namespace TouristGuide.Api.Controllers
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(uint id)
         {
@@ -94,6 +97,29 @@ namespace TouristGuide.Api.Controllers
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             return Ok(MapToDto(post));
+        }
+
+        [HttpGet("my-saved")]
+        [Authorize]
+        public async Task<IActionResult> GetMySavedPosts()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized(new { message = "Niste ulogovani ili fali ID u tokenu." });
+
+            if (!uint.TryParse(userIdClaim.Value, out uint touristId))
+                return BadRequest(new { message = "Neispravan format ID-ja korisnika." });
+
+            var savedItems = await _context.SavedPosts
+                .Where(sp => sp.TouristId == touristId)
+                .Include(sp => sp.Post)
+                    .ThenInclude(p => p.Admin)
+                .Include(sp => sp.Post)
+                    .ThenInclude(p => p.Region)
+                .ToListAsync();
+
+            var postsDto = savedItems.Select(sp => MapToDto(sp.Post)).ToList();
+            return Ok(postsDto);
         }
 
         [HttpGet("{id}/reviews")]
@@ -133,7 +159,6 @@ namespace TouristGuide.Api.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Identitet turista citamo iz JWT-a, ne iz body-ja zahteva.
             var touristId = GetRequiredTouristId();
             if (touristId is null)
                 return Unauthorized(new { message = "Turista nije autentifikovan." });
@@ -181,7 +206,7 @@ namespace TouristGuide.Api.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // AdminId se čita iz JWT tokena; ignorisati vrednost iz tijela zahtjeva
+            // AdminId se čita iz JWT tokena; ignoriši vrednost iz tela zahteva
             var jwtAdminId = GetCurrentAdminId();
             if (jwtAdminId.HasValue)
                 dto.AdminId = jwtAdminId.Value;
@@ -238,6 +263,39 @@ namespace TouristGuide.Api.Controllers
                 new { id = post.Id },
                 MapToDto(post)
             );
+        }
+
+        [HttpPost("{id:int}/toggle-save")]
+        [Authorize]
+        public async Task<IActionResult> ToggleSavePost(uint id)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized(new { message = "Niste ulogovani." });
+
+            if (!uint.TryParse(userIdClaim.Value, out uint touristId))
+                return BadRequest(new { message = "Neispravan format ID-ja." });
+
+            var post = await _context.Posts.FindAsync(id);
+            if (post == null)
+                return NotFound(new { message = "Lokacija nije pronađena." });
+
+            var existingSave = await _context.SavedPosts
+                .FirstOrDefaultAsync(sp => sp.TouristId == touristId && sp.PostId == id);
+
+            if (existingSave != null)
+            {
+                _context.SavedPosts.Remove(existingSave);
+                await _context.SaveChangesAsync();
+                return Ok(new { isSaved = false, message = "Uklonjeno iz sačuvanih." });
+            }
+            else
+            {
+                var newSave = new SavedPost { TouristId = touristId, PostId = id };
+                _context.SavedPosts.Add(newSave);
+                await _context.SaveChangesAsync();
+                return Ok(new { isSaved = true, message = "Dodato u sačuvane." });
+            }
         }
 
         [HttpPut("{id}")]
@@ -314,14 +372,12 @@ namespace TouristGuide.Api.Controllers
                 post.Status = statusLower;
             }
 
-            // Ažuriranje aktivnosti (tag veza) — samo ako TagIds nije null
+            // Ažuriranje tag veza
             if (dto.TagIds is not null)
             {
-                // Ukloni postojeće veze
                 var existingTags = await _context.PostTags.Where(pt => pt.PostId == id).ToListAsync();
                 _context.PostTags.RemoveRange(existingTags);
 
-                // Dodaj nove veze (samo tagovi koji postoje i kategorije su 'aktivnost')
                 foreach (var tagId in dto.TagIds.Distinct())
                 {
                     var tagExists = await _context.Tags.AnyAsync(t => t.Id == tagId);
@@ -333,7 +389,6 @@ namespace TouristGuide.Api.Controllers
             post.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            // Reload navigacione kolekcije da MapToDto ima svježe podatke
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
             await _context.Entry(post).Collection(p => p.PostTags).Query().Include(pt => pt.Tag).LoadAsync();
@@ -460,12 +515,10 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPost("{id}/view")]
-        [Authorize(Roles = "tourist")]
+        [AllowAnonymous]
         public async Task<IActionResult> RegisterView(uint id)
         {
-            var touristId = GetRequiredTouristId();
-            if (touristId is null)
-                return Unauthorized(new { message = "Turista nije autentifikovan." });
+            var touristId = GetAuthorizedTouristId();
 
             var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
             if (post is null)
@@ -474,7 +527,7 @@ namespace TouristGuide.Api.Controllers
             _context.PostViews.Add(new PostView
             {
                 PostId = id,
-                TouristId = touristId.Value,
+                TouristId = touristId,
                 CreatedAt = DateTime.UtcNow
             });
 
@@ -484,6 +537,8 @@ namespace TouristGuide.Api.Controllers
 
             return Ok(new { message = "Pregled je evidentiran.", viewCount = post.ViewCount });
         }
+
+        #region Private Helpers
 
         private IQueryable<Post> BuildFilteredPostsQuery(
             uint? regionId,
@@ -496,6 +551,9 @@ namespace TouristGuide.Api.Controllers
 
             var query = _context.Posts
                 .AsNoTracking()
+                .Include(p => p.Admin)
+                .Include(p => p.Region)
+                .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
                 .AsQueryable();
 
             if (regionId.HasValue)
@@ -509,13 +567,14 @@ namespace TouristGuide.Api.Controllers
                     error = BadRequest(new { message = $"Nepoznat tip '{type}'. Dozvoljeni: {string.Join(", ", AllowedPostTypes)}" });
                     return query;
                 }
-
                 query = query.Where(p => p.PostType == typeLower);
             }
 
             if (forcePublishedOnly)
             {
-                query = query.Where(p => p.Status == "published");
+                query = query.Where(p =>
+                    p.Status == "published" &&
+                    (p.RegionId == null || (p.Region != null && p.Region.IsActive)));
                 return query;
             }
 
@@ -527,10 +586,12 @@ namespace TouristGuide.Api.Controllers
                     error = BadRequest(new { message = $"Nepoznat status '{status}'. Dozvoljeni: draft, published, archived" });
                     return query;
                 }
-
                 query = query.Where(p => p.Status == statusLower);
             }
-            // NOTE: No default status filter — admin panel shows all statuses unless explicitly filtered
+            else
+            {
+                query = query.Where(p => p.Status == "published");
+            }
 
             return query;
         }
@@ -560,40 +621,14 @@ namespace TouristGuide.Api.Controllers
                 _ => query.OrderByDescending(p => p.CreatedAt),
             };
 
-            var data = await query
+            var posts = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => new PostDto
-                {
-                    Id = p.Id,
-                    AdminId = p.AdminId,
-                    AdminName = p.Admin != null ? p.Admin.FullName : string.Empty,
-                    RegionId = p.RegionId,
-                    RegionName = p.Region != null ? p.Region.Name : null,
-                    Title = p.Title,
-                    PostType = p.PostType,
-                    Description = p.Description,
-                    Latitude = p.Lat,
-                    Longitude = p.Lng,
-                    Lat = p.Lat,
-                    Lng = p.Lng,
-                    Address = p.Address,
-                    ExternalUrl = p.ExternalUrl,
-                    ExternalUrlLabel = p.ExternalUrlLabel,
-                    Images = p.Images,
-                    OpeningHours = p.OpeningHours,
-                    Details = p.Details,
-                    Status = p.Status,
-                    ViewCount = p.ViewCount,
-                    LikeCount = p.LikeCount,
-                    SaveCount = p.SaveCount,
-                    ReviewCount = p.ReviewCount,
-                    AvgRating = p.AvgRating,
-                    PublishedAt = p.PublishedAt,
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                })
                 .ToListAsync();
+
+            var data = new List<PostDto>(posts.Count);
+            foreach (var post in posts)
+                data.Add(MapToDto(post));
 
             return new
             {
@@ -655,7 +690,6 @@ namespace TouristGuide.Api.Controllers
                 .AverageAsync(r => (decimal?)r.Rating);
             post.ReviewCount = (uint)await _context.Reviews.CountAsync(r => r.PostId == post.Id && r.IsApproved);
             post.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
         }
 
@@ -663,7 +697,6 @@ namespace TouristGuide.Api.Controllers
         {
             post.LikeCount = (uint)await _context.PostLikes.CountAsync(x => x.PostId == post.Id);
             post.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
         }
 
@@ -671,7 +704,6 @@ namespace TouristGuide.Api.Controllers
         {
             post.SaveCount = (uint)await _context.SavedPosts.CountAsync(x => x.PostId == post.Id);
             post.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
         }
 
@@ -706,5 +738,7 @@ namespace TouristGuide.Api.Controllers
             return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
         }
+
+        #endregion
     }
 }
