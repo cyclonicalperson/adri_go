@@ -86,7 +86,7 @@ export class ProfileComponent implements OnInit {
         next: res => {
           this.platformStats = {
             admins: res.data.totalAdmins,
-            posts: res.data.totalPosts,
+            posts: res.data.totalLocations ?? res.data.totalPosts,
             routes: res.data.totalRoutes,
             pending: res.data.pendingRegistrations,
           };

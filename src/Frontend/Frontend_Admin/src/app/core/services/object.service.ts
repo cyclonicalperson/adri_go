@@ -173,6 +173,10 @@ function postToObject(p: any): TouristObject {
   const det = parseJsonField(p.details);
 
   const regionData = p.region ?? null;
+  // Backend šalje regionName i regionId kao flat polja u PostDto
+  // p.region nested objekat ne postoji — koristimo flat polja
+  const regionName = p.regionName ?? regionData?.name ?? null;
+  const regionId = p.regionId ?? regionData?.regionId ?? regionData?.id ?? 0;
 
   let imgs: string[] = [];
   if (Array.isArray(p.images)) {
@@ -184,7 +188,7 @@ function postToObject(p: any): TouristObject {
   return {
     objectId: p.id ?? p.postId,
     destinationId: p.regionId ?? 0,
-    regionId: p.regionId,
+    regionId: regionId,
     name: p.title ?? '',
     category: (POST_TYPE_TO_CATEGORY[p.postType] ?? 'OTHER') as any,
     description: p.description ?? '',
@@ -194,10 +198,10 @@ function postToObject(p: any): TouristObject {
     phone: det?.phone ?? '',
     website: p.externalUrl ?? det?.website ?? '',
     workingHours: oh?.text ?? '',
-    createdBy: p.adminId ?? 0,
+    createdBy: p.adminId ?? p.adminId ?? 0,
     createdAt: p.createdAt ?? '',
-    destination: regionData ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
-    region: regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
+    destination: regionName ? { destinationId: regionId, name: regionName } : null,
+    region: regionName ? { regionId: regionId, name: regionName } : null,
     averageRating: p.avgRating ?? null,
     reviewCount: p.reviewCount ?? 0,
     activities: (p.tagIds ?? []).map((id: number, idx: number) => ({

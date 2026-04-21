@@ -33,8 +33,10 @@ namespace TouristGuide.Api.Controllers
             if (isSuperAdmin)
             {
                 var totalTourists = await _db.Tourists.CountAsync(t => t.IsActive);
-                var totalAdmins = await _db.AdminUsers.CountAsync(u => u.AccountStatus == "active");
-                var totalPosts = await _db.Posts.CountAsync(p => p.Status == "published");
+                var totalAdmins = await _db.AdminUsers.CountAsync(); // svi admini
+                var totalLocations = await _db.Posts.CountAsync(p => p.Status == "published" && p.PostType != "event");
+                var totalPosts = totalLocations; // backwards compat alias
+                var totalRegions = await _db.Regions.CountAsync(); // sve destinacije, konzistentno sa listom
                 var totalRoutes = await _db.Routes.CountAsync(r => r.Status == "published");
                 var pendingRegs = await _db.AdminRegistrationRequests.CountAsync(r => r.Status == "pending");
                 var pendingReviews = await _db.Reviews.CountAsync(r => r.Status == "PENDING");
@@ -50,7 +52,9 @@ namespace TouristGuide.Api.Controllers
                     {
                         totalTourists,
                         totalAdmins,
-                        totalPosts,
+                        totalLocations,
+                        totalPosts,     // alias za backwards compat
+                        totalRegions,
                         totalRoutes,
                         pendingRegistrations = pendingRegs,
                         pendingReviews,

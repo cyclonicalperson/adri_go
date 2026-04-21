@@ -166,6 +166,27 @@ export class AktivnostiListComponent implements OnInit {
     if (p >= 1 && p <= this.totalPages) { this.page = p; this.load(); }
   }
 
+  approveActivity(a: BackendActivity): void {
+    this.http.put(`${environment.apiUrl}/activities/${a.id}`, { status: 'approved' }).subscribe({
+      next: () => {
+        a.status = 'approved';
+        this.loadGlobalTotal();
+        this.load();
+      },
+    });
+  }
+
+  rejectActivity(a: BackendActivity): void {
+    const id = a.id ?? a.activityId;
+    this.http.delete(`${environment.apiUrl}/activities/${id}`).subscribe({
+      next: () => {
+        this.activities = this.activities.filter(x => (x.id ?? x.activityId) !== id);
+        this.total = Math.max(0, this.total - 1);
+        this.loadGlobalTotal();
+      },
+    });
+  }
+
   editActivity(a: BackendActivity): void {
     this.router.navigate(['/admin/aktivnosti', a.id ?? a.activityId, 'edit']);
   }

@@ -152,6 +152,10 @@
           </td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
+              @if (a.status === 'pending') {
+              <button class="btn-icon approve-btn" title="Odobri" (click)="approveActivity(a)">✅</button>
+              <button class="btn-icon danger" title="Odbij" (click)="rejectActivity(a)">❌</button>
+              }
               <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="showOnMap(a)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="openDetail(a)">👁️</button>
               <button class="btn-icon" title="Izmeni" (click)="editActivity(a)">✏️</button>

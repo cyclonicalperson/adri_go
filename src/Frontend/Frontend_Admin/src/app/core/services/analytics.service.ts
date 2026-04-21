@@ -7,7 +7,9 @@ import { ApiResponse } from '../models/api-response.model';
 export interface DashboardStats {
   totalTourists: number;
   totalAdmins: number;
-  totalPosts: number;
+  totalLocations: number;
+  totalPosts: number;       // alias — isti broj kao totalLocations
+  totalRegions: number;
   totalRoutes: number;
   pendingRegistrations: number;
   pendingReviews: number;
@@ -60,7 +62,7 @@ export interface TouristMovement {
 export class AnalyticsService {
   private readonly url = `${environment.apiUrl}/analytics`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getDashboardStats(): Observable<ApiResponse<DashboardStats>> {
     return this.http.get<ApiResponse<DashboardStats>>(`${this.url}/stats`);
