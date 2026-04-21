@@ -28,7 +28,7 @@ export class ReviewService {
   getAll(req: PageRequest & {
     status?: string;
     entityType?: string;
-  }): Observable<PaginatedResponse<Review>> {
+  }, options?: { context?: any }): Observable<PaginatedResponse<Review>> {
     let params = new HttpParams()
       .set('page', 1)                          // fetch all, sort client-side
       .set('pageSize', 1000);
@@ -36,7 +36,7 @@ export class ReviewService {
     if (req.status) params = params.set('status', req.status);
     if (req.entityType) params = params.set('entityType', req.entityType);
 
-    return this.http.get<any>(this.url, { params }).pipe(
+    return this.http.get<any>(this.url, { params, ...(options ?? {}) }).pipe(
       map(res => {
         let data: Review[] = (res.data ?? []).map(backendToReview);
 

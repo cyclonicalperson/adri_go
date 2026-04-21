@@ -84,7 +84,7 @@ namespace TouristGuide.Api.Controllers
             var post = await _context.Posts
                 .Include(p => p.Admin)
                 .Include(p => p.Region)
-                .Include(p => p.PostTags)
+                .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (post is null)
@@ -181,7 +181,7 @@ namespace TouristGuide.Api.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // AdminId se čita iz JWT tokena; ignorisati vrijednost iz tijela zahtjeva
+            // AdminId se čita iz JWT tokena; ignorisati vrednost iz tijela zahtjeva
             var jwtAdminId = GetCurrentAdminId();
             if (jwtAdminId.HasValue)
                 dto.AdminId = jwtAdminId.Value;
@@ -250,7 +250,7 @@ namespace TouristGuide.Api.Controllers
             var post = await _context.Posts
                 .Include(p => p.Admin)
                 .Include(p => p.Region)
-                .Include(p => p.PostTags)
+                .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (post is null)
@@ -333,8 +333,10 @@ namespace TouristGuide.Api.Controllers
             post.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            // Reload navigacione kolekcije da MapToDto ima svježe podatke
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
+            await _context.Entry(post).Collection(p => p.PostTags).Query().Include(pt => pt.Tag).LoadAsync();
 
             return Ok(MapToDto(post));
         }
@@ -631,7 +633,9 @@ namespace TouristGuide.Api.Controllers
             AvgRating = post.AvgRating,
             PublishedAt = post.PublishedAt,
             CreatedAt = post.CreatedAt,
-            UpdatedAt = post.UpdatedAt
+            UpdatedAt = post.UpdatedAt,
+            TagIds = post.PostTags?.Select(pt => pt.TagId).ToList() ?? new List<uint>(),
+            TagNames = post.PostTags?.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList() ?? new List<string>()
         };
 
         private static ReviewDto MapToReviewDto(Review review, string? touristName = null) => new()

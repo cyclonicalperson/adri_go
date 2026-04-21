@@ -1,6 +1,7 @@
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { environment } from '@env/environment';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -29,7 +30,8 @@ interface BackendActivity {
   selector: 'app-aktivnosti-list',
   templateUrl: './aktivnosti-list.component.html',
   styleUrl: './aktivnosti-list.component.scss',
-  imports: [TruncatePipe, ConfirmDialogComponent, MapComponent],
+  imports: [
+    FormsModule, TruncatePipe, ConfirmDialogComponent, MapComponent],
 })
 export class AktivnostiListComponent implements OnInit {
   activities: BackendActivity[] = [];
@@ -134,6 +136,9 @@ export class AktivnostiListComponent implements OnInit {
   setCategory(c: string): void { this.activeCategory = c; this.page = 1; this.load(); }
   setStatus(s: string): void { this.activeStatus = s; this.page = 1; this.load(); }
   onStatusChange(val: string): void { this.setStatus(val); }
+
+  get sortValue(): string { return `${this.sortBy}:${this.sortDir}`; }
+  set sortValue(val: string) { this.onSortChange(val); }
 
   onSortChange(val: string): void {
     const [sortBy, sortDir] = val.split(':') as [string, 'asc' | 'desc'];

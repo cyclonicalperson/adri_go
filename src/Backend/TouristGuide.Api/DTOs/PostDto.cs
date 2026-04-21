@@ -35,5 +35,8 @@ namespace TouristGuide.Api.DTOs
 
         /// <summary>Lista ID-ova vezanih aktivnosti (tag_id iz post_tag)</summary>
         public List<uint> TagIds { get; set; } = new();
+
+        /// <summary>Nazivi vezanih aktivnosti (tag.name) — za prikaz u detalju</summary>
+        public List<string> TagNames { get; set; } = new();
     }
 }

@@ -203,7 +203,10 @@ function postToObject(p: any): TouristObject {
     region: regionData ? { regionId: regionData.regionId ?? regionData.id, name: regionData.name } : null,
     averageRating: p.avgRating ?? null,
     reviewCount: p.reviewCount ?? 0,
-    activities: (p.tagIds ?? []).map((id: number) => ({ activityId: id })),
+    activities: (p.tagIds ?? []).map((id: number, idx: number) => ({
+      activityId: id,
+      name: (p.tagNames ?? p.TagNames ?? [])[idx] ?? '',
+    })),
     media: imgs.map((url: string, idx: number) => ({
       mediaId: idx + 1,
       url,

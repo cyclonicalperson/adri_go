@@ -58,7 +58,7 @@ namespace TouristGuide.Api.Controllers
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null)
-                    return Unauthorized(new { message = "Identitet korisnika nije moguce utvrditi." });
+                    return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
 
                 // Skupljamo ID-jeve tagova vezanih za postove ovog admina
                 var adminTagIds = await _context.PostTags
@@ -114,6 +114,8 @@ namespace TouristGuide.Api.Controllers
             var tags = await _context.Tags
                 .Where(t => tagIds.Contains(t.Id))
                 .ToListAsync();
+            // Sačuvaj originalni redosled koji je definisao sort (IN() ne garantuje redosled)
+            tags = tags.OrderBy(t => tagIds.IndexOf(t.Id)).ToList();
 
             // Dohvatamo vezane postove za GPS i naziv lokacije
             var linkedPosts = await _context.PostTags
@@ -201,7 +203,7 @@ namespace TouristGuide.Api.Controllers
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null)
-                    return Unauthorized(new { message = "Identitet korisnika nije moguce utvrditi." });
+                    return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
 
                 bool imaVezu = tag.PostTags.Any(pt => pt.Post.AdminId == adminId.Value);
                 if (!imaVezu)
@@ -288,7 +290,7 @@ namespace TouristGuide.Api.Controllers
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null)
-                    return Unauthorized(new { message = "Identitet korisnika nije moguce utvrditi." });
+                    return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
 
                 bool imaVezu = await _context.PostTags
                     .AnyAsync(pt => pt.TagId == id && pt.Post.AdminId == adminId.Value);
@@ -349,7 +351,7 @@ namespace TouristGuide.Api.Controllers
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null)
-                    return Unauthorized(new { message = "Identitet korisnika nije moguce utvrditi." });
+                    return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
 
                 bool imaVezu = await _context.PostTags
                     .AnyAsync(pt => pt.TagId == id && pt.Post.AdminId == adminId.Value);

@@ -33,9 +33,10 @@
     <div class="notif-panel">
       <div class="notif-panel-header">
         <span class="notif-panel-title">Obaveštenja</span>
-        @if (unreadCount > 0) {
-        <button class="notif-mark-all" (click)="markAllRead()">Označi sve kao pročitano</button>
-        }
+        <button class="notif-mark-all" [disabled]="unreadCount === 0" (click)="markAllRead()">
+          ✓ Označi sve kao pročitano
+          @if (unreadCount > 0) { <span class="notif-mark-count">({{ unreadCount }})</span> }
+        </button>
       </div>
       <div class="notif-list">
         @if (notifications.length === 0) {

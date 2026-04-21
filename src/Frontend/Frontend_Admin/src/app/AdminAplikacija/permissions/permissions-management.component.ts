@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { UserService } from '@core/services/user.service';
+import { AuthService } from '@core/auth/auth.service';
 import { User, Permission, UserPermission, PermissionCode } from '@core/models/user.model';
 import { environment } from '@env/environment';
 
@@ -64,6 +65,7 @@ export class PermissionsManagementComponent implements OnInit {
   constructor(
     private userService: UserService,
     private http: HttpClient,
+    private authService: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -235,7 +237,7 @@ export class PermissionsManagementComponent implements OnInit {
     const entry: ChangeLogEntry = {
       icon: type === 'grant' ? '✅' : '✗',
       label: type === 'grant' ? 'Dozvola dodata' : 'Dozvola uklonjena',
-      user: 'Ja',
+      user: this.authService.currentUser?.fullName ?? 'Administrator',
       perm: permCode,
       entity: targetName,
       time: new Date().toLocaleString('sr-RS'),
@@ -278,7 +280,7 @@ export class PermissionsManagementComponent implements OnInit {
     if (this.selectedUser?.userId === userId) {
       this.selectedUser = { ...this.selectedUser, permissionCount: newCount };
     }
-  }
+  } 
 
   // ── Helpers ────────────────────────────────────────────────────────────
   permCount(u: User): number { return u.permissionCount ?? 0; }

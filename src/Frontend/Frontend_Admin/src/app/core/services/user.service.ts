@@ -153,7 +153,8 @@ export class UserService {
   // ── Registration Requests ──────────────────────────────────────────────────
   // Frontend zove /registrations ali backend ima /admin-registration
   getRegistrationRequests(
-    req: PageRequest & { status?: string }
+    req: PageRequest & { status?: string },
+    options?: { context?: any }
   ): Observable<PaginatedResponse<RegistrationRequest>> {
     let params = new HttpParams()
       .set('page', req.page)
@@ -193,10 +194,12 @@ export class UserService {
   }
 
   // ── Admin Notifications ────────────────────────────────────────────────────
-  getNotifications(unreadOnly = false): Observable<ApiResponse<AdminNotification[]>> {
+  getNotifications(optionsOrUnreadOnly: boolean | { context?: any } = false): Observable<ApiResponse<AdminNotification[]>> {
+    const unreadOnly = typeof optionsOrUnreadOnly === 'boolean' ? optionsOrUnreadOnly : false;
+    const httpOptions = typeof optionsOrUnreadOnly === 'object' ? optionsOrUnreadOnly : {};
     const params = unreadOnly ? new HttpParams().set('unreadOnly', true) : undefined;
     return this.http.get<any>(
-      `${environment.apiUrl}/admin-notifications`, { params }
+      `${environment.apiUrl}/admin-notifications`, { params, ...httpOptions }
     ).pipe(
       map(res => ({ data: res.data ?? [], success: res.success ?? true }))
     );

@@ -205,59 +205,73 @@
 
 <!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
 @if (detailOpen && detailEvent) {
-<div class="detail-overlay" (click)="closeDetail()">
-  <div class="detail-panel" (click)="$event.stopPropagation()">
-    <div class="detail-header">
-      <h3 class="detail-title">Detalji dogadjaja</h3>
+<div class="modal-overlay" (click)="closeDetail()">
+  <div class="modal-wide" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-row">
+        <span class="modal-icon">{{ categoryIcon(eventCategory(detailEvent)) }}</span>
+        <div>
+          <h3 class="modal-title">{{ detailEvent.title }}</h3>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            <span class="type-tag" [class]="catBadgeClass(eventCategory(detailEvent))">{{ categoryLabel(eventCategory(detailEvent)) }}</span>
+            <span class="badge" [class]="postStatusBadgeClass(detailEvent.status)">{{ postStatusLabel(detailEvent.status) }}</span>
+          </div>
+        </div>
+      </div>
       <button class="btn-close" (click)="closeDetail()">✕</button>
     </div>
-    <div class="detail-body">
-      <div class="detail-icon">{{ categoryIcon(eventCategory(detailEvent)) }}</div>
-      <div class="detail-name">{{ detailEvent.title }}</div>
-      <div class="detail-cat">
-        <span class="type-tag" [class]="catBadgeClass(eventCategory(detailEvent))">{{ categoryLabel(eventCategory(detailEvent)) }}</span>
-        <span class="badge" [class]="postStatusBadgeClass(detailEvent.status)">{{ postStatusLabel(detailEvent.status) }}</span>
+
+    <div class="modal-top-grid">
+      <div class="modal-info">
+        <div class="modal-rows">
+          @if (detailEvent.description) {
+          <div class="modal-row">
+            <span class="modal-lbl">Opis</span>
+            <span class="modal-val">{{ detailEvent.description }}</span>
+          </div>
+          }
+          <div class="modal-row">
+            <span class="modal-lbl">📍 Region</span>
+            <span class="modal-val">{{ detailEvent.region?.name ?? '—' }}</span>
+          </div>
+          @if (detailEvent.address) {
+          <div class="modal-row">
+            <span class="modal-lbl">🏠 Adresa</span>
+            <span class="modal-val">{{ detailEvent.address }}</span>
+          </div>
+          }
+          <div class="modal-row">
+            <span class="modal-lbl">🗓️ Početak</span>
+            <span class="modal-val">{{ eventStart(detailEvent) | dateLocal:'datetime' }}</span>
+          </div>
+          <div class="modal-row">
+            <span class="modal-lbl">🗓️ Kraj</span>
+            <span class="modal-val">{{ eventEnd(detailEvent) | dateLocal:'datetime' }}</span>
+          </div>
+          <div class="modal-row">
+            <span class="modal-lbl">👤 Admin</span>
+            <span class="modal-val">{{ detailEvent.adminName ?? '—' }}</span>
+          </div>
+        </div>
       </div>
-      <div class="detail-rows">
-        <div class="detail-row">
-          <span class="detail-label">Opis</span>
-          <span class="detail-val">{{ detailEvent.description }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Region</span>
-          <span class="detail-val">{{ detailEvent.region?.name ?? '—' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Adresa</span>
-          <span class="detail-val">{{ detailEvent.address ?? '—' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Početak</span>
-          <span class="detail-val">{{ eventStart(detailEvent) | dateLocal:'datetime' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Kraj</span>
-          <span class="detail-val">{{ eventEnd(detailEvent) | dateLocal:'datetime' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Admin</span>
-          <span class="detail-val">{{ detailEvent.adminName ?? '—' }}</span>
-        </div>
-      </div>
+
       @if (detailEvent.lat && detailEvent.lng) {
-      <div style="margin-top:16px">
+      <div class="modal-map">
         <app-map [markers]="[{id: detailEvent.postId, lat: detailEvent.lat, lng: detailEvent.lng, label: detailEvent.title}]"
                  [centerLat]="detailEvent.lat"
                  [centerLng]="detailEvent.lng"
                  [zoom]="12"
-                 height="200px" />
+                 height="260px" />
       </div>
       }
     </div>
-    <div class="detail-actions">
-      <button class="btn btn-outline" (click)="goEdit(detailEvent)">✏️ Izmeni</button>
-      <button class="btn btn-primary" (click)="closeDetail()">Zatvori</button>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeDetail()">Zatvori</button>
+      <button class="btn btn-primary" (click)="goEdit(detailEvent); closeDetail()">✏️ Izmeni</button>
     </div>
+
   </div>
 </div>
 }

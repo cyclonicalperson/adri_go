@@ -1,13 +1,12 @@
-/**
- * badge.service.ts
- * Centralizovana reaktivna usluga za badge-ove u sidebaru i topbaru.
- * Komponente pozivaju refresh() kada promene podatke koji utiču na badge.
- */
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, interval, Subscription } from 'rxjs';
-import { ReviewService } from './review.service';
+import { SILENT_REQUEST } from '../interceptors/loading.interceptor';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { UserService } from './user.service';
 import { AuthService } from '../auth/auth.service';
+import { environment } from '../../../environments/environment';
+
+const SILENT = { context: new HttpContext().set(SILENT_REQUEST, true) };
 
 @Injectable({ providedIn: 'root' })
 export class BadgeService {
@@ -22,37 +21,41 @@ export class BadgeService {
   private pollSub?: Subscription;
 
   constructor(
-    private reviewService: ReviewService,
+    private http: HttpClient,
     private userService: UserService,
     private auth: AuthService,
   ) { }
 
-  /** Pokrenuti polling — poziva se iz AppComponent ili layout-a */
   startPolling(): void {
+    if (this.pollSub) return; // Sprečava višestruko pokretanje
     this.refresh();
-    // Osveži svakih 30 sekundi
     this.pollSub = interval(30_000).subscribe(() => this.refresh());
   }
 
   stopPolling(): void {
     this.pollSub?.unsubscribe();
+    this.pollSub = undefined;
   }
 
-  /** Manuelni refresh — poziva se nakon akcija koje mijenjaju stanje */
   refresh(): void {
-    this.reviewService.getAll({ page: 1, pageSize: 1, status: 'PENDING' }).subscribe({
-      next: res => this._pendingReviews$.next(res.total),
+    // Direktan lagan poziv - samo 1 recenzija za count, ne 1000
+    const reviewParams = new HttpParams().set('status', 'PENDING').set('page', 1).set('pageSize', 1);
+    this.http.get<any>(`${environment.apiUrl}/reviews`, {
+      params: reviewParams,
+      context: new HttpContext().set(SILENT_REQUEST, true),
+    }).subscribe({
+      next: res => this._pendingReviews$.next(res.total ?? 0),
       error: () => { },
     });
 
     if (this.auth.isRole('superadmin')) {
-      this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }).subscribe({
+      this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }, SILENT).subscribe({
         next: res => this._pendingRequests$.next(res.total),
         error: () => { },
       });
     }
 
-    this.userService.getNotifications().subscribe({
+    this.userService.getNotifications(SILENT).subscribe({
       next: res => {
         const unread = (res.data ?? []).filter((n: any) => !n.isRead).length;
         this._unreadNotifications$.next(unread);
