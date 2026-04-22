@@ -1,17 +1,21 @@
 @if (media.length === 0) {
 <div class="placeholder">
-  <img [src]="fallback" alt="Nema slike" class="placeholder-img" />
+  <div class="no-media-text">📷 Nema slika</div>
 </div>
 } @else {
 <div class="gallery">
 
   <!-- Glavna slika -->
   <div class="main-wrap">
+    @if (isValidUrl(current!.url)) {
     <img class="main-img"
          [src]="current!.url"
          [alt]="current!.caption ?? 'Slika'"
          (error)="onImgError($event)"
          (click)="openLightbox()" />
+    } @else {
+    <div class="img-placeholder">📷 Slika nije dostupna<br /><small>{{ current!.url }}</small></div>
+    }
     @if (media.length > 1) {
     <button class="nav prev" (click)="prev()">&#8592;</button>
     <button class="nav next" (click)="next()">&#8594;</button>

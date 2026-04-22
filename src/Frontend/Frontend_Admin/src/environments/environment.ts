@@ -1,8 +1,8 @@
 // src/environments/environment.ts
-// useMocks: false → koristi pravi backend API
-// useMocks: true  → koristi mock interceptore (radi bez backend-a)
+// useMocks: false  → koristi pravi backend API na portu 5000
+// useMocks: true   → koristi mock interceptore (rad bez backend-a)
 export const environment = {
   production: false,
-  useMocks: true,
+  useMocks: false,
   apiUrl: 'http://localhost:5125/api',
 };

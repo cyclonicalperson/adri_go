@@ -5,7 +5,7 @@
       <div class="page-title">Moj profil</div>
       <div class="page-sub">Informacije o vašem nalogu</div>
     </div>
-    <button class="btn-edit" (click)="editMode = !editMode">
+    <button class="btn-edit" (click)="editMode ? cancelEdit() : (editMode = true)">
       {{ editMode ? '✕ Otkaži' : '✏️ Izmeni podatke' }}
     </button>
   </div>
@@ -32,7 +32,7 @@
 
       <div class="card">
         <div class="card-title">Bezbednost</div>
-        <button class="btn-sec" (click)="changePassword()">🔑 Promeni lozinku</button>
+        <button class="btn-sec" (click)="openPwMode()">🔑 Promeni lozinku</button>
         <button class="btn-sec btn-danger-outline" (click)="logout()">⏻ Odjavi se</button>
       </div>
 
@@ -70,13 +70,17 @@
         <form class="edit-form" [formGroup]="editForm" (ngSubmit)="saveProfile()">
           <div class="field">
             <label class="label">Puno ime</label>
-            <input class="input" type="text" formControlName="fullName" />
+            <input class="input" type="text" formControlName="fullName" [class.invalid]="f('fullName').invalid && f('fullName').touched" />
           </div>
           <div class="field">
             <label class="label">Email</label>
-            <input class="input" type="email" formControlName="email" />
+            <input class="input" type="email" formControlName="email" [class.invalid]="f('email').invalid && f('email').touched" />
           </div>
+          @if (saveError) {
+          <div class="alert-error">{{ saveError }}</div>
+          }
           <div class="form-actions">
+            <button class="btn btn-outline" type="button" (click)="cancelEdit()">Otkaži</button>
             <button class="btn btn-primary" type="submit" [disabled]="saving">
               {{ saving ? 'Čuvanje...' : 'Sačuvaj' }}
             </button>
@@ -133,7 +137,7 @@
           </div>
           <div class="summary-item">
             <div class="summary-val">{{ platformStats.posts | number }}</div>
-            <div class="summary-lbl">Objava</div>
+            <div class="summary-lbl">Destinacija</div>
           </div>
           <div class="summary-item">
             <div class="summary-val">{{ platformStats.routes | number }}</div>
@@ -152,3 +156,56 @@
   </div>
 
 </div>
+
+<!-- ── PASSWORD CHANGE MODAL ─────────────────────────────────────────── -->
+@if (pwMode) {
+<div class="detail-overlay" (click)="cancelPw()">
+  <div class="detail-panel" style="max-width:420px" (click)="$event.stopPropagation()">
+    <div class="detail-header">
+      <h3 class="detail-title">🔑 Promeni lozinku</h3>
+      <button class="btn-close" (click)="cancelPw()">✕</button>
+    </div>
+    <div class="detail-body">
+      <form class="edit-form" [formGroup]="pwForm" (ngSubmit)="changePassword()">
+        <div class="field">
+          <label class="label">Trenutna lozinka *</label>
+          <input class="input" type="password" formControlName="currentPassword"
+                 [class.invalid]="pw('currentPassword').invalid && pw('currentPassword').touched"
+                 placeholder="Unesite trenutnu lozinku" />
+          @if (pw('currentPassword').invalid && pw('currentPassword').touched) {
+          <div class="field-error">Trenutna lozinka je obavezna.</div>
+          }
+        </div>
+        <div class="field">
+          <label class="label">Nova lozinka * (min. 8 karaktera)</label>
+          <input class="input" type="password" formControlName="newPassword"
+                 [class.invalid]="pw('newPassword').invalid && pw('newPassword').touched"
+                 placeholder="Nova lozinka" />
+          @if (pw('newPassword').hasError('required') && pw('newPassword').touched) {
+          <div class="field-error">Nova lozinka je obavezna.</div>
+          } @else if (pw('newPassword').hasError('minlength') && pw('newPassword').touched) {
+          <div class="field-error">Lozinka mora imati najmanje 8 karaktera.</div>
+          }
+        </div>
+        <div class="field">
+          <label class="label">Potvrdi novu lozinku *</label>
+          <input class="input" type="password" formControlName="confirmPassword"
+                 [class.invalid]="(pw('confirmPassword').invalid || pwForm.hasError('mismatch')) && pw('confirmPassword').touched"
+                 placeholder="Ponovi novu lozinku" />
+          @if (pwForm.hasError('mismatch') && pw('confirmPassword').touched) {
+          <div class="field-error">Lozinke se ne podudaraju.</div>
+          }
+        </div>
+        @if (pwError) { <div class="alert-error">{{ pwError }}</div> }
+        @if (pwSuccess) { <div class="alert-success">{{ pwSuccess }}</div> }
+        <div class="form-actions">
+          <button class="btn btn-outline" type="button" (click)="cancelPw()">Otkaži</button>
+          <button class="btn btn-primary" type="submit" [disabled]="pwSaving">
+            {{ pwSaving ? 'Čuvanje...' : 'Promeni lozinku' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+}

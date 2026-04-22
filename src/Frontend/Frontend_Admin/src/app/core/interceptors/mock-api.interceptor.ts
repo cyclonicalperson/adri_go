@@ -404,13 +404,18 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   if (url.includes('/analytics/movements')) return ok({ data: MOVEMENTS, success: true });
 
   // ── Posts ──────────────────────────────────────────────────────────────────
+  // Backend params: ?type=event, ?region_id=X, ?status=X, ?search=X
   if (url.includes('/posts') && req.method === 'GET' && !url.match(/\/posts\/\d+/)) {
     let list = isSuperAdmin ? [...POSTS] : POSTS.filter(p => ADMIN_POST_IDS.has(p.postId));
-    const types = params.getAll('postType') ?? []; if (types.length) list = list.filter(p => types.includes(p.postType));
-    const rid = params.get('regionId'); if (rid) list = list.filter(p => p.regionId === +rid);
+    const typeParam = params.get('type') ?? params.get('postType');
+    if (typeParam) list = list.filter(p => p.postType === typeParam);
+    const rid = params.get('region_id') ?? params.get('regionId');
+    if (rid) list = list.filter(p => p.regionId === +rid);
     const status = params.get('status'); if (status) list = list.filter(p => p.status === status);
     const q = params.get('search'); if (q) list = list.filter(p => p.title.toLowerCase().includes(q.toLowerCase()));
-    return ok(paginate(list, page, pageSize));
+    // Mapiramo postId -> id (backend vraca 'id' u PostDto)
+    const mapped = list.map(p => ({ ...p, id: p.postId }));
+    return ok(paginate(mapped, page, pageSize));
   }
   if (url.match(/\/posts\/(\d+)$/) && req.method === 'GET') {
     return ok({ data: POSTS.find(p => p.postId === +url.split('/').pop()!) ?? null, success: true });
@@ -420,10 +425,14 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   if (url.includes('/regions') && req.method === 'GET' && !url.match(/\/regions\/\d+/)) {
     let list = [...REGIONS];
     const q = params.get('search'); if (q) list = list.filter(r => r.name.toLowerCase().includes(q.toLowerCase()));
+    const type = params.get('type'); if (type) list = list.filter(r => r.type === type);
     return ok(paginate(list, page, pageSize));
   }
   if (url.match(/\/regions\/(\d+)$/) && req.method === 'GET') {
     return ok({ data: REGIONS.find(r => r.regionId === +url.split('/').pop()!) ?? null, success: true });
+  }
+  if (url.includes('/regions') && ['POST','PUT','DELETE'].includes(req.method)) {
+    return ok({ data: null, success: true, message: 'Mock: operacija uspješna.' });
   }
 
   // ── Objects (Lokacije) — maps non-event posts to TouristObject interface ──
@@ -481,26 +490,38 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // ── Routes ─────────────────────────────────────────────────────────────────
-  if (url.includes('/routes') && req.method === 'GET' && !url.match(/\/routes\/\d+/)) {
+  if (url.includes('/routes') && req.method === 'GET' && !url.match(/\/routes\/\d+\/reviews/) && !url.match(/\/routes\/\d+$/)) {
     let list = [...ROUTES];
     const q = params.get('search'); if (q) list = list.filter(r => r.name.toLowerCase().includes(q.toLowerCase()));
     const difficulty = params.get('difficulty'); if (difficulty) list = list.filter(r => r.difficulty === difficulty);
-    return ok(paginate(list, page, pageSize));
+    const rid = params.get('region_id'); if (rid) list = list.filter(r => r.regionId === +rid);
+    const status = params.get('status'); if (status) list = list.filter(r => r.status === status);
+    // Mapiramo routeId -> id za kompatibilnost sa backendskim ResponseDto
+    const mapped = list.map(r => ({ ...r, id: r.routeId, destinationId: r.regionId }));
+    return ok(paginate(mapped, page, pageSize));
   }
   if (url.match(/\/routes\/(\d+)$/) && req.method === 'GET') {
-    return ok({ data: ROUTES.find(r => r.routeId === +url.split('/').pop()!) ?? null, success: true });
+    const found = ROUTES.find(r => r.routeId === +url.split('/').pop()!);
+    return ok({ data: found ? { ...found, id: found.routeId, destinationId: found.regionId } : null, success: true });
+  }
+  if (url.match(/\/routes\/\d+\/reviews/) && req.method === 'GET') {
+    return ok({ total: 0, data: [] });
+  }
+  if (url.includes('/routes') && ['POST','PUT','DELETE'].includes(req.method)) {
+    return ok({ data: null, success: true, message: 'Mock: operacija uspješna.' });
   }
 
   // ── Reviews ────────────────────────────────────────────────────────────────
+  // Backend vraca paginirani objekat sa full review shape (reviewId, touristName, entityType...)
   if (url.includes('/reviews') && req.method === 'GET' && !url.match(/\/reviews\/\d+/)) {
     let list = isSuperAdmin ? [...REVIEWS] : REVIEWS.filter(r => (r.postId && ADMIN_REVIEW_POST_IDS.has(r.postId)) || r.status === 'PENDING');
     const status = params.get('status'); if (status) list = list.filter(r => r.status === status);
     const entityType = params.get('entityType'); if (entityType) list = list.filter(r => r.entityType === entityType);
-    const minRating = params.get('minRating'); if (minRating) list = list.filter(r => r.rating >= +minRating);
-    const maxRating = params.get('maxRating'); if (maxRating) list = list.filter(r => r.rating <= +maxRating);
+    // Paginiran odgovor koji frontend ReviewService ocekuje
     return ok(paginate(list, page, pageSize));
   }
-  if (url.match(/\/reviews\/\d+/) && req.method !== 'GET') return ok({ data: null, success: true });
+  if (url.includes('/reviews') && req.method === 'PATCH') return ok({ data: { status: 'APPROVED', isApproved: true }, success: true });
+  if (url.match(/\/reviews\/\d+/) && req.method === 'DELETE') return ok({ success: true });
 
   // ── Admin users ────────────────────────────────────────────────────────────
   if (url.includes('/admin-users') && req.method === 'GET' && !url.match(/\/admin-users\/\d+/)) {

@@ -1,9 +1,10 @@
 import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
-import { AsyncPipe } from '@angular/common';
+import { AsyncPipe, DatePipe } from '@angular/common';
 import { inject } from '@angular/core';
 import { AuthService } from '@core/auth/auth.service';
+import { BadgeService } from '@core/services/badge.service';
 import { UserService } from '@core/services/user.service';
 import { AdminNotification } from '@core/models/user.model';
 
@@ -11,7 +12,7 @@ import { AdminNotification } from '@core/models/user.model';
   selector: 'app-topbar',
   templateUrl: './topbar.component.html',
   styleUrl: './topbar.component.scss',
-  imports: [RouterModule, AsyncPipe],
+  imports: [RouterModule, AsyncPipe, DatePipe],
 })
 export class TopbarComponent implements OnInit {
   @Output() toggleSidebar = new EventEmitter<void>();
@@ -19,8 +20,8 @@ export class TopbarComponent implements OnInit {
   private router = inject(Router);
   auth = inject(AuthService);
   private userService = inject(UserService);
+  private badgeService = inject(BadgeService);
 
-  // ── Notifikacije (admin_notification tabela) ──────────────────────────
   notifications: AdminNotification[] = [];
   notifOpen = false;
   notifLoading = false;
@@ -36,48 +37,70 @@ export class TopbarComponent implements OnInit {
   loadNotifications(): void {
     this.notifLoading = true;
     this.userService.getNotifications().subscribe({
-      next: res => {
-        this.notifications = res.data;
-        this.notifLoading = false;
-      },
+      next: res => { this.notifications = res.data; this.notifLoading = false; },
       error: () => { this.notifLoading = false; },
     });
   }
 
   toggleNotifications(): void {
     this.notifOpen = !this.notifOpen;
-    // Učitaj ponovo kad se otvori panel da prikaže sveže podatke
     if (this.notifOpen) this.loadNotifications();
   }
 
   markAllRead(): void {
     this.userService.markAllNotificationsRead().subscribe(() => {
       this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
+      this.badgeService.refresh();
     });
   }
 
   openNotification(n: AdminNotification): void {
-    // Označi kao pročitanu
     if (!n.isRead) {
       this.userService.markNotificationRead(n.id).subscribe();
       n.isRead = true;
     }
     this.notifOpen = false;
-    // Navigiraj na URL iz payload-a ako postoji
     const url = (n.payload as Record<string, string> | null)?.['url'];
     if (url) this.router.navigate([url]);
+  }
+
+  deleteNotification(n: AdminNotification, event: Event): void {
+    event.stopPropagation();
+    this.userService.deleteNotification(n.id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter(x => x.id !== n.id);
+      },
+    });
+  }
+
+  clearAllNotifications(event: Event): void {
+    event.stopPropagation();
+    const ids = this.notifications.map(n => n.id);
+    // Delete all sequentially — backend has no bulk delete
+    let completed = 0;
+    if (ids.length === 0) return;
+    ids.forEach(id => {
+      this.userService.deleteNotification(id).subscribe({
+        next: () => {
+          completed++;
+          if (completed === ids.length) {
+            this.notifications = [];
+          }
+        },
+      });
+    });
   }
 
   // ── Naslov stranice ───────────────────────────────────────────────────
   private readonly titleMap: Record<string, { title: string; sub: string }> = {
     '/admin/dashboard': { title: 'Dashboard', sub: 'Pregled platforme' },
-    '/admin/lokacije': { title: 'Lokacije', sub: 'Upravljanje lokacijama' },
+    '/admin/lokacije': { title: 'Destinacije', sub: 'Upravljanje destinacijama' },
     '/admin/aktivnosti': { title: 'Aktivnosti', sub: 'Upravljanje aktivnostima' },
     '/admin/events': { title: 'Dogadjaji', sub: 'Upravljanje dogadjajima' },
     '/admin/reviews': { title: 'Recenzije', sub: 'Moderacija recenzija' },
     '/admin/users': { title: 'Admini', sub: 'Upravljanje administratorima' },
     '/admin/permissions': { title: 'Dozvole', sub: 'Upravljanje dozvolama' },
-    '/admin/map-admin': { title: 'Mapa', sub: 'Interaktivna mapa lokacija' },
+    '/admin/map-admin': { title: 'Mapa', sub: 'Interaktivna mapa destinacija' },
     '/admin/profile': { title: 'Moj profil', sub: 'Podaci o nalogu' },
     '/admin/zahtevi': { title: 'Zahtevi za registraciju', sub: 'Pregled i odobravanje zahteva' },
   };
@@ -98,7 +121,6 @@ export class TopbarComponent implements OnInit {
     return null;
   }
 
-  // ── Korisnik ──────────────────────────────────────────────────────────
   get initials(): string {
     return (this.auth.currentUser?.fullName ?? 'U')
       .split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
@@ -106,28 +128,14 @@ export class TopbarComponent implements OnInit {
 
   get roleLabel(): string {
     const role = this.auth.currentUser?.role;
-    // Mapira DB ENUM: 'superadmin' | 'admin'
     return { superadmin: 'Super Administrator', admin: 'Administrator' }[role ?? ''] ?? (role ?? '');
   }
 
-  // ── Ikona za tip notifikacije ─────────────────────────────────────────
   notifIcon(type: string): string {
-    return {
-      pending_review: '⭐',
-      new_registration: '👤',
-      post_approved: '✅',
-      post_rejected: '❌',
-      system: '🔔',
-    }[type] ?? '🔔';
+    return ({ pending_review: '⭐', new_registration: '👤', post_approved: '✅', post_rejected: '❌', system: '🔔' } as any)[type] ?? '🔔';
   }
 
   notifIconBg(type: string): string {
-    return {
-      pending_review: '#fef2f2',
-      new_registration: '#eff6ff',
-      post_approved: '#f0fdf4',
-      post_rejected: '#fef2f2',
-      system: '#f5f3ff',
-    }[type] ?? '#f9fafb';
+    return ({ pending_review: '#fef2f2', new_registration: '#eff6ff', post_approved: '#f0fdf4', post_rejected: '#fef2f2', system: '#f5f3ff' } as any)[type] ?? '#f9fafb';
   }
 }

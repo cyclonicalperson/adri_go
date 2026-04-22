@@ -319,3 +319,32 @@
     text-decoration: underline;
   }
 }
+
+// ── Detail panel (slide-in sa desne strane) ────────────────────────────────
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.detail-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+
+.detail-val {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.detail-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  gap: 10px;
+}

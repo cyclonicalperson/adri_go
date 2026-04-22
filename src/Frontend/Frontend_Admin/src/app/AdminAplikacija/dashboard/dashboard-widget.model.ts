@@ -52,7 +52,7 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
     description: 'Brzi pregled: lokacije, aktivnosti, dogadjaji, recenzije.',
     icon: '📊',
     defaultSpan: 2,
-    adminOnly: false,
+    adminOnly: true,   // Globalni podaci — samo superadmin
   },
   {
     id: 'visits_chart',
@@ -183,7 +183,7 @@ export const DEFAULT_LAYOUT_ADMIN: DashboardConfig = {
 
 export const DEFAULT_LAYOUT_ORG: DashboardConfig = {
   slots: [
-    { id: 'kpi_stats', span: 2 },
+    { id: 'tourist_kpis', span: 2 },
     { id: 'visits_chart', span: 2 },
     { id: 'top_lokacije', span: 1 },
     { id: 'category_donut', span: 1 },

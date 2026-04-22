@@ -2,13 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
+import { catchError, of } from 'rxjs';
 
 import {
-  CdkDrag,
-  CdkDropList,
-  CdkDragHandle,
-  CdkDragPlaceholder,
-  CdkDragDrop,
+  CdkDrag, CdkDropList, CdkDragHandle,
+  CdkDragPlaceholder, CdkDragDrop,
 } from '@angular/cdk/drag-drop';
 
 import { AuthService } from '@core/auth/auth.service';
@@ -16,6 +14,7 @@ import {
   AnalyticsService, DashboardStats, DailyVisit,
   PopularPost, TouristMovement,
 } from '@core/services/analytics.service';
+import { UserService } from '@core/services/user.service';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '@env/environment';
 import {
@@ -28,8 +27,6 @@ const STORAGE_KEY_PREFIX = 'th_dashboard_v1_';
 
 interface PendingRequest { id: number; icon: string; iconBg: string; title: string; meta: string; }
 interface ActivityEntry { icon: string; bg: string; title: string; text: string; time: string; }
-interface Preference { label: string; pct: number; color: string; }
-interface CityBreakdown { label: string; pct: number; color: string; }
 
 @Component({
   selector: 'app-dashboard',
@@ -47,48 +44,26 @@ export class DashboardComponent implements OnInit {
   popularObjects: PopularPost[] = [];
   popularEvents: PopularPost[] = [];
   movements: TouristMovement[] = [];
-  allPosts: { postId: number; title: string; postType: string; lat: number; lng: number }[] = [];
+  allPosts: { id: number; title: string; postType: string; lat: number; lng: number }[] = [];
   topActivities: { id: number; name: string }[] = [];
   recentReviews: { name: string; initials: string; comment: string; stars: string; status: string }[] = [];
 
-  get activeTourists(): number { return this.stats?.totalTourists ?? 0; }
-  get currentlyOnsite(): number { return Math.round((this.stats?.totalTourists ?? 0) * 0.04); }
-
   config!: DashboardConfig;
-
   pendingRequests: PendingRequest[] = [];
-
   activityLog: ActivityEntry[] = [];
 
-  readonly preferences: Preference[] = [
-    { label: '🏨 Smeštaj', pct: 38, color: '#22c55e' },
-    { label: '🎭 Kultura', pct: 24, color: '#3b82f6' },
-    { label: '⚽ Sport', pct: 18, color: '#f59e0b' },
-    { label: '💆 Wellness', pct: 12, color: '#8b5cf6' },
-    { label: '🍴 Hrana', pct: 8, color: '#ef4444' },
-  ];
+  preferences: { label: string; pct: number; color: string }[] = [];
+  cityBreakdown: { label: string; pct: number; color: string; views: number }[] = [];
 
-  readonly cityBreakdown: CityBreakdown[] = [
-    { label: '🏙️ Žabljak', pct: 34, color: '#22c55e' },
-    { label: '🏔️ Durmitor', pct: 22, color: '#3b82f6' },
-    { label: '🌊 Budva', pct: 18, color: '#8b5cf6' },
-    { label: '🏰 Kotor', pct: 14, color: '#f59e0b' },
-    { label: '🌿 Tara kanjon', pct: 8, color: '#ef4444' },
-    { label: '📍 Ostalo', pct: 4, color: '#d1d5db' },
-  ];
+  // Computed from real posts data — filled in loadSecondaryData()
+  categoryBreakdown: { label: string; icon: string; count: number; pct: number; color: string }[] = [];
 
-  readonly categoryBreakdown = [
-    { label: 'Smeštaj', icon: '🏨', pct: 31, color: '#22c55e' },
-    { label: 'Restoran', icon: '🍽️', pct: 15, color: '#3b82f6' },
-    { label: 'Atrakcije', icon: '🌟', pct: 15, color: '#f59e0b' },
-    { label: 'Kulturni objekti', icon: '🏛️', pct: 15, color: '#8b5cf6' },
-    { label: 'Sportski objekti', icon: '⚽', pct: 8, color: '#ec4899' },
-    { label: 'Dogadjaji', icon: '🎟️', pct: 8, color: '#06b6d4' },
-    { label: 'Klubovi', icon: '🎵', pct: 5, color: '#f97316' },
-    { label: 'Ostalo', icon: '📍', pct: 3, color: '#d1d5db' },
-  ];
-
-  constructor(public auth: AuthService, private analytics: AnalyticsService, private http: HttpClient) { }
+  constructor(
+    public auth: AuthService,
+    private analytics: AnalyticsService,
+    private userService: UserService,
+    private http: HttpClient,
+  ) { }
 
   ngOnInit(): void {
     this.config = this.loadConfig();
@@ -102,115 +77,200 @@ export class DashboardComponent implements OnInit {
     const fmt = (d: Date) => d.toISOString().split('T')[0];
 
     forkJoin({
-      stats: this.analytics.getDashboardStats(),
-      visits: this.analytics.getDailyVisits(fmt(from), fmt(today)),
-      objects: this.analytics.getPopularPosts(5),
-      events: this.analytics.getPopularEvents(5),
-      movements: this.analytics.getTouristMovements(),
+      stats: this.analytics.getDashboardStats().pipe(catchError(() => of({ data: null } as any))),
+      visits: this.analytics.getDailyVisits(fmt(from), fmt(today)).pipe(catchError(() => of({ data: [] } as any))),
+      objects: this.analytics.getPopularPosts(5).pipe(catchError(() => of({ data: [] } as any))),
+      events: this.analytics.getPopularEvents(5).pipe(catchError(() => of({ data: [] } as any))),
+      movements: this.analytics.getTouristMovements().pipe(catchError(() => of({ data: [] } as any))),
     }).subscribe({
       next: res => {
-        this.stats = res.stats.data;
-        this.visits = res.visits.data;
-        this.popularObjects = res.objects.data;
-        this.popularEvents = res.events.data;
-        this.movements = res.movements.data;
+        this.stats = res.stats?.data ?? null;
+        this.visits = res.visits?.data ?? [];
+        this.popularObjects = res.objects?.data ?? [];
+        this.popularEvents = res.events?.data ?? [];
+        this.movements = res.movements?.data ?? [];
         this.loading = false;
-        // Load posts for location map pins
-        this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
-          params: new HttpParams().set('page', 1).set('pageSize', 200)
-        }).subscribe(r => {
-          this.allPosts = (r.data ?? []).filter((p: any) => p.lat && p.lng && p.postType !== 'event');
-        });
-        // Load pending registration requests for widget
-        if (this.isSuperAdmin) {
-          this.http.get<{ data: any[] }>(`${environment.apiUrl}/registrations`, {
-            params: new HttpParams().set('status', 'pending').set('page', '1').set('pageSize', '5')
-          }).subscribe(r => {
-            this.pendingRequests = (r.data ?? []).map((req: any) => ({
-              id: req.id,
-              icon: req.isIndividual ? '👤' : '🏢',
-              iconBg: req.isIndividual ? '#eff6ff' : '#f0fdf4',
-              title: req.fullName,
-              meta: (req.organizationName ?? 'Fizičko lice') + ' · Registracija',
-            }));
-          });
-        }
-        // Build activity log from recent posts
-        this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
-          params: new HttpParams().set('page', '1').set('pageSize', '5').set('sortBy', 'createdAt').set('sortDir', 'desc')
-        }).subscribe(r => {
-          this.activityLog = (r.data ?? []).slice(0, 5).map((p: any) => ({
-            icon: p.postType === 'event' ? '🎟️' : '📍',
-            bg: p.postType === 'event' ? '#fffbeb' : '#f0fdf4',
-            title: p.status === 'published' ? 'Objavljeno' : 'Kreirano (nacrt)',
-            text: p.title + ' — ' + (p.region?.name ?? ''),
-            time: this.timeAgo(p.createdAt),
-          }));
-        });
-        // Load activities for top aktivnosti widget
-        this.http.get<{ data: any[] }>(`${environment.apiUrl}/activities`, {
-          params: new HttpParams().set('page', '1').set('pageSize', '5')
-        }).subscribe(r => {
-          this.topActivities = (r.data ?? []).slice(0, 5).map((a: any) => ({
-            id: a.activityId, name: a.name,
-          }));
-        });
-        // Load recent reviews
-        this.http.get<{ data: any[] }>(`${environment.apiUrl}/reviews`, {
-          params: new HttpParams().set('page', '1').set('pageSize', '3')
-        }).subscribe(r => {
-          this.recentReviews = (r.data ?? []).slice(0, 3).map((rv: any) => {
-            const initials = (rv.touristName ?? '??').split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
-            return {
-              name: rv.touristName ?? '—',
-              initials,
-              comment: rv.comment ?? '',
-              stars: '★'.repeat(rv.rating) + '☆'.repeat(5 - rv.rating),
-              status: rv.status,
-            };
-          });
-        });
+
+        this.loadSecondaryData();
       },
       error: () => { this.loading = false; },
     });
   }
 
+  private loadSecondaryData(): void {
+    // Pinovi za mapu lokacija + raspored po tipu
+    // Regularni admin dobija samo svoje postove od backend-a (po JWT)
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
+      params: new HttpParams().set('page', 1).set('pageSize', 200)
+    }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
+      const all = r.data ?? [];
+      this.allPosts = all
+        .filter((p: any) => p.lat && p.lng && p.postType !== 'event')
+        .map((p: any) => ({ id: p.id ?? p.postId, title: p.title, postType: p.postType, lat: +p.lat, lng: +p.lng }));
+
+      // Compute categoryBreakdown from actual post types
+      const nonEvents = all.filter((p: any) => p.postType !== 'event');
+      const total = nonEvents.length || 1;
+      const typeConfig: Record<string, { label: string; icon: string; color: string }> = {
+        accommodation: { label: 'Smeštaj', icon: '🏨', color: '#22c55e' },
+        restaurant: { label: 'Restoran', icon: '🍽️', color: '#3b82f6' },
+        attraction: { label: 'Atrakcije', icon: '🌟', color: '#f59e0b' },
+        cultural_site: { label: 'Kulturni objekti', icon: '🏛️', color: '#8b5cf6' },
+        sports_facility: { label: 'Sportski objekti', icon: '⚽', color: '#ec4899' },
+        club: { label: 'Klubovi', icon: '🎵', color: '#f97316' },
+        monument: { label: 'Spomenici', icon: '🗿', color: '#06b6d4' },
+        shop: { label: 'Prodavnice', icon: '🛍️', color: '#84cc16' },
+        other: { label: 'Ostalo', icon: '📍', color: '#d1d5db' },
+      };
+      const counts: Record<string, number> = {};
+      for (const p of nonEvents) { counts[p.postType] = (counts[p.postType] ?? 0) + 1; }
+      this.categoryBreakdown = Object.entries(counts)
+        .filter(([, cnt]) => cnt > 0)
+        .sort(([, a], [, b]) => b - a)
+        .map(([type, cnt]) => ({
+          label: typeConfig[type]?.label ?? type,
+          icon: typeConfig[type]?.icon ?? '📍',
+          count: cnt,
+          pct: Math.round((cnt / total) * 100),
+          color: typeConfig[type]?.color ?? '#d1d5db',
+        }));
+
+      const typeViews: Record<string, number> = {};
+      let totalViews = 0;
+      for (const p of nonEvents) {
+        const views = Number(p.viewCount ?? 0);
+        totalViews += views;
+        typeViews[p.postType] = (typeViews[p.postType] ?? 0) + views;
+      }
+      this.preferences = Object.entries(typeViews)
+        .filter(([, views]) => views > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([type, views]) => ({
+          label: `${typeConfig[type]?.icon ?? '📍'} ${typeConfig[type]?.label ?? type}`,
+          pct: totalViews > 0 ? Math.round((views / totalViews) * 100) : 0,
+          color: typeConfig[type]?.color ?? '#d1d5db',
+        }));
+    });
+
+    this.analytics.getRegionPopularity().pipe(catchError(() => of({ data: [] } as any))).subscribe(r => {
+      const data = r.data ?? [];
+      const allViews = data.reduce((sum: number, x: any) => sum + Number(x.totalViews ?? 0), 0);
+      const palette = ['#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+      this.cityBreakdown = data
+        .filter((x: any) => Number(x.totalViews ?? 0) > 0)
+        .sort((a: any, b: any) => Number(b.totalViews ?? 0) - Number(a.totalViews ?? 0))
+        .slice(0, 6)
+        .map((x: any, i: number) => ({
+          label: x.name,
+          views: Number(x.totalViews ?? 0),
+          pct: allViews > 0 ? Math.round((Number(x.totalViews ?? 0) / allViews) * 100) : 0,
+          color: palette[i % palette.length],
+        }));
+    });
+
+    // Pending registration requests (samo superadmin)
+    if (this.isSuperAdmin) {
+      // Admin registration pending — pozivamo pravi endpoint
+      this.userService.getRegistrationRequests({ page: 1, pageSize: 5, status: 'pending' })
+        .pipe(catchError(() => of({ data: [] } as any)))
+        .subscribe(r => {
+          this.pendingRequests = (r.data ?? []).map((req: any) => ({
+            id: req.id,
+            icon: req.isIndividual ? '👤' : '🏢',
+            iconBg: req.isIndividual ? '#eff6ff' : '#f0fdf4',
+            title: req.fullName,
+            meta: (req.organizationName ?? 'Fizičko lice') + ' · Registracija',
+          }));
+        });
+    }
+
+    // Log aktivnosti — najnoviji postovi
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
+      params: new HttpParams().set('page', 1).set('pageSize', 5)
+    }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
+      this.activityLog = (r.data ?? []).slice(0, 5).map((p: any) => ({
+        icon: p.postType === 'event' ? '🎟️' : '📍',
+        bg: p.postType === 'event' ? '#fffbeb' : '#f0fdf4',
+        title: p.status === 'published' ? 'Objavljeno' : 'Kreirano (nacrt)',
+        text: p.title + ' — ' + (p.region?.name ?? p.regionName ?? ''),
+        time: this.timeAgo(p.createdAt),
+      }));
+    });
+
+    // Top aktivnosti
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/activities`, {
+      params: new HttpParams().set('page', 1).set('pageSize', 5)
+    }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
+      this.topActivities = (r.data ?? []).slice(0, 5).map((a: any) => ({
+        id: a.id ?? a.activityId,
+        name: a.name,
+      }));
+    });
+
+    // Nedavne recenzije
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/reviews`, {
+      params: new HttpParams().set('page', 1).set('pageSize', 3)
+    }).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
+      this.recentReviews = (r.data ?? []).slice(0, 3).map((rv: any) => {
+        const name = rv.touristName ?? rv.user?.fullName ?? '—';
+        return {
+          name,
+          initials: name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase(),
+          comment: rv.comment ?? '',
+          stars: '★'.repeat(rv.rating ?? 0) + '☆'.repeat(Math.max(0, 5 - (rv.rating ?? 0))),
+          status: rv.status ?? 'PENDING',
+        };
+      });
+    });
+  }
+
   get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
-  get pendingCount(): number { return this.pendingRequests.length; }
+  get pendingCount(): number { return this.stats?.pendingRegistrations ?? this.pendingRequests.length; }
   get totalVisits(): number { return this.visits.reduce((sum, v) => sum + v.count, 0); }
   get maxVisitCount(): number { return this.visits.length ? Math.max(...this.visits.map(v => v.count)) : 0; }
+  get activeTourists(): number { return this.stats?.totalTourists ?? 0; }
+  get currentlyOnsite(): number { return Math.round((this.stats?.totalTourists ?? 0) * 0.04); }
   readonly Math = Math;
 
   get movementMarkers(): MapMarker[] {
-    return this.movements.map(m => ({
-      id: m.regionId,
-      lat: m.latitude,
-      lng: m.longitude,
-      label: `${m.regionName} (${m.visitCount} poseta)`,
-    }));
+    return this.movements
+      .filter(m => m.latitude && m.longitude)
+      .map(m => ({
+        id: m.regionId,
+        lat: m.latitude,
+        lng: m.longitude,
+        label: `${m.regionName} (${m.visitCount} poseta)`,
+        category: `${m.visitCount} poseta`,
+      }));
   }
 
-  /** All non-event posts with coordinates for the location map widget */
   get locationMarkers(): MapMarker[] {
     if (this.allPosts.length) {
       return this.allPosts.map(p => ({
-        id: p.postId,
+        id: p.id,
         lat: p.lat,
         lng: p.lng,
         label: p.title,
         category: p.postType,
       }));
     }
-    // Fallback to movements if posts not loaded yet
-    return this.movements.map(m => ({
-      id: m.regionId,
-      lat: m.latitude,
-      lng: m.longitude,
-      label: m.regionName,
-    }));
+    return this.movementMarkers;
   }
 
-  // ── Config persistence ────────────────────────────────────────────────
+  get movementHeatPoints(): HeatPoint[] {
+    const max = Math.max(...this.movements.map(m => m.visitCount), 1);
+    return this.movements
+      .filter(m => m.latitude && m.longitude)
+      .map(m => ({
+        lat: m.latitude,
+        lng: m.longitude,
+        intensity: m.visitCount / max,
+        label: `${m.regionName}: ${m.visitCount} poseta`,
+      }));
+  }
+
+  // ── Config persistence ─────────────────────────────────────────────────
   private storageKey(): string {
     return STORAGE_KEY_PREFIX + (this.auth.currentUser?.userId ?? 'default');
   }
@@ -225,16 +285,9 @@ export class DashboardComponent implements OnInit {
       : { slots: [...DEFAULT_LAYOUT_ORG.slots] };
   }
 
-  saveConfig(): void {
-    localStorage.setItem(this.storageKey(), JSON.stringify(this.config));
-  }
+  saveConfig(): void { localStorage.setItem(this.storageKey(), JSON.stringify(this.config)); }
+  resetConfig(): void { localStorage.removeItem(this.storageKey()); this.config = this.loadConfig(); }
 
-  resetConfig(): void {
-    localStorage.removeItem(this.storageKey());
-    this.config = this.loadConfig();
-  }
-
-  // ── Customise mode ────────────────────────────────────────────────────
   toggleCustomise(): void {
     this.customiseMode = !this.customiseMode;
     if (!this.customiseMode) { this.pickerOpen = false; this.saveConfig(); }
@@ -243,7 +296,6 @@ export class DashboardComponent implements OnInit {
   openPicker(): void { this.pickerOpen = true; }
   closePicker(): void { this.pickerOpen = false; }
 
-  // ── Widget management ─────────────────────────────────────────────────
   addWidget(def: WidgetDef): void {
     if (!this.config.slots.some(s => s.id === def.id)) {
       this.config = { ...this.config, slots: [...this.config.slots, { id: def.id, span: def.defaultSpan }] };
@@ -287,16 +339,57 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  // ── Chart helpers ─────────────────────────────────────────────────────
   barHeight(count: number): number {
-    if (!this.visits.length) return 0;
+    if (!this.visits.length || count === 0) return 2; // 2px minimum so bar is visible as a line
     const max = Math.max(...this.visits.map(v => v.count), 1);
-    return Math.max(8, Math.round((count / max) * 100));
+    return Math.round((count / max) * 100);
   }
 
   barColor(i: number): string { return ['bar-green', 'bar-blue', 'bar-amber'][i % 3]; }
 
+  // ── Visits: uvijek 30 dana, prazni dani = 0 ───────────────────────────
+  get visits30(): { date: string; count: number }[] {
+    const map = new Map(this.visits.map(v => [v.date, v.count]));
+    const result: { date: string; count: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      result.push({ date: key, count: map.get(key) ?? 0 });
+    }
+    return result;
+  }
+
+  get maxVisit30(): number {
+    return Math.max(...this.visits30.map(v => v.count), 1);
+  }
+
+  barHeight30(count: number): number {
+    if (count === 0) return 2;
+    return Math.round((count / this.maxVisit30) * 100);
+  }
+
+  // ── Approve / Reject zahteva iz dashboard widgeta ─────────────────────
+  approveRequest(req: PendingRequest): void {
+    this.userService.approveRegistration(req.id).subscribe({
+      next: () => {
+        this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
+        if (this.stats) this.stats = { ...this.stats, pendingRegistrations: Math.max(0, (this.stats.pendingRegistrations ?? 1) - 1) };
+      },
+    });
+  }
+
+  rejectRequest(req: PendingRequest): void {
+    this.userService.rejectRegistration(req.id, { rejectionReason: 'Odbijeno od strane superadmina.' }).subscribe({
+      next: () => {
+        this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
+        if (this.stats) this.stats = { ...this.stats, pendingRegistrations: Math.max(0, (this.stats.pendingRegistrations ?? 1) - 1) };
+      },
+    });
+  }
+
   timeAgo(dateStr: string): string {
+    if (!dateStr) return '—';
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 60) return `${mins} min`;
@@ -317,16 +410,6 @@ export class DashboardComponent implements OnInit {
     if (ratio > 0.7) return '#22c55e';
     if (ratio > 0.4) return '#f59e0b';
     return '#3b82f6';
-  }
-
-  get movementHeatPoints(): HeatPoint[] {
-    const max = Math.max(...this.movements.map(m => m.visitCount), 1);
-    return this.movements.map(m => ({
-      lat: m.latitude,
-      lng: m.longitude,
-      intensity: m.visitCount / max,
-      label: `${m.regionName}: ${m.visitCount} poseta`,
-    }));
   }
 
   topBarWidth(val: number, list: PopularPost[]): number {

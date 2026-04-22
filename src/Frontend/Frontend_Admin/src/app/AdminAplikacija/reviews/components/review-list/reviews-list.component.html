@@ -2,31 +2,31 @@
 
   <!-- ── STATS ────────────────────────────────────────────────────────── -->
   <div class="stats-strip" style="grid-template-columns: repeat(4, 1fr)">
-    <div class="stat-chip">
-      <div class="num">{{ total }}</div>
+    <div class="stat-chip clickable" [class.active-chip]="!req.status" (click)="onStatusChange('')">
+      <div class="num">{{ approvedCount + pendingCount + rejectedCount }}</div>
       <div class="lbl">Ukupno recenzija</div>
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'APPROVED'" (click)="onStatusChange('APPROVED')">
+      <div class="num" style="color:#15803d">{{ approvedCount }}</div>
+      <div class="lbl">Odobrene</div>
+    </div>
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'PENDING'" (click)="onStatusChange('PENDING')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
       @if (pendingCount > 0) {
       <div class="trend warn">⚠ Traži moderaciju</div>
       }
     </div>
-    <div class="stat-chip">
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'REJECTED'" (click)="onStatusChange('REJECTED')">
       <div class="num" style="color:#ef4444">{{ rejectedCount }}</div>
       <div class="lbl">Odbijene</div>
-    </div>
-    <div class="stat-chip">
-      <div class="num" style="color:#15803d">{{ approvedCount }}</div>
-      <div class="lbl">Odobrene</div>
     </div>
   </div>
 
   <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!req.status" (click)="onStatusChange('')">
-      Sve ({{ total }})
+      Sve ({{ totalAll }})
     </button>
     <button class="ftab" [class.active]="req.status === 'PENDING'" (click)="onStatusChange('PENDING')">
       ⏳ Na čekanju ({{ pendingCount }})
@@ -181,3 +181,11 @@
                        (statusUpdated)="onStatusUpdated($event)"
                        (closed)="closeModeration()" />
 }
+
+<app-confirm-dialog [visible]="!!deleteTarget"
+                    title="Obriši recenziju"
+                    [message]="'Trajno obriši recenziju od &quot;' + (deleteTarget?.touristName ?? 'Anoniman') + '&quot;? Ova akcija se ne može poništiti.'"
+                    confirmLabel="Obriši"
+                    cancelLabel="Otkaži"
+                    (confirmed)="confirmDelete()"
+                    (cancelled)="cancelDelete()" />

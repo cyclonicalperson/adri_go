@@ -1,3 +1,4 @@
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -24,15 +25,16 @@ export class EventsListComponent implements OnInit {
   events: Post[] = [];
   regions: Region[] = [];
   total = 0;
+  globalTotal = 0;  // uvijek ukupan broj svih dogadjaja, ne mijenja se pri filteru
   totalPages = 1;
   loading = true;
   viewMode: ViewMode = 'table';
   deleteTarget: Post | null = null;
 
-  upcomingCount = 0;
+  upcomingCount = 0;  // published
   ongoingCount = 0;
-  pastCount = 0;
-  draftCount = 0;
+  pastCount = 0;      // archived
+  draftCount = 0;     // draft (= Na čekanju)
   activeStatusFilter = '';
 
   // Detail panel
@@ -75,40 +77,73 @@ export class EventsListComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.initSearch();
     this.regionService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.regions = res.data;
     });
+    this.loadCounts();
     this.load();
+  }
+
+  private loadCounts(): void {
+    // Stabilni countovi — nezavisni od aktivnih filtera, uvijek tačni
+    const base = new HttpParams().set('type', 'event').set('page', 1).set('pageSize', 1);
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base })
+      .subscribe(r => { this.globalTotal = r.total ?? 0; });
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'published') })
+      .subscribe(r => { this.upcomingCount = r.total ?? 0; this.ongoingCount = r.total ?? 0; });
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'draft') })
+      .subscribe(r => { this.draftCount = r.total ?? 0; });
+    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'archived') })
+      .subscribe(r => { this.pastCount = r.total ?? 0; });
   }
 
   load(): void {
     this.loading = true;
 
+    // Kada je aktivan category filter, učitavamo max dozvoljenih 100 zapisa
+    // jer backend čuva category unutar JSON details polja i ne može filtrirati na njemu.
+    // Manuelna paginacija se primjenjuje client-side na filtriranom skupu.
+    const fetchSize = this.req.category ? 100 : this.req.pageSize;
+
     let params = new HttpParams()
-      .set('postType', 'event')
-      .set('page', this.req.page)
-      .set('pageSize', this.req.pageSize);
+      .set('type', 'event')
+      .set('page', this.req.category ? 1 : this.req.page)
+      .set('pageSize', fetchSize);
 
     if (this.req.sortBy) params = params.set('sortBy', this.req.sortBy);
     if (this.req.sortDir) params = params.set('sortDir', this.req.sortDir!);
     if (this.req.search) params = params.set('search', this.req.search);
-    if (this.req.regionId) params = params.set('regionId', this.req.regionId);
+    if (this.req.regionId) params = params.set('region_id', this.req.regionId);
     if (this.req.status) params = params.set('status', this.req.status);
-    if (this.req.category) params = params.set('category', this.req.category);
 
-    this.http.get<{ data: Post[]; total: number; totalPages: number }>(
+    this.http.get<{ data: any[]; total: number; totalPages: number }>(
       `${environment.apiUrl}/posts`, { params }
     ).subscribe({
       next: res => {
-        this.events = res.data;
-        this.total = res.total;
-        this.totalPages = res.totalPages;
+        // Normalize: backend returns 'id', model uses 'postId'
+        const normalize = (p: any): Post => ({ ...p, postId: p.postId ?? p.id });
+        let all: Post[] = (res.data ?? []).map(normalize);
 
-        const now = new Date();
-        this.upcomingCount = res.data.filter(e => this.eventStart(e) > now).length;
-        this.ongoingCount = res.data.filter(e => this.eventStart(e) <= now && this.eventEnd(e) >= now).length;
-        this.pastCount = res.data.filter(e => this.eventEnd(e) < now).length;
-        this.draftCount = res.data.filter(e => e.status === 'draft').length;
+        // Client-side category filter (backend can't filter on JSON details field)
+        if (this.req.category) {
+          all = all.filter(e => this.eventCategory(e) === this.req.category);
+        }
+
+        // Manuelna paginacija kada je category filter aktivan
+        if (this.req.category) {
+          this.total = all.length;
+          this.totalPages = Math.max(1, Math.ceil(all.length / this.req.pageSize));
+          // Osiguraj da page nije van opsega nakon filtera
+          if (this.req.page > this.totalPages) this.req = { ...this.req, page: 1 };
+          const start = (this.req.page - 1) * this.req.pageSize;
+          this.events = all.slice(start, start + this.req.pageSize);
+        } else {
+          this.events = all;
+          this.total = res.total;
+          this.totalPages = res.totalPages;
+        }
+
         this.loading = false;
       },
       error: () => { this.loading = false; },
@@ -116,14 +151,20 @@ export class EventsListComponent implements OnInit {
   }
 
   // ── Event date helpers ────────────────────────────────────────────────────
+  private parseDet(e: Post): any {
+    let det = e.details as any;
+    if (typeof det === 'string') { try { det = JSON.parse(det); } catch { det = {}; } }
+    return det ?? {};
+  }
+
   eventStart(e: Post): Date {
-    const ds = e.details as any;
-    return ds?.eventStart ? new Date(ds.eventStart) : new Date(e.createdAt);
+    const ds = this.parseDet(e);
+    return ds?.startAt ? new Date(ds.startAt) : (ds?.eventStart ? new Date(ds.eventStart) : new Date(e.createdAt));
   }
 
   eventEnd(e: Post): Date {
-    const ds = e.details as any;
-    return ds?.eventEnd ? new Date(ds.eventEnd) : new Date(e.createdAt);
+    const ds = this.parseDet(e);
+    return ds?.endAt ? new Date(ds.endAt) : (ds?.eventEnd ? new Date(ds.eventEnd) : new Date(e.createdAt));
   }
 
   isUpcoming(e: Post): boolean { return this.eventStart(e) > new Date(); }
@@ -133,9 +174,18 @@ export class EventsListComponent implements OnInit {
   }
 
   // ── Filters ───────────────────────────────────────────────────────────────
-  onSearch(q: string): void {
-    this.req = { ...this.req, search: q, page: 1 }; this.load();
+  private search$ = new Subject<string>();
+
+  private initSearch(): void {
+    this.search$.pipe(debounceTime(350), distinctUntilChanged())
+      .subscribe(q => { this.req = { ...this.req, search: q, page: 1 }; this.load(); });
   }
+
+  onSearch(q: string): void {
+    this.search$.next(q);
+  }
+
+
 
   onCategoryChange(cat: string): void {
     this.req = { ...this.req, category: cat || undefined, page: 1 }; this.load();
@@ -196,6 +246,34 @@ export class EventsListComponent implements OnInit {
       .subscribe(() => { this.deleteTarget = null; this.load(); });
   }
 
+  // ── Status change with ConfirmDialog ───────────────────────────────────
+  statusChangeTarget: Post | null = null;
+  statusChangeValue: PostStatus | null = null;
+
+  requestStatusChange(e: Post, status: PostStatus): void {
+    this.statusChangeTarget = e;
+    this.statusChangeValue = status;
+  }
+  cancelStatusChange(): void { this.statusChangeTarget = null; this.statusChangeValue = null; }
+
+  doStatusChange(): void {
+    const e = this.statusChangeTarget;
+    const status = this.statusChangeValue;
+    this.statusChangeTarget = null;
+    this.statusChangeValue = null;
+    if (!e || !status) return;
+    this.http.put(`${environment.apiUrl}/posts/${e.postId}`, { status }).subscribe({
+      next: () => {
+        e.status = status;
+        this.load();
+        this.loadCounts();  // ažuriraj kockice (draftCount, upcomingCount itd.)
+      },
+    });
+  }
+
+  // Kept for HTML backward compat — now opens ConfirmDialog instead
+  setEventStatus(e: Post, status: PostStatus): void { this.requestStatusChange(e, status); }
+
   printReport(): void { window.print(); }
 
   exportCsv(): void {
@@ -236,7 +314,11 @@ export class EventsListComponent implements OnInit {
   }
 
   eventCategory(e: Post): string {
-    return (e.details as any)?.category ?? '';
+    let det = e.details as any;
+    if (typeof det === 'string') {
+      try { det = JSON.parse(det); } catch { return ''; }
+    }
+    return det?.category ?? '';
   }
 
   categoryIcon(cat: string): string {

@@ -18,8 +18,8 @@
 
         <div class="field">
           <label class="label">Naziv *</label>
-          <input class="input" [class.invalid]="f('name').invalid && f('name').touched"
-                 formControlName="name" placeholder="npr. Exit Festival 2026" />
+          <input class="input" [class.invalid]="f('title').invalid && f('title').touched"
+                 formControlName="title" placeholder="npr. Exit Festival 2026" />
         </div>
 
         <div class="row-2">
@@ -106,11 +106,11 @@
         <div class="row-2" style="margin-top: 12px;">
           <div class="field">
             <label class="label">Geografska širina</label>
-            <input class="input" type="number" step="0.0001" formControlName="latitude" />
+            <input class="input" type="number" step="0.0001" formControlName="lat" />
           </div>
           <div class="field">
             <label class="label">Geografska dužina</label>
-            <input class="input" type="number" step="0.0001" formControlName="longitude" />
+            <input class="input" type="number" step="0.0001" formControlName="lng" />
           </div>
         </div>
       </div>

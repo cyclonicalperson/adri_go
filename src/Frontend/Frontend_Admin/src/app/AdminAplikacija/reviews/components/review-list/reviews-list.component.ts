@@ -1,24 +1,28 @@
 import { Component, OnInit } from '@angular/core';
 import { ReviewService } from '@core/services/review.service';
+import { BadgeService } from '@core/services/badge.service';
 import { AuthService } from '@core/auth/auth.service';
 import { Review, ReviewStatus, ReviewEntityType } from '@core/models/review.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { ReviewModerationComponent } from '../review-moderation/review-moderation.component';
+import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-reviews-list',
   templateUrl: './reviews-list.component.html',
   styleUrl: './reviews-list.component.scss',
-  imports: [TruncatePipe, DateLocalPipe, ReviewModerationComponent],
+  imports: [TruncatePipe, DateLocalPipe, ReviewModerationComponent, ConfirmDialogComponent],
 })
 export class ReviewsListComponent implements OnInit {
   reviews: Review[] = [];
   total = 0;
+  totalAll = 0;  // ukupan broj svih recenzija, bez filtera
   totalPages = 1;
   loading = true;
   moderateTarget: Review | null = null;
+  deleteTarget: Review | null = null;
 
   pendingCount = 0;
   approvedCount = 0;
@@ -27,19 +31,17 @@ export class ReviewsListComponent implements OnInit {
   req: PageRequest & {
     status?: ReviewStatus;
     entityType?: ReviewEntityType;
-    postId?: number;
-    routeId?: number;
   } = { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' };
 
   constructor(
     private service: ReviewService,
     private auth: AuthService,
+    private badges: BadgeService,
   ) { }
 
-  /** Only superadmin may permanently delete a review */
   get canDelete(): boolean { return this.auth.isSuperAdmin; }
 
-  ngOnInit(): void { this.load(); this.loadCounts(); }
+  ngOnInit(): void { this.load(); this.loadCounts(); this.loadTotalAll(); }
 
   load(): void {
     this.loading = true;
@@ -52,6 +54,10 @@ export class ReviewsListComponent implements OnInit {
       },
       error: () => { this.loading = false; },
     });
+  }
+
+  private loadTotalAll(): void {
+    this.service.getAll({ page: 1, pageSize: 1 }).subscribe(r => { this.totalAll = r.total; });
   }
 
   private loadCounts(): void {
@@ -73,10 +79,7 @@ export class ReviewsListComponent implements OnInit {
   }
 
   onEntityTypeChange(t: string): void {
-    this.req = {
-      ...this.req, entityType: (t as ReviewEntityType) || undefined,
-      postId: undefined, routeId: undefined, page: 1,
-    };
+    this.req = { ...this.req, entityType: (t as ReviewEntityType) || undefined, page: 1 };
     this.load();
   }
 
@@ -95,24 +98,59 @@ export class ReviewsListComponent implements OnInit {
   openModeration(r: Review): void { this.moderateTarget = r; }
   closeModeration(): void { this.moderateTarget = null; }
 
-  /** Inline quick-approve from table row — available to all with review permission */
+  /** Inline quick-approve — azurira status i reload-uje */
   updateStatus(r: Review, status: ReviewStatus): void {
-    this.service.updateStatus(r.reviewId, { status }).subscribe(() => {
-      r.status = status;
-      this.loadCounts();
+    this.service.updateStatus(r.reviewId, { status }).subscribe({
+      next: () => {
+        setTimeout(() => {
+          this.load();
+          this.loadCounts();
+          this.loadTotalAll();
+        }, 150);
+        this.badges.refresh();
+      },
+      error: () => { },
     });
   }
 
+  /** Iz moderation panela — zatvori panel i reload */
   onStatusUpdated(payload: { review: Review; status: ReviewStatus }): void {
     this.service.updateStatus(payload.review.reviewId, { status: payload.status })
-      .subscribe(() => { this.moderateTarget = null; this.load(); this.loadCounts(); });
+      .subscribe({
+        next: () => {
+          this.moderateTarget = null;
+          setTimeout(() => {
+            this.load();
+            this.loadCounts();
+            this.loadTotalAll();
+          }, 150);
+          this.badges.refresh();
+        },
+        error: () => { this.moderateTarget = null; },
+      });
   }
 
-  /** Hard delete — superadmin only. Component also hides the button via canDelete. */
   deleteReview(r: Review): void {
     if (!this.canDelete) return;
-    if (!confirm(`Trajno obriši recenziju od "${r.touristName ?? r.user?.fullName ?? 'Anoniman'}"?`)) return;
-    this.service.delete(r.reviewId).subscribe(() => { this.load(); this.loadCounts(); });
+    this.deleteTarget = r;
+  }
+
+  cancelDelete(): void { this.deleteTarget = null; }
+
+  confirmDelete(): void {
+    if (!this.deleteTarget) return;
+    const r = this.deleteTarget;
+    this.deleteTarget = null;
+    this.service.delete(r.reviewId).subscribe({
+      next: () => {
+        this.reviews = this.reviews.filter(x => x.reviewId !== r.reviewId);
+        this.total = Math.max(0, this.total - 1);
+        this.loadCounts();
+        this.loadTotalAll();
+        this.badges.refresh();
+      },
+      error: () => { },
+    });
   }
 
   printReport(): void { window.print(); }
@@ -147,7 +185,6 @@ export class ReviewsListComponent implements OnInit {
     return pages;
   }
 
-  // ── Display helpers ────────────────────────────────────────────────────
   statusBadgeClass(s: ReviewStatus): string {
     return { PENDING: 'badge-amber', APPROVED: 'badge-green', REJECTED: 'badge-red' }[s] ?? 'badge-gray';
   }

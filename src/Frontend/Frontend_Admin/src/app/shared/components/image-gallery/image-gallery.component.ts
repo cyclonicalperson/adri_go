@@ -16,8 +16,16 @@ export class ImageGalleryComponent implements OnChanges {
   active = 0;
   lightboxOpen = false;
 
+  private prevMediaUrls: string[] = [];
+
   ngOnChanges(): void {
-    this.active = 0;
+    const newUrls = this.media.map(m => m.url);
+    const same = newUrls.length === this.prevMediaUrls.length &&
+      newUrls.every((u, i) => u === this.prevMediaUrls[i]);
+    if (!same) {
+      this.active = 0;
+      this.prevMediaUrls = newUrls;
+    }
   }
 
   get current(): Media | null {
@@ -46,5 +54,10 @@ export class ImageGalleryComponent implements OnChanges {
 
   onImgError(event: Event): void {
     (event.target as HTMLImageElement).src = this.fallback;
+  }
+
+  /** Vraća true samo za http/https/data URLs - lokalni pathovi se ne mogu prikazati */
+  isValidUrl(url: string): boolean {
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:');
   }
 }

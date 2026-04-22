@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 import { environment } from '@env/environment';
 import { MapComponent, MapMarker, HeatPoint } from '@shared/components/map/map.component';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
@@ -11,8 +12,8 @@ interface PostPin {
   id: number;
   title: string;
   postType: string;
-  lat: number | null;
-  lng: number | null;
+  lat: number;
+  lng: number;
   regionName?: string | null;
 }
 
@@ -41,7 +42,7 @@ export class MapAdminComponent implements OnInit {
   showHeatmap = false;
   heatPoints: HeatPoint[] = [];
 
-  constructor(private http: HttpClient, private router: Router) { }
+  constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit(): void {
     this.loadData();
@@ -50,55 +51,78 @@ export class MapAdminComponent implements OnInit {
   private loadData(): void {
     this.loading = true;
 
-    // Load posts (non-events and events)
-    const postsParams = new HttpParams().set('page', 1).set('pageSize', 200);
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, { params: postsParams })
-      .subscribe({
-        next: res => {
-          this.posts = (res.data ?? [])
-            .filter((p: any) => p.lat != null && p.lng != null)
-            .map((p: any) => ({
-              id: p.postId ?? p.id,
-              title: p.title,
-              postType: p.postType,
-              lat: +p.lat,
-              lng: +p.lng,
-              regionName: p.region?.name ?? null,
-            }));
+    const postsReq = this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, {
+      params: new HttpParams().set('page', 1).set('pageSize', 200),
+    }).pipe(catchError(() => of({ data: [] })));
 
-          // Load routes after posts
-          const routeParams = new HttpParams().set('page', 1).set('pageSize', 100);
-          this.http.get<{ data: any[] }>(`${environment.apiUrl}/routes`, { params: routeParams })
-            .subscribe({
-              next: rRes => {
-                this.routes = (rRes.data ?? []).filter((r: any) => r.waypoints?.length > 0);
-                this.loading = false;
-                // Load movements for heatmap overlay
-                this.http.get<{ data: any[] }>(`${environment.apiUrl}/analytics/movements`)
-                  .subscribe(mRes => {
-                    const moves = mRes.data ?? [];
-                    const maxVisits = Math.max(...moves.map((m: any) => m.visitCount), 1);
-                    this.heatPoints = moves.map((m: any) => ({
-                      lat: m.latitude,
-                      lng: m.longitude,
-                      intensity: m.visitCount / maxVisits,
-                      label: `${m.regionName}: ${m.visitCount} poseta`,
-                    }));
-                  });
-              },
-              error: () => { this.loading = false; },
-            });
-        },
-        error: () => { this.loading = false; },
-      });
+    const routesReq = this.http.get<{ data: any[] }>(`${environment.apiUrl}/routes`, {
+      params: new HttpParams().set('page', 1).set('pageSize', 100),
+    }).pipe(catchError(() => of({ data: [] })));
+
+    const movementsReq = this.http.get<{ data: any[] }>(`${environment.apiUrl}/analytics/movements`)
+      .pipe(catchError(() => of({ data: [] })));
+
+    forkJoin({ posts: postsReq, routes: routesReq, movements: movementsReq }).subscribe({
+      next: ({ posts, routes, movements }) => {
+        // Mapiramo postove — backend vraca 'id' u PostDto
+        this.posts = (posts.data ?? [])
+          .filter((p: any) => p.lat != null && p.lng != null)
+          .map((p: any) => ({
+            id:         p.id ?? p.postId,
+            title:      p.title ?? '',
+            postType:   p.postType ?? 'other',
+            lat:        +p.lat,
+            lng:        +p.lng,
+            regionName: p.region?.name ?? p.regionName ?? null,
+          }));
+
+        // Mapiramo rute — backend vraća waypoints kao JSON string
+        this.routes = (routes.data ?? [])
+          .map((r: any) => {
+            let wps: { lat: number; lng: number }[] = [];
+            if (r.waypoints) {
+              try {
+                const parsed = typeof r.waypoints === 'string'
+                  ? JSON.parse(r.waypoints)
+                  : r.waypoints;
+                wps = (Array.isArray(parsed) ? parsed : []).map((w: any) => ({
+                  lat: +w.lat,
+                  lng: +w.lng,
+                })).filter((w: any) => !isNaN(w.lat) && !isNaN(w.lng));
+              } catch { wps = []; }
+            }
+            return {
+              routeId:    r.routeId ?? r.id,
+              name:       r.name ?? '',
+              waypoints:  wps,
+              regionName: r.region?.name ?? null,
+            } as RoutePin;
+          })
+          .filter((r: RoutePin) => r.waypoints.length > 0);
+
+        // Heatmap iz kretanja turista
+        const moves = movements.data ?? [];
+        const maxVisits = Math.max(...moves.map((m: any) => m.visitCount ?? 0), 1);
+        this.heatPoints = moves
+          .filter((m: any) => m.latitude && m.longitude)
+          .map((m: any) => ({
+            lat:       +m.latitude,
+            lng:       +m.longitude,
+            intensity: (m.visitCount ?? 0) / maxVisits,
+            label:     `${m.regionName}: ${m.visitCount} poseta`,
+          }));
+
+        this.loading = false;
+      },
+      error: () => { this.loading = false; },
+    });
   }
 
   get markers(): MapMarker[] {
     const result: MapMarker[] = [];
-
     const showLocations = this.layer === 'all' || this.layer === 'locations';
-    const showEvents = this.layer === 'all' || this.layer === 'events';
-    const showRoutes = this.layer === 'all' || this.layer === 'routes';
+    const showEvents    = this.layer === 'all' || this.layer === 'events';
+    const showRoutes    = this.layer === 'all' || this.layer === 'routes';
 
     if (showLocations || showEvents) {
       for (const p of this.posts) {
@@ -106,12 +130,11 @@ export class MapAdminComponent implements OnInit {
         const isEvent = p.postType === 'event';
         if (isEvent && !showEvents) continue;
         if (!isEvent && !showLocations) continue;
-
         result.push({
-          id: p.id,
-          lat: p.lat,
-          lng: p.lng,
-          label: p.title,
+          id:       p.id,
+          lat:      p.lat,
+          lng:      p.lng,
+          label:    p.title,
           category: this.typeLabel(p.postType) + (p.regionName ? ` · ${p.regionName}` : ''),
         });
       }
@@ -119,14 +142,13 @@ export class MapAdminComponent implements OnInit {
 
     if (showRoutes) {
       for (const r of this.routes) {
-        // Show first waypoint as pin for routes
         const wp = r.waypoints[0];
         if (!wp) continue;
         result.push({
-          id: 100000 + r.routeId,
-          lat: wp.lat,
-          lng: wp.lng,
-          label: r.name,
+          id:       100000 + r.routeId,
+          lat:      wp.lat,
+          lng:      wp.lng,
+          label:    r.name,
           category: '🗺️ Ruta' + (r.regionName ? ` · ${r.regionName}` : ''),
         });
       }
@@ -135,32 +157,28 @@ export class MapAdminComponent implements OnInit {
     return result;
   }
 
-  get locationCount(): number { return this.posts.filter(p => p.postType !== 'event' && p.lat).length; }
-  get eventCount(): number { return this.posts.filter(p => p.postType === 'event' && p.lat).length; }
-  get routeCount(): number { return this.routes.length; }
+  get activeHeatPoints(): HeatPoint[] {
+    return this.showHeatmap ? this.heatPoints : [];
+  }
+
+  get locationCount(): number { return this.posts.filter(p => p.postType !== 'event').length; }
+  get eventCount(): number    { return this.posts.filter(p => p.postType === 'event').length; }
+  get routeCount(): number    { return this.routes.length; }
 
   onMarkerClicked(m: MapMarker): void { this.selectedMarker = m; }
   clearSelection(): void { this.selectedMarker = null; }
 
   toggleHeatmap(): void {
     this.showHeatmap = !this.showHeatmap;
-    if (!this.showHeatmap) {
-      this.mapComp?.clearHeat();
-    }
-  }
-
-  get activeHeatPoints(): HeatPoint[] {
-    return this.showHeatmap ? this.heatPoints : [];
+    if (!this.showHeatmap) this.mapComp?.clearHeat?.();
   }
 
   goToDetail(): void {
     if (!this.selectedMarker) return;
     const id = this.selectedMarker.id;
-    // Route markers have id >= 100000
     if (id >= 100000) {
       this.router.navigate(['/admin/routes-management']);
     } else {
-      // Check if it's an event
       const post = this.posts.find(p => p.id === id);
       if (post?.postType === 'event') {
         this.router.navigate(['/admin/events', id, 'edit']);
@@ -173,22 +191,21 @@ export class MapAdminComponent implements OnInit {
   setLayer(l: LayerType): void {
     this.layer = l;
     this.selectedMarker = null;
-    // Trigger invalidateSize in case panel height changed
-    setTimeout(() => this.mapComp?.refresh(), 50);
+    setTimeout(() => this.mapComp?.refresh?.(), 50);
   }
 
   typeLabel(postType: string): string {
     const map: Record<string, string> = {
-      accommodation: '🏨 Smeštaj',
-      restaurant: '🍽️ Restoran',
-      club: '🎵 Klub',
-      cultural_site: '🏛️ Kulturni objekat',
-      monument: '🗿 Spomenik',
-      sports_facility: '⚽ Sportski objekat',
-      event: '🎟️ Dogadjaj',
-      attraction: '🌟 Atrakcija',
-      shop: '🛍️ Prodavnica',
-      other: '📍 Ostalo',
+      accommodation:    '🏨 Smeštaj',
+      restaurant:       '🍽️ Restoran',
+      club:             '🎵 Klub',
+      cultural_site:    '🏛️ Kulturni objekat',
+      monument:         '🗿 Spomenik',
+      sports_facility:  '⚽ Sportski objekat',
+      event:            '🎟️ Dogadjaj',
+      attraction:       '🌟 Atrakcija',
+      shop:             '🛍️ Prodavnica',
+      other:            '📍 Ostalo',
     };
     return map[postType] ?? postType;
   }

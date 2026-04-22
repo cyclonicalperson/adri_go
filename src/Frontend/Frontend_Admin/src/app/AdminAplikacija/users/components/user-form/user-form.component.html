@@ -55,13 +55,14 @@
         </div>
 
         <div class="row-2">
-          <div class="field toggle-field">
+          <div class="field">
             <span class="label">Status</span>
             <label class="toggle">
-              <input type="checkbox" formControlName="isActive" />
+              <input type="checkbox" [checked]="f('accountStatus').value === 'active'"
+                     (change)="f('accountStatus').setValue($any($event.target).checked ? 'active' : 'suspended')" />
               <span class="toggle-track"></span>
               <span class="toggle-label">
-                {{ f('isActive').value ? 'Aktivan' : 'Neaktivan' }}
+                {{ f('accountStatus').value === 'active' ? 'Aktivan' : 'Neaktivan' }}
               </span>
             </label>
           </div>
@@ -88,10 +89,10 @@
       <div class="card">
         <h3 class="card-title">Rola *</h3>
         <app-roles-permissions [roles]="roles"
-                               [selectedRoleId]="f('roleId').value"
+                               [selectedRoleId]="selectedRoleId"
                                (roleSelected)="onRoleSelected($event)" />
-        @if (f('roleId').invalid && f('roleId').touched) {
-        <span class="field-error">Odaberite rolu.</span>
+        @if (!selectedRole) {
+        <span class="field-error">Izaberite rolu.</span>
         }
       </div>
 

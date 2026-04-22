@@ -2,8 +2,8 @@
 
   <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
-    <div class="stat-chip clickable" [class.active-chip]="!activeCategory" (click)="setCategory('')">
-      <div class="num">{{ total }}</div>
+    <div class="stat-chip clickable" [class.active-chip]="!activeCategory && !activeStatus" (click)="clearAllFilters()">
+      <div class="num">{{ globalTotal }}</div>
       <div class="lbl">Ukupno aktivnosti</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeCategory === 'SPORT'" (click)="setCategory('SPORT')">
@@ -18,12 +18,19 @@
       <div class="num" style="color:#7e22ce">{{ wellnessCount }}</div>
       <div class="lbl">Wellness</div>
     </div>
+    <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
+      <div class="num" style="color:#d97706">{{ pendingCount }}</div>
+      <div class="lbl">Na čekanju</div>
+      @if (pendingCount > 0) {
+      <div class="trend warn">⚠ Čeka pregled</div>
+      }
+    </div>
   </div>
 
   <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!activeCategory" (click)="setCategory('')">
-      Sve ({{ total }})
+      Sve ({{ globalTotal }})
     </button>
     @for (cat of categoryOptions.slice(1); track cat.value) {
     <button class="ftab" [class.active]="activeCategory === cat.value"
@@ -63,10 +70,10 @@
       <option value="pending">⏳ Na čekanju</option>
     </select>
 
-    <select class="filter-select" (change)="onSortChange($any($event.target).value)">
-      <option value="createdAt:desc">Sortiraj: Najnovije</option>
+    <select class="filter-select" [(ngModel)]="sortValue">
+      <option value="id:desc">Sortiraj: Najnovije</option>
       <option value="name:asc">Naziv A–Z</option>
-      <option value="viewCount:desc">Pregledi ↓</option>
+      <option value="name:desc">Naziv Z–A</option>
     </select>
 
     <div class="spacer"></div>
@@ -100,7 +107,7 @@
           <th>Tip</th>
           <th>Lokacija (GPS)</th>
           <th>Vezana lokacija</th>
-          <th (click)="onSortCol('viewCount')">Pregledi <span class="sort">↕</span></th>
+          <th>Pregledi</th>
           <th>Status / Dozvola</th>
           <th>Akcije</th>
         </tr>
@@ -110,7 +117,7 @@
         <tr>
           <td>
             <div class="item-cell">
-              <div class="item-thumb">{{ categoryIcon(a.category) }}</div>
+              <div class="item-thumb">{{ categoryIcon(a) }}</div>
               <div>
                 <div class="item-name">{{ a.name }}</div>
                 <div class="item-desc">{{ a.description | truncate:55 }}</div>
@@ -118,25 +125,37 @@
             </div>
           </td>
           <td>
-            <span class="type-badge" [class]="typeBadgeClass(a.category)">
-              {{ categoryIcon(a.category) }} {{ categoryLabel(a.category) }}
+            <span class="type-badge" [class]="typeBadgeClass(a)">
+              {{ categoryIcon(a) }} {{ categoryLabel(a) }}
             </span>
           </td>
           <td>
             <div style="font-weight:600;font-size:13px">{{ locationName(a) }}</div>
             <div style="font-size:11px;color:#6b7280">{{ gpsText(a) }}</div>
           </td>
-          <td style="font-size:13px;font-weight:600;color:#15803d">
-            — standalone
+          <td style="font-size:13px;font-weight:600;">
+            @if (a.locationName) {
+            <span style="color:#15803d">{{ a.locationName }}</span>
+            } @else {
+            <span style="color:#9ca3af">— standalone</span>
+            }
           </td>
           <td>
-            <span style="font-weight:700;font-size:14px;color:#111827">—</span>
+            <span style="font-weight:700;font-size:14px;color:#111827">{{ a.viewCount ?? 0 }}</span>
           </td>
           <td>
+            @if (a.status === 'pending') {
+            <span class="badge badge-amber">⏳ Na čekanju</span>
+            } @else {
             <span class="badge badge-green">✅ Odobreno</span>
+            }
           </td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
+              @if (a.status === 'pending') {
+              <button class="btn-icon approve-btn" title="Odobri" (click)="approveActivity(a)">✅</button>
+              <button class="btn-icon danger" title="Odbij" (click)="rejectActivity(a)">❌</button>
+              }
               <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="showOnMap(a)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="openDetail(a)">👁️</button>
               <button class="btn-icon" title="Izmeni" (click)="editActivity(a)">✏️</button>
@@ -166,48 +185,78 @@
 
 <!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
 @if (detailOpen && detailActivity) {
-<div class="detail-overlay" (click)="closeDetail()">
-  <div class="detail-panel" (click)="$event.stopPropagation()">
-    <div class="detail-header">
-      <h3 class="detail-title">Detalji aktivnosti</h3>
+<div class="modal-overlay" (click)="closeDetail()">
+  <div class="modal-wide" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-row">
+        <span class="modal-icon">{{ categoryIcon(detailActivity) }}</span>
+        <div>
+          <h3 class="modal-title">{{ detailActivity.name }}</h3>
+          <span class="type-tag" [class]="typeBadgeClass(detailActivity)">{{ categoryLabel(detailActivity) }}</span>
+        </div>
+      </div>
       <button class="btn-close" (click)="closeDetail()">✕</button>
     </div>
-    <div class="detail-body">
-      <div class="detail-icon">{{ categoryIcon(detailActivity.category) }}</div>
-      <div class="detail-name">{{ detailActivity.name }}</div>
-      <div class="detail-cat">
-        <span class="type-tag" [class]="typeBadgeClass(detailActivity.category)">{{ categoryLabel(detailActivity.category) }}</span>
+
+    <div class="modal-top-grid">
+      <!-- Lijevo: podaci -->
+      <div class="modal-info">
+        <div class="modal-rows">
+          @if (detailActivity.description) {
+          <div class="modal-row">
+            <span class="modal-lbl">Opis</span>
+            <span class="modal-val">{{ detailActivity.description }}</span>
+          </div>
+          }
+          @if (locationName(detailActivity)) {
+          <div class="modal-row">
+            <span class="modal-lbl">📍 Lokacija</span>
+            <span class="modal-val">{{ locationName(detailActivity) }}</span>
+          </div>
+          }
+          @if (gpsText(detailActivity)) {
+          <div class="modal-row">
+            <span class="modal-lbl">🌐 Koordinate</span>
+            <span class="modal-val">{{ gpsText(detailActivity) }}</span>
+          </div>
+          }
+          <div class="modal-row">
+            <span class="modal-lbl">📊 Status</span>
+            <span class="modal-val">
+              @if (detailActivity.status === 'pending') {
+              <span class="badge badge-amber">⏳ Na čekanju</span>
+              } @else {
+              <span class="badge badge-green">✅ Odobreno</span>
+              }
+            </span>
+          </div>
+          @if (detailActivity.viewCount) {
+          <div class="modal-row">
+            <span class="modal-lbl">👁️ Pregledi</span>
+            <span class="modal-val">{{ detailActivity.viewCount }}</span>
+          </div>
+          }
+        </div>
       </div>
-      <div class="detail-rows">
-        <div class="detail-row">
-          <span class="detail-label">Opis</span>
-          <span class="detail-val">{{ detailActivity.description }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Lokacija</span>
-          <span class="detail-val">{{ locationName(detailActivity) }}</span>
-        </div>
-        @if (gpsText(detailActivity)) {
-        <div class="detail-row">
-          <span class="detail-label">Koordinate</span>
-          <span class="detail-val">{{ gpsText(detailActivity) }}</span>
-        </div>
-        }
-      </div>
+
+      <!-- Desno: mapa -->
       @if (detailActivity.lat && detailActivity.lng) {
-      <div style="margin-top:16px">
+      <div class="modal-map">
         <app-map [markers]="[{id: detailActivity.activityId, lat: detailActivity.lat!, lng: detailActivity.lng!, label: detailActivity.name}]"
                  [centerLat]="detailActivity.lat!"
                  [centerLng]="detailActivity.lng!"
                  [zoom]="12"
-                 height="200px" />
+                 height="260px" />
       </div>
       }
     </div>
-    <div class="detail-actions">
-      <button class="btn btn-outline" (click)="editActivity(detailActivity)">✏️ Izmeni</button>
-      <button class="btn btn-primary" (click)="closeDetail()">Zatvori</button>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeDetail()">Zatvori</button>
+      <button class="btn btn-primary" (click)="editActivity(detailActivity); closeDetail()">✏️ Izmeni</button>
     </div>
+
   </div>
 </div>
 }
@@ -238,10 +287,10 @@
 <!-- ── DELETE DIALOG ──────────────────────────────────────────────────── -->
 @if (deleteTarget) {
 <app-confirm-dialog [visible]="true"
-  title="Obriši aktivnost"
-  [message]="'Da li ste sigurni da želite da obrišete ‹' + deleteTarget.name + '›?'"
-  confirmLabel="Obriši"
-  [danger]="true"
-  (confirmed)="doDelete()"
-  (cancelled)="cancelDelete()" />
+                    title="Obriši aktivnost"
+                    [message]="'Da li ste sigurni da želite da obrišete ‹' + deleteTarget.name + '›?'"
+                    confirmLabel="Obriši"
+                    [danger]="true"
+                    (confirmed)="doDelete()"
+                    (cancelled)="cancelDelete()" />
 }

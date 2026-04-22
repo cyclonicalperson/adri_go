@@ -1,6 +1,5 @@
 <header class="topbar">
   <div class="left">
-    <!-- Hamburger: always visible. Toggles sidebar on both desktop and mobile. -->
     <button class="btn-toggle"
             (click)="toggleSidebar.emit()"
             aria-label="Otvori/zatvori meni">
@@ -34,9 +33,10 @@
     <div class="notif-panel">
       <div class="notif-panel-header">
         <span class="notif-panel-title">Obaveštenja</span>
-        @if (unreadCount > 0) {
-        <button class="notif-mark-all" (click)="markAllRead()">Označi sve kao pročitano</button>
-        }
+        <button class="notif-mark-all" [disabled]="unreadCount === 0" (click)="markAllRead()">
+          ✓ Označi sve kao pročitano
+          @if (unreadCount > 0) { <span class="notif-mark-count">({{ unreadCount }})</span> }
+        </button>
       </div>
       <div class="notif-list">
         @if (notifications.length === 0) {
@@ -52,14 +52,26 @@
           <div class="notif-body">
             <div class="notif-title">{{ n.title }}</div>
             <div class="notif-desc">{{ n.body }}</div>
-            <div class="notif-time">{{ n.time }}</div>
+            <div class="notif-time">{{ n.createdAt | date:'dd.MM. HH:mm' }}</div>
           </div>
-          @if (!n.isRead) {
-          <div class="notif-unread-dot"></div>
-          }
+          <div class="notif-item-actions">
+            @if (!n.isRead) {
+            <div class="notif-unread-dot"></div>
+            }
+            <button class="notif-delete-btn"
+                    title="Obriši obaveštenje"
+                    (click)="deleteNotification(n, $event)">
+              ✕
+            </button>
+          </div>
         </div>
         }
       </div>
+      @if (notifications.length > 0) {
+      <div class="notif-panel-footer">
+        <button class="notif-clear-all" (click)="clearAllNotifications($event)">🗑️ Obriši sva obaveštenja</button>
+      </div>
+      }
     </div>
     }
 
