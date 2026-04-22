@@ -146,24 +146,25 @@ namespace TouristGuide.Api.Controllers
         private string GenerateJwtToken(Tourist tourist)
         {
             var secret = _configuration["Jwt:Secret"]
-                ?? throw new InvalidOperationException("Jwt:Secret nije postavljen.");
-
-            var key = Encoding.UTF8.GetBytes(secret);
+                ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
+            
+            var key = Encoding.ASCII.GetBytes(secret);
+            var issuer = _configuration["Jwt:Issuer"] ?? "TouristGuideApi";
+            var audience = _configuration["Jwt:Audience"] ?? "TouristGuideClients";
+            var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"] ?? "8");
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-            new Claim("id", tourist.Id.ToString()),
-            new Claim(ClaimTypes.Email, tourist.Email),
-            new Claim(ClaimTypes.Name, tourist.Name)
-        }),
-                Expires = DateTime.UtcNow.AddDays(7),
-                Issuer = _configuration["Jwt:Issuer"],
-                Audience = _configuration["Jwt:Audience"],
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
+                    new Claim("id", tourist.Id.ToString()),
+                    new Claim(ClaimTypes.Email, tourist.Email),
+                    new Claim(ClaimTypes.Name, tourist.Name)
+                }),
+                Expires = DateTime.UtcNow.AddHours(expiresInHours),
+                Issuer = issuer,
+                Audience = audience,
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
