@@ -1,73 +1,59 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
     /// <summary>
     /// Kontroler za upload slika.
-    /// Slike se čuvaju na disku (u /images/posts/ folderu backenda),
-    /// a URL putanja se vraća frontendu da je doda u JSON niz "images" polja.
+    /// Slike se čuvaju na Cloudinary cloud storage-u.
+    /// URL koji Cloudinary vrati čuva se u bazi umjesto lokalne putanje.
     ///
     /// Tok:
     ///   1. Frontend šalje POST /api/images/upload sa slikom (multipart/form-data)
-    ///   2. Backend čuva fajl na disku i vraća { url: "/images/posts/uuid.jpg" }
+    ///   2. Backend uploaduje na Cloudinary i vraća { url: "https://res.cloudinary.com/..." }
     ///   3. Frontend dodaje taj URL u niz i šalje ga pri kreiranju/editovanju posta
-    ///   4. Post.Images = JSON.stringify(["/images/posts/uuid.jpg", ...])
+    ///   4. Post.Images = JSON.stringify(["https://res.cloudinary.com/...", ...])
     /// </summary>
     [ApiController]
     [Route("api/images")]
-    [Authorize] // Samo admin može upload-ati slike
+    [Authorize]
     public class ImageUploadController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
+        private readonly ICloudinaryService _cloudinaryService;
         private readonly ILogger<ImageUploadController> _logger;
 
-        // Dozvoljeni tipovi fajlova
-        private static readonly HashSet<string> AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
-        private static readonly HashSet<string> AllowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
-
-        // Maksimalna veličina: 5MB
-        private const long MaxFileSizeBytes = 5 * 1024 * 1024;
-
-        public ImageUploadController(IWebHostEnvironment env, ILogger<ImageUploadController> logger)
+        public ImageUploadController(ICloudinaryService cloudinaryService, ILogger<ImageUploadController> logger)
         {
-            _env = env;
+            _cloudinaryService = cloudinaryService;
             _logger = logger;
         }
 
         /// <summary>
         /// Upload jedne slike za objavu.
-        /// Returns: { url: "/images/posts/abc123.jpg" }
+        /// Returns: { url: "https://res.cloudinary.com/..." }
         /// </summary>
         [HttpPost("upload")]
         public async Task<IActionResult> UploadPostImage(IFormFile file)
-        {
-            return await UploadToFolder(file, "posts");
-        }
+            => await UploadToFolder(file, "posts");
 
         /// <summary>
         /// Upload profilne slike za admina.
-        /// Returns: { url: "/images/profiles/abc123.jpg" }
         /// </summary>
         [HttpPost("upload/profile")]
         public async Task<IActionResult> UploadProfileImage(IFormFile file)
-        {
-            return await UploadToFolder(file, "profiles");
-        }
+            => await UploadToFolder(file, "profiles");
 
         /// <summary>
         /// Upload cover slike za regiju.
-        /// Returns: { url: "/images/regions/abc123.jpg" }
         /// </summary>
         [HttpPost("upload/region")]
         public async Task<IActionResult> UploadRegionImage(IFormFile file)
-        {
-            return await UploadToFolder(file, "regions");
-        }
+            => await UploadToFolder(file, "regions");
 
         /// <summary>
         /// Upload više slika odjednom (do 10).
-        /// Returns: { urls: ["/images/posts/abc.jpg", "/images/posts/def.jpg"] }
+        /// Returns: { urls: ["https://res.cloudinary.com/...", ...] }
         /// </summary>
         [HttpPost("upload/multiple")]
         public async Task<IActionResult> UploadMultiple(List<IFormFile> files)
@@ -82,77 +68,43 @@ namespace TouristGuide.Api.Controllers
 
             foreach (var file in files)
             {
-                var result = await SaveFile(file, "posts");
-                if (result.Error != null)
-                    return BadRequest(new { error = result.Error });
-
-                urls.Add(result.Url!);
+                try
+                {
+                    var url = await _cloudinaryService.UploadImageAsync(file, "posts");
+                    urls.Add(url);
+                }
+                catch (ArgumentException ex)
+                {
+                    return BadRequest(new { error = ex.Message });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Greška pri uploadu slike.");
+                    return StatusCode(500, new { error = "Greška pri uploadu slike. Pokušajte ponovo." });
+                }
             }
 
             return Ok(new { urls });
         }
 
-        // ── Interni helper metodi ────────────────────────────────────────────
+        // ── Helper ──────────────────────────────────────────────────────────
 
-        private async Task<IActionResult> UploadToFolder(IFormFile file, string subfolder)
+        private async Task<IActionResult> UploadToFolder(IFormFile file, string folder)
         {
-            var result = await SaveFile(file, subfolder);
-            if (result.Error != null)
-                return BadRequest(new { error = result.Error });
-
-            return Ok(new { url = result.Url });
-        }
-
-        private async Task<(string? Url, string? Error)> SaveFile(IFormFile file, string subfolder)
-        {
-            // 1. Provjera da je fajl poslan
-            if (file == null || file.Length == 0)
-                return (null, "Fajl je prazan ili nije poslan.");
-
-            // 2. Provjera veličine
-            if (file.Length > MaxFileSizeBytes)
-                return (null, $"Slika je prevelika. Maksimum je 5MB.");
-
-            // 3. Provjera tipa fajla (ekstenzija)
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!AllowedExtensions.Contains(ext))
-                return (null, $"Tip fajla nije dozvoljen. Koristite: jpg, jpeg, png, webp.");
-
-            // 4. Provjera MIME tipa (content type koji browser šalje)
-            if (!AllowedMimeTypes.Contains(file.ContentType.ToLowerInvariant()))
-                return (null, $"Content-Type nije ispravan. Pošaljite sliku.");
-
-            // 5. Generisanje jedinstvenog naziva fajla (UUID sprečava kolizije)
-            var uniqueName = $"{Guid.NewGuid()}{ext}";
-
-            // 6. Kreiranje putanje za čuvanje
-            var imagesRoot = Path.Combine(_env.ContentRootPath, "images");
-            var subfolderPath = Path.Combine(imagesRoot, subfolder);
-
-            if (!Directory.Exists(subfolderPath))
-                Directory.CreateDirectory(subfolderPath);
-
-            var filePath = Path.Combine(subfolderPath, uniqueName);
-
-            // 7. Čuvanje fajla na disk
             try
             {
-                await using var stream = new FileStream(filePath, FileMode.Create);
-                await file.CopyToAsync(stream);
+                var url = await _cloudinaryService.UploadImageAsync(file, folder);
+                return Ok(new { url });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Greška pri čuvanju slike: {FileName}", uniqueName);
-                return (null, "Greška pri čuvanju slike. Pokušajte ponovo.");
+                _logger.LogError(ex, "Greška pri uploadu slike.");
+                return StatusCode(500, new { error = "Greška pri uploadu slike. Pokušajte ponovo." });
             }
-
-            // 8. URL koji frontend treba da sačuva u bazi
-            // Ovaj URL odgovara StaticFiles konfiguraciji iz Program.cs:
-            //   /images → ContentRootPath/images
-            var url = $"/images/{subfolder}/{uniqueName}";
-
-            _logger.LogInformation("Slika uploadovana: {Url}", url);
-            return (url, null);
         }
     }
 }

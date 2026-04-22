@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using Microsoft.Extensions.FileProviders;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
@@ -65,6 +64,9 @@ builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 
+// Cloudinary servis za upload slika
+builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
+
 // Seeder — kreira bazu i puni početnim podacima pri svakom pokretanju
 builder.Services.AddScoped<DatabaseSeeder>();
 
@@ -101,7 +103,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ────────────────────────────────────────────────────────────
-// 5. POSTGRESQL KONEKCIJA (zamjena za MySQL)
+// 5. POSTGRESQL KONEKCIJA
 // ────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
@@ -129,28 +131,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-// Serviranje statičkih fajlova iz wwwroot
-app.UseStaticFiles();
-
-// Serviranje upload-ovanih slika iz /images foldera
-var imagesPath = Path.Combine(builder.Environment.ContentRootPath, "images");
-if (!Directory.Exists(imagesPath))
-    Directory.CreateDirectory(imagesPath);
-
-// Kreiranje podfoldera
-foreach (var sub in new[] { "posts", "regions", "profiles" })
-{
-    var subPath = Path.Combine(imagesPath, sub);
-    if (!Directory.Exists(subPath))
-        Directory.CreateDirectory(subPath);
-}
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(imagesPath),
-    RequestPath = "/images"
-});
 
 // CORS mora biti PRE autentifikacije
 app.UseCors("AllowFrontends");
