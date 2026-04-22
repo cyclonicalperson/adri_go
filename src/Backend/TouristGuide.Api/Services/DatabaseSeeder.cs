@@ -300,16 +300,16 @@ namespace TouristGuide.Api.Services
             string tHash = BCrypt.Net.BCrypt.HashPassword("Tourist123!", workFactor: 12);
 
             _db.Tourists.AddRange(
-                new Tourist { Name = "Emma Wilson", Email = "emma.wilson@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["hiking","nature","photography","culture"]""" },
-                new Tourist { Name = "Luca Rossi", Email = "luca.rossi@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["food","nightlife","beach","history"]""" },
-                new Tourist { Name = "Jana Novák", Email = "jana.novak@gmail.com", PasswordHash = tHash, Language = "de", Interests = """["hiking","skiing","culture","family"]""" },
-                new Tourist { Name = "Aleksandra Popović", Email = "aleksandra.p@gmail.com", PasswordHash = tHash, Language = "sr", Interests = """["nature","culture","food"]""" },
-                new Tourist { Name = "Thomas Müller", Email = "thomas.m@gmail.com", PasswordHash = tHash, Language = "de", Interests = """["skiing","adventure","sport"]""" },
-                new Tourist { Name = "Sofia García", Email = "sofia.garcia@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["beach","food","culture","nightlife"]""" },
-                new Tourist { Name = "Andrei Popescu", Email = "andrei.p@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["adventure","hiking","photography"]""" },
-                new Tourist { Name = "Yuki Tanaka", Email = "yuki.t@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["culture","food","sightseeing"]""" },
-                new Tourist { Name = "Mohammed Al-Rashid", Email = "mohammed.r@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["culture","history","food"]""" },
-                new Tourist { Name = "Klara Svensson", Email = "klara.s@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["nature","hiking","wellness"]""" }
+                new Tourist { Name = "Emma Wilson", Email = "emma.wilson@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["hiking","nature","photography","culture"]""", IsEmailVerified = true },
+                new Tourist { Name = "Luca Rossi", Email = "luca.rossi@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["food","nightlife","beach","history"]""", IsEmailVerified = true },
+                new Tourist { Name = "Jana Novák", Email = "jana.novak@gmail.com", PasswordHash = tHash, Language = "de", Interests = """["hiking","skiing","culture","family"]""", IsEmailVerified = true },
+                new Tourist { Name = "Aleksandra Popović", Email = "aleksandra.p@gmail.com", PasswordHash = tHash, Language = "sr", Interests = """["nature","culture","food"]""", IsEmailVerified = true },
+                new Tourist { Name = "Thomas Müller", Email = "thomas.m@gmail.com", PasswordHash = tHash, Language = "de", Interests = """["skiing","adventure","sport"]""", IsEmailVerified = true },
+                new Tourist { Name = "Sofia García", Email = "sofia.garcia@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["beach","food","culture","nightlife"]""", IsEmailVerified = true },
+                new Tourist { Name = "Andrei Popescu", Email = "andrei.p@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["adventure","hiking","photography"]""", IsEmailVerified = true },
+                new Tourist { Name = "Yuki Tanaka", Email = "yuki.t@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["culture","food","sightseeing"]""", IsEmailVerified = true },
+                new Tourist { Name = "Mohammed Al-Rashid", Email = "mohammed.r@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["culture","history","food"]""", IsEmailVerified = true },
+                new Tourist { Name = "Klara Svensson", Email = "klara.s@gmail.com", PasswordHash = tHash, Language = "en", Interests = """["nature","hiking","wellness"]""", IsEmailVerified = true }
             );
             await _db.SaveChangesAsync();
         }

@@ -4,8 +4,8 @@ Login kredencijali za tipove admin naloga:
 
 ### Superadmin
 
-E-mail: `superadmin@touristhub.me`<br>
-Pass: `SuperAdmin123!`
+E-mail: `superadmin@touristguide.me`<br>
+Pass: `Admin123!`
 
 ### Admin
 
@@ -15,11 +15,21 @@ Pass: `Admin123!`<br>
 E-mail: `nikola.djuric@npdurmitor.me`<br>
 Pass: `Admin123!`<br>
 
-E-mail: `jovana.milic@mnadv.me`<br>
+E-mail: `marija.p@touristguide.me`<br>
 Pass: `Admin123!`<br>
 
-E-mail: `stefan.radovic@hoteljezera.me`<br>
+E-mail: `dragana.m@tozabljak.me`<br>
 Pass: `Admin123!`<br>
 
-E-mail: `petar.vukovic@gmail.com`<br>
+E-mail: `stefan.v@skidurmitor.me`<br>
 Pass: `Admin123!`<br>
+
+E-mail: `ivana.j@budva.travel`<br>
+Pass: `Admin123!`<br>
+
+E-mail: `aleksandar.b@kotor.travel`<br>
+Pass: `Admin123!`<br>
+
+E-mail: `dragan.lazovic@outdoorme.me`<br>
+Pass: `Admin123!`<br>
+- Login treba da bude odbijen jer je nalog suspendovan

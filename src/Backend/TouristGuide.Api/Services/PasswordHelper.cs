@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using BCrypt.Net;
 
 namespace TouristGuide.Api.Services
 {
@@ -37,6 +38,20 @@ namespace TouristGuide.Api.Services
                 string.Equals(storedHash, sha256Base64, StringComparison.Ordinal))
             {
                 return true;
+            }
+
+            // Podrzavamo i stvarne BCrypt hash-eve koje seeder trenutno upisuje.
+            if (storedHash.StartsWith("$2", StringComparison.Ordinal) &&
+                !storedHash.Contains("examplehash", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    return BCrypt.Net.BCrypt.Verify(password, storedHash);
+                }
+                catch
+                {
+                    return false;
+                }
             }
 
             // Seed podaci iz SQL skripte koriste placeholder bcrypt vrednosti

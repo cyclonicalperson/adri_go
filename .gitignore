@@ -45,6 +45,7 @@ PublishProfiles/
 *.trace
 logs/
 Logs/
+src/Backend/TouristGuide.Api/App_Data/
 
 ## Testovi
 [Tt]est[Rr]esult*/

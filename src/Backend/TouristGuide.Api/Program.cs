@@ -1,14 +1,28 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using Microsoft.Extensions.FileProviders; 
+using System.IO;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
 
     var builder = WebApplication.CreateBuilder(args);
+    var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "DataProtectionKeys");
+
+    Directory.CreateDirectory(dataProtectionPath);
+
+    builder.Logging.ClearProviders();
+    builder.Logging.AddConsole();
+    builder.Logging.AddDebug();
+
+    builder.Services
+        .AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+        .SetApplicationName("TouristGuide.Api");
 
     // ────────────────────────────────────────────────────────────
     // 1. CORS
@@ -62,16 +76,12 @@ using TouristGuide.Api.Interfaces;
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<EmailService>();
-builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
-// Servis za Review-ove
-builder.Services.AddScoped<IReviewService, ReviewService>();
-    builder.Services.AddScoped<DatabaseSeeder>();
 
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
@@ -138,7 +148,10 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
     }
 
     app.UseHttpsRedirection();
-    app.UseStaticFiles();
+    if (Directory.Exists(app.Environment.WebRootPath))
+    {
+        app.UseStaticFiles();
+    }
     app.UseCors("AllowFrontends");
     app.UseAuthentication();
     app.UseAuthorization();

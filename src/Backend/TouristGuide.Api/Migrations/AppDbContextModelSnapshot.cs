@@ -1313,6 +1313,15 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("email");
 
+                    b.Property<string>("EmailVerificationToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("email_verification_token");
+
+                    b.Property<DateTime?>("EmailVerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verification_token_expires_at");
+
                     b.Property<decimal?>("HomeLat")
                         .HasColumnType("numeric")
                         .HasColumnName("home_lat");
@@ -1328,6 +1337,10 @@ namespace TouristGuide.Api.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_email_verified");
 
                     b.Property<string>("Language")
                         .IsRequired()
