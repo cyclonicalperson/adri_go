@@ -1,12 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { EventService } from '@core/services/event.service';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { environment } from '@env/environment';
 import { RegionService } from '@core/services/region.service';
-import { ObjectService } from '@core/services/object.service';
 import { Region } from '@core/models/region.model';
+import { ObjectService } from '@core/services/object.service';
 import { TouristObject } from '@core/models/object.model';
-import { EventCategory } from '@core/models/event.model';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 @Component({
@@ -16,7 +16,6 @@ import { MapComponent, MapClickEvent } from '@shared/components/map/map.componen
   templateUrl: './event-form.component.html',
   styleUrl: './event-form.component.scss',
 })
-
 export class EventFormComponent implements OnInit {
   form!: FormGroup;
   isEdit = false;
@@ -27,10 +26,10 @@ export class EventFormComponent implements OnInit {
   destinations: Region[] = [];
   objects: TouristObject[] = [];
 
-  readonly categoryOptions: { value: EventCategory; label: string }[] = [
+  readonly categoryOptions = [
     { value: 'CONCERT', label: 'Koncert' },
     { value: 'FESTIVAL', label: 'Festival' },
-    { value: 'SPORT', label: 'Sport' },
+    { value: 'SPORT', label: 'Sport / Takmičenje' },
     { value: 'EXHIBITION', label: 'Izložba' },
     { value: 'TOUR', label: 'Tura' },
     { value: 'THEATER', label: 'Pozorište' },
@@ -40,63 +39,99 @@ export class EventFormComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private service: EventService,
     private destService: RegionService,
-    private objService: ObjectService,
+    private objectService: ObjectService,
     private route: ActivatedRoute,
     private router: Router,
+    private http: HttpClient,
   ) { }
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      name: ['', Validators.required],
+      title: ['', [
+        Validators.required,
+        Validators.minLength(3),
+        Validators.maxLength(200),
+      ]],
       category: ['CONCERT', Validators.required],
-      description: ['', Validators.required],
+      description: ['', [
+        Validators.required,
+        Validators.minLength(10),
+        Validators.maxLength(2000),
+      ]],
       regionId: [null],
       objectId: [null],
       startAt: ['', Validators.required],
       endAt: ['', Validators.required],
       ticketUrl: [''],
-      latitude: [null],
-      longitude: [null],
+      externalUrl: [''],
+      lat: [null],
+      lng: [null],
+      status: ['draft'],
     });
 
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[]; }) => {
+    // Učitaj regije za dropdown
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.destinations = res.data;
     });
 
-    this.objService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: TouristObject[]; }) => {
-      this.objects = res.data;
+    // Učitaj sve ne-event postove direktno — izbjegava category filter bug u ObjectService
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts?page=1&pageSize=200`).subscribe(res => {
+      this.objects = (res.data ?? [])
+        .filter((p: any) => p.postType !== 'event')
+        .map((p: any) => ({ objectId: p.id ?? p.postId, name: p.title } as any));
     });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
-      this.service.getById(this.id!).subscribe((res: { data: any; }) => {
-        const e = res.data;
-        this.form.patchValue({
-          name: e.name,
-          category: e.category,
-          description: e.description,
-          regionId: e.regionId,
-          objectId: e.objectId,
-          startAt: e.startAt.slice(0, 16),
-          endAt: e.endAt.slice(0, 16),
-          ticketUrl: e.ticketUrl,
-          latitude: e.latitude,
-          longitude: e.longitude,
-        });
+      // Direktan HTTP poziv na /posts/{id} — backend vraća PostDto
+      this.http.get<any>(`${environment.apiUrl}/posts/${this.id}`).subscribe({
+        next: post => {
+          // PostDto ima: title, postType, description, lat, lng, regionId,
+          // details (JSON string): { eventStart, eventEnd, category, ticketUrl }
+          let det: any = {};
+          if (post.details) {
+            try { det = typeof post.details === 'string' ? JSON.parse(post.details) : post.details; }
+            catch { det = {}; }
+          }
+
+          // Formatiramo datetime-local input (YYYY-MM-DDTHH:MM)
+          const fmtDt = (s: string | undefined) => {
+            if (!s) return '';
+            return new Date(s).toISOString().slice(0, 16);
+          };
+
+          this.form.patchValue({
+            title: post.title ?? '',
+            // Backend serijalizuje camelCase: startAt/endAt (ne eventStart/eventEnd)
+            category: det.category ?? 'OTHER',
+            description: post.description ?? '',
+            regionId: post.regionId ?? null,
+            objectId: det.objectId ?? det.relatedObjectId ?? null,
+            startAt: fmtDt(det.startAt ?? det.eventStart),
+            endAt: fmtDt(det.endAt ?? det.eventEnd),
+            ticketUrl: det.ticketUrl ?? post.externalUrl ?? '',
+            externalUrl: post.externalUrl ?? '',
+            lat: post.lat ?? null,
+            lng: post.lng ?? null,
+            status: post.status ?? 'draft',
+          });
+        },
+        error: () => {
+          this.error = 'Greška pri učitavanju dogadjaja.';
+        },
       });
     }
   }
 
   onMapClick(ev: MapClickEvent): void {
-    this.form.patchValue({ latitude: ev.lat, longitude: ev.lng });
+    this.form.patchValue({ lat: +ev.lat.toFixed(6), lng: +ev.lng.toFixed(6) });
   }
 
-  get lat(): number { return this.form.get('latitude')?.value ?? 43.85; }
-  get lng(): number { return this.form.get('longitude')?.value ?? 18.41; }
+  get lat(): number { return this.form.get('lat')?.value ?? 43.85; }
+  get lng(): number { return this.form.get('lng')?.value ?? 18.41; }
 
   f(name: string) { return this.form.get(name)!; }
 
@@ -106,22 +141,40 @@ export class EventFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
-    const payload = {
-      ...raw,
-      regionId: raw.regionId || undefined,
-      objectId: raw.objectId || undefined,
-      ticketUrl: raw.ticketUrl || undefined,
-      latitude: raw.latitude || undefined,
-      longitude: raw.longitude || undefined,
+
+    // Backend /api/posts PUT/POST prihvata PostType, Details itd.
+    const details = JSON.stringify({
+      category: raw.category,
+      startAt: raw.startAt ? new Date(raw.startAt).toISOString() : null,
+      endAt: raw.endAt ? new Date(raw.endAt).toISOString() : null,
+      ticketUrl: raw.ticketUrl || null,
+      objectId: raw.objectId || null,
+    });
+
+    const body: any = {
+      title: raw.title,
+      postType: 'event',
+      description: raw.description,
+      regionId: raw.regionId || null,
+      objectId: raw.objectId || null,
+      lat: raw.lat || null,
+      lng: raw.lng || null,
+      externalUrl: raw.ticketUrl || raw.externalUrl || null,
+      externalUrlLabel: raw.ticketUrl ? 'Kupi kartu' : null,
+      details,
+      status: raw.status || 'draft',
     };
 
     const req$ = this.isEdit
-      ? this.service.update(this.id!, payload)
-      : this.service.create(payload);
+      ? this.http.put<any>(`${environment.apiUrl}/posts/${this.id}`, body)
+      : this.http.post<any>(`${environment.apiUrl}/posts`, body);
 
     req$.subscribe({
       next: () => this.router.navigate(['/admin/events']),
-      error: (err: { message: string | null; }) => { this.error = err.message; this.saving = false; },
+      error: (err: any) => {
+        this.error = err?.error?.message ?? err?.message ?? 'Greška pri čuvanju.';
+        this.saving = false;
+      },
     });
   }
 

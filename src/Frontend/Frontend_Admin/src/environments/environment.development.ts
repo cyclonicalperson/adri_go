@@ -1,5 +1,7 @@
+// src/environments/environment.development.ts
+// Koristi pravi .NET backend. Za mock mod postavi useMocks: true.
 export const environment = {
   production: false,
-  // Adresa lokalnog .NET backend-a (TouristGuide.Api)
+  useMocks: false,
   apiUrl: 'http://localhost:5125/api',
 };

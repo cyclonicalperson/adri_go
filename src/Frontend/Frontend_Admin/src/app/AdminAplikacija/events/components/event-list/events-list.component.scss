@@ -74,7 +74,10 @@
   cursor: pointer;
   font-size: 18px;
   padding: 4px;
-  &:hover { color: #374151; }
+
+  &:hover {
+    color: #374151;
+  }
 }
 
 .detail-body {
@@ -146,13 +149,19 @@
   background: #fff;
   border: 1px solid #d1d5db;
   color: #374151;
-  &:hover { background: #f9fafb; }
+
+  &:hover {
+    background: #f9fafb;
+  }
 }
 
 .btn-primary {
   background: #22c55e;
   color: #fff;
-  &:hover { background: #16a34a; }
+
+  &:hover {
+    background: #16a34a;
+  }
 }
 
 .state-msg {
@@ -160,4 +169,111 @@
   color: #9ca3af;
   padding: 32px;
   font-size: 13px;
+}
+
+// ── Modal detalja (konzistentan sa object-detail) ─────────────────────
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+}
+
+.modal-wide {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.18);
+  width: 820px;
+  max-width: 98vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.modal-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 4px;
+}
+
+.modal-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 20px 24px;
+  min-height: 280px;
+}
+
+.modal-info {
+  padding-right: 20px;
+}
+
+.modal-map {
+  border-left: 1px solid #f3f4f6;
+  padding-left: 20px;
+}
+
+.modal-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-row {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f9fafb;
+  font-size: 13px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.modal-lbl {
+  width: 110px;
+  flex-shrink: 0;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.modal-val {
+  color: #111827;
+  font-weight: 500;
+  flex: 1;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid #f3f4f6;
 }

@@ -1,138 +1,232 @@
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-// already imported
 import { environment } from '@env/environment';
-import { Activity, ActivityCategory } from '@core/models/activity.model';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { MapComponent, MapMarker } from '@shared/components/map/map.component';
+
+// Backend ActivitiesController vraća tagove sa category='aktivnost'
+// Polje 'category' u tagu je slobodan string (npr. 'ADVENTURE', 'SPORT', 'aktivnost')
+// a 'color' je hex boja za UI
+
+interface BackendActivity {
+  id: number;            // tag.id
+  activityId?: number;   // alias (mock koristi activityId)
+  name: string;
+  category: string;      // tag.category — može biti SPORT, ADVENTURE, aktivnost...
+  description?: string;
+  lat?: number | null;
+  lng?: number | null;
+  locationName?: string;
+  color?: string;        // tag.color
+  status?: string;       // iz mock-a
+  viewCount?: number;
+}
 
 @Component({
   selector: 'app-aktivnosti-list',
   templateUrl: './aktivnosti-list.component.html',
   styleUrl: './aktivnosti-list.component.scss',
-  imports: [TruncatePipe, ConfirmDialogComponent, MapComponent],
+  imports: [
+    FormsModule, TruncatePipe, ConfirmDialogComponent, MapComponent],
 })
 export class AktivnostiListComponent implements OnInit {
-  activities: Activity[] = [];
+  activities: BackendActivity[] = [];
   total = 0;
+  globalTotal = 0;  // nikad se ne mijenja pri filteru
   totalPages = 1;
   page = 1;
   pageSize = 10;
   loading = true;
 
   searchQuery = '';
-  activeCategory = '';
-  activeStatus = '';
-  sortBy = 'createdAt';
-  sortDir: 'asc' | 'desc' = 'desc';
+  activeCategory = '';   // prazan string = sve kategorije
+  activeStatus = '';     // prazan string = svi statusi ('approved' | 'pending' | '')
+  sortBy = 'name';
+  sortDir: 'asc' | 'desc' = 'asc';
 
-  // Computed stat counts
+  // Stat counts — izračunati iz svih učitanih aktivnosti
   sportCount = 0;
   natureCount = 0;
   wellnessCount = 0;
+  pendingCount = 0;
 
-  // Detail panel
-  detailActivity: Activity | null = null;
+  // Detail / Map / Delete paneli
+  detailActivity: BackendActivity | null = null;
   detailOpen = false;
-
-  // Map panel
-  mapActivity: Activity | null = null;
+  mapActivity: BackendActivity | null = null;
   mapOpen = false;
+  deleteTarget: BackendActivity | null = null;
 
-  // Delete dialog
-  deleteTarget: Activity | null = null;
-
+  // Kategorije koje komponenta prikazuje u filterima
+  // Backend ActivitiesController filtrira po category query param
   readonly categoryOptions = [
     { value: '', label: 'Sve' },
     { value: 'SPORT', label: '🏊 Sport' },
-    { value: 'ADVENTURE', label: '🌿 Priroda' },
+    { value: 'ADVENTURE', label: '🌿 Priroda / Avantura' },
     { value: 'WELLNESS', label: '💆 Wellness' },
     { value: 'SHOPPING', label: '🛍️ Shopping' },
     { value: 'DINING', label: '🍴 Ishrana' },
     { value: 'SIGHTSEEING', label: '📸 Razgledanje' },
     { value: 'NIGHTLIFE', label: '🎶 Klupsko' },
-    { value: 'BUSINESS', label: '💼 Poslovno' },
+    { value: 'CULTURE', label: '🎭 Kultura' },
     { value: 'OTHER', label: '➕ Ostalo' },
   ];
 
   constructor(private http: HttpClient, private router: Router) { }
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.initSearch(); this.loadGlobalTotal(); this.load(); }
+
+  /** Jednom poziva backend bez filtera da dobije tačan ukupan broj */
+  private loadGlobalTotal(): void {
+    this.http.get<{ total: number }>(
+      `${environment.apiUrl}/activities`, { params: new HttpParams().set('page', 1).set('pageSize', 1) }
+    ).subscribe({ next: res => { this.globalTotal = (res as any).total ?? 0; } });
+  }
+
+  /** Resetuje sve filtere i poziva load() jednom */
+  clearAllFilters(): void {
+    this.activeCategory = '';
+    this.activeStatus = '';
+    this.page = 1;
+    this.load();
+  }
 
   load(): void {
     this.loading = true;
-    const params: Record<string, string> = {
-      page: String(this.page),
-      pageSize: String(this.pageSize),
-      sortBy: this.sortBy,
-      sortDir: this.sortDir,
-    };
-    if (this.searchQuery) params['search'] = this.searchQuery;
-    if (this.activeCategory) params['category'] = this.activeCategory;
-    if (this.activeStatus) params['status'] = this.activeStatus;
 
-    const query = new URLSearchParams(params).toString();
-    this.http.get<{ data: Activity[]; total: number; totalPages: number }>(
-      `${environment.apiUrl}/activities?${query}`
+    let params = new HttpParams()
+      .set('page', this.page)
+      .set('pageSize', this.pageSize)
+      .set('sortBy', this.sortBy)
+      .set('sortDir', this.sortDir);
+
+    if (this.searchQuery) params = params.set('search', this.searchQuery);
+    // Backend ActivitiesController prihvata category param i filtrira po t.Category
+    if (this.activeCategory) params = params.set('category', this.activeCategory);
+    if (this.activeStatus) params = params.set('status', this.activeStatus);
+
+    this.http.get<{ data: BackendActivity[]; total: number; totalPages: number }>(
+      `${environment.apiUrl}/activities`, { params }
     ).subscribe({
       next: res => {
-        this.activities = res.data;
+        this.activities = (res.data ?? []).map(a => ({
+          ...a,
+          id: a.id ?? a.activityId ?? 0,
+          activityId: a.id ?? a.activityId ?? 0,
+        }));
         this.total = res.total;
         this.totalPages = res.totalPages;
-        this.sportCount = res.data.filter(a => a.category === 'SPORT').length;
-        this.natureCount = res.data.filter(a => a.category === 'ADVENTURE').length;
-        this.wellnessCount = res.data.filter(a => a.category === 'WELLNESS').length;
+
+        this.sportCount = (res as any).sportCount ?? this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
+        this.natureCount = (res as any).natureCount ?? this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
+        this.wellnessCount = (res as any).wellnessCount ?? this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
+        this.pendingCount = (res as any).pendingCount ?? this.activities.filter(a => a.status === 'pending').length;
+
         this.loading = false;
       },
       error: () => { this.loading = false; },
     });
   }
 
-  onSearch(q: string): void { this.searchQuery = q; this.page = 1; this.load(); }
+  // Normalizujemo category string na uppercase za prikaz
+  normCat(cat: string | undefined): string {
+    return (cat ?? '').toUpperCase();
+  }
+
+  private search$ = new Subject<string>();
+
+  private initSearch(): void {
+    this.search$.pipe(debounceTime(350), distinctUntilChanged())
+      .subscribe(q => { this.searchQuery = q; this.page = 1; this.load(); });
+  }
+
+  onSearch(q: string): void { this.search$.next(q); }
   setCategory(c: string): void { this.activeCategory = c; this.page = 1; this.load(); }
   setStatus(s: string): void { this.activeStatus = s; this.page = 1; this.load(); }
-  onCityChange(_v: string): void { this.load(); }
-  onStatusChange(_v: string): void { this.load(); }
+  onStatusChange(val: string): void { this.setStatus(val); }
+
+  get sortValue(): string { return `${this.sortBy}:${this.sortDir}`; }
+  set sortValue(val: string) { this.onSortChange(val); }
+
   onSortChange(val: string): void {
     const [sortBy, sortDir] = val.split(':') as [string, 'asc' | 'desc'];
     this.sortBy = sortBy; this.sortDir = sortDir; this.page = 1; this.load();
   }
+
   onSortCol(col: string): void {
     this.sortDir = this.sortBy === col && this.sortDir === 'asc' ? 'desc' : 'asc';
     this.sortBy = col; this.page = 1; this.load();
   }
-  onPage(p: number): void { if (p >= 1 && p <= this.totalPages) { this.page = p; this.load(); } }
 
-  editActivity(a: Activity): void { this.router.navigate(['/admin/aktivnosti', a.activityId, 'edit']); }
+  onPage(p: number): void {
+    if (p >= 1 && p <= this.totalPages) { this.page = p; this.load(); }
+  }
 
-  // ── Detail panel ────────────────────────────────────────────────────────
-  openDetail(a: Activity): void { this.detailActivity = a; this.detailOpen = true; }
+  approveActivity(a: BackendActivity): void {
+    this.http.put(`${environment.apiUrl}/activities/${a.id}`, { status: 'approved' }).subscribe({
+      next: () => {
+        a.status = 'approved';
+        this.loadGlobalTotal();
+        this.load();
+      },
+    });
+  }
+
+  rejectActivity(a: BackendActivity): void {
+    const id = a.id ?? a.activityId;
+    this.http.delete(`${environment.apiUrl}/activities/${id}`).subscribe({
+      next: () => {
+        this.activities = this.activities.filter(x => (x.id ?? x.activityId) !== id);
+        this.total = Math.max(0, this.total - 1);
+        this.loadGlobalTotal();
+      },
+    });
+  }
+
+  editActivity(a: BackendActivity): void {
+    this.router.navigate(['/admin/aktivnosti', a.id ?? a.activityId, 'edit']);
+  }
+
+  // ── Detail panel ──────────────────────────────────────────────────────
+  openDetail(a: BackendActivity): void { this.detailActivity = a; this.detailOpen = true; }
   closeDetail(): void { this.detailOpen = false; this.detailActivity = null; }
 
-  // ── Map panel ───────────────────────────────────────────────────────────
-  showOnMap(a: Activity): void { this.mapActivity = a; this.mapOpen = true; }
+  // ── Map panel ─────────────────────────────────────────────────────────
+  showOnMap(a: BackendActivity): void { this.mapActivity = a; this.mapOpen = true; }
   closeMap(): void { this.mapOpen = false; this.mapActivity = null; }
 
   get mapMarkers(): MapMarker[] {
-    if (!this.mapActivity || !this.mapActivity.lat || !this.mapActivity.lng) return [];
+    if (!this.mapActivity?.lat || !this.mapActivity?.lng) return [];
     return [{
-      id: this.mapActivity.activityId,
+      id: this.mapActivity.id,
       lat: this.mapActivity.lat,
       lng: this.mapActivity.lng,
       label: this.mapActivity.name,
-      category: this.categoryLabel(this.mapActivity.category),
+      category: this.categoryLabel(this.mapActivity),
     }];
   }
 
-  // ── Delete ──────────────────────────────────────────────────────────────
-  confirmDelete(a: Activity): void { this.deleteTarget = a; }
+  // ── Delete ────────────────────────────────────────────────────────────
+  confirmDelete(a: BackendActivity): void { this.deleteTarget = a; }
   cancelDelete(): void { this.deleteTarget = null; }
+
   doDelete(): void {
     if (!this.deleteTarget) return;
-    this.http.delete(`${environment.apiUrl}/activities/${this.deleteTarget.activityId}`)
-      .subscribe(() => { this.deleteTarget = null; this.load(); });
+    const id = this.deleteTarget.id ?? this.deleteTarget.activityId;
+    this.http.delete(`${environment.apiUrl}/activities/${id}`).subscribe({
+      next: () => {
+        this.deleteTarget = null;
+        // Ukloni lokalno odmah, pa osvježi stranicu
+        this.activities = this.activities.filter(a => (a.id ?? a.activityId) !== id);
+        this.total = Math.max(0, this.total - 1);
+        this.load();
+      },
+      error: () => { this.deleteTarget = null; },
+    });
   }
 
   openNew(): void { this.router.navigate(['/admin/aktivnosti', 'new']); }
@@ -147,31 +241,59 @@ export class AktivnostiListComponent implements OnInit {
     return pages;
   }
 
-  categoryIcon(cat: string): string {
+  // ── Display helpers ───────────────────────────────────────────────────
+  // Backend now returns actual subcategory in 'category' field (stored in tag.Color).
+  // We still use inferCat as fallback for old tags that have no subcategory stored.
+  private inferCat(a: BackendActivity): string {
+    // If category is a known subcategory, use it directly
+    const known = ['SPORT', 'ADVENTURE', 'WELLNESS', 'SHOPPING', 'DINING', 'NIGHTLIFE', 'SIGHTSEEING', 'CULTURE'];
+    if (known.includes((a.category ?? '').toUpperCase())) return a.category!.toUpperCase();
+    // Fallback: infer from name
+    const n = (a.name ?? '').toLowerCase();
+    if (/ski|snowboard|sport|tenis|fudbal|košarka|plivanje|planinar|bicikl|ronjenje|surfing|golf|trčanje/.test(n)) return 'SPORT';
+    if (/rafting|treking|planin|penjanje|avantur|zipline|paraglajd|kajak|jezer|priroda/.test(n)) return 'ADVENTURE';
+    if (/wellness|spa|masaž|relaks|yoga|meditacija|sauna/.test(n)) return 'WELLNESS';
+    if (/shoppin|kupovina|suveniri|tržnica|prodavnica/.test(n)) return 'SHOPPING';
+    if (/restoran|kafić|kulinar|hrana|degustaci|vinski|gastro|večera/.test(n)) return 'DINING';
+    if (/noćn|klub|muzika|koncert|zabav/.test(n)) return 'NIGHTLIFE';
+    if (/razgledanje|tura|vođen|muzej|galerija|fotograf|historij/.test(n)) return 'SIGHTSEEING';
+    if (/kultura|pozorište|festival|izložba/.test(n)) return 'CULTURE';
+    return 'OTHER';
+  }
+
+  categoryIcon(a: BackendActivity): string {
     const map: Record<string, string> = {
-      SPORT: '🎾', ADVENTURE: '⛰️', WELLNESS: '💆',
+      SPORT: '🏊', ADVENTURE: '⛰️', WELLNESS: '💆',
       SHOPPING: '🛍️', DINING: '🍽️', NIGHTLIFE: '🎶',
-      SIGHTSEEING: '📸', BUSINESS: '💼', OTHER: '📌',
+      SIGHTSEEING: '📸', CULTURE: '🎭', OTHER: '🎯',
     };
-    return map[cat] ?? '📌';
+    return map[this.inferCat(a)] ?? '🎯';
   }
 
-  categoryLabel(cat: string): string {
-    const found = this.categoryOptions.find(o => o.value === cat);
-    return found?.label.replace(/^[^ ]+ /, '') ?? cat;
+  categoryLabel(a: BackendActivity): string {
+    const map: Record<string, string> = {
+      SPORT: 'Sport', ADVENTURE: 'Priroda / Avantura', WELLNESS: 'Wellness',
+      SHOPPING: 'Shopping', DINING: 'Ishrana', NIGHTLIFE: 'Noćni život',
+      SIGHTSEEING: 'Razgledanje', CULTURE: 'Kultura', OTHER: 'Aktivnost',
+    };
+    return map[this.inferCat(a)] ?? 'Aktivnost';
   }
 
-  typeBadgeClass(cat: string): string {
+  typeBadgeClass(a: BackendActivity): string {
     const map: Record<string, string> = {
       SPORT: 'type-sport', ADVENTURE: 'type-priroda', WELLNESS: 'type-wellness',
       SHOPPING: 'type-shopping', DINING: 'type-restoran', NIGHTLIFE: 'type-noćni',
+      SIGHTSEEING: 'type-kultura', CULTURE: 'type-kultura', OTHER: 'type-ostalo',
     };
-    return map[cat] ?? 'type-ostalo';
+    return map[this.inferCat(a)] ?? 'type-ostalo';
   }
 
-  locationName(a: Activity): string { return (a as any).locationName ?? 'Srbija'; }
-  gpsText(a: Activity): string {
-    if (a.lat && a.lng) return `${a.lat.toFixed(4)}°N, ${a.lng.toFixed(4)}°E`;
+  gpsText(a: BackendActivity): string {
+    if (a.lat && a.lng) return `${Number(a.lat).toFixed(4)}°N, ${Number(a.lng).toFixed(4)}°E`;
     return '';
+  }
+
+  locationName(a: BackendActivity): string {
+    return a.locationName ?? '—';
   }
 }

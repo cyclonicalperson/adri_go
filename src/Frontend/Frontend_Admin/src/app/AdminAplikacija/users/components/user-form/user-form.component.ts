@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { UserService } from '@core/services/user.service';
 import { Role, Organization } from '@core/models/user.model';
+import { AdminRole } from '@core/auth/auth.service';
 import { RolesPermissionsComponent } from '../role-permissions/roles-permissions.component';
 
 @Component({
@@ -12,7 +13,6 @@ import { RolesPermissionsComponent } from '../role-permissions/roles-permissions
   templateUrl: './user-form.component.html',
   styleUrl: './user-form.component.scss',
 })
-
 export class UserFormComponent implements OnInit {
   form!: FormGroup;
   isEdit = false;
@@ -29,78 +29,60 @@ export class UserFormComponent implements OnInit {
     private service: UserService,
     private route: ActivatedRoute,
     private router: Router,
-  ) { }
+  ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      fullName: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
-      password: [''],
-      roleId: [null, Validators.required],
+      fullName:       ['', Validators.required],
+      email:          ['', [Validators.required, Validators.email]],
+      password:       [''],
+      role:           ['admin', Validators.required],  // Backend koristi role string ('admin'|'superadmin')
       organizationId: [null],
-      isActive: [true],
+      isIndividual:   [true],
+      accountStatus:  ['active'],
     });
 
-    this.service.getRoles().subscribe((res: { data: Role[]; }) => { this.roles = res.data; });
-    this.service.getOrganizations().subscribe((res: { data: Organization[]; }) => { this.organizations = res.data; });
+    this.service.getRoles().subscribe(res => { this.roles = res.data; });
+    this.service.getOrganizations().subscribe(res => { this.organizations = res.data; });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
-      this.service.getById(this.id!).subscribe((res: { data: any; }) => {
+      this.service.getById(this.id!).subscribe(res => {
         const u = res.data;
-        // Mock returns role as string, not roleId. Map it.
-        let roleId = u.roleId ?? null;
-        if (!roleId && u.role) {
-          // Try to find roleId from roles list; if roles not loaded yet, wait
-          const tryPatch = () => {
-            const found = this.roles.find(r => r.roleName === u.role);
-            roleId = found?.roleId ?? null;
-            this.form.patchValue({
-              fullName: u.fullName,
-              email: u.email,
-              roleId,
-              organizationId: u.organizationId,
-              isActive: u.isActive ?? u.accountStatus === 'active',
-            });
-          };
-          if (this.roles.length) {
-            tryPatch();
-          } else {
-            // Roles may not have loaded yet, subscribe again
-            this.service.getRoles().subscribe((rr: { data: Role[] }) => {
-              this.roles = rr.data;
-              tryPatch();
-            });
-          }
-        } else {
-          this.form.patchValue({
-            fullName: u.fullName,
-            email: u.email,
-            roleId,
-            organizationId: u.organizationId,
-            isActive: u.isActive ?? u.accountStatus === 'active',
-          });
-        }
+        if (!u) return;
+        this.form.patchValue({
+          fullName:       u.fullName,
+          email:          u.email,
+          // Backend vraća role kao string enum: 'admin' | 'superadmin'
+          role:           u.role ?? 'admin',
+          organizationId: u.organizationId,
+          isIndividual:   u.isIndividual ?? true,
+          accountStatus:  u.accountStatus ?? 'active',
+        });
       });
     } else {
+      // Lozinka obavezna samo pri kreiranju
       this.form.get('password')!.setValidators(Validators.required);
       this.form.get('password')!.updateValueAndValidity();
     }
   }
 
   onRoleSelected(roleId: number): void {
-    this.form.patchValue({ roleId });
-    const selectedRole = this.roles.find(r => r.roleId === roleId);
-    if (selectedRole?.roleName !== 'admin') {
-      this.form.patchValue({ organizationId: null });
-    }
+    // Iz RolesPermissionsComponent dobijamo roleId, konvertujemo u role string
+    const found = this.roles.find(r => r.roleId === roleId);
+    if (found) this.form.patchValue({ role: found.roleName });
   }
 
   get selectedRole(): string | undefined {
-    const id = this.form.get('roleId')?.value;
-    return this.roles.find(r => r.roleId === id)?.roleName;
+    return this.form.get('role')?.value;
+  }
+
+  // Virtuelni roleId za kompatibilnost sa RolesPermissionsComponent
+  get selectedRoleId(): number | null {
+    const roleName = this.form.get('role')?.value;
+    return this.roles.find(r => r.roleName === roleName)?.roleId ?? null;
   }
 
   f(name: string) { return this.form.get(name)!; }
@@ -111,19 +93,32 @@ export class UserFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
-    const payload = {
-      ...raw,
-      organizationId: raw.organizationId || undefined,
-      password: raw.password || undefined,
+
+    // Backend AdminUsersController prihvata: fullName, email, password, role, organizationId, isIndividual
+    const payload: any = {
+      fullName:       raw.fullName,
+      email:          raw.email,
+      role:           raw.role as AdminRole,
+      organizationId: raw.organizationId || null,
+      isIndividual:   raw.isIndividual,
     };
+
+    if (raw.password) payload['password'] = raw.password;
+    if (raw.accountStatus && this.isEdit) payload['accountStatus'] = raw.accountStatus;
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)
       : this.service.create(payload);
 
     req$.subscribe({
-      next: () => this.router.navigate(['/admin/users']),
-      error: (err: { message: string | null; }) => { this.error = err.message; this.saving = false; },
+      next: () => {
+        // Navigiramo na listu — users-list.load() će se pozvati na ngOnInit
+        this.router.navigate(['/admin/users']);
+      },
+      error: (err: any) => {
+        this.error = err?.error?.message ?? err?.message ?? 'Greška pri čuvanju.';
+        this.saving = false;
+      },
     });
   }
 

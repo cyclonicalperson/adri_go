@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { UserService } from '@core/services/user.service';
+import { AuthService } from '@core/auth/auth.service';
 import { User, Permission, UserPermission, PermissionCode } from '@core/models/user.model';
 import { environment } from '@env/environment';
 
@@ -24,7 +25,7 @@ interface ChangeLogEntry {
   perm: string;
   entity: string;
   time: string;
-  type: 'grant' | 'revoke' | 'approve';
+  type: 'grant' | 'revoke';
 }
 
 @Component({
@@ -50,7 +51,7 @@ export class PermissionsManagementComponent implements OnInit {
   activePermCodes = new Set<PermissionCode>();
   permLoading = false;
 
-  // ── Region scope (opcionalno — null znači globalna dozvola) ───────────
+  // ── Region scope ──────────────────────────────────────────────────────
   regions: SimpleRegion[] = [];
   selectedRegionId: number | null = null;
 
@@ -58,20 +59,16 @@ export class PermissionsManagementComponent implements OnInit {
   saving = false;
   saveMsg: string | null = null;
 
-  readonly changeLog: ChangeLogEntry[] = [
-    { icon: '✅', label: 'Dozvola dodata', user: 'Marko Petrović', perm: 'create_event', entity: 'Ana Kovačević', time: 'Pre 12 min', type: 'grant' },
-    { icon: '✗', label: 'Dozvola uklonjena', user: 'Marko Petrović', perm: 'delete_place', entity: 'Nikola Đurić', time: 'Pre 1 sat', type: 'revoke' },
-    { icon: '✅', label: 'Dozvola dodata', user: 'Marko Petrović', perm: 'view_analytics', entity: 'Jovana Milić', time: 'Pre 3 sata', type: 'grant' },
-    { icon: '✅', label: 'Admin odobren', user: 'Marko Petrović', perm: '—', entity: 'Stefan Radović', time: 'Pre 1 dan', type: 'approve' },
-  ];
+  // ── Log izmjena — dinamički gradi se iz akcija ─────────────────────────
+  changeLog: ChangeLogEntry[] = [];
 
   constructor(
     private userService: UserService,
     private http: HttpClient,
+    private authService: AuthService,
   ) { }
 
   ngOnInit(): void {
-    // Admini (ne superadmin — superadmin ima sve dozvole automatski)
     this.userService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.users = res.data.filter(u => u.role === 'admin');
       this.usersLoading = false;
@@ -82,12 +79,13 @@ export class PermissionsManagementComponent implements OnInit {
       this.permissionGroups = this.buildGroups(res.data);
     });
 
-    // Regioni za scope — direktan HTTP poziv da ne zavisimo od RegionService
-    this.http.get<{ data: SimpleRegion[] }>(`${environment.apiUrl}/regions?pageSize=50`)
-      .subscribe({
-        next: res => { this.regions = res.data; },
-        error: () => { this.regions = []; },
-      });
+    this.http.get<{ data: SimpleRegion[] }>(`${environment.apiUrl}/regions?pageSize=50`).subscribe({
+      next: res => { this.regions = res.data; },
+      error: () => { this.regions = []; },
+    });
+
+    // Load persistent permission change log
+    this.loadChangeLog();
   }
 
   private buildGroups(perms: Permission[]): PermissionGroup[] {
@@ -96,13 +94,11 @@ export class PermissionsManagementComponent implements OnInit {
       analytics: { label: 'Analitika', icon: '📊' },
       users: { label: 'Korisnici', icon: '👥' },
     };
-
     const grouped = new Map<string, Permission[]>();
     for (const p of perms) {
       if (!grouped.has(p.category)) grouped.set(p.category, []);
       grouped.get(p.category)!.push(p);
     }
-
     return Array.from(grouped.entries()).map(([cat, catPerms]) => ({
       category: cat,
       label: groupMeta[cat]?.label ?? cat,
@@ -111,7 +107,7 @@ export class PermissionsManagementComponent implements OnInit {
     }));
   }
 
-  // ── Selekcija korisnika ──────────────────────────────────────────────
+  // ── Selekcija korisnika ───────────────────────────────────────────────
   get filteredUsers(): User[] {
     const q = this.userSearch.toLowerCase();
     return this.users.filter(u =>
@@ -134,33 +130,50 @@ export class PermissionsManagementComponent implements OnInit {
         this.userPermissions = res.data;
         this.activePermCodes = new Set(res.data.map(up => up.permission.code));
         this.permLoading = false;
+        // Ažuriraj permissionCount u listi korisnika
+        const idx = this.users.findIndex(u => u.userId === userId);
+        if (idx !== -1) {
+          this.users[idx] = { ...this.users[idx], permissionCount: res.data.length };
+        }
       },
       error: () => { this.permLoading = false; },
     });
   }
 
-  // ── Toggle dozvole ────────────────────────────────────────────────────
+  // ── Toggle individual dozvole — ODMAH šalje na backend ──────────────────
   hasPermission(code: PermissionCode): boolean {
     return this.activePermCodes.has(code);
   }
 
-  /** Called from template with perm.code */
   togglePermission(permCode: PermissionCode): void {
     if (!this.selectedUser) return;
     const perm = this.allPermissions.find(p => p.code === permCode);
     if (!perm) return;
 
     if (this.activePermCodes.has(permCode)) {
+      // Revoke
       this.activePermCodes.delete(permCode);
-      this.userService.revokePermission(this.selectedUser.userId, perm.id)
-        .subscribe({ error: () => this.activePermCodes.add(permCode) });
+      this.userService.revokePermission(this.selectedUser.userId, perm.id).subscribe({
+        next: () => {
+          this.addLog('revoke', permCode, this.selectedUser!.fullName);
+          this.refreshPermCount(this.selectedUser!.userId, -1);
+        },
+        error: () => { this.activePermCodes.add(permCode); },
+      });
     } else {
+      // Grant
       this.activePermCodes.add(permCode);
       this.userService.grantPermission(
         this.selectedUser.userId,
         perm.id,
         this.selectedRegionId ?? undefined,
-      ).subscribe({ error: () => this.activePermCodes.delete(permCode) });
+      ).subscribe({
+        next: () => {
+          this.addLog('grant', permCode, this.selectedUser!.fullName);
+          this.refreshPermCount(this.selectedUser!.userId, +1);
+        },
+        error: () => { this.activePermCodes.delete(permCode); },
+      });
     }
   }
 
@@ -191,18 +204,85 @@ export class PermissionsManagementComponent implements OnInit {
 
     for (const p of toGrant) {
       this.userService.grantPermission(userId, p.id, this.selectedRegionId ?? undefined)
-        .subscribe({ next: done, error: done });
+        .subscribe({ next: () => { this.addLog('grant', p.code, this.selectedUser?.fullName ?? ''); done(); }, error: done });
     }
     for (const up of toRevoke) {
       this.userService.revokePermission(userId, up.permission.id)
-        .subscribe({ next: done, error: done });
+        .subscribe({ next: () => { this.addLog('revoke', up.permission.code, this.selectedUser?.fullName ?? ''); done(); }, error: done });
     }
   }
 
-  grantAll(): void { this.activePermCodes = new Set(this.allPermissions.map(p => p.code)); }
-  revokeAll(): void { this.activePermCodes = new Set(); }
+  grantAll(): void {
+    if (!this.selectedUser) return;
+    const previous = new Set(this.activePermCodes);
+    this.activePermCodes = new Set(this.allPermissions.map(p => p.code));
+    this.allPermissions
+      .filter(p => !previous.has(p.code))
+      .forEach(p => this.addLog('grant', p.code, this.selectedUser?.fullName ?? ''));
+    this.refreshPermCount(this.selectedUser.userId, null); // null = recompute from activePermCodes
+  }
 
-  // ── Helperi ────────────────────────────────────────────────────────────
+  revokeAll(): void {
+    if (!this.selectedUser) return;
+    const previous = new Set(this.activePermCodes);
+    this.activePermCodes = new Set();
+    this.allPermissions
+      .filter(p => previous.has(p.code))
+      .forEach(p => this.addLog('revoke', p.code, this.selectedUser?.fullName ?? ''));
+    this.refreshPermCount(this.selectedUser.userId, null);
+  }
+
+  // ── Log izmjena ────────────────────────────────────────────────────────
+  private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {
+    const entry: ChangeLogEntry = {
+      icon: type === 'grant' ? '✅' : '✗',
+      label: type === 'grant' ? 'Dozvola dodata' : 'Dozvola uklonjena',
+      user: this.authService.currentUser?.fullName ?? 'Administrator',
+      perm: permCode,
+      entity: targetName,
+      time: new Date().toLocaleString('sr-RS'),
+      type,
+    };
+    this.changeLog.unshift(entry);
+    if (this.changeLog.length > 50) this.changeLog = this.changeLog.slice(0, 50);
+
+    // Persist in localStorage (nema backend endpoint za permission log)
+    this.saveChangeLog();
+  }
+
+  private saveChangeLog(): void {
+    try {
+      localStorage.setItem('th_permission_log', JSON.stringify(this.changeLog));
+    } catch { /* ignore */ }
+  }
+
+  // Učitaj log iz localStorage pri inicijalizaciji
+  private loadChangeLog(): void {
+    try {
+      const raw = localStorage.getItem('th_permission_log');
+      this.changeLog = raw ? JSON.parse(raw) : [];
+    } catch {
+      this.changeLog = [];
+    }
+  }
+
+  // Ažurira permissionCount u listi korisnika odmah
+  // delta=null means recompute from current activePermCodes
+  private refreshPermCount(userId: number, delta: number | null): void {
+    const newCount = delta === null
+      ? this.activePermCodes.size
+      : Math.max(0, (this.users.find(u => u.userId === userId)?.permissionCount ?? 0) + delta);
+
+    const idx = this.users.findIndex(u => u.userId === userId);
+    if (idx !== -1) {
+      this.users[idx] = { ...this.users[idx], permissionCount: newCount };
+    }
+    if (this.selectedUser?.userId === userId) {
+      this.selectedUser = { ...this.selectedUser, permissionCount: newCount };
+    }
+  } 
+
+  // ── Helpers ────────────────────────────────────────────────────────────
   permCount(u: User): number { return u.permissionCount ?? 0; }
 
   initials(name: string): string {

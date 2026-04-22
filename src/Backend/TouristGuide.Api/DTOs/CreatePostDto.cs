@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TouristGuide.Api.DTOs
 {
@@ -7,7 +9,7 @@ namespace TouristGuide.Api.DTOs
     /// </summary>
     public class CreatePostDto
     {
-        [Required(ErrorMessage = "admin_id je obavezan.")]
+        // AdminId se automatski čita iz JWT tokena u PostsController.Create
         public uint AdminId { get; set; }
 
         public uint? RegionId { get; set; }
@@ -36,14 +38,29 @@ namespace TouristGuide.Api.DTOs
         [MaxLength(100)]
         public string? ExternalUrlLabel { get; set; }
 
-        /// <summary>JSON string sa nizom URL-ova slika.</summary>
-        public string? Images { get; set; }
+        /// <summary>JSON string ili array sa URL-ovima slika.</summary>
+        public JsonNode? Images { get; set; }
 
-        /// <summary>JSON string sa radnim vremenom po danima.</summary>
-        public string? OpeningHours { get; set; }
+        /// <summary>JSON string ili objekat sa radnim vremenom.</summary>
+        public JsonNode? OpeningHours { get; set; }
 
-        /// <summary>JSON string sa specifičnim atributima po tipu.</summary>
-        public string? Details { get; set; }
+        /// <summary>JSON string ili objekat sa specifičnim atributima.</summary>
+        public JsonNode? Details { get; set; }
+
+        // Helpers za normalizaciju u string za DB
+        public string? ImagesToString() => NormalizeJson(Images);
+        public string? OpeningHoursToString() => NormalizeJson(OpeningHours);
+        public string? DetailsToString() => NormalizeJson(Details);
+
+        private static string? NormalizeJson(JsonNode? node)
+        {
+            if (node is null) return null;
+            if (node is JsonValue jv && jv.TryGetValue<string>(out var s))
+            {
+                try { JsonDocument.Parse(s); return s; } catch { }
+            }
+            return node.ToJsonString();
+        }
 
         /// <summary>draft | published | archived — podrazumijevano: draft.</summary>
         public string Status { get; set; } = "draft";

@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { BadgeService } from '@core/services/badge.service';
 import { UserService } from '@core/services/user.service';
 import { RegistrationRequest } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
@@ -22,26 +23,32 @@ export class ZahteviComponent implements OnInit {
   selected: RegistrationRequest | null = null;
   detailOpen = false;
 
-  // Counts per status
+  // ── Brojevi kartica — iste kao na Admini stranici ─────────────────────
+  // Kartica 1: Na čekanju (registracioni zahtevi pending)
   pendingCount = 0;
-  approvedCount = 0;
-  rejectedCount = 0;
+  // Kartica 2: Aktivni admini (isto kao na Admini stranici)
+  activeAdminCount = 0;
+  // Kartica 3: Suspendovani admini (isto kao na Admini stranici)
+  suspendedAdminCount = 0;
+  // Kartica 4: Ukupno zahteva
   allCount = 0;
 
-  // Filters
+  // Lokalni filteri za prikaz u tabeli
+  approvedCount = 0;
+  rejectedCount = 0;
+
   activeStatus: FilterStatus = 'pending';
   searchQuery = '';
 
   page = 1;
   pageSize = 10;
 
-  // Reject flow
   rejectDialogOpen = false;
   rejectReason = '';
   rejectTarget: RegistrationRequest | null = null;
   processing = false;
 
-  constructor(private service: UserService) { }
+  constructor(private service: UserService, private badgeService: BadgeService) { }
 
   ngOnInit(): void {
     this.load();
@@ -66,12 +73,21 @@ export class ZahteviComponent implements OnInit {
   }
 
   private loadCounts(): void {
+    // Brojevi zahteva po statusu
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' })
       .subscribe(r => { this.pendingCount = r.total; this.recomputeAll(); });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'approved' })
       .subscribe(r => { this.approvedCount = r.total; this.recomputeAll(); });
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'rejected' })
       .subscribe(r => { this.rejectedCount = r.total; this.recomputeAll(); });
+
+    // Aktivni i suspendovani admini — koristimo backend total
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'active' }).subscribe(res => {
+      this.activeAdminCount = res.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'suspended' }).subscribe(res => {
+      this.suspendedAdminCount = res.total;
+    });
   }
 
   private recomputeAll(): void {
@@ -108,6 +124,7 @@ export class ZahteviComponent implements OnInit {
         this.closeDetail();
         this.load();
         this.loadCounts();
+        this.badgeService.refresh();
       },
       error: () => { this.processing = false; },
     });
@@ -136,12 +153,12 @@ export class ZahteviComponent implements OnInit {
         this.closeDetail();
         this.load();
         this.loadCounts();
+        this.badgeService.refresh();
       },
       error: () => { this.processing = false; },
     });
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────
   get pageNumbers(): number[] {
     const pages: number[] = [];
     for (let i = Math.max(1, this.page - 2); i <= Math.min(this.totalPages, this.page + 2); i++) {
@@ -170,7 +187,6 @@ export class ZahteviComponent implements OnInit {
     return `🏢 ${r.organizationName ?? 'Organizacija'}`;
   }
 
-  /** Check if request has an attached document (mock: always true for demo) */
   hasDocument(r: RegistrationRequest): boolean {
     return !!(r as any).documentUrl;
   }
