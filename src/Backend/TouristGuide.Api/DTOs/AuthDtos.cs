@@ -84,7 +84,29 @@ namespace TouristGuide.Api.DTOs
         public string Email { get; set; } = string.Empty;
         public string Language { get; set; } = string.Empty;
         public bool IsActive { get; set; }
+        public bool IsEmailVerified { get; set; }
         public DateTime CreatedAt { get; set; }
+        /// <summary>Broj sačuvanih objava</summary>
+        public int SavedPostsCount { get; set; }
+        /// <summary>Broj recenzija koje je turista napisao</summary>
+        public int ReviewsCount { get; set; }
+    }
+
+    /// <summary>
+    /// Jedna sačuvana lokacija (post) u listi sačuvanih.
+    /// </summary>
+    public class SavedLocationDto
+    {
+        public uint SavedId { get; set; }
+        public uint PostId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string PostType { get; set; } = string.Empty;
+        public string? Address { get; set; }
+        public decimal? Lat { get; set; }
+        public decimal? Lng { get; set; }
+        /// <summary>URL prve slike (ako postoji)</summary>
+        public string? CoverImage { get; set; }
+        public DateTime SavedAt { get; set; }
     }
 
     /// <summary>
@@ -95,5 +117,15 @@ namespace TouristGuide.Api.DTOs
         public string Token { get; set; } = string.Empty;
         public DateTime ExpiresAtUtc { get; set; }
         public TouristMeDto User { get; set; } = new();
+    }
+
+    /// <summary>
+    /// DTO za ponovljeno slanje verifikacionog emaila.
+    /// </summary>
+    public class ResendVerificationDto
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
     }
 }
