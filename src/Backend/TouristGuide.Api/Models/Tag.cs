@@ -20,10 +20,30 @@ namespace TouristGuide.Api.Models
         [MaxLength(100)]
         public string? Category { get; set; }
 
-        /// <summary>Hex boja za UI (#RRGGBB)</summary>
+        /// <summary>Format za aktivnosti: SUBCATEGORY|#hexcolor|status — za ostale: plain hex</summary>
         [Column("color")]
         [MaxLength(100)]
         public string? Color { get; set; }
+
+        // ── Polja specifična za aktivnosti (category = "aktivnost") ──
+
+        [Column("description")]
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        /// <summary>Trajanje npr. "2 sata", "pola dana"</summary>
+        [Column("duration")]
+        [MaxLength(50)]
+        public string? Duration { get; set; }
+
+        /// <summary>EASY | MEDIUM | HARD</summary>
+        [Column("difficulty")]
+        [MaxLength(10)]
+        public string? Difficulty { get; set; }
+
+        /// <summary>Maksimalan broj učesnika</summary>
+        [Column("max_capacity")]
+        public short? MaxCapacity { get; set; }
 
         // Navigation
         public ICollection<PostTag> PostTags { get; set; } = new List<PostTag>();
