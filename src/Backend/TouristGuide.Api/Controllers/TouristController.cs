@@ -148,6 +148,7 @@ namespace TouristGuide.Api.Controllers
             var secret = _configuration["Jwt:Secret"]
                 ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
             
+            
             var key = Encoding.ASCII.GetBytes(secret);
             var issuer = _configuration["Jwt:Issuer"] ?? "TouristGuideApi";
             var audience = _configuration["Jwt:Audience"] ?? "TouristGuideClients";
