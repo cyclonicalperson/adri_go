@@ -66,6 +66,8 @@ export class RouteService {
   }
 
   create(payload: CreateRouteRequest): Observable<ApiResponse<TouristRoute>> {
+    const regionId = payload.destinationId ?? (payload as any).regionId;
+
     // Parsiramo waypoints u JSON string koji backend očekuje
     const waypointsJson = payload.waypoints
       ? JSON.stringify(payload.waypoints.map(w => ({
@@ -76,7 +78,7 @@ export class RouteService {
       : undefined;
 
     const body: any = {
-      regionId:      payload.destinationId,
+      regionId,
       name:          payload.name,
       difficulty:    payload.difficulty?.toLowerCase() ?? 'moderate',
       distanceKm:    payload.distanceKm,
@@ -84,7 +86,7 @@ export class RouteService {
       elevationGainM: payload.elevationGainM,
       description:   payload.description,
       waypoints:     waypointsJson,
-      status:        'draft',
+      status:        payload.isActive ? 'published' : 'draft',
     };
 
     return this.http.post<any>(this.url, body).pipe(
@@ -94,13 +96,16 @@ export class RouteService {
 
   update(id: number, payload: UpdateRouteRequest): Observable<ApiResponse<TouristRoute>> {
     const body: any = {};
-    if (payload.name)           body['name']          = payload.name;
-    if (payload.difficulty)     body['difficulty']     = payload.difficulty.toLowerCase();
-    if (payload.distanceKm)     body['distanceKm']    = payload.distanceKm;
-    if (payload.durationMin)    body['durationMin']   = payload.durationMin;
-    if (payload.elevationGainM) body['elevationGainM'] = payload.elevationGainM;
-    if (payload.description)    body['description']   = payload.description;
-    if (payload.destinationId)  body['regionId']      = payload.destinationId;
+    const regionId = payload.destinationId ?? (payload as any).regionId;
+
+    if (payload.name !== undefined) body['name'] = payload.name;
+    if (payload.difficulty !== undefined) body['difficulty'] = payload.difficulty.toLowerCase();
+    if (payload.distanceKm !== undefined) body['distanceKm'] = payload.distanceKm;
+    if (payload.durationMin !== undefined) body['durationMin'] = payload.durationMin;
+    if (payload.elevationGainM !== undefined) body['elevationGainM'] = payload.elevationGainM;
+    if (payload.description !== undefined) body['description'] = payload.description;
+    if (regionId !== undefined) body['regionId'] = regionId;
+    if ((payload as any).isActive !== undefined) body['status'] = (payload as any).isActive ? 'published' : 'draft';
     if (payload.waypoints) {
       body['waypoints'] = JSON.stringify(payload.waypoints.map(w => ({
         lat: w.latitude, lng: w.longitude, name: '',

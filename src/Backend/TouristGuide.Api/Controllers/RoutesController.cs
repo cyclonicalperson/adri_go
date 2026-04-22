@@ -14,6 +14,10 @@ namespace TouristGuide.Api.Controllers
     public class RoutesController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "draft", "published", "archived"
+        };
 
         public RoutesController(AppDbContext db)
         {
@@ -48,9 +52,17 @@ namespace TouristGuide.Api.Controllers
             {
                 query = query.Where(r => r.Status == "published");
             }
-            else if (!string.IsNullOrWhiteSpace(status))
+            else
             {
-                query = query.Where(r => r.Status == status.ToLower());
+                if (!IsSuperAdmin())
+                {
+                    var adminId = GetCurrentAdminId();
+                    if (adminId is null) return Unauthorized();
+                    query = query.Where(r => r.AdminId == adminId.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(status))
+                    query = query.Where(r => r.Status == status.ToLower());
             }
 
             if (region_id.HasValue)
@@ -112,7 +124,7 @@ namespace TouristGuide.Api.Controllers
             var isAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
                        || string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
 
-            if (!isAdmin && route.Status != "published")
+            if (!CanViewRoute(route))
                 return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
 
             return Ok(new { data = MapToDto(route), success = true });
@@ -124,6 +136,8 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> Create([FromBody] UpsertRouteDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                return BadRequest(new { message = "Naziv rute je obavezan." });
 
             var adminId = GetCurrentAdminId();
             if (adminId is null) return Unauthorized();
@@ -135,6 +149,7 @@ namespace TouristGuide.Api.Controllers
             }
 
             var now = DateTime.UtcNow;
+            var statusValue = NormalizeStatus(dto.Status) ?? "draft";
             var route = new RouteModel
             {
                 AdminId      = adminId.Value,
@@ -147,7 +162,7 @@ namespace TouristGuide.Api.Controllers
                 Description  = dto.Description?.Trim(),
                 Waypoints    = dto.Waypoints,
                 Images       = dto.Images,
-                Status       = (dto.Status ?? "draft").ToLower(),
+                Status       = statusValue,
                 CreatedAt    = now,
                 UpdatedAt    = now,
             };
@@ -176,6 +191,9 @@ namespace TouristGuide.Api.Controllers
             if (route is null)
                 return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
 
+            if (!CanManageRoute(route))
+                return Forbid();
+
             if (dto.RegionId.HasValue)
             {
                 if (!await _db.Regions.AnyAsync(r => r.Id == dto.RegionId.Value))
@@ -191,7 +209,13 @@ namespace TouristGuide.Api.Controllers
             if (dto.Description is not null) route.Description = dto.Description.Trim();
             if (dto.Waypoints is not null)   route.Waypoints = dto.Waypoints;
             if (dto.Images is not null)      route.Images = dto.Images;
-            if (dto.Status is not null)      route.Status = dto.Status.ToLower();
+            if (dto.Status is not null)
+            {
+                var statusValue = NormalizeStatus(dto.Status);
+                if (statusValue is null)
+                    return BadRequest(new { message = "Status mora biti draft, published ili archived." });
+                route.Status = statusValue;
+            }
 
             route.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
@@ -207,6 +231,9 @@ namespace TouristGuide.Api.Controllers
             var route = await _db.Routes.FindAsync(id);
             if (route is null)
                 return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
+
+            if (!CanManageRoute(route))
+                return Forbid();
 
             _db.Routes.Remove(route);
             await _db.SaveChangesAsync();
@@ -246,6 +273,42 @@ namespace TouristGuide.Api.Controllers
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
+        }
+
+        private bool IsSuperAdmin()
+        {
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            return string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool CanViewRoute(RouteModel route)
+        {
+            if (route.Status == "published")
+                return true;
+
+            return CanManageRoute(route);
+        }
+
+        private bool CanManageRoute(RouteModel route)
+        {
+            if (IsSuperAdmin())
+                return true;
+
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var adminId = GetCurrentAdminId();
+            return adminId.HasValue && route.AdminId == adminId.Value;
+        }
+
+        private static string? NormalizeStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return null;
+
+            var normalized = status.Trim().ToLowerInvariant();
+            return AllowedStatuses.Contains(normalized) ? normalized : null;
         }
 
         private static object MapToDto(RouteModel r) => new

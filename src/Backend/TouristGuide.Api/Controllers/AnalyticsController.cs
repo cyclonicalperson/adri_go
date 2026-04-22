@@ -196,19 +196,37 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("regions")]
         public async Task<IActionResult> GetRegionPopularity()
         {
-            var regions = await _db.Regions
+            var isSuperAdmin = IsSuperAdmin();
+            var adminId = isSuperAdmin ? (uint?)null : GetCurrentAdminId();
+            if (!isSuperAdmin && adminId is null)
+                return Unauthorized();
+
+            var regionsQuery = _db.Regions
                 .Where(r => r.IsActive)
+                .AsQueryable();
+
+            if (adminId.HasValue)
+            {
+                regionsQuery = regionsQuery.Where(r =>
+                    r.Posts.Any(p => p.Status == "published" && p.AdminId == adminId.Value));
+            }
+
+            var regions = await regionsQuery
                 .Select(r => new
                 {
                     regionId = r.Id,
                     name = r.Name,
                     type = r.Type,
-                    numPosts = r.Posts.Count(p => p.Status == "published"),
-                    totalViews = r.Posts.Sum(p => (int?)p.ViewCount) ?? 0,
-                    totalLikes = r.Posts.Sum(p => (int?)p.LikeCount) ?? 0,
-                    avgRating = r.Posts.Any(p => p.AvgRating != null)
-                        ? r.Posts.Where(p => p.AvgRating != null).Average(p => (double?)p.AvgRating)
-                        : (double?)null
+                    numPosts = r.Posts.Count(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value)),
+                    totalViews = r.Posts
+                        .Where(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value))
+                        .Sum(p => (int?)p.ViewCount) ?? 0,
+                    totalLikes = r.Posts
+                        .Where(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value))
+                        .Sum(p => (int?)p.LikeCount) ?? 0,
+                    avgRating = r.Posts
+                        .Where(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value))
+                        .Average(p => (double?)p.AvgRating)
                 })
                 .OrderByDescending(r => r.totalViews)
                 .ToListAsync();
@@ -221,8 +239,21 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("movements")]
         public async Task<IActionResult> GetTouristMovements()
         {
-            var movements = await _db.PostViews
+            var isSuperAdmin = IsSuperAdmin();
+            var adminId = isSuperAdmin ? (uint?)null : GetCurrentAdminId();
+            if (!isSuperAdmin && adminId is null)
+                return Unauthorized();
+
+            var query = _db.PostViews
                 .Where(v => v.Post != null && v.Post.Region != null)
+                .AsQueryable();
+
+            if (adminId.HasValue)
+            {
+                query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
+            }
+
+            var movements = await query
                 .GroupBy(v => new
                 {
                     v.Post!.RegionId,

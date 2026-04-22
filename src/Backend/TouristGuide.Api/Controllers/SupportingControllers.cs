@@ -50,6 +50,7 @@ namespace TouristGuide.Api.Controllers
                     regionId = r.Id,
                     name = r.Name,
                     type = r.Type,
+                    description = r.Description,
                     country = r.Country,
                     lat = r.Lat,
                     lng = r.Lng,
@@ -75,6 +76,7 @@ namespace TouristGuide.Api.Controllers
                     regionId = r.Id,
                     name = r.Name,
                     type = r.Type,
+                    description = r.Description,
                     country = r.Country,
                     lat = r.Lat,
                     lng = r.Lng,
@@ -94,6 +96,7 @@ namespace TouristGuide.Api.Controllers
             {
                 Name = dto.Name.Trim(),
                 Type = dto.Type.Trim(),
+                Description = dto.Description?.Trim(),
                 Country = dto.Country?.Trim() ?? "Montenegro",
                 Lat = dto.Lat,
                 Lng = dto.Lng,
@@ -114,6 +117,7 @@ namespace TouristGuide.Api.Controllers
 
             if (dto.Name is not null) region.Name = dto.Name.Trim();
             if (dto.Type is not null) region.Type = dto.Type.Trim();
+            if (dto.Description is not null) region.Description = dto.Description.Trim();
             if (dto.Country is not null) region.Country = dto.Country.Trim();
             if (dto.Lat.HasValue) region.Lat = dto.Lat;
             if (dto.Lng.HasValue) region.Lng = dto.Lng;
@@ -140,6 +144,7 @@ namespace TouristGuide.Api.Controllers
     {
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
+        public string? Description { get; set; }
         public string? Country { get; set; }
         public decimal? Lat { get; set; }
         public decimal? Lng { get; set; }

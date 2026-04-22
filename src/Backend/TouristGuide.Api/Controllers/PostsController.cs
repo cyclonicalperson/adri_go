@@ -98,7 +98,7 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            if (!IsAdminUser() && !string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) && !CanViewUnpublishedPost(post))
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             return Ok(MapToDto(post));
@@ -288,6 +288,9 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
+            if (!CanManagePost(post))
+                return Forbid();
+
             if (dto.RegionId.HasValue)
             {
                 var regionExists = await _context.Regions.AnyAsync(r => r.Id == dto.RegionId.Value);
@@ -377,6 +380,9 @@ namespace TouristGuide.Api.Controllers
             var post = await _context.Posts.FindAsync(id);
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
+
+            if (!CanManagePost(post))
+                return Forbid();
 
             _context.Posts.Remove(post);
             await _context.SaveChangesAsync();
@@ -712,6 +718,20 @@ namespace TouristGuide.Api.Controllers
             return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
         }
+
+        private bool CanViewUnpublishedPost(Post post)
+        {
+            if (!IsAdminUser())
+                return false;
+
+            if (IsSuperAdmin())
+                return true;
+
+            var adminId = GetCurrentAdminId();
+            return adminId.HasValue && post.AdminId == adminId.Value;
+        }
+
+        private bool CanManagePost(Post post) => CanViewUnpublishedPost(post);
 
         #endregion
     }

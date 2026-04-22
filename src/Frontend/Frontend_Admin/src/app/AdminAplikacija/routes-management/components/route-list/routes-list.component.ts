@@ -112,8 +112,8 @@ export class RoutesListComponent implements OnInit {
     this.load();
   }
 
-  goNew(): void { this.router.navigate(['/admin/routes-mgmt/new']); }
-  goEdit(r: TouristRoute): void { this.router.navigate(['/admin/routes-mgmt', r.routeId, 'edit']); }
+  goNew(): void { this.router.navigate(['/admin/routes-management/new']); }
+  goEdit(r: TouristRoute): void { this.router.navigate(['/admin/routes-management', r.routeId, 'edit']); }
   confirmDelete(r: TouristRoute): void { this.deleteTarget = r; }
   cancelDelete(): void { this.deleteTarget = null; }
 

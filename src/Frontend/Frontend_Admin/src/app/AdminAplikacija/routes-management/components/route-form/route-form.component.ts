@@ -72,7 +72,7 @@ export class RouteFormComponent implements OnInit {
       this.service.getById(this.id!).subscribe((res: { data: any; }) => {
         const r = res.data;
         this.form.patchValue({
-          regionId: r.regionId,
+          regionId: r.destinationId ?? r.regionId,
           name: r.name,
           routeType: r.routeType,
           difficulty: r.difficulty,
@@ -116,6 +116,7 @@ export class RouteFormComponent implements OnInit {
 
     const payload = {
       ...this.form.value,
+      destinationId: this.form.value.regionId,
       startLatitude: first['latitude'],
       startLongitude: first['longitude'],
       endLatitude: last['latitude'],
@@ -128,10 +129,10 @@ export class RouteFormComponent implements OnInit {
       : this.service.create(payload);
 
     req$.subscribe({
-      next: () => this.router.navigate(['/admin/routes-mgmt']),
+      next: () => this.router.navigate(['/admin/routes-management']),
       error: (err: { message: string | null; }) => { this.error = err.message; this.saving = false; },
     });
   }
 
-  cancel(): void { this.router.navigate(['/admin/routes-mgmt']); }
+  cancel(): void { this.router.navigate(['/admin/routes-management']); }
 }

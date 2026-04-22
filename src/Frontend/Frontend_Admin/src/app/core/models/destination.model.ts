@@ -5,8 +5,9 @@ export interface Destination {
   name: string;
   type: DestinationType;
   description: string;
-  city: string;
-  region: string;
+  country: string;
+  city?: string;
+  region?: string;
   latitude: number;
   longitude: number;
   createdBy: number;
@@ -19,8 +20,7 @@ export interface CreateDestinationRequest {
   name: string;
   type: DestinationType;
   description: string;
-  city: string;
-  region: string;
+  country: string;
   latitude: number;
   longitude: number;
 }

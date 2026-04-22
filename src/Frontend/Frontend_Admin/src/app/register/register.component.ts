@@ -120,7 +120,7 @@ export class RegisterComponent {
     this.http.post(`${environment.apiUrl}/auth/register`, formData).subscribe({
       next: () => {
         this.loading = false;
-        this.successMsg = `Email za verifikaciju je poslat na ${this.email.value}. Proverite sanduče i kliknite na link da aktivirate nalog.`;
+        this.successMsg = `Zahtev za admin nalog je poslat za ${this.email.value}. Superadmin će ga pregledati nakon provere dokumentacije.`;
       },
       error: err => {
         this.loading = false;

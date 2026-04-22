@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
 using TouristGuide.Api.Models;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
@@ -13,10 +14,86 @@ namespace TouristGuide.Api.Controllers
     public class AdminRegistrationController : ControllerBase
     {
         private readonly AppDbContext _dbContext;
+        private readonly AdminIdentityService _adminIdentityService;
 
-        public AdminRegistrationController(AppDbContext dbContext)
+        public AdminRegistrationController(AppDbContext dbContext, AdminIdentityService adminIdentityService)
         {
             _dbContext = dbContext;
+            _adminIdentityService = adminIdentityService;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<object>> GetAll(
+            [FromQuery] string? status,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var normalizedStatus = NormalizeStatus(status);
+            if (status is not null && normalizedStatus is null)
+                return BadRequest(new { message = "Status mora biti pending, approved ili rejected." });
+
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+            var query = _dbContext.AdminRegistrationRequests.AsNoTracking().AsQueryable();
+            if (normalizedStatus is not null)
+                query = query.Where(x => x.Status == normalizedStatus);
+
+            var total = await query.CountAsync();
+
+            var rows = await query
+                .OrderByDescending(x => x.SubmittedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.FullName,
+                    x.Email,
+                    x.IsOrganization,
+                    x.IsIndividual,
+                    x.OrganizationName,
+                    x.OrganizationEmail,
+                    x.EmailVerifiedAt,
+                    x.Status,
+                    x.RejectionReason,
+                    x.SubmittedAt,
+                    x.ReviewedAt,
+                    x.ReviewedBy,
+                    DocumentPath = x.VerificationDocuments
+                        .OrderByDescending(v => v.UploadedAt)
+                        .Select(v => v.FilePath)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var data = rows.Select(x => new AdminRegistrationListItemDto
+            {
+                Id = x.Id,
+                FullName = x.FullName,
+                Email = x.Email,
+                IsOrganization = x.IsOrganization,
+                IsIndividual = x.IsIndividual,
+                OrganizationName = x.OrganizationName,
+                OrganizationEmail = x.OrganizationEmail,
+                EmailVerifiedAt = x.EmailVerifiedAt,
+                Status = x.Status,
+                RejectionReason = x.RejectionReason,
+                SubmittedAt = x.SubmittedAt,
+                ReviewedAt = x.ReviewedAt,
+                ReviewedBy = x.ReviewedBy,
+                DocumentUrl = ToDocumentUrl(x.DocumentPath)
+            }).ToList();
+
+            return Ok(new
+            {
+                total,
+                page,
+                pageSize,
+                totalPages = total == 0 ? 0 : (int)Math.Ceiling((double)total / pageSize),
+                data,
+                success = true
+            });
         }
 
         // ============================================================
@@ -29,7 +106,7 @@ namespace TouristGuide.Api.Controllers
             var pendingRequests = await _dbContext.AdminRegistrationRequests
                 .AsNoTracking()
                 .Where(x => x.Status == "pending")
-                .OrderBy(x => x.SubmittedAt)
+                .OrderByDescending(x => x.SubmittedAt)
                 .Select(x => new PendingAdminRegistrationDto
                 {
                     Id = x.Id,
@@ -67,6 +144,10 @@ namespace TouristGuide.Api.Controllers
             {
                 return Conflict(new { message = "Samo pending zahtevi mogu biti odobreni." });
             }
+
+            var reviewerId = _adminIdentityService.GetAdminId();
+            if (reviewerId is null)
+                return Unauthorized(new { message = "Superadmin nije autentifikovan." });
 
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
@@ -111,7 +192,7 @@ namespace TouristGuide.Api.Controllers
             request.Status = "approved";
             request.RejectionReason = null;
             request.ReviewedAt = DateTime.UtcNow;
-            request.ReviewedBy = decision?.ReviewedBy;
+            request.ReviewedBy = reviewerId.Value;
 
             await _dbContext.SaveChangesAsync();
 
@@ -146,12 +227,16 @@ namespace TouristGuide.Api.Controllers
                 return Conflict(new { message = "Samo pending zahtevi mogu biti odbijeni." });
             }
 
+            var reviewerId = _adminIdentityService.GetAdminId();
+            if (reviewerId is null)
+                return Unauthorized(new { message = "Superadmin nije autentifikovan." });
+
             request.Status = "rejected";
             request.RejectionReason = string.IsNullOrWhiteSpace(decision?.RejectionReason)
                 ? null
                 : decision.RejectionReason.Trim();
             request.ReviewedAt = DateTime.UtcNow;
-            request.ReviewedBy = decision?.ReviewedBy;
+            request.ReviewedBy = reviewerId.Value;
 
             await _dbContext.SaveChangesAsync();
 
@@ -184,6 +269,28 @@ namespace TouristGuide.Api.Controllers
                      x.Name.ToLower() == organizationName));
 
             return organization?.Id;
+        }
+
+        private static string? NormalizeStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return null;
+
+            return status.Trim().ToLowerInvariant() switch
+            {
+                "pending" => "pending",
+                "approved" => "approved",
+                "rejected" => "rejected",
+                _ => null
+            };
+        }
+
+        private static string? ToDocumentUrl(string? documentPath)
+        {
+            if (string.IsNullOrWhiteSpace(documentPath))
+                return null;
+
+            return $"/images/{documentPath.Replace("\\", "/")}";
         }
     }
 }

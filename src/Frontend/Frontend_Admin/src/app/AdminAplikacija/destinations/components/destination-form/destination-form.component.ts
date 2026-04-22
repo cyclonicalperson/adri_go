@@ -41,8 +41,7 @@ export class DestinationFormComponent implements OnInit {
       name: ['', Validators.required],
       type: ['CITY', Validators.required],
       description: ['', Validators.required],
-      city: ['', Validators.required],
-      region: ['', Validators.required],
+      country: ['Montenegro', Validators.required],
       latitude: [null, [Validators.required, Validators.min(-90), Validators.max(90)]],
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
     });
@@ -57,8 +56,7 @@ export class DestinationFormComponent implements OnInit {
           name: d.name,
           type: d.type,
           description: d.description,
-          city: d.city,
-          region: d.region,
+          country: d.country ?? 'Montenegro',
           latitude: d.latitude,
           longitude: d.longitude,
         });

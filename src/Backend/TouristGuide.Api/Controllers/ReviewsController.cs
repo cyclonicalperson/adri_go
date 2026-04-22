@@ -109,18 +109,12 @@ namespace TouristGuide.Api.Controllers
 
             review.Status = dto.Status.ToUpperInvariant();
             review.IsApproved = review.Status == "APPROVED";
+            var postId = review.PostId;
 
-            if (review.PostId.HasValue)
-            {
-                var post = await _db.Posts.FindAsync(review.PostId.Value);
-                if (post is not null)
-                {
-                    post.AvgRating = await _db.Reviews.Where(r => r.PostId == post.Id && r.Status == "APPROVED").AverageAsync(r => (decimal?)r.Rating);
-                    post.ReviewCount = (uint)await _db.Reviews.CountAsync(r => r.PostId == post.Id && r.Status == "APPROVED");
-                    post.UpdatedAt = DateTime.UtcNow;
-                }
-            }
             await _db.SaveChangesAsync();
+
+            if (postId.HasValue)
+                await RefreshPostReviewStatsAsync(postId.Value);
 
             return Ok(new { data = new { reviewId = review.Id, status = review.Status, isApproved = review.IsApproved }, success = true });
         }
@@ -138,16 +132,7 @@ namespace TouristGuide.Api.Controllers
             await _db.SaveChangesAsync();
 
             if (postId.HasValue)
-            {
-                var post = await _db.Posts.FindAsync(postId.Value);
-                if (post is not null)
-                {
-                    post.AvgRating = await _db.Reviews.Where(r => r.PostId == post.Id && r.Status == "APPROVED").AverageAsync(r => (decimal?)r.Rating);
-                    post.ReviewCount = (uint)await _db.Reviews.CountAsync(r => r.PostId == post.Id && r.Status == "APPROVED");
-                    post.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
-            }
+                await RefreshPostReviewStatsAsync(postId.Value);
 
             return Ok(new { success = true, message = $"Recenzija ID={id} je obrisana." });
         }
@@ -158,6 +143,20 @@ namespace TouristGuide.Api.Controllers
             if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) && !string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase)) return null;
             var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             return uint.TryParse(value, out var adminId) ? adminId : null;
+        }
+
+        private async Task RefreshPostReviewStatsAsync(uint postId)
+        {
+            var post = await _db.Posts.FindAsync(postId);
+            if (post is null)
+                return;
+
+            post.AvgRating = await _db.Reviews
+                .Where(r => r.PostId == post.Id && r.Status == "APPROVED")
+                .AverageAsync(r => (decimal?)r.Rating);
+            post.ReviewCount = (uint)await _db.Reviews.CountAsync(r => r.PostId == post.Id && r.Status == "APPROVED");
+            post.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
         }
     }
 
