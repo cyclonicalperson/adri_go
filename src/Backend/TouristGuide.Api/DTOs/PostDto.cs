@@ -32,5 +32,11 @@ namespace TouristGuide.Api.DTOs
         public DateTime? PublishedAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+
+        /// <summary>Lista ID-ova vezanih aktivnosti (tag_id iz post_tag)</summary>
+        public List<uint> TagIds { get; set; } = new();
+
+        /// <summary>Nazivi vezanih aktivnosti (tag.name) — za prikaz u detalju</summary>
+        public List<string> TagNames { get; set; } = new();
     }
 }

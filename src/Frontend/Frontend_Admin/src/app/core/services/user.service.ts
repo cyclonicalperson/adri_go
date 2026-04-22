@@ -1,6 +1,19 @@
+/**
+ * user.service.ts
+ *
+ * Mapirano na backend endpointe:
+ *   /api/admin-users          — AdminUsersController
+ *   /api/permissions          — PermissionsController
+ *   /api/roles                — RolesController
+ *   /api/organizations        — OrganizationsController
+ *   /api/admin-registration   — AdminRegistrationController
+ *   /api/admin-notifications  — AdminNotificationsController
+ *
+ * Backend response shape-ovi se mapiraju u frontend interfejse.
+ */
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   User, Organization, Permission, UserPermission, Role,
@@ -19,7 +32,7 @@ export class UserService {
 
   constructor(private http: HttpClient) { }
 
-  // ── Admin Users (v_admin_users_full) ──────────────────────────────────
+  // ── Admin Users ────────────────────────────────────────────────────────────
   getAll(req: PageRequest & {
     role?: AdminRole;
     accountStatus?: string;
@@ -36,103 +49,217 @@ export class UserService {
     if (req.accountStatus) params = params.set('accountStatus', req.accountStatus);
     if (req.organizationId) params = params.set('organizationId', req.organizationId);
 
-    return this.http.get<PaginatedResponse<User>>(this.url, { params });
-  }
-
-  getById(id: number): Observable<ApiResponse<User>> {
-    return this.http.get<ApiResponse<User>>(`${this.url}/${id}`);
-  }
-
-  create(payload: CreateUserRequest): Observable<ApiResponse<User>> {
-    return this.http.post<ApiResponse<User>>(this.url, payload);
-  }
-
-  update(id: number, payload: UpdateUserRequest): Observable<ApiResponse<User>> {
-    return this.http.put<ApiResponse<User>>(`${this.url}/${id}`, payload);
-  }
-
-  suspend(id: number): Observable<ApiResponse<User>> {
-    return this.http.patch<ApiResponse<User>>(`${this.url}/${id}/suspend`, {});
-  }
-
-  activate(id: number): Observable<ApiResponse<User>> {
-    return this.http.patch<ApiResponse<User>>(`${this.url}/${id}/activate`, {});
-  }
-
-  delete(id: number): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.url}/${id}`);
-  }
-
-  // ── Permissions (admin_user_permission + admin_permission) ────────────
-  getUserPermissions(userId: number): Observable<ApiResponse<UserPermission[]>> {
-    return this.http.get<ApiResponse<UserPermission[]>>(`${this.url}/${userId}/permissions`);
-  }
-
-  grantPermission(userId: number, permissionId: number, regionId?: number): Observable<ApiResponse<void>> {
-    return this.http.post<ApiResponse<void>>(
-      `${this.url}/${userId}/permissions`,
-      { permissionId, regionId: regionId ?? null }
+    return this.http.get<any>(this.url, { params }).pipe(
+      map(res => ({
+        data: (res.data ?? []).map(mapUser),
+        total: res.total ?? 0,
+        page: res.page ?? req.page,
+        pageSize: res.pageSize ?? req.pageSize,
+        totalPages: res.totalPages ?? 1,
+      }))
     );
   }
 
+  getById(id: number): Observable<ApiResponse<User>> {
+    return this.http.get<any>(`${this.url}/${id}`).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: res.success ?? true }))
+    );
+  }
+
+  create(payload: CreateUserRequest): Observable<ApiResponse<User>> {
+    return this.http.post<any>(this.url, payload).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  update(id: number, payload: UpdateUserRequest): Observable<ApiResponse<User>> {
+    return this.http.put<any>(`${this.url}/${id}`, payload).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  /** Update own profile (any admin, calls PATCH /admin-users/me) */
+  updateSelf(payload: { fullName?: string; email?: string }): Observable<ApiResponse<User>> {
+    return this.http.patch<any>(`${this.url}/me`, payload).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  /** Change own password (calls PATCH /admin-users/me/password) */
+  changePassword(currentPassword: string, newPassword: string): Observable<ApiResponse<void>> {
+    return this.http.patch<any>(`${this.url}/me/password`, { currentPassword, newPassword }).pipe(
+      map(res => ({ data: undefined, success: res.success ?? true }))
+    );
+  }
+
+  suspend(id: number): Observable<ApiResponse<User>> {
+    return this.http.patch<any>(`${this.url}/${id}/suspend`, {}).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  activate(id: number): Observable<ApiResponse<User>> {
+    return this.http.patch<any>(`${this.url}/${id}/activate`, {}).pipe(
+      map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  delete(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<any>(`${this.url}/${id}`).pipe(
+      map(res => ({ data: undefined, success: res.success ?? true }))
+    );
+  }
+
+  // ── Permissions ────────────────────────────────────────────────────────────
+  getUserPermissions(userId: number): Observable<ApiResponse<UserPermission[]>> {
+    return this.http.get<any>(`${this.url}/${userId}/permissions`).pipe(
+      map(res => ({ data: res.data ?? [], success: res.success ?? true }))
+    );
+  }
+
+  grantPermission(userId: number, permissionId: number, regionId?: number): Observable<ApiResponse<void>> {
+    return this.http.post<any>(
+      `${this.url}/${userId}/permissions`,
+      { permissionId, regionId: regionId ?? null }
+    ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
+  }
+
   revokePermission(userId: number, permissionId: number): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.url}/${userId}/permissions/${permissionId}`);
+    return this.http.delete<any>(`${this.url}/${userId}/permissions/${permissionId}`).pipe(
+      map(res => ({ data: undefined, success: res.success ?? true }))
+    );
   }
 
   getAllPermissions(): Observable<ApiResponse<Permission[]>> {
-    return this.http.get<ApiResponse<Permission[]>>(`${environment.apiUrl}/permissions`);
+    return this.http.get<any>(`${environment.apiUrl}/permissions`).pipe(
+      map(res => ({ data: res.data ?? [], success: res.success ?? true }))
+    );
   }
 
-  // ── Roles (kompatibilnost sa user-form i roles-permissions) ──────────────
+  // ── Roles ──────────────────────────────────────────────────────────────────
   getRoles(): Observable<ApiResponse<Role[]>> {
-    return this.http.get<ApiResponse<Role[]>>(`${environment.apiUrl}/roles`);
+    return this.http.get<any>(`${environment.apiUrl}/roles`).pipe(
+      map(res => ({ data: res.data ?? [], success: res.success ?? true }))
+    );
   }
 
-  // ── Organizations ─────────────────────────────────────────────────────
+  // ── Organizations ──────────────────────────────────────────────────────────
   getOrganizations(): Observable<ApiResponse<Organization[]>> {
-    return this.http.get<ApiResponse<Organization[]>>(`${environment.apiUrl}/organizations`);
+    return this.http.get<any>(`${environment.apiUrl}/organizations`).pipe(
+      map(res => ({ data: res.data ?? [], success: res.success ?? true }))
+    );
   }
 
-  // ── Registration Requests (admin_registration_request) ───────────────
-  getRegistrationRequests(req: PageRequest & { status?: string }): Observable<PaginatedResponse<RegistrationRequest>> {
+  // ── Registration Requests ──────────────────────────────────────────────────
+  // Frontend zove /registrations ali backend ima /admin-registration
+  getRegistrationRequests(
+    req: PageRequest & { status?: string },
+    options?: { context?: any }
+  ): Observable<PaginatedResponse<RegistrationRequest>> {
     let params = new HttpParams()
       .set('page', req.page)
       .set('pageSize', req.pageSize);
     if (req.status) params = params.set('status', req.status);
-    return this.http.get<PaginatedResponse<RegistrationRequest>>(
-      `${environment.apiUrl}/registrations`, { params }
+
+    return this.http.get<any>(`${environment.apiUrl}/admin-registration/pending`, { params }).pipe(
+      map(res => {
+        // AdminRegistrationController.GetPending vraća plain niz, ne paginirani objekat
+        const list: any[] = Array.isArray(res) ? res : res.data ?? [];
+        let filtered = list;
+        if (req.status) filtered = list.filter((r: any) => r.status === req.status);
+
+        const total = filtered.length;
+        const page = req.page;
+        const pageSize = req.pageSize;
+        const data = filtered
+          .slice((page - 1) * pageSize, page * pageSize)
+          .map(mapRegistration);
+
+        return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+      })
     );
   }
 
   approveRegistration(id: number): Observable<ApiResponse<void>> {
-    return this.http.patch<ApiResponse<void>>(
-      `${environment.apiUrl}/registrations/${id}/approve`, {}
-    );
+    return this.http.post<any>(
+      `${environment.apiUrl}/admin-registration/${id}/approve`, {}
+    ).pipe(map(res => ({ data: undefined, success: true })));
   }
 
   rejectRegistration(id: number, payload: ApproveRegistrationRequest): Observable<ApiResponse<void>> {
-    return this.http.patch<ApiResponse<void>>(
-      `${environment.apiUrl}/registrations/${id}/reject`, payload
-    );
+    return this.http.post<any>(
+      `${environment.apiUrl}/admin-registration/${id}/reject`,
+      { rejectionReason: payload.rejectionReason }
+    ).pipe(map(res => ({ data: undefined, success: true })));
   }
 
-  // ── Admin Notifications (admin_notification) ──────────────────────────
-  getNotifications(unreadOnly = false): Observable<ApiResponse<AdminNotification[]>> {
+  // ── Admin Notifications ────────────────────────────────────────────────────
+  getNotifications(optionsOrUnreadOnly: boolean | { context?: any } = false): Observable<ApiResponse<AdminNotification[]>> {
+    const unreadOnly = typeof optionsOrUnreadOnly === 'boolean' ? optionsOrUnreadOnly : false;
+    const httpOptions = typeof optionsOrUnreadOnly === 'object' ? optionsOrUnreadOnly : {};
     const params = unreadOnly ? new HttpParams().set('unreadOnly', true) : undefined;
-    return this.http.get<ApiResponse<AdminNotification[]>>(
-      `${environment.apiUrl}/admin-notifications`, { params }
+    return this.http.get<any>(
+      `${environment.apiUrl}/admin-notifications`, { params, ...httpOptions }
+    ).pipe(
+      map(res => ({ data: res.data ?? [], success: res.success ?? true }))
     );
   }
 
   markNotificationRead(id: number): Observable<ApiResponse<void>> {
-    return this.http.patch<ApiResponse<void>>(
+    return this.http.patch<any>(
       `${environment.apiUrl}/admin-notifications/${id}/read`, {}
-    );
+    ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
   }
 
   markAllNotificationsRead(): Observable<ApiResponse<void>> {
-    return this.http.patch<ApiResponse<void>>(
+    return this.http.patch<any>(
       `${environment.apiUrl}/admin-notifications/read-all`, {}
-    );
+    ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
   }
+
+  deleteNotification(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<any>(
+      `${environment.apiUrl}/admin-notifications/${id}`
+    ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
+  }
+}
+
+// ── Mapiranje funkcije ─────────────────────────────────────────────────────
+
+function mapUser(u: any): User {
+  if (!u) return {} as User;
+  return {
+    userId: u.userId ?? u.id,
+    organizationId: u.organizationId ?? null,
+    fullName: u.fullName ?? u.full_name ?? '',
+    email: u.email ?? '',
+    emailVerifiedAt: u.emailVerifiedAt ?? null,
+    role: u.role as AdminRole,
+    isIndividual: u.isIndividual ?? true,
+    accountStatus: u.accountStatus ?? 'pending',
+    profileImage: u.profileImage ?? null,
+    lastLoginAt: u.lastLoginAt ?? null,
+    createdAt: u.createdAt ?? '',
+    isActive: u.isActive ?? u.accountStatus === 'active',
+    permissionCount: u.permissionCount ?? 0,
+    organization: u.organization ?? null,
+  };
+}
+
+function mapRegistration(r: any): RegistrationRequest {
+  if (!r) return {} as RegistrationRequest;
+  return {
+    id: r.id,
+    fullName: r.fullName ?? '',
+    email: r.email ?? '',
+    isIndividual: r.isIndividual ?? !r.isOrganization,
+    organizationName: r.organizationName ?? null,
+    organizationEmail: r.organizationEmail ?? null,
+    emailVerifiedAt: r.emailVerifiedAt ?? null,
+    status: r.status ?? 'pending',
+    rejectionReason: r.rejectionReason ?? null,
+    submittedAt: r.submittedAt ?? r.submitted_at ?? '',
+    reviewedAt: r.reviewedAt ?? null,
+    reviewedBy: r.reviewedBy ?? null,
+  };
 }

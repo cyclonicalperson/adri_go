@@ -90,9 +90,9 @@
         </div>
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
-            <div class="kpi-icon-wrap">📍</div>
-            <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
-            <div class="kpi-lbl">Lokacije</div>
+            <div class="kpi-icon-wrap">🏢</div>
+            <div class="kpi-val">{{ stats?.totalLocations ?? 0 }}</div>
+            <div class="kpi-lbl">Destinacije</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
             <div class="kpi-icon-wrap">🗺️</div>
@@ -126,6 +126,7 @@
           <div class="panel-title">Turistički pregled</div>
           <div class="panel-sub">Na osnovu podataka iz baze</div>
         </div>
+        @if (isSuperAdmin) {
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">👣</div>
@@ -143,6 +144,25 @@
             <div class="kpi-lbl">Recenzija na čekanju</div>
           </div>
         </div>
+        } @else {
+        <div class="kpi-row">
+          <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
+            <div class="kpi-icon-wrap">📍</div>
+            <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
+            <div class="kpi-lbl">Mojih lokacija</div>
+          </div>
+          <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
+            <div class="kpi-icon-wrap">⭐</div>
+            <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
+            <div class="kpi-lbl">Recenzija na čekanju</div>
+          </div>
+          <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
+            <div class="kpi-icon-wrap">📍</div>
+            <div class="kpi-val">{{ totalVisits }}</div>
+            <div class="kpi-lbl">Poseta na mojim obj.</div>
+          </div>
+        </div>
+        }
       </div>
       }
 
@@ -161,34 +181,28 @@
         <div class="panel-body">
           <div class="chart-wrap">
             <div class="chart-y-axis">
-              <span>{{ maxVisitCount }}</span>
-              <span>{{ Math.round(maxVisitCount * 0.66) }}</span>
-              <span>{{ Math.round(maxVisitCount * 0.33) }}</span>
+              <span>{{ maxVisit30 }}</span>
+              <span>{{ Math.round(maxVisit30 * 0.66) }}</span>
+              <span>{{ Math.round(maxVisit30 * 0.33) }}</span>
               <span>0</span>
             </div>
             <div class="chart-area">
-              @for (v of visits; track v.date; let i = $index) {
+              @for (v of visits30; track v.date) {
               <div class="bar bar-green"
-                   [style.height.%]="barHeight(v.count)"
+                   [style.height.%]="barHeight30(v.count)"
+                   [class.bar-empty]="v.count === 0"
                    [attr.data-tooltip]="formatBarDate(v.date) + ': ' + v.count + ' pregleda'"></div>
-              }
-              @if (visits.length === 0) {
-              @for (h of [55,72,44,88,61,50,80,66,91,74,48,95,57,70,84,60,77,42,88,65]; track $index) {
-              <div class="bar bar-green" [style.height.%]="h"></div>
-              }
               }
             </div>
           </div>
           <div class="chart-labels">
-            @if (visits.length >= 7) {
-            <span>{{ visits[0]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length/6)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length/3)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length/2)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length*2/3)]?.date?.slice(5) }}</span>
-            <span>{{ visits[Math.floor(visits.length*5/6)]?.date?.slice(5) }}</span>
-            <span>{{ visits[visits.length - 1]?.date?.slice(5) }}</span>
-            }
+            <span>{{ visits30[0]?.date?.slice(5) }}</span>
+            <span>{{ visits30[5]?.date?.slice(5) }}</span>
+            <span>{{ visits30[10]?.date?.slice(5) }}</span>
+            <span>{{ visits30[15]?.date?.slice(5) }}</span>
+            <span>{{ visits30[20]?.date?.slice(5) }}</span>
+            <span>{{ visits30[25]?.date?.slice(5) }}</span>
+            <span>{{ visits30[29]?.date?.slice(5) }}</span>
           </div>
         </div>
       </div>
@@ -197,8 +211,11 @@
       <!-- ── CATEGORY DONUT ────────────────────────────────────────── -->
       @case ('category_donut') {
       <div class="panel widget">
-        <div class="panel-header"><div class="panel-title">Raspored po tipu</div></div>
+        <div class="panel-header"><div class="panel-title">Raspored po tipu</div><div class="panel-sub">Na osnovu stvarnih podataka</div></div>
         <div class="panel-body">
+          @if (categoryBreakdown.length === 0) {
+          <div class="state-msg">Učitavanje…</div>
+          }
           <div class="category-bars">
             @for (cat of categoryBreakdown; track cat.label) {
             <div class="cat-row">
@@ -206,7 +223,7 @@
               <div class="cat-bar-wrap">
                 <div class="cat-bar-fill" [style.width.%]="cat.pct" [style.background]="cat.color"></div>
               </div>
-              <span class="cat-val">{{ cat.pct }}%</span>
+              <span class="cat-val">{{ cat.count }} ({{ cat.pct }}%)</span>
             </div>
             }
           </div>
@@ -218,7 +235,7 @@
       @case ('top_lokacije') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Top lokacije</div><div class="panel-sub">Po broju pregleda</div></div>
+          <div><div class="panel-title">Top destinacije</div><div class="panel-sub">Po broju pregleda</div></div>
           <a routerLink="/admin/lokacije" class="panel-link">Sve →</a>
         </div>
         <div class="panel-body">
@@ -297,8 +314,8 @@
               <div class="req-meta">{{ req.meta }}</div>
             </div>
             <div class="req-actions">
-              <button class="btn btn-xs btn-approve">✓</button>
-              <button class="btn btn-xs btn-reject">✗</button>
+              <button class="btn btn-xs btn-approve" (click)="approveRequest(req); $event.stopPropagation()">✓</button>
+              <button class="btn btn-xs btn-reject" (click)="rejectRequest(req); $event.stopPropagation()">✗</button>
             </div>
           </div>
           }
@@ -359,7 +376,7 @@
       @case ('tourist_map') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Mapa lokacija</div><div class="panel-sub">Sve lokacije na platformi</div></div>
+          <div><div class="panel-title">Mapa destinacija</div><div class="panel-sub">Sve destinacije na platformi</div></div>
           <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
         </div>
         <div class="panel-body">
@@ -377,6 +394,9 @@
       <div class="panel widget">
         <div class="panel-header"><div class="panel-title">Sklonosti turista</div></div>
         <div class="panel-body">
+          @if (preferences.length === 0) {
+          <div class="state-msg">Nema pregleda.</div>
+          }
           @for (p of preferences; track p.label) {
           <div class="pref-item">
             <div class="pref-header"><span class="pref-label">{{ p.label }}</span><span class="pref-pct">{{ p.pct }}%</span></div>
@@ -392,6 +412,9 @@
       <div class="panel widget">
         <div class="panel-header"><div class="panel-title">Po gradu</div><div class="panel-sub">Distribucija pregleda</div></div>
         <div class="panel-body">
+          @if (cityBreakdown.length === 0) {
+          <div class="state-msg">Nema pregleda.</div>
+          }
           @for (c of cityBreakdown; track c.label) {
           <div class="pref-item">
             <div class="pref-header"><span class="pref-label">{{ c.label }}</span><span class="pref-pct">{{ c.pct }}%</span></div>

@@ -136,7 +136,7 @@ namespace TouristGuide.Api.Controllers
                 emailOrPhone = tourist.Email,
                 language = "English", // Ovo za sad možemo da ostavimo fiksno
                 interests = new[] { "nature", "nightlife" }, // I ovo ostavljamo za sad fiksno
-                stats = new { saved = 0, tickets = 0, upcoming = 0 } 
+                stats = new { saved = 0, tickets = 0, upcoming = 0 }
             };
 
             return Ok(userProfile);

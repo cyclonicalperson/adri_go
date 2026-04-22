@@ -8,7 +8,7 @@
       </button>
       <button class="layer-btn" [class.active]="layer === 'locations'"
               (click)="setLayer('locations')">
-        Lokacije
+        Destinacije
       </button>
       <button class="layer-btn" [class.active]="layer === 'events'"
               (click)="setLayer('events')">
@@ -22,7 +22,7 @@
 
     <div class="counts">
       <span class="count-item">
-        Lokacije: <strong>{{ locationCount }}</strong>
+        Destinacije: <strong>{{ locationCount }}</strong>
       </span>
       <span class="count-item">
         Dogadjaji: <strong>{{ eventCount }}</strong>

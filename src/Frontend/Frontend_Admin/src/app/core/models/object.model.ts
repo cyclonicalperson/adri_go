@@ -50,9 +50,12 @@ export interface CreateObjectRequest {
   website?: string;
   workingHours?: string;
   activityIds?: number[];
+  media?: Media[];
 }
 
-export interface UpdateObjectRequest extends Partial<CreateObjectRequest> { }
+export interface UpdateObjectRequest extends Partial<CreateObjectRequest> {
+  status?: 'draft' | 'published' | 'archived';
+}
 
 import { Activity } from './activity.model';
 import { Media } from './destination.model';

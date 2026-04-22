@@ -8,6 +8,17 @@ interface CalendarDay {
   events: Post[];
 }
 
+const CATEGORY_COLORS: Record<string, { bg: string; border: string; label: string }> = {
+  CONCERT: { bg: '#ede9fe', border: '#7c3aed', label: '🎵 Koncert' },
+  FESTIVAL: { bg: '#fef3c7', border: '#d97706', label: '🎪 Festival' },
+  SPORT: { bg: '#dbeafe', border: '#2563eb', label: '⚽ Sport' },
+  EXHIBITION: { bg: '#f0fdf4', border: '#16a34a', label: '🖼️ Izložba' },
+  CONFERENCE: { bg: '#f0f9ff', border: '#0284c7', label: '🎤 Konferencija' },
+  FOOD: { bg: '#fff7ed', border: '#ea580c', label: '🍽️ Hrana' },
+  ART: { bg: '#fdf4ff', border: '#9333ea', label: '🎨 Umetnost' },
+  OTHER: { bg: '#f3f4f6', border: '#6b7280', label: '📅 Ostalo' },
+};
+
 @Component({
   selector: 'app-event-calendar',
   standalone: true,
@@ -23,6 +34,10 @@ export class EventCalendarComponent implements OnChanges {
   weeks: CalendarDay[][] = [];
 
   readonly dayNames = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+
+  readonly categoryLegend = Object.entries(CATEGORY_COLORS)
+    .filter(([k]) => k !== 'OTHER')
+    .map(([, v]) => ({ label: v.label, color: v.border }));
 
   ngOnChanges(): void {
     this.buildCalendar();
@@ -42,14 +57,55 @@ export class EventCalendarComponent implements OnChanges {
     this.buildCalendar();
   }
 
-  private eventStart(e: Post): Date {
-    const d = e.details as any;
-    return d?.eventStart ? new Date(d.eventStart) : new Date(e.createdAt);
+  private parseDetails(e: Post): any {
+    const d = e.details;
+    if (!d) return null;
+    if (typeof d === 'object') return d;
+    try { return JSON.parse(d as any); } catch { return null; }
   }
 
-  private eventEnd(e: Post): Date {
-    const d = e.details as any;
-    return d?.eventEnd ? new Date(d.eventEnd) : new Date(e.createdAt);
+  private eventStartDate(e: Post): Date {
+    const d = this.parseDetails(e);
+    const raw = d?.startAt ?? d?.eventStart;
+    const dt = raw ? new Date(raw) : new Date(e.createdAt);
+    dt.setHours(0, 0, 0, 0);
+    return dt;
+  }
+
+  private eventEndDate(e: Post): Date {
+    const d = this.parseDetails(e);
+    const raw = d?.endAt ?? d?.eventEnd;
+    const dt = raw ? new Date(raw) : this.eventStartDate(e);
+    dt.setHours(23, 59, 59, 999);
+    return dt;
+  }
+
+  private eventCategory(e: Post): string {
+    const d = this.parseDetails(e);
+    return (d?.category ?? 'OTHER').toUpperCase();
+  }
+
+  categoryColor(e: Post): string {
+    return CATEGORY_COLORS[this.eventCategory(e)]?.bg ?? CATEGORY_COLORS['OTHER'].bg;
+  }
+
+  categoryColorDark(e: Post): string {
+    return CATEGORY_COLORS[this.eventCategory(e)]?.border ?? CATEGORY_COLORS['OTHER'].border;
+  }
+
+  /** Vraća true ako je ovaj datum PRVI dan dogadjaja (prikazuje naziv) */
+  isEventStart(date: Date, e: Post): boolean {
+    const start = this.eventStartDate(e);
+    return date.toDateString() === start.toDateString();
+  }
+
+  formatDateRange(e: Post): string {
+    const start = this.eventStartDate(e);
+    const end = this.eventEndDate(e);
+    const fmt = (d: Date) => d.toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit' });
+    return start.toDateString() === end.toDateString()
+      ? fmt(start)
+      : `${fmt(start)} – ${fmt(end)}`;
   }
 
   private buildCalendar(): void {
@@ -59,7 +115,7 @@ export class EventCalendarComponent implements OnChanges {
     today.setHours(0, 0, 0, 0);
 
     const firstDay = new Date(year, month, 1);
-    const startOffset = (firstDay.getDay() + 6) % 7; // Monday-first
+    const startOffset = (firstDay.getDay() + 6) % 7;
     const start = new Date(firstDay);
     start.setDate(start.getDate() - startOffset);
 
@@ -84,31 +140,12 @@ export class EventCalendarComponent implements OnChanges {
   }
 
   private eventsForDay(date: Date): Post[] {
+    const d = new Date(date);
+    d.setHours(12, 0, 0, 0);
     return this.events.filter(e => {
-      const start = this.eventStart(e);
-      const end = this.eventEnd(e);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return date >= start && date <= end;
+      const start = this.eventStartDate(e);
+      const end = this.eventEndDate(e);
+      return d >= start && d <= end;
     });
-  }
-
-  categoryColor(e: Post): string {
-    const cat = (e.details as any)?.category ?? '';
-    const map: Record<string, string> = {
-      CONCERT: '#8B5CF6',
-      FESTIVAL: '#F59E0B',
-      SPORT: '#3FA26E',
-      EXHIBITION: '#1A73E8',
-      TOUR: '#10B981',
-      THEATER: '#7C3AED',
-      CONFERENCE: '#2563EB',
-      OTHER: '#6B7280',
-    };
-    return map[cat] ?? '#6B7280';
-  }
-
-  eventTitle(e: Post): string {
-    return e.title;
   }
 }

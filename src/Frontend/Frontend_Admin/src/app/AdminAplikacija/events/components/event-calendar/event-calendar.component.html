@@ -1,38 +1,46 @@
 <div class="calendar">
 
   <div class="cal-header">
-    <button class="nav-btn" (click)="prevMonth()">&#8592;</button>
-    <span class="month-label">{{ monthLabel }}</span>
-    <button class="nav-btn" (click)="nextMonth()">&#8594;</button>
+    <button class="nav-btn" (click)="prevMonth()">‹</button>
+    <h3 class="month-label">{{ monthLabel }}</h3>
+    <button class="nav-btn" (click)="nextMonth()">›</button>
   </div>
 
   <div class="day-names">
-    @for (day of dayNames; track day) {
-    <div class="day-name">{{ day }}</div>
+    @for (d of dayNames; track d) {
+    <div class="day-name">{{ d }}</div>
     }
   </div>
 
   <div class="grid">
     @for (week of weeks; track $index) {
-    @for (day of week; track day.date.getTime()) {
-    <div class="day-cell"
-         [class.other-month]="!day.isCurrentMonth"
-         [class.today]="day.isToday">
-      <div class="day-num">{{ day.date.getDate() }}</div>
+    @for (day of week; track $index) {
+    <div class="cell" [class.other-month]="!day.isCurrentMonth" [class.today]="day.isToday">
+      <div class="date-num">{{ day.date.getDate() }}</div>
 
-      <div class="day-events">
-        @for (ev of day.events.slice(0, 3); track ev.postId) {
-        <div class="event-pill"
-             [style.background]="categoryColor(ev)"
-             (click)="editEvent.emit(ev)"
-             [title]="ev.title">{{ ev.title }}</div>
-        }
-        @if (day.events.length > 3) {
-        <div class="more">+{{ day.events.length - 3 }} još</div>
+      @for (e of day.events; track e.id) {
+      <div class="event-bar"
+           [style.background]="categoryColor(e)"
+           [style.border-left-color]="categoryColorDark(e)"
+           [title]="e.title + ' (' + formatDateRange(e) + ')'"
+           (click)="editEvent.emit(e)">
+        @if (isEventStart(day.date, e)) {
+        <span class="event-label">{{ e.title }}</span>
         }
       </div>
+      }
     </div>
     }
+    }
+  </div>
+
+  <!-- Legenda -->
+  <div class="legend">
+    @for (item of categoryLegend; track item.label) {
+    <div class="legend-item">
+      <span class="legend-dot" [style.background]="item.color"></span>
+      <span>{{ item.label }}</span>
+    </div>
     }
   </div>
 

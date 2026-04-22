@@ -1,26 +1,19 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace TouristGuide.Api.DTOs
 {
-    /// <summary>
-    /// DTO koji admin šalje pri izmeni objave (PUT /posts/{id}).
-    /// Sva polja su opcionalna — menja se samo ono što se pošalje.
-    /// </summary>
     public class UpdatePostDto
     {
         public uint? RegionId { get; set; }
 
-        [MaxLength(300, ErrorMessage = "Naslov ne smije biti duži od 300 znakova.")]
+        [MaxLength(300)]
         public string? Title { get; set; }
 
-        /// <summary>accommodation, restaurant, club, cultural_site,
-        /// monument, sports_facility, event, attraction, shop, other</summary>
         public string? PostType { get; set; }
-
         public string? Description { get; set; }
-
         public decimal? Lat { get; set; }
-
         public decimal? Lng { get; set; }
 
         [MaxLength(300)]
@@ -32,16 +25,30 @@ namespace TouristGuide.Api.DTOs
         [MaxLength(100)]
         public string? ExternalUrlLabel { get; set; }
 
-        /// <summary>JSON string sa nizom URL-ova slika.</summary>
-        public string? Images { get; set; }
+        // Prihvata i JSON string i direktni array/object od frontenda
+        public JsonNode? Images { get; set; }
+        public JsonNode? OpeningHours { get; set; }
+        public JsonNode? Details { get; set; }
 
-        /// <summary>JSON string sa radnim vremenom po danima.</summary>
-        public string? OpeningHours { get; set; }
-
-        /// <summary>JSON string sa specifičnim atributima po tipu.</summary>
-        public string? Details { get; set; }
-
-        /// <summary>draft | published | archived</summary>
         public string? Status { get; set; }
+
+        /// <summary>Lista ID-ova aktivnosti (tag) koji se vezuju za post. Null = ne mijenjaj. Prazan niz = ukloni sve.</summary>
+        public List<uint>? TagIds { get; set; }
+
+        // Helper: pretvara JsonNode u string za DB kolonu
+        public string? ImagesToString() => NormalizeJson(Images);
+        public string? OpeningHoursToString() => NormalizeJson(OpeningHours);
+        public string? DetailsToString() => NormalizeJson(Details);
+
+        private static string? NormalizeJson(JsonNode? node)
+        {
+            if (node is null) return null;
+            // Ako je string koji je već JSON — provjeri je li validan
+            if (node is JsonValue jv && jv.TryGetValue<string>(out var s))
+            {
+                try { JsonDocument.Parse(s); return s; } catch { /* nije JSON string */ }
+            }
+            return node.ToJsonString();
+        }
     }
 }

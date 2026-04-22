@@ -56,9 +56,15 @@ export class DestinationsListComponent implements OnInit {
     this.loading = true;
     this.service.getAll(this.req).subscribe({
       next: (res: { data: Destination[]; total: number; totalPages: number; }) => {
-        this.destinations = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
+        // Ako je trenutna stranica van opsega (npr. brisanje zadnje stavke na zadnjoj str)
+        if (this.req.page > this.totalPages && this.totalPages > 0) {
+          this.req = { ...this.req, page: this.totalPages };
+          this.load();
+          return;
+        }
+        this.destinations = res.data;
         this.loading = false;
       },
       error: () => { this.loading = false; },

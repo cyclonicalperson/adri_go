@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
@@ -63,9 +63,9 @@ export class ObjectFormComponent implements OnInit {
       address: ['', Validators.required],
       latitude: [null, [Validators.required, Validators.min(-90), Validators.max(90)]],
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
-      phone: [''],
-      website: [''],
-      workingHours: [''],
+      phone: ['', [Validators.pattern(/^(\+?[0-9\s\-\(\)]{6,20})?$/)]],
+      website: ['', [Validators.pattern(/^(https?:\/\/[^\s]+)?$/)]],
+      workingHours: ['', [Validators.pattern(/^([0-2]?[0-9]:[0-5][0-9]\s*[–\-]\s*[0-2]?[0-9]:[0-5][0-9]|Non[\-\s]stop|Nonstop|24\/7)?$/i)]],
     });
 
     this.destService.getAll({ page: 1, pageSize: 200 }).subscribe(res => {
@@ -108,7 +108,12 @@ export class ObjectFormComponent implements OnInit {
     this.saving = true;
     this.error = null;
 
-    const payload = { ...this.form.value, activityIds: this.selectedActivityIds };
+    // Filtriramo media — ne šaljemo base64 DataURL na server (nisu persistentni)
+    // Samo HTTP/HTTPS URLovi su validni za čuvanje u bazi
+    const validMedia = this.media.filter(m =>
+      m.url && (m.url.startsWith('http://') || m.url.startsWith('https://'))
+    );
+    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media: validMedia };
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)
@@ -116,7 +121,7 @@ export class ObjectFormComponent implements OnInit {
 
     req$.subscribe({
       next: () => this.router.navigate(['/admin/lokacije']),
-      error: (err: any) => { this.error = err.message ?? 'Greška pri čuvanju.'; this.saving = false; },
+      error: (err: any) => { this.error = err?.error?.message ?? err?.message ?? 'Greška pri čuvanju.'; this.saving = false; },
     });
   }
 

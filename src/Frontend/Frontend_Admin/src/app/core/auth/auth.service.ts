@@ -1,3 +1,11 @@
+/**
+ * auth.service.ts
+ *
+ * Backend AuthController.Login vraća:
+ *   { token: string, expiresAtUtc: string, user: { id, fullName, email, role, accountStatus, organizationId, isIndividual, permissions } }
+ *
+ * Ovaj servis normalizuje oba formata (mock i pravi backend).
+ */
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -12,9 +20,6 @@ export interface LoginRequest {
 
 /**
  * Roles match DB ENUM: admin_user.role = ENUM('superadmin','admin')
- *
- *  'superadmin' — Super Administrator — pun pristup svemu
- *  'admin'      — Administrator      — pristup ograničen dozvolama i regionom
  */
 export type AdminRole = 'superadmin' | 'admin';
 
@@ -24,8 +29,9 @@ export interface AuthUser {
   email: string;
   role: AdminRole;
   organizationId: number | null;
-  isIndividual: boolean;   // true = fizičko lice, false = organizacija
+  isIndividual: boolean;
   accountStatus: 'active' | 'suspended' | 'pending';
+  permissions?: string[];  // Nova polja iz backenda (permission codes)
 }
 
 export interface AuthResponse {
@@ -50,26 +56,31 @@ export class AuthService {
   login(payload: LoginRequest): Observable<AuthResponse> {
     return this.http.post<any>(`${this.apiUrl}/login`, payload).pipe(
       map(res => {
-        // Backend returns { token, user: { id, ... } }
-        // Mock returns { accessToken, user: { userId, ... } }
-        const user = res.user ?? {};
+        // Backend (pravi): { token, expiresAtUtc, user: { id, fullName, email, role, ... } }
+        // Mock:            { accessToken, user: { userId, ... } }
+        const raw = res.user ?? {};
+        const user: AuthUser = {
+          userId: raw.userId ?? raw.id ?? raw.Id ?? 0,
+          fullName: raw.fullName ?? raw.FullName ?? '',
+          email: raw.email ?? raw.Email ?? '',
+          role: (raw.role ?? raw.Role ?? 'admin') as AdminRole,
+          organizationId: raw.organizationId ?? raw.OrganizationId ?? null,
+          isIndividual: raw.isIndividual ?? raw.IsIndividual ?? true,
+          accountStatus: (raw.accountStatus ?? raw.AccountStatus ?? 'active') as any,
+          permissions: raw.permissions ?? raw.Permissions ?? [],
+        };
         return {
-          accessToken: res.accessToken ?? res.token,
-          user: {
-            userId: user.userId ?? user.id,
-            fullName: user.fullName ?? user.FullName,
-            email: user.email ?? user.Email,
-            role: (user.role ?? user.Role ?? 'admin') as AdminRole,
-            organizationId: user.organizationId ?? user.OrganizationId ?? null,
-            isIndividual: user.isIndividual ?? user.IsIndividual ?? true,
-            accountStatus: (user.accountStatus ?? user.AccountStatus ?? 'active') as 'active' | 'suspended' | 'pending',
-          }
+          accessToken: res.accessToken ?? res.token ?? res.Token ?? '',
+          user,
         } as AuthResponse;
       }),
       tap(res => {
-        this.tokenStorage.saveToken(res.accessToken);
-        this.tokenStorage.saveUser(res.user);
-        this._currentUser$.next(res.user);
+        // Suspended admin ne smije dobiti token
+        if (res.user.accountStatus !== 'suspended') {
+          this.tokenStorage.saveToken(res.accessToken);
+          this.tokenStorage.saveUser(res.user);
+          this._currentUser$.next(res.user);
+        }
       })
     );
   }
@@ -92,13 +103,15 @@ export class AuthService {
     return this.currentUser?.role ?? null;
   }
 
-  /** True if current user has at least one of the given roles */
   isRole(...roles: AdminRole[]): boolean {
     return !!this.role && roles.includes(this.role);
   }
 
-  /** Convenience: true only for superadmin */
   get isSuperAdmin(): boolean {
     return this.role === 'superadmin';
+  }
+
+  hasPermission(code: string): boolean {
+    return this.isSuperAdmin || (this.currentUser?.permissions?.includes(code) ?? false);
   }
 }

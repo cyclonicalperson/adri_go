@@ -6,6 +6,8 @@ import { environment } from '@env/environment';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 interface SimpleObject { objectId: number; name: string; }
+// Lokacija (post) koji se prikazuje u dropdownu aktivnosti
+interface SimplePost { id: number; title: string; postType: string; }
 
 @Component({
   selector: 'app-aktivnost-form',
@@ -46,7 +48,7 @@ export class AktivnostFormComponent implements OnInit {
     this.form = this.fb.group({
       name: ['', Validators.required],
       category: ['SPORT', Validators.required],
-      description: ['', Validators.required],
+      description: [''],
       duration: [''],
       difficulty: [''],
       maxCapacity: [null],
@@ -54,11 +56,17 @@ export class AktivnostFormComponent implements OnInit {
       objectId: [null],
       latitude: [null],
       longitude: [null],
-      status: ['PENDING'],
+      status: ['pending'],
     });
 
-    this.http.get<{ data: SimpleObject[] }>(`${environment.apiUrl}/objects?pageSize=100`)
-      .subscribe(res => { this.objects = res.data; });
+    // Učitavamo sve ne-event postove kao listu lokacija za dropdown
+    this.http.get<{ data: SimplePost[] }>(`${environment.apiUrl}/posts?pageSize=100`)
+      .subscribe(res => {
+        // Filtriramo evente i mapiramo u SimpleObject format
+        this.objects = (res.data ?? [])
+          .filter((p: SimplePost) => p.postType !== 'event')
+          .map((p: SimplePost) => ({ objectId: p.id, name: p.title }));
+      });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
@@ -68,13 +76,13 @@ export class AktivnostFormComponent implements OnInit {
         .subscribe(res => {
           const a = res.data;
           this.form.patchValue({
-            name: a.name, category: a.category, description: a.description,
+            name: a.name, category: a.category, description: a.description ?? '',
             duration: a.duration, difficulty: a.difficulty, maxCapacity: a.maxCapacity,
             tags: Array.isArray(a.tags) ? a.tags.join(', ') : (a.tags ?? ''),
-            objectId: a.objectId,
+            objectId: a.postId ?? a.objectId ?? null,
             latitude: a.latitude ?? a.lat ?? null,
             longitude: a.longitude ?? a.lng ?? null,
-            status: a.status,
+            status: (a.status ?? 'pending').toLowerCase(),
           });
           const lat = a.latitude ?? a.lat;
           const lng = a.longitude ?? a.lng;
@@ -91,11 +99,22 @@ export class AktivnostFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
-    const payload = {
-      ...raw,
-      tags: raw.tags
-        ? (raw.tags as string).split(',').map((t: string) => t.trim()).filter(Boolean)
-        : [],
+    const objectId = raw.objectId;
+
+    const payload: any = {
+      name: raw.name,
+      category: raw.category,
+      status: (raw.status ?? 'pending').toLowerCase(),
+      description: raw.description ?? '',
+      duration: raw.duration ?? '',
+      difficulty: raw.difficulty ?? '',
+      maxCapacity: raw.maxCapacity ?? null,
+      tags: raw.tags ?? '',
+      latitude: raw.latitude,
+      longitude: raw.longitude,
+      // Vezivanje za lokaciju: null znači standalone (odvezi), broj = veži
+      postId: objectId ?? null,
+      clearPost: objectId === null || objectId === undefined,
     };
 
     const url = this.isEdit
