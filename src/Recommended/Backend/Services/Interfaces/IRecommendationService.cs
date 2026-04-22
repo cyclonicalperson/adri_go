@@ -1,11 +1,13 @@
-using MontenegroTourGuide.Api.DTOs.Recommendations;
+using TouristGuide.Api.DTOs.Recommendations;
 
-namespace MontenegroTourGuide.Api.Services.Interfaces
+namespace TouristGuide.Api.Services.Interfaces
 {
     public interface IRecommendationService
     {
-        Task<List<CrossCategoryRecommendationDto>> GetCrossCategoryRecommendationsAsync(
-            string sourceCategory,
-            int destinationId);
+        Task<List<ContentRecommendationItemDto>> GetRecommendationsAsync(
+            uint regionId,
+            uint? touristId,
+            string contextMode = "onsite",
+            int take = 10);
     }
 }
