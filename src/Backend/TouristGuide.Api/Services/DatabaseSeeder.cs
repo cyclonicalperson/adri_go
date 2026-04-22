@@ -322,6 +322,10 @@ namespace TouristGuide.Api.Services
             if (await _db.Posts.AnyAsync()) return;
             _logger.LogInformation("[Seed] Objave...");
 
+            // Slike se čuvaju kao JSON niz putanja — URL-ovi koji se serviraju
+            // preko /images/posts/ static files endpointa.
+            // Nema podataka u bazi — samo putanje ka fajlovima na disku.
+
             _db.Posts.AddRange(
                 // ── SMJEŠTAJ ─────────────────────────────────────────────────
                 new Post
@@ -388,6 +392,19 @@ namespace TouristGuide.Api.Services
                     LikeCount = 89,
                     SaveCount = 52,
                     PublishedAt = new DateTime(2024, 4, 1, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = 7,
+                    RegionId = 5,
+                    Title = "Boutique apartmani Mogren (nacrt)",
+                    PostType = "accommodation",
+                    Description = "Novi apartmani na Mogren plaži. U pripremi za sezonu 2025.",
+                    Lat = 42.2780m,
+                    Lng = 18.8350m,
+                    Address = "Mogren bb, Budva",
+                    Details = """{"price_from":70,"currency":"EUR"}""",
+                    Status = "draft"
                 },
                 // ── RESTORANI ────────────────────────────────────────────────
                 new Post
@@ -525,6 +542,21 @@ namespace TouristGuide.Api.Services
                     ViewCount = 687,
                     LikeCount = 143,
                     PublishedAt = new DateTime(2024, 2, 15, 8, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = 3,
+                    RegionId = 2,
+                    Title = "Đavolja varoš Durmitor",
+                    PostType = "monument",
+                    Description = "Vulkanski oblici terena koji izgledaju kao kamene figure. Mistično i fotografski spektakularno.",
+                    Lat = 43.1450m,
+                    Lng = 19.0890m,
+                    Address = "NP Durmitor",
+                    Images = """["/images/posts/djavaros1.jpg"]""",
+                    Details = """{"entrance_fee":0,"guided_tours":true}""",
+                    Status = "published",
+                    PublishedAt = new DateTime(2024, 5, 20, 9, 0, 0, DateTimeKind.Utc)
                 },
                 new Post
                 {

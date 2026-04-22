@@ -1,11 +1,12 @@
-    using Microsoft.AspNetCore.Authentication.JwtBearer;
-    using Microsoft.EntityFrameworkCore;
-    using Microsoft.IdentityModel.Tokens;
-    using Microsoft.OpenApi.Models;
-    using System.Text;
-    using TouristGuide.Api.Data;
-    using TouristGuide.Api.Services;
-    using TouristGuide.Api.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using Microsoft.Extensions.FileProviders; 
+using TouristGuide.Api.Data;
+using TouristGuide.Api.Services;
+using TouristGuide.Api.Interfaces;
 
     var builder = WebApplication.CreateBuilder(args);
 
@@ -55,15 +56,20 @@
 
     builder.Services.AddAuthorization();
 
-    // ────────────────────────────────────────────────────────────
-    // 3. REGISTRACIJA SERVISA
-    // ────────────────────────────────────────────────────────────
-    builder.Services.AddScoped<JwtService>();
-    builder.Services.AddHttpContextAccessor();
-    builder.Services.AddScoped<AdminIdentityService>();
-    builder.Services.AddScoped<ILocationService, LocationService>();
-    builder.Services.AddScoped<IReviewService, ReviewService>();
-    builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
+// ────────────────────────────────────────────────────────────
+// 3. REGISTRACIJA SERVISA
+// ────────────────────────────────────────────────────────────
+builder.Services.AddScoped<JwtService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AdminIdentityService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<DatabaseSeeder>();
+// Servis za Review-ove
+builder.Services.AddScoped<IReviewService, ReviewService>();
     builder.Services.AddScoped<DatabaseSeeder>();
 
     builder.Services.AddControllers();
@@ -107,7 +113,6 @@
         ));
 
     var app = builder.Build();
-
     // ────────────────────────────────────────────────────────────
     // 6. MIGRACIJE + SEED
     // MigrateAsync kreira tabele i primjenjuje sve migracije.

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TouristGuide.Api.Models
@@ -44,6 +44,19 @@ namespace TouristGuide.Api.Models
 
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
+
+        /// <summary>Da li je email potvrđen</summary>
+        [Column("is_email_verified")]
+        public bool IsEmailVerified { get; set; } = false;
+
+        /// <summary>Token koji se šalje na email za verifikaciju (UUID)</summary>
+        [Column("email_verification_token")]
+        [MaxLength(100)]
+        public string? EmailVerificationToken { get; set; }
+
+        /// <summary>Vreme isteka verifikacionog tokena</summary>
+        [Column("email_verification_token_expires_at")]
+        public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
