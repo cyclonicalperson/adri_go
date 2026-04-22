@@ -1,7 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MontenegroTourGuide.Api.Services.Interfaces;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using TouristGuide.Api.Services.Interfaces;
 
-namespace MontenegroTourGuide.Api.Controllers
+namespace TouristGuide.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -14,19 +17,36 @@ namespace MontenegroTourGuide.Api.Controllers
             _recommendationService = recommendationService;
         }
 
-        [HttpGet("cross-category")]
-        public async Task<IActionResult> GetCrossCategoryRecommendations(
-            [FromQuery] string sourceCategory,
-            [FromQuery] int destinationId)
+        // Jedan glavni recommender endpoint.
+        // Servis sam odlucuje da li krece od popularity fallback-a
+        // ili od personalizovanog ranking-a.
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRecommendations(
+            [FromQuery] uint regionId,
+            [FromQuery] uint? touristId,
+            [FromQuery] string contextMode = "onsite",
+            [FromQuery] int take = 10)
         {
-            if (string.IsNullOrWhiteSpace(sourceCategory))
-                return BadRequest("sourceCategory je obavezan.");
+            if (regionId == 0)
+                return BadRequest(new { message = "regionId je obavezan." });
 
-            if (destinationId <= 0)
-                return BadRequest("destinationId mora biti validan.");
+            var resolvedTouristId = touristId ?? GetAuthorizedTouristId();
+            var data = await _recommendationService.GetRecommendationsAsync(
+                regionId,
+                resolvedTouristId,
+                contextMode,
+                take);
 
-            var data = await _recommendationService.GetCrossCategoryRecommendationsAsync(sourceCategory, destinationId);
             return Ok(data);
+        }
+
+        private uint? GetAuthorizedTouristId()
+        {
+            var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            return uint.TryParse(value, out var touristId) ? touristId : null;
         }
     }
 }
