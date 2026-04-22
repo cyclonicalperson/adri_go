@@ -65,6 +65,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AdminIdentityService>();
+builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 
 // Servis za Review-ove

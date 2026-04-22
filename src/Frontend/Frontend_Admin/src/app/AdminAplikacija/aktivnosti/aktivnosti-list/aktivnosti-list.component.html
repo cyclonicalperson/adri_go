@@ -1,6 +1,4 @@
 <div class="page-content">
-
-  <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeCategory && !activeStatus" (click)="clearAllFilters()">
       <div class="num">{{ globalTotal }}</div>
@@ -27,20 +25,17 @@
     </div>
   </div>
 
-  <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!activeCategory" (click)="setCategory('')">
       Sve ({{ globalTotal }})
     </button>
     @for (cat of categoryOptions.slice(1); track cat.value) {
-    <button class="ftab" [class.active]="activeCategory === cat.value"
-            (click)="setCategory(cat.value)">
+    <button class="ftab" [class.active]="activeCategory === cat.value" (click)="setCategory(cat.value)">
       {{ cat.label }}
     </button>
     }
   </div>
 
-  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!activeStatus" (click)="setStatus('')">
       Svi statusi
@@ -49,17 +44,16 @@
       ✅ Odobrene
     </button>
     <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
-      ⏳ Na čekanju
+      ⏳ Na čekanju ({{ pendingCount }})
     </button>
   </div>
 
-  <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretraži aktivnosti po nazivu…"
+             placeholder="Pretraži aktivnosti po nazivu..."
              [value]="searchQuery"
              (input)="onSearch($any($event.target).value)" />
     </div>
@@ -81,17 +75,17 @@
     <div class="btn-group">
       <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
       <button class="btn btn-outline" (click)="exportCsv()">📊 Izvezi CSV</button>
+      @if (canManageActivities) {
       <button class="btn btn-primary" (click)="openNew()">➕ Dodaj aktivnost</button>
+      }
     </div>
   </div>
 
-  <!-- ── TABLE ────────────────────────────────────────────────────────── -->
   @if (loading) {
   <div class="state-msg">Učitavanje...</div>
   } @else if (activities.length === 0) {
   <div class="state-msg">Nema rezultata za zadatu pretragu.</div>
   } @else {
-
   <div class="panel">
     <div class="panel-header">
       <div>
@@ -108,7 +102,7 @@
           <th>Lokacija (GPS)</th>
           <th>Vezana lokacija</th>
           <th>Pregledi</th>
-          <th>Status / Dozvola</th>
+          <th>Status</th>
           <th>Akcije</th>
         </tr>
       </thead>
@@ -152,14 +146,16 @@
           </td>
           <td (click)="$event.stopPropagation()">
             <div class="actions">
-              @if (a.status === 'pending') {
+              @if (a.status === 'pending' && canManageActivities) {
               <button class="btn-icon approve-btn" title="Odobri" (click)="approveActivity(a)">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="rejectActivity(a)">❌</button>
               }
               <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="showOnMap(a)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="openDetail(a)">👁️</button>
+              @if (canManageActivities) {
               <button class="btn-icon" title="Izmeni" (click)="editActivity(a)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(a)">🗑️</button>
+              }
             </div>
           </td>
         </tr>
@@ -178,16 +174,12 @@
       </div>
     </div>
   </div>
-
   }
-
 </div>
 
-<!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
 @if (detailOpen && detailActivity) {
 <div class="modal-overlay" (click)="closeDetail()">
   <div class="modal-wide" (click)="$event.stopPropagation()">
-
     <div class="modal-header">
       <div class="modal-title-row">
         <span class="modal-icon">{{ categoryIcon(detailActivity) }}</span>
@@ -200,7 +192,6 @@
     </div>
 
     <div class="modal-top-grid">
-      <!-- Lijevo: podaci -->
       <div class="modal-info">
         <div class="modal-rows">
           @if (detailActivity.description) {
@@ -240,7 +231,6 @@
         </div>
       </div>
 
-      <!-- Desno: mapa -->
       @if (detailActivity.lat && detailActivity.lng) {
       <div class="modal-map">
         <app-map [markers]="[{id: detailActivity.activityId, lat: detailActivity.lat!, lng: detailActivity.lng!, label: detailActivity.name}]"
@@ -254,14 +244,14 @@
 
     <div class="modal-footer">
       <button class="btn btn-outline" (click)="closeDetail()">Zatvori</button>
+      @if (canManageActivities) {
       <button class="btn btn-primary" (click)="editActivity(detailActivity); closeDetail()">✏️ Izmeni</button>
+      }
     </div>
-
   </div>
 </div>
 }
 
-<!-- ── MAP PANEL ─────────────────────────────────────────────────────── -->
 @if (mapOpen && mapActivity) {
 <div class="detail-overlay" (click)="closeMap()">
   <div class="detail-panel" (click)="$event.stopPropagation()" style="max-width:700px">
@@ -284,7 +274,6 @@
 </div>
 }
 
-<!-- ── DELETE DIALOG ──────────────────────────────────────────────────── -->
 @if (deleteTarget) {
 <app-confirm-dialog [visible]="true"
                     title="Obriši aktivnost"

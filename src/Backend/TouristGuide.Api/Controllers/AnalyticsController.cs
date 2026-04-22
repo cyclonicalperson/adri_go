@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
@@ -17,10 +18,12 @@ namespace TouristGuide.Api.Controllers
     public class AnalyticsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly AdminPermissionService _permissionService;
 
-        public AnalyticsController(AppDbContext db)
+        public AnalyticsController(AppDbContext db, AdminPermissionService permissionService)
         {
             _db = db;
+            _permissionService = permissionService;
         }
 
         // ── GET /api/analytics/stats ──────────────────────────────────────────
@@ -28,6 +31,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("stats")]
         public async Task<IActionResult> GetStats()
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var isSuperAdmin = IsSuperAdmin();
 
             if (isSuperAdmin)
@@ -69,9 +75,22 @@ namespace TouristGuide.Api.Controllers
                 var adminId = GetCurrentAdminId();
                 if (adminId is null) return Unauthorized();
 
-                var myPosts = await _db.Posts.CountAsync(p => p.AdminId == adminId.Value && p.Status == "published");
+                var myPublishedLocations = await _db.Posts.CountAsync(p =>
+                    p.AdminId == adminId.Value &&
+                    p.Status == "published" &&
+                    p.PostType != "event");
+
+                var myPublishedRoutes = await _db.Routes.CountAsync(r =>
+                    r.AdminId == adminId.Value &&
+                    r.Status == "published");
+
                 var myPendingReviews = await _db.Reviews
-                    .Where(r => r.Post != null && r.Post.AdminId == adminId.Value && r.Status == "PENDING")
+                    .Where(r =>
+                        r.Status == "PENDING" &&
+                        (
+                            (r.Post != null && r.Post.AdminId == adminId.Value) ||
+                            (r.Route != null && r.Route.AdminId == adminId.Value)
+                        ))
                     .CountAsync();
                 var unreadNotifs = await _db.AdminNotifications
                     .CountAsync(n => n.AdminUserId == adminId.Value && !n.IsRead);
@@ -82,8 +101,10 @@ namespace TouristGuide.Api.Controllers
                     {
                         totalTourists = 0,
                         totalAdmins = 0,
-                        totalPosts = myPosts,
-                        totalRoutes = 0,
+                        totalLocations = myPublishedLocations,
+                        totalPosts = myPublishedLocations,
+                        totalRegions = 0,
+                        totalRoutes = myPublishedRoutes,
                         pendingRegistrations = 0,
                         pendingReviews = myPendingReviews,
                         ticketsIssued = 0,
@@ -101,6 +122,9 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] string? from,
             [FromQuery] string? to)
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var fromDate = DateTime.TryParse(from, out var fd) ? fd : DateTime.UtcNow.AddDays(-30);
             var toDate = DateTime.TryParse(to, out var td) ? td : DateTime.UtcNow;
 
@@ -129,6 +153,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("popular/posts")]
         public async Task<IActionResult> GetPopularPosts([FromQuery] int limit = 10)
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
             var query = _db.Posts
@@ -162,6 +189,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("popular/events")]
         public async Task<IActionResult> GetPopularEvents([FromQuery] int limit = 10)
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
             var query = _db.Posts
@@ -196,6 +226,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("regions")]
         public async Task<IActionResult> GetRegionPopularity()
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var isSuperAdmin = IsSuperAdmin();
             var adminId = isSuperAdmin ? (uint?)null : GetCurrentAdminId();
             if (!isSuperAdmin && adminId is null)
@@ -239,6 +272,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("movements")]
         public async Task<IActionResult> GetTouristMovements()
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var isSuperAdmin = IsSuperAdmin();
             var adminId = isSuperAdmin ? (uint?)null : GetCurrentAdminId();
             if (!isSuperAdmin && adminId is null)

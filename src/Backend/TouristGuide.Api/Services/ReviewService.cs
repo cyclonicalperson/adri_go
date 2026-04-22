@@ -24,19 +24,19 @@ namespace TouristGuide.Api.Services
             var query = _context.Reviews
                 .AsNoTracking()
                 .Include(r => r.Post)
+                .Include(r => r.Route)
                 .Include(r => r.Tourist)
                 .AsQueryable();
 
             if (!string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase))
             {
-                // Admin vidi recenzije svojih postova; rute su globalne pa ih vide svi
+                // Admin vidi samo recenzije sadržaja koji je sam kreirao.
                 query = query.Where(r =>
                     (r.Post != null && r.Post.AdminId == currentAdminId) ||
-                    (r.RouteId != null && r.PostId == null));
+                    (r.Route != null && r.Route.AdminId == currentAdminId));
             }
 
             return await query
-                .Include(r => r.Route)
                 .OrderByDescending(r => r.CreatedAt)
                 .Take(500)  // Limit za performanse — frontend radi client-side pagination
                 .Select(r => new AdminReviewListItemDto

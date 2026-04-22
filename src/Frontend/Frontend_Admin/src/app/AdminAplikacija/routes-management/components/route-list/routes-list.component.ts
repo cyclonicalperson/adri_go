@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { RouteService } from '@core/services/route.service';
 import { RegionService } from '@core/services/region.service';
 import { TouristRoute, RouteType, RouteDifficulty } from '@core/models/route.model';
@@ -59,6 +60,7 @@ export class RoutesListComponent implements OnInit {
     private service: RouteService,
     private destService: RegionService,
     private router: Router,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -110,6 +112,10 @@ export class RoutesListComponent implements OnInit {
   onPage(p: number): void {
     this.req = { ...this.req, page: p };
     this.load();
+  }
+
+  get canCreateRoutes(): boolean {
+    return this.auth.hasPermission('create_route');
   }
 
   goNew(): void { this.router.navigate(['/admin/routes-management/new']); }

@@ -1,6 +1,4 @@
 <div class="page-content">
-
-  <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="onStatusFilter('')">
       <div class="num">{{ globalTotal }}</div>
@@ -23,10 +21,9 @@
     </div>
   </div>
 
-  <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!req.category" (click)="onCategoryChange('')">
-      Sve ({{ globalTotal }})
+      Sve
     </button>
     <button class="ftab" [class.active]="req.category === 'HOTEL'" (click)="onCategoryChange('HOTEL')">
       🏨 Hoteli
@@ -51,7 +48,6 @@
     </button>
   </div>
 
-  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!activeStatusFilter" (click)="onStatusFilter('')">
       Svi statusi
@@ -67,13 +63,12 @@
     </button>
   </div>
 
-  <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretraži destinacije po nazivu, gradu…"
+             placeholder="Pretraži lokacije po nazivu, opisu ili adresi..."
              [value]="req.search ?? ''"
              (input)="onSearch($any($event.target).value)" />
     </div>
@@ -104,21 +99,21 @@
     <div class="btn-group">
       <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
       <button class="btn btn-outline" (click)="exportCsv()">📊 Izvezi CSV</button>
+      @if (canManageObjects) {
       <button class="btn btn-primary" (click)="goNew()">➕ Dodaj lokaciju</button>
+      }
     </div>
   </div>
 
-  <!-- ── TABLE ────────────────────────────────────────────────────────── -->
   @if (loading) {
   <div class="state-msg">Učitavanje...</div>
   } @else if (objects.length === 0) {
   <div class="state-msg">Nema rezultata za zadatu pretragu.</div>
   } @else {
-
   <div class="panel">
     <div class="panel-header">
       <div>
-        <div class="panel-title">Sve destinacije</div>
+        <div class="panel-title">Sve lokacije</div>
         <div class="panel-sub">{{ total }} rezultata · stranica {{ req.page }} od {{ totalPages }}</div>
       </div>
       <div class="view-toggle">
@@ -129,9 +124,9 @@
     <table>
       <thead>
         <tr>
-          <th (click)="onSortCol('name')">Destinacija <span class="sort">↕</span></th>
+          <th (click)="onSortCol('name')">Lokacija <span class="sort">↕</span></th>
           <th>Kategorija</th>
-          <th (click)="onSortCol('address')">Region / GPS <span class="sort">↕</span></th>
+          <th>Region / GPS</th>
           <th>Aktivnosti</th>
           <th (click)="onSortCol('averageRating')">Ocena <span class="sort">↕</span></th>
           <th>Status</th>
@@ -175,9 +170,7 @@
             }
           </td>
           <td>
-            <span style="font-weight:700;font-size:13px;color:#15803d">
-              {{ o.activities?.length ?? 0 }}
-            </span>
+            <span style="font-weight:700;font-size:13px;color:#15803d">{{ o.activities?.length ?? 0 }}</span>
             <span style="font-size:11px;color:#6b7280"> aktivnosti</span>
           </td>
           <td>
@@ -196,10 +189,12 @@
             <span class="badge badge-green">✅ Aktivna</span>
             } @else if (objectStatus(o) === 'draft') {
             <span class="badge badge-amber">⏳ Na čekanju</span>
+            @if (canManageObjects) {
             <div style="margin-top:6px;display:flex;gap:6px">
               <button class="btn-icon approve-btn" title="Odobri" (click)="approve(o)">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="reject(o)">❌</button>
             </div>
+            }
             } @else {
             <span class="badge badge-gray">📦 Arhivirana</span>
             }
@@ -211,8 +206,10 @@
             <div class="actions">
               <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="goMap(o)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="goDetail(o)">👁️</button>
+              @if (canManageObjects) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(o)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(o)">🗑️</button>
+              }
             </div>
           </td>
         </tr>
@@ -221,7 +218,7 @@
     </table>
 
     <div class="pagination">
-      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} destinacija</div>
+      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} lokacija</div>
       <div class="pg-btns">
         <button class="pg-btn" [disabled]="req.page === 1" (click)="onPage(req.page - 1)">←</button>
         @for (p of pageNumbers; track p) {
@@ -231,13 +228,11 @@
       </div>
     </div>
   </div>
-
   }
-
 </div>
 
 <app-confirm-dialog [visible]="!!deleteTarget"
-                    title="Obriši destinaciju"
+                    title="Obriši lokaciju"
                     [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
                     confirmLabel="Obriši"
                     [danger]="true"
@@ -245,16 +240,16 @@
                     (cancelled)="cancelDelete()" />
 
 <app-confirm-dialog [visible]="!!approveTarget"
-                    title="Odobri destinaciju"
-                    [message]="'Odobrite destinaciju &quot;' + (approveTarget?.name ?? '') + '&quot;? Biće vidljiva turistima.'"
+                    title="Odobri lokaciju"
+                    [message]="'Odobrite lokaciju &quot;' + (approveTarget?.name ?? '') + '&quot;? Biće vidljiva turistima.'"
                     confirmLabel="Odobri"
                     [danger]="false"
                     (confirmed)="doApprove()"
                     (cancelled)="cancelApprove()" />
 
 <app-confirm-dialog [visible]="!!rejectTarget"
-                    title="Odbij destinaciju"
-                    [message]="'Odbijte destinaciju &quot;' + (rejectTarget?.name ?? '') + '&quot;? Biće arhivirana.'"
+                    title="Odbij lokaciju"
+                    [message]="'Odbijte lokaciju &quot;' + (rejectTarget?.name ?? '') + '&quot;? Biće arhivirana.'"
                     confirmLabel="Odbij"
                     [danger]="true"
                     (confirmed)="doReject()"

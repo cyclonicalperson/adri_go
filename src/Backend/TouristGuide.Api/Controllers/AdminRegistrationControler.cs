@@ -25,6 +25,7 @@ namespace TouristGuide.Api.Controllers
         [HttpGet]
         public async Task<ActionResult<object>> GetAll(
             [FromQuery] string? status,
+            [FromQuery] string? search,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
@@ -38,6 +39,15 @@ namespace TouristGuide.Api.Controllers
             var query = _dbContext.AdminRegistrationRequests.AsNoTracking().AsQueryable();
             if (normalizedStatus is not null)
                 query = query.Where(x => x.Status == normalizedStatus);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchTerm = search.Trim();
+                query = query.Where(x =>
+                    x.FullName.Contains(searchTerm) ||
+                    x.Email.Contains(searchTerm) ||
+                    (x.OrganizationName != null && x.OrganizationName.Contains(searchTerm)));
+            }
 
             var total = await query.CountAsync();
 

@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/router';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { AuthService } from '@core/auth/auth.service';
@@ -48,7 +48,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     );
 
     this.routerSub = this.router.events.pipe(
-      filter(e => e instanceof NavigationEnd)
+      filter(e => e instanceof NavigationEnd),
     ).subscribe(() => this.badgeService.refresh());
   }
 
@@ -61,10 +61,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
   get mainItems(): NavItem[] {
     return [
       { label: 'Dashboard', route: '/admin/dashboard', icon: '📊' },
-      { label: 'Destinacije', route: '/admin/lokacije', icon: '🏢' },
-      { label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' },
-      { label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' },
-      { label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.reviewBadge },
+      ...(this.canManageContent ? [{ label: 'Destinacije', route: '/admin/lokacije', icon: '🏢' }] : []),
+      ...(this.canManageActivities ? [{ label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' }] : []),
+      ...(this.canManageContent ? [{ label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' }] : []),
+      ...(this.canManageReviews ? [{ label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.reviewBadge }] : []),
     ];
   }
 
@@ -77,10 +77,18 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
+  get canManageContent(): boolean { return this.auth.hasPermission('manage_own_posts'); }
+  get canManageActivities(): boolean { return this.auth.hasPermission('manage_tags'); }
+  get canManageReviews(): boolean { return this.auth.hasPermission('manage_reviews'); }
+  get canAccessMap(): boolean { return this.canManageContent || this.auth.hasPermission('view_analytics'); }
 
   get initials(): string {
     return (this.auth.currentUser?.fullName ?? 'U')
-      .split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+      .split(' ')
+      .map((n: string) => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
   }
 
   get roleLabel(): string {

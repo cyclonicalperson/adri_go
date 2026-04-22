@@ -7,6 +7,7 @@ using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
 using TouristGuide.Api.Interfaces;
 using TouristGuide.Api.Models;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
@@ -16,6 +17,7 @@ namespace TouristGuide.Api.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IReviewService _reviewService;
+        private readonly AdminPermissionService _permissionService;
 
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
@@ -28,10 +30,11 @@ namespace TouristGuide.Api.Controllers
             "draft", "published", "archived"
         };
 
-        public PostsController(AppDbContext context, IReviewService reviewService)
+        public PostsController(AppDbContext context, IReviewService reviewService, AdminPermissionService permissionService)
         {
             _context = context;
             _reviewService = reviewService;
+            _permissionService = permissionService;
         }
 
         [HttpGet]
@@ -52,6 +55,15 @@ namespace TouristGuide.Api.Controllers
                 return error;
 
             // Isključi određeni tip (npr. excludeType=event za listu lokacija)
+            var normalizedStatus = NormalizeStatusValue(status);
+            if (!IsSuperAdmin() &&
+                !string.IsNullOrWhiteSpace(normalizedStatus) &&
+                !string.Equals(normalizedStatus, "published", StringComparison.OrdinalIgnoreCase) &&
+                !await _permissionService.HasPermissionAsync("manage_own_posts", region_id))
+            {
+                return Forbid();
+            }
+
             if (!string.IsNullOrWhiteSpace(excludeType))
                 query = query!.Where(p => p.PostType != excludeType.ToLower().Trim());
 
@@ -98,7 +110,7 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            if (!string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) && !CanViewUnpublishedPost(post))
+            if (!string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) && !await CanViewUnpublishedPostAsync(post))
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
             return Ok(MapToDto(post));
@@ -204,6 +216,9 @@ namespace TouristGuide.Api.Controllers
                     return BadRequest(new { message = $"Region sa ID={dto.RegionId} ne postoji." });
             }
 
+            if (!await CanCreatePostAsync(postTypeLower, dto.RegionId))
+                return Forbid();
+
             var now = DateTime.UtcNow;
             var post = new Post
             {
@@ -288,7 +303,7 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            if (!CanManagePost(post))
+            if (!await CanManagePostAsync(post))
                 return Forbid();
 
             if (dto.RegionId.HasValue)
@@ -381,7 +396,7 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            if (!CanManagePost(post))
+            if (!await CanManagePostAsync(post))
                 return Forbid();
 
             _context.Posts.Remove(post);
@@ -719,7 +734,17 @@ namespace TouristGuide.Api.Controllers
                 || string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
         }
 
-        private bool CanViewUnpublishedPost(Post post)
+        private async Task<bool> CanViewUnpublishedPostAsync(Post post)
+        {
+            if (!IsAdminUser())
+                return false;
+
+            return await _permissionService.CanManageOwnContentAsync(post.AdminId, post.RegionId);
+        }
+
+        private Task<bool> CanManagePostAsync(Post post) => CanViewUnpublishedPostAsync(post);
+
+        private async Task<bool> CanCreatePostAsync(string postType, uint? regionId)
         {
             if (!IsAdminUser())
                 return false;
@@ -727,11 +752,28 @@ namespace TouristGuide.Api.Controllers
             if (IsSuperAdmin())
                 return true;
 
-            var adminId = GetCurrentAdminId();
-            return adminId.HasValue && post.AdminId == adminId.Value;
+            if (!await _permissionService.HasPermissionAsync("manage_own_posts", regionId))
+                return false;
+
+            var permissionCode = GetCreatePermissionCode(postType);
+            return permissionCode is null || await _permissionService.HasPermissionAsync(permissionCode, regionId);
         }
 
-        private bool CanManagePost(Post post) => CanViewUnpublishedPost(post);
+        private static string? GetCreatePermissionCode(string postType) => postType switch
+        {
+            "accommodation" => "create_accommodation",
+            "restaurant" => "create_restaurant",
+            "club" => "create_club",
+            "event" => "create_event",
+            "cultural_site" => "create_cultural_site",
+            "monument" => "create_monument",
+            "sports_facility" => "create_sports",
+            "shop" => "create_shop",
+            _ => null
+        };
+
+        private static string? NormalizeStatusValue(string? status) =>
+            string.IsNullOrWhiteSpace(status) ? null : status.Trim().ToLowerInvariant();
 
         #endregion
     }

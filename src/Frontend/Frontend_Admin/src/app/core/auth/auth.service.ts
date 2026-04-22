@@ -9,7 +9,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap, map } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, map, of, take, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenStorageService } from './token-storage.service';
 
@@ -52,6 +52,10 @@ export class AuthService {
   private readonly apiUrl = `${environment.apiUrl}/auth`;
 
   currentUser$ = this._currentUser$.asObservable();
+
+  constructor() {
+    this.syncStoredUserPermissions();
+  }
 
   login(payload: LoginRequest): Observable<AuthResponse> {
     return this.http.post<any>(`${this.apiUrl}/login`, payload).pipe(
@@ -113,5 +117,36 @@ export class AuthService {
 
   hasPermission(code: string): boolean {
     return this.isSuperAdmin || (this.currentUser?.permissions?.includes(code) ?? false);
+  }
+
+  hasAnyPermission(...codes: string[]): boolean {
+    return this.isSuperAdmin || codes.some(code => this.hasPermission(code));
+  }
+
+  private syncStoredUserPermissions(): void {
+    const user = this._currentUser$.value;
+    if (!user || user.role !== 'admin') {
+      return;
+    }
+
+    this.http.get<any>(`${environment.apiUrl}/admin-users/${user.userId}/permissions`).pipe(
+      map(res => (res.data ?? [])
+        .map((item: any) => item.permission?.code)
+        .filter((code: string | undefined): code is string => !!code)),
+      catchError(() => of<string[] | null>(null)),
+      take(1),
+    ).subscribe(permissionCodes => {
+      if (!permissionCodes) {
+        return;
+      }
+
+      const nextUser: AuthUser = {
+        ...user,
+        permissions: permissionCodes,
+      };
+
+      this.tokenStorage.saveUser(nextUser);
+      this._currentUser$.next(nextUser);
+    });
   }
 }

@@ -7,6 +7,7 @@ using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
 using TouristGuide.Api.Interfaces;
 using TouristGuide.Api.Models;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
@@ -16,11 +17,13 @@ namespace TouristGuide.Api.Controllers
     {
         private readonly IReviewService _reviewService;
         private readonly AppDbContext _db;
+        private readonly AdminPermissionService _permissionService;
 
-        public ReviewsController(IReviewService reviewService, AppDbContext db)
+        public ReviewsController(IReviewService reviewService, AppDbContext db, AdminPermissionService permissionService)
         {
             _reviewService = reviewService;
             _db = db;
+            _permissionService = permissionService;
         }
 
         // GET /api/reviews  — podrzava ?status=PENDING|APPROVED|REJECTED &entityType=OBJECT|EVENT|ROUTE &page= &pageSize=
@@ -34,6 +37,9 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
+            if (!await _permissionService.CanManageReviewsAsync())
+                return Forbid();
+
             var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
             var currentAdminId = GetAuthorizedAdminId();
             if (currentAdminId is null) return Unauthorized(new { message = "Admin nije autentifikovan." });
@@ -104,8 +110,18 @@ namespace TouristGuide.Api.Controllers
             if (!allowed.Contains(dto.Status.ToUpperInvariant()))
                 return BadRequest(new { message = "Status mora biti: PENDING, APPROVED ili REJECTED." });
 
-            var review = await _db.Reviews.FindAsync(id);
+            if (!await _permissionService.CanManageReviewsAsync())
+                return Forbid();
+
+            var review = await _db.Reviews
+                .Include(r => r.Post)
+                .Include(r => r.Route)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
             if (review is null) return NotFound(new { message = $"Recenzija sa ID={id} nije pronadjena." });
+
+            if (!await CanManageReviewAsync(review))
+                return Forbid();
 
             review.Status = dto.Status.ToUpperInvariant();
             review.IsApproved = review.Status == "APPROVED";
@@ -143,6 +159,20 @@ namespace TouristGuide.Api.Controllers
             if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) && !string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase)) return null;
             var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             return uint.TryParse(value, out var adminId) ? adminId : null;
+        }
+
+        private async Task<bool> CanManageReviewAsync(Review review)
+        {
+            if (_permissionService.IsSuperAdmin())
+                return true;
+
+            if (review.Post is not null)
+                return await _permissionService.CanManageOwnContentAsync(review.Post.AdminId, review.Post.RegionId);
+
+            if (review.Route is not null)
+                return await _permissionService.CanManageOwnContentAsync(review.Route.AdminId, review.Route.RegionId);
+
+            return false;
         }
 
         private async Task RefreshPostReviewStatsAsync(uint postId)

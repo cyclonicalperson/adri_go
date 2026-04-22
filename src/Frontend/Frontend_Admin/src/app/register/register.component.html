@@ -1,13 +1,12 @@
 <div class="page">
   <div class="card">
-
     <div class="brand">
       <div class="logo-mark">🌿</div>
-      <span class="logo-text">TouristHub</span>
+      <span class="logo-text">AdriGo</span>
     </div>
 
     <h1 class="title">Kreiraj nalog</h1>
-    <p class="subtitle">Unesite podatke da biste kreirali admin nalog. Poslaćemo vam email za verifikaciju.</p>
+    <p class="subtitle">Pošaljite zahtev za admin nalog. Podržana je registracija za organizaciju i za fizičko lice.</p>
 
     @if (successMsg) {
     <div class="alert-success">
@@ -21,23 +20,41 @@
 
     @if (!successMsg) {
     <form class="form" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label class="label">Tip naloga</label>
+        <div class="account-type">
+          <label class="type-option" [class.active]="accountType.value === 'organization'">
+            <input type="radio" formControlName="accountType" value="organization" />
+            <span class="type-title">🏢 Organizacija</span>
+            <span class="type-sub">Firma, hotel, agencija, ustanova</span>
+          </label>
+          <label class="type-option" [class.active]="accountType.value === 'individual'">
+            <input type="radio" formControlName="accountType" value="individual" />
+            <span class="type-title">👤 Fizičko lice</span>
+            <span class="type-sub">Samostalni admin nalog bez organizacije</span>
+          </label>
+        </div>
+      </div>
 
       <div class="row-2">
         <div class="field">
           <label class="label" for="firstName">Ime</label>
           <input id="firstName" class="input"
                  [class.invalid]="firstName.invalid && firstName.touched"
-                 type="text" placeholder="Marko"
+                 type="text"
+                 placeholder="Marko"
                  formControlName="firstName" />
           @if (firstName.invalid && firstName.touched) {
           <span class="hint error">Ime je obavezno.</span>
           }
         </div>
+
         <div class="field">
           <label class="label" for="lastName">Prezime</label>
           <input id="lastName" class="input"
                  [class.invalid]="lastName.invalid && lastName.touched"
-                 type="text" placeholder="Petrović"
+                 type="text"
+                 placeholder="Petrović"
                  formControlName="lastName" />
           @if (lastName.invalid && lastName.touched) {
           <span class="hint error">Prezime je obavezno.</span>
@@ -49,8 +66,10 @@
         <label class="label" for="email">Email adresa</label>
         <input id="email" class="input"
                [class.invalid]="email.invalid && email.touched"
-               type="email" placeholder="ime@kompanija.com"
-               formControlName="email" autocomplete="email" />
+               type="email"
+               placeholder="ime@kompanija.com"
+               formControlName="email"
+               autocomplete="email" />
         @if (email.invalid && email.touched) {
         <span class="hint error">
           {{ email.hasError('required') ? 'Email je obavezan.' : 'Unesite ispravan email.' }}
@@ -58,16 +77,19 @@
         }
       </div>
 
+      @if (!isIndividualSelected) {
       <div class="field">
         <label class="label" for="orgName">Naziv organizacije / preduzeća</label>
         <input id="orgName" class="input"
                [class.invalid]="orgName.invalid && orgName.touched"
-               type="text" placeholder="npr. Hotel Kopaonik d.o.o."
+               type="text"
+               placeholder="npr. Hotel Kopaonik d.o.o."
                formControlName="orgName" />
         @if (orgName.invalid && orgName.touched) {
-        <span class="hint error">Naziv je obavezan.</span>
+        <span class="hint error">Naziv organizacije je obavezan.</span>
         }
       </div>
+      }
 
       <div class="field">
         <label class="label" for="password">Lozinka</label>
@@ -100,11 +122,10 @@
         }
       </div>
 
-
       <div class="field doc-field">
         <label class="label">
           Dokument za verifikaciju *
-          <span class="doc-hint">Lična karta, pasoš ili potvrda o registraciji (JPG, PNG ili PDF, max 5MB)</span>
+          <span class="doc-hint">{{ verificationDocumentHint }}</span>
         </label>
 
         @if (!selectedFile) {
@@ -134,7 +155,7 @@
       </div>
 
       <div class="terms">
-        Kreiranjem naloga prihvatate naše
+        Slanjem zahteva potvrđujete da su podaci tačni i prihvatate naše
         <a href="#" class="link">uslove korišćenja</a> i
         <a href="#" class="link">politiku privatnosti</a>.
       </div>
@@ -143,10 +164,9 @@
         @if (loading) {
         <span class="spinner"></span>
         } @else {
-        Kreiraj nalog →
+        Pošalji zahtev →
         }
       </button>
-
     </form>
     }
 
@@ -154,6 +174,5 @@
       Već imate nalog?
       <a routerLink="/login" class="link">Prijavite se</a>
     </div>
-
   </div>
 </div>

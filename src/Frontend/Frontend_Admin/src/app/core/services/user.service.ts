@@ -153,13 +153,14 @@ export class UserService {
   // ── Registration Requests ──────────────────────────────────────────────────
   // Frontend zove /registrations ali backend ima /admin-registration
   getRegistrationRequests(
-    req: PageRequest & { status?: string },
+    req: PageRequest & { status?: string; search?: string },
     options?: { context?: any }
   ): Observable<PaginatedResponse<RegistrationRequest>> {
     let params = new HttpParams()
       .set('page', req.page)
       .set('pageSize', req.pageSize);
     if (req.status) params = params.set('status', req.status);
+    if (req.search) params = params.set('search', req.search);
 
     return this.http.get<any>(`${environment.apiUrl}/admin-registration`, { params, ...options }).pipe(
       map(res => ({
