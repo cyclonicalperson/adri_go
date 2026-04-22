@@ -63,6 +63,7 @@ builder.Services.AddAuthorization();
 // 3. REGISTRACIJA SERVISA
 // ────────────────────────────────────────────────────────────
 builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
