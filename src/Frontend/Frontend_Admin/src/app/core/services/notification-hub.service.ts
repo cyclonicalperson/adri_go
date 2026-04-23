@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
 import { BehaviorSubject, Observable } from 'rxjs';
@@ -44,6 +44,7 @@ export class NotificationHubService implements OnDestroy {
     private http: HttpClient,
     private auth: AuthService,
     private tokenStorage: TokenStorageService,
+    private ngZone: NgZone,
   ) { }
 
   // ── Poveži se na hub (poziva se u AppComponent ili layout-u) ─────────
@@ -65,24 +66,30 @@ export class NotificationHubService implements OnDestroy {
 
     // ── Registracija event handlera ───────────────────────────────────
     this.connection.on('NewNotification', (notif: AdminNotification) => {
-      const current = this.notifications$.value;
-      this.notifications$.next([notif, ...current].slice(0, 100));
+      this.ngZone.run(() => {
+        const current = this.notifications$.value;
+        this.notifications$.next([notif, ...current].slice(0, 100));
+        this.unreadCount$.next(this.unreadCount$.value + 1);
+      });
     });
 
     this.connection.on('UnreadCountUpdated', (count: number) => {
-      if (count === -1) {
-        // -1 = signalizira da treba refetch iz baze
-        this.fetchUnreadCount();
-      } else {
-        this.unreadCount$.next(count);
-      }
+      this.ngZone.run(() => {
+        if (count === -1) {
+          this.fetchUnreadCount();
+        } else {
+          this.unreadCount$.next(count);
+        }
+      });
     });
 
     this.connection.on('NotificationRead', (id: number) => {
-      const updated = this.notifications$.value.map(n =>
-        n.id === id ? { ...n, isRead: true } : n
-      );
-      this.notifications$.next(updated);
+      this.ngZone.run(() => {
+        const updated = this.notifications$.value.map(n =>
+          n.id === id ? { ...n, isRead: true } : n
+        );
+        this.notifications$.next(updated);
+      });
     });
 
     this.connection.onreconnected(() => {

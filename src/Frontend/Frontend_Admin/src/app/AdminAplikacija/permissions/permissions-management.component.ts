@@ -155,6 +155,7 @@ export class PermissionsManagementComponent implements OnInit {
       this.activePermCodes.delete(permCode);
       this.userService.revokePermission(this.selectedUser.userId, perm.id).subscribe({
         next: () => {
+          this.userPermissions = this.userPermissions.filter(up => up.permission.code !== permCode);
           this.addLog('revoke', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, -1);
         },
@@ -169,6 +170,14 @@ export class PermissionsManagementComponent implements OnInit {
         this.selectedRegionId ?? undefined,
       ).subscribe({
         next: () => {
+          this.userPermissions = [...this.userPermissions, {
+            id: 0,
+            adminUserId: this.selectedUser!.userId,
+            permission: perm,
+            regionId: this.selectedRegionId,
+            grantedBy: 0,
+            grantedAt: new Date().toISOString(),
+          }];
           this.addLog('grant', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, +1);
         },

@@ -291,24 +291,30 @@ namespace TouristGuide.Api.Controllers
                 query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
             }
 
-            var movements = await query
-                .GroupBy(v => new
+            // EF Core / Npgsql cannot translate GroupBy with navigation-property keys to SQL.
+            // Fetch the raw projection first, then group client-side.
+            var raw = await query
+                .Select(v => new
                 {
-                    v.Post!.RegionId,
+                    RegionId   = v.Post!.RegionId,
                     RegionName = v.Post.Region!.Name,
-                    Lat = v.Post.Region!.Lat,
-                    Lng = v.Post.Region!.Lng
+                    Lat        = v.Post.Region!.Lat,
+                    Lng        = v.Post.Region!.Lng,
                 })
+                .ToListAsync();
+
+            var movements = raw
+                .GroupBy(v => new { v.RegionId, v.RegionName, v.Lat, v.Lng })
                 .Select(g => new
                 {
-                    regionId = g.Key.RegionId,
+                    regionId   = g.Key.RegionId,
                     regionName = g.Key.RegionName,
-                    latitude = g.Key.Lat,
-                    longitude = g.Key.Lng,
+                    latitude   = g.Key.Lat,
+                    longitude  = g.Key.Lng,
                     visitCount = g.Count()
                 })
                 .OrderByDescending(m => m.visitCount)
-                .ToListAsync();
+                .ToList();
 
             return Ok(new { data = movements, success = true });
         }

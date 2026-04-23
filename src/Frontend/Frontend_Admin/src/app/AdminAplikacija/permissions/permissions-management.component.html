@@ -91,7 +91,7 @@
         <span>Log izmena dozvola</span>
       </div>
       <div class="perm-panel-body">
-        @for (entry of changeLog; track entry.time) {
+        @for (entry of changeLog; track $index) {
         <div class="log-entry">
           <div class="log-action" [class]="entry.type">{{ entry.label }}</div>
           <div class="log-detail">

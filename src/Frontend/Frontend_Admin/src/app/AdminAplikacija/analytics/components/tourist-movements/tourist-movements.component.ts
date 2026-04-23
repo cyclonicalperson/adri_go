@@ -14,21 +14,25 @@ export class TouristMovementsComponent {
   @Input() movements: TouristMovement[] = [];
 
   get markers(): MapMarker[] {
-    const max = Math.max(...this.movements.map(m => m.visitCount), 1);
-    return this.movements.map(m => ({
+    if (!this.movements.length) return [];
+    // Sort descending so rank 0 = most visited
+    const sorted = [...this.movements].sort((a, b) => b.visitCount - a.visitCount);
+    const n = sorted.length;
+    return sorted.map((m, rank) => ({
       id: m.regionId,
       lat: m.latitude,
       lng: m.longitude,
       label: `${m.regionName} (${m.visitCount} poseta)`,
-      color: this.visitColor(m.visitCount, max),
+      color: this.rankColor(rank, n),
     }));
   }
 
-  private visitColor(count: number, max: number): string {
-    const ratio = count / max;
-    if (ratio >= 0.66) return '#22c55e';
-    if (ratio >= 0.33) return '#f59e0b';
-    return '#3b82f6';
+  // Evenly distribute 3 colors across all N pins so every category is always visible
+  private rankColor(rank: number, total: number): string {
+    const third = total / 3;
+    if (rank < third) return '#22c55e';       // top third  → green
+    if (rank < third * 2) return '#f59e0b';   // middle     → amber
+    return '#3b82f6';                         // bottom     → blue
   }
 
   get topMovements(): TouristMovement[] {

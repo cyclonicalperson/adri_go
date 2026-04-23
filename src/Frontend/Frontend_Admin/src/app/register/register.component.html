@@ -14,8 +14,8 @@
     </div>
     }
 
-    @if (error) {
-    <div class="alert-error">{{ error }}</div>
+    @if (error()) {
+    <div class="alert-error">{{ error() }}</div>
     }
 
     @if (!successMsg) {
@@ -160,8 +160,8 @@
         <a href="#" class="link">politiku privatnosti</a>.
       </div>
 
-      <button class="btn-submit" type="submit" [disabled]="loading">
-        @if (loading) {
+      <button class="btn-submit" type="submit" [disabled]="loading()">
+        @if (loading()) {
         <span class="spinner"></span>
         } @else {
         Pošalji zahtev →

@@ -22,25 +22,27 @@ namespace TouristGuide.Api.Services
         public async Task SeedAsync()
         {
             // ── Seed ide redom jer postoje FK zavisnosti ──
-            await SeedPermissionsAsync();        
-            await SeedOrganizationsAsync();      
+            await SeedPermissionsAsync();
+            await SeedOrganizationsAsync();
             await SeedAdminUsersAsync();
             await SeedRegionsAsync();
-            await SeedTagsAsync();               
+            await SeedTagsAsync();
             await SeedTouristsAsync();
             await SeedPostsAsync();
             await SeedPostTagsAsync();
             await SeedRoutesAsync();
             await SeedInteractionsAsync();
-            await SeedPostViewsAsync();          
-            await SeedReviewsAsync();            
-            await SeedNotificationsAsync();      
-            await SeedRegistrationRequestsAsync(); 
-            await SeedUserPermissionsAsync();    
-            await SeedAuditLogAsync();           
-            await SeedTouristFavoritesAsync();   
-            await SeedVisitPlannersAsync();      
-            await SeedMailingListAsync();        
+            await SeedPostViewsAsync();
+            await SeedReviewsAsync();
+            await SeedNotificationsAsync();
+            await SeedRegistrationRequestsAsync();
+            // Run after seeding so VerificationDocument rows exist
+            await EnsureVerificationFilesAsync();
+            await SeedUserPermissionsAsync();
+            await SeedAuditLogAsync();
+            await SeedTouristFavoritesAsync();
+            await SeedVisitPlannersAsync();
+            await SeedMailingListAsync();
 
             _logger.LogInformation("[Seed] Seed završen.");
         }
@@ -1055,6 +1057,52 @@ namespace TouristGuide.Api.Services
             );
             await _db.SaveChangesAsync();
         }
+        // ────────────────────────────────────────────────────────────────────
+        //  ENSURE VERIFICATION FILES  (runs every startup, no guard)
+        // ────────────────────────────────────────────────────────────────────
+        private static readonly byte[] _placeholderPdf = System.Text.Encoding.ASCII.GetBytes(
+            "%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj " +
+            "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj " +
+            "3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\n" +
+            "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n" +
+            "0000000058 00000 n \n0000000115 00000 n \n" +
+            "trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF\n");
+
+        private static readonly byte[] _placeholderPng = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==");
+
+        private static readonly byte[] _placeholderJpg = Convert.FromBase64String(
+            "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8U" +
+            "HRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAARCAABAAEDASIA" +
+            "AhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/" +
+            "xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQAC" +
+            "EQMRAD8AJQAB/9k=");
+
+        private async Task EnsureVerificationFilesAsync()
+        {
+            var docs = await _db.VerificationDocuments.AsNoTracking().ToListAsync();
+            if (docs.Count == 0) return;
+
+            foreach (var doc in docs)
+            {
+                var rel = doc.FilePath.TrimStart('/').TrimStart('\\').Replace("\\", "/");
+                var abs = Path.Combine(_env.ContentRootPath, "images",
+                    rel.Replace("/", Path.DirectorySeparatorChar.ToString()));
+
+                if (File.Exists(abs)) continue;
+
+                Directory.CreateDirectory(Path.GetDirectoryName(abs)!);
+                var bytes = doc.FileType switch
+                {
+                    "png"           => _placeholderPng,
+                    "jpg" or "jpeg" => _placeholderJpg,
+                    _               => _placeholderPdf,
+                };
+                await File.WriteAllBytesAsync(abs, bytes);
+                _logger.LogInformation("[Seed] Created placeholder for missing document: {Path}", rel);
+            }
+        }
+
         private async Task SeedRegistrationRequestsAsync()
         {
             if (await _db.AdminRegistrationRequests.AnyAsync()) return;
@@ -1100,38 +1148,20 @@ namespace TouristGuide.Api.Services
             );
             await _db.SaveChangesAsync();
 
-            // Verification documents — create real placeholder files so static-file URLs resolve
+            // Verification documents — files are handled by EnsureVerificationFilesAsync at startup
             var requests = await _db.AdminRegistrationRequests.OrderBy(r => r.Id).ToListAsync();
-            var docsDir = Path.Combine(_env.ContentRootPath, "images", "verification-documents");
-            Directory.CreateDirectory(docsDir);
 
-            // Minimal valid 1-page PDF (≈ 600 bytes)
-            byte[] placeholderPdf = System.Text.Encoding.ASCII.GetBytes(
-                "%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj " +
-                "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj " +
-                "3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\n" +
-                "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n" +
-                "0000000058 00000 n \n0000000115 00000 n \n" +
-                "trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF\n");
-
-            (string relPath, string fileName, uint sizeKb)[] docMeta =
+            (string relPath, string fileName, string fileType)[] docMeta =
             [
-                ($"verification-documents/{requests[0].Id}-milica_licna.pdf",   "licna_karta.pdf",           1),
-                ($"verification-documents/{requests[1].Id}-boris_registracija.pdf", "rjesenje_o_registraciji.pdf", 1),
-                ($"verification-documents/{requests[2].Id}-tijana_org.pdf",     "rjesenje_hercegnovi.pdf",   1),
+                ($"verification-documents/{requests[0].Id}-milica_licna.jpg",   "licna_karta.jpg",             "jpg"),
+                ($"verification-documents/{requests[1].Id}-boris_registracija.pdf", "rjesenje_o_registraciji.pdf", "pdf"),
+                ($"verification-documents/{requests[2].Id}-tijana_potvrda.png", "potvrda_org.png",             "png"),
             ];
 
-            foreach (var (relPath, _, _) in docMeta)
-            {
-                var absPath = Path.Combine(_env.ContentRootPath, "images", relPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-                if (!File.Exists(absPath))
-                    await File.WriteAllBytesAsync(absPath, placeholderPdf);
-            }
-
             _db.VerificationDocuments.AddRange(
-                new VerificationDocument { RegistrationRequestId = requests[0].Id, FilePath = docMeta[0].relPath, FileName = docMeta[0].fileName, FileType = "pdf", FileSizeKb = docMeta[0].sizeKb },
-                new VerificationDocument { RegistrationRequestId = requests[1].Id, FilePath = docMeta[1].relPath, FileName = docMeta[1].fileName, FileType = "pdf", FileSizeKb = docMeta[1].sizeKb },
-                new VerificationDocument { RegistrationRequestId = requests[2].Id, FilePath = docMeta[2].relPath, FileName = docMeta[2].fileName, FileType = "pdf", FileSizeKb = docMeta[2].sizeKb }
+                new VerificationDocument { RegistrationRequestId = requests[0].Id, FilePath = docMeta[0].relPath, FileName = docMeta[0].fileName, FileType = docMeta[0].fileType, FileSizeKb = 1 },
+                new VerificationDocument { RegistrationRequestId = requests[1].Id, FilePath = docMeta[1].relPath, FileName = docMeta[1].fileName, FileType = docMeta[1].fileType, FileSizeKb = 1 },
+                new VerificationDocument { RegistrationRequestId = requests[2].Id, FilePath = docMeta[2].relPath, FileName = docMeta[2].fileName, FileType = docMeta[2].fileType, FileSizeKb = 1 }
             );
 
             // Terms acceptances

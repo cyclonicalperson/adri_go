@@ -33,3 +33,13 @@ Pass: `Admin123!`<br>
 E-mail: `dragan.lazovic@outdoorme.me`<br>
 Pass: `Admin123!`<br>
 - Login treba da bude odbijen jer je nalog suspendovan
+
+# Drop-ovanje baze za reset podataka na seed podatke
+
+Pokrenuti sledece komande u terminalu set-ovanom na backend folder:
+
+```bash
+dotnet ef database drop --force
+dotnet ef database update
+dotnet run
+```

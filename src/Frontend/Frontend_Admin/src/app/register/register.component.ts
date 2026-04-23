@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -28,9 +28,10 @@ type AccountType = 'organization' | 'individual';
 })
 export class RegisterComponent {
   form: FormGroup;
-  loading = false;
+  // Signals garantuju reaktivnost bez potrebe za ChangeDetectorRef ili ApplicationRef
+  loading = signal(false);
+  error = signal<string | null>(null);
   showPassword = false;
-  error: string | null = null;
   successMsg: string | null = null;
 
   selectedFile: File | null = null;
@@ -148,8 +149,8 @@ export class RegisterComponent {
       return;
     }
 
-    this.loading = true;
-    this.error = null;
+    this.loading.set(true);
+    this.error.set(null);
     this.successMsg = null;
 
     const submittedEmail = this.email.value;
@@ -165,7 +166,7 @@ export class RegisterComponent {
     this.http.post(`${environment.apiUrl}/auth/register`, formData).pipe(
       timeout(20000),
       finalize(() => {
-        this.loading = false;
+        this.loading.set(false);
       }),
     ).subscribe({
       next: () => {
@@ -184,9 +185,11 @@ export class RegisterComponent {
         this.fileError = null;
       },
       error: err => {
-        this.error = err?.name === 'TimeoutError'
-          ? 'Slanje zahteva traje predugo. Proverite konekciju i pokušajte ponovo.'
-          : (err?.error?.message ?? 'Došlo je do greške. Pokušajte ponovo.');
+        this.error.set(
+          err?.name === 'TimeoutError'
+            ? 'Slanje zahteva traje predugo. Proverite konekciju i pokušajte ponovo.'
+            : (err?.error?.message ?? 'Došlo je do greške. Pokušajte ponovo.'),
+        );
       },
     });
   }

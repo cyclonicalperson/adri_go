@@ -19,19 +19,22 @@ namespace TouristGuide.Api.Controllers
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthController> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly NotificationService _notifService;
 
         public AuthController(
             AppDbContext dbContext,
             JwtService jwtService,
             IConfiguration configuration,
             ILogger<AuthController> logger,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            NotificationService notifService)
         {
             _dbContext = dbContext;
             _jwtService = jwtService;
             _configuration = configuration;
             _logger = logger;
             _environment = environment;
+            _notifService = notifService;
         }
 
         [AllowAnonymous]
@@ -88,6 +91,12 @@ namespace TouristGuide.Api.Controllers
 
                 _dbContext.VerificationDocuments.Add(verificationDocument);
                 await _dbContext.SaveChangesAsync();
+
+                await _notifService.BroadcastToSuperAdminsAsync(
+                    "new_registration",
+                    "Novi zahtev za registraciju",
+                    $"{registrationRequest.FullName} je poslao zahtev za admin nalog.",
+                    new { requestId = registrationRequest.Id });
 
                 return StatusCode(StatusCodes.Status201Created, new
                 {
