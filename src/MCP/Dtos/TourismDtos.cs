@@ -1,92 +1,58 @@
 namespace Mcp.Dtos;
 
-internal sealed record SearchDestinationsRequest(
+internal sealed record SearchRegionsRequest(
     string? Query = null,
-    string? City = null,
-    string? Region = null,
-    IReadOnlyList<string>? Types = null,
+    string? Type = null,
     int Limit = 10);
 
-internal sealed record DestinationSummary(
-    int Id,
+internal sealed record RegionSummary(
+    uint Id,
     string Name,
     string Type,
-    string? City,
-    string? Region,
-    decimal Latitude,
-    decimal Longitude,
-    string Description);
+    string? Description,
+    string Country,
+    decimal? Lat,
+    decimal? Lng);
+
+internal sealed record SearchPostsRequest(
+    uint? RegionId = null,
+    string? Query = null,
+    IReadOnlyList<string>? PostTypes = null,
+    double? MinRating = null,
+    double? UserLatitude = null,
+    double? UserLongitude = null,
+    int Limit = 10);
+
+internal sealed record PostSummary(
+    uint Id,
+    uint? RegionId,
+    string Title,
+    string PostType,
+    string? Description,
+    string? Address,
+    string? ExternalUrl,
+    string? OpeningHours,
+    double? Rating,
+    decimal? Lat,
+    decimal? Lng,
+    double? DistanceKm,
+    IReadOnlyList<string> Tags);
 
 internal sealed record SearchRoutesRequest(
-    int? DestinationId = null,
+    uint? RegionId = null,
     string? Query = null,
-    IReadOnlyList<string>? RouteTypes = null,
     IReadOnlyList<string>? Difficulties = null,
     decimal? MaxDistanceKm = null,
     int? MaxDurationMinutes = null,
-    int? MaxElevationGainM = null,
     double? MinRating = null,
     int Limit = 10);
 
 internal sealed record RouteSummary(
-    int Id,
-    int DestinationId,
+    uint Id,
+    uint? RegionId,
     string Name,
-    string RouteType,
     string Difficulty,
-    decimal DistanceKm,
-    int DurationMinutes,
-    int ElevationGainMeters,
-    double? Rating,
-    string Description);
-
-internal sealed record SearchEventsRequest(
-    int? DestinationId = null,
-    string? Query = null,
-    IReadOnlyList<string>? Categories = null,
-    DateOnly? FromDate = null,
-    DateOnly? ToDate = null,
-    double? MinRating = null,
-    int Limit = 10);
-
-internal sealed record EventSummary(
-    int Id,
-    int? DestinationId,
-    string Name,
-    string Category,
-    string? VenueName,
-    DateTime StartAt,
-    DateTime EndAt,
-    string Description,
-    string? TicketUrl,
-    decimal Latitude,
-    decimal Longitude,
-    double? Rating);
-
-internal sealed record SearchAccommodationRequest(
-    int? DestinationId = null,
-    string? Query = null,
-    DateOnly? CheckIn = null,
-    DateOnly? CheckOut = null,
-    int? GuestCount = null,
-    decimal? PriceMin = null,
-    decimal? PriceMax = null,
-    IReadOnlyList<string>? Amenities = null,
-    IReadOnlyList<string>? AccommodationTypes = null,
-    double? MinRating = null,
-    int Limit = 10);
-
-internal sealed record AccommodationSummary(
-    int Id,
-    int DestinationId,
-    string Name,
-    string AccommodationType,
-    string? Address,
-    decimal PricePerNight,
-    string Currency,
-    int GuestCapacity,
-    double? Rating,
-    IReadOnlyList<string> Amenities,
-    string Description,
-    string? BookingUrl,
-    string? AirbnbUrl);
+    decimal? DistanceKm,
+    uint? DurationMinutes,
+    uint? ElevationGain,
+    string? Description);
