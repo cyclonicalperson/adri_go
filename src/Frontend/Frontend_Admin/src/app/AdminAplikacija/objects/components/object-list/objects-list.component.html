@@ -26,25 +26,31 @@
       Sve
     </button>
     <button class="ftab" [class.active]="req.category === 'HOTEL'" (click)="onCategoryChange('HOTEL')">
-      🏨 Hoteli
-    </button>
-    <button class="ftab" [class.active]="req.category === 'APARTMENT'" (click)="onCategoryChange('APARTMENT')">
-      🏠 Smeštaj
+      🏨 Smeštaj
     </button>
     <button class="ftab" [class.active]="req.category === 'RESTAURANT'" (click)="onCategoryChange('RESTAURANT')">
       🍽️ Restorani
     </button>
     <button class="ftab" [class.active]="req.category === 'CULTURAL'" (click)="onCategoryChange('CULTURAL')">
-      🎭 Kulturni
+      🏛️ Kulturni
+    </button>
+    <button class="ftab" [class.active]="req.category === 'MONUMENT'" (click)="onCategoryChange('MONUMENT')">
+      🗿 Spomenici
     </button>
     <button class="ftab" [class.active]="req.category === 'SPORT'" (click)="onCategoryChange('SPORT')">
       ⚽ Sportski
     </button>
+    <button class="ftab" [class.active]="req.category === 'CLUB'" (click)="onCategoryChange('CLUB')">
+      🎵 Klubovi
+    </button>
+    <button class="ftab" [class.active]="req.category === 'SHOP'" (click)="onCategoryChange('SHOP')">
+      🛍️ Prodavnice
+    </button>
     <button class="ftab" [class.active]="req.category === 'NATURE'" (click)="onCategoryChange('NATURE')">
-      🌿 Priroda
+      🌿 Atrakcije
     </button>
     <button class="ftab" [class.active]="req.category === 'OTHER'" (click)="onCategoryChange('OTHER')">
-      🏪 Ostalo
+      📍 Ostalo
     </button>
   </div>
 

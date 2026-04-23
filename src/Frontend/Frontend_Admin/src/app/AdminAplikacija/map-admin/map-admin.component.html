@@ -70,4 +70,14 @@
     }
   </div>
 
+  <div class="legend-panel">
+    <div class="legend-title">Legenda</div>
+    @for (e of legendEntries; track e.color) {
+    <div class="legend-item">
+      <span class="legend-dot" [style.background]="e.color"></span>
+      <span>{{ e.label }}</span>
+    </div>
+    }
+  </div>
+
 </div>

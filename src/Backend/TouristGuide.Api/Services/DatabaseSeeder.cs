@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Hosting;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Models;
 using BCrypt.Net;
@@ -9,11 +10,13 @@ namespace TouristGuide.Api.Services
     {
         private readonly AppDbContext _db;
         private readonly ILogger<DatabaseSeeder> _logger;
+        private readonly IWebHostEnvironment _env;
 
-        public DatabaseSeeder(AppDbContext db, ILogger<DatabaseSeeder> logger)
+        public DatabaseSeeder(AppDbContext db, ILogger<DatabaseSeeder> logger, IWebHostEnvironment env)
         {
             _db = db;
             _logger = logger;
+            _env = env;
         }
 
         public async Task SeedAsync()
@@ -1097,12 +1100,38 @@ namespace TouristGuide.Api.Services
             );
             await _db.SaveChangesAsync();
 
-            // Verification documents
+            // Verification documents — create real placeholder files so static-file URLs resolve
             var requests = await _db.AdminRegistrationRequests.OrderBy(r => r.Id).ToListAsync();
+            var docsDir = Path.Combine(_env.ContentRootPath, "images", "verification-documents");
+            Directory.CreateDirectory(docsDir);
+
+            // Minimal valid 1-page PDF (≈ 600 bytes)
+            byte[] placeholderPdf = System.Text.Encoding.ASCII.GetBytes(
+                "%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj " +
+                "2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj " +
+                "3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\n" +
+                "xref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n" +
+                "0000000058 00000 n \n0000000115 00000 n \n" +
+                "trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF\n");
+
+            (string relPath, string fileName, uint sizeKb)[] docMeta =
+            [
+                ($"verification-documents/{requests[0].Id}-milica_licna.pdf",   "licna_karta.pdf",           1),
+                ($"verification-documents/{requests[1].Id}-boris_registracija.pdf", "rjesenje_o_registraciji.pdf", 1),
+                ($"verification-documents/{requests[2].Id}-tijana_org.pdf",     "rjesenje_hercegnovi.pdf",   1),
+            ];
+
+            foreach (var (relPath, _, _) in docMeta)
+            {
+                var absPath = Path.Combine(_env.ContentRootPath, "images", relPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+                if (!File.Exists(absPath))
+                    await File.WriteAllBytesAsync(absPath, placeholderPdf);
+            }
+
             _db.VerificationDocuments.AddRange(
-                new VerificationDocument { RegistrationRequestId = requests[0].Id, FilePath = "/uploads/docs/milica_licna.pdf", FileName = "licna_karta.pdf", FileType = "pdf", FileSizeKb = 320 },
-                new VerificationDocument { RegistrationRequestId = requests[1].Id, FilePath = "/uploads/docs/boris_registracija.pdf", FileName = "rjesenje_o_registraciji.pdf", FileType = "pdf", FileSizeKb = 890 },
-                new VerificationDocument { RegistrationRequestId = requests[2].Id, FilePath = "/uploads/docs/tijana_org.pdf", FileName = "rjesenje_hercegnovi.pdf", FileType = "pdf", FileSizeKb = 650 }
+                new VerificationDocument { RegistrationRequestId = requests[0].Id, FilePath = docMeta[0].relPath, FileName = docMeta[0].fileName, FileType = "pdf", FileSizeKb = docMeta[0].sizeKb },
+                new VerificationDocument { RegistrationRequestId = requests[1].Id, FilePath = docMeta[1].relPath, FileName = docMeta[1].fileName, FileType = "pdf", FileSizeKb = docMeta[1].sizeKb },
+                new VerificationDocument { RegistrationRequestId = requests[2].Id, FilePath = docMeta[2].relPath, FileName = docMeta[2].fileName, FileType = "pdf", FileSizeKb = docMeta[2].sizeKb }
             );
 
             // Terms acceptances

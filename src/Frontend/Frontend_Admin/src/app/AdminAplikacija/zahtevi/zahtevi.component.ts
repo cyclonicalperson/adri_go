@@ -4,6 +4,7 @@ import { UserService } from '@core/services/user.service';
 import { RegistrationRequest } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { FormsModule } from '@angular/forms';
+import { environment } from '@env/environment';
 
 type FilterStatus = '' | 'pending' | 'approved' | 'rejected';
 
@@ -43,7 +44,7 @@ export class ZahteviComponent implements OnInit {
   constructor(
     private service: UserService,
     private badgeService: BadgeService,
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.load();
@@ -226,6 +227,12 @@ export class ZahteviComponent implements OnInit {
   }
 
   documentUrl(request: RegistrationRequest): string {
-    return request.documentUrl ?? '';
+    const raw = request.documentUrl;
+    if (!raw) return '';
+    // Ako backend već vrati apsolutni URL (http://...) — koristi ga direktno
+    if (raw.startsWith('http')) return raw;
+    // Inače — sagradi apsolutni URL iz API baze (ukloni /api sufiks)
+    const apiBase = environment.apiUrl.replace(/\/api$/, '');
+    return `${apiBase}${raw.startsWith('/') ? '' : '/'}${raw}`;
   }
 }

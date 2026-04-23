@@ -57,12 +57,12 @@
       <option value="ROUTE">🗺 Ruta</option>
     </select>
 
-    <select class="filter-select">
-      <option>Sve ocene</option>
-      <option>★★★★★ 5</option>
-      <option>★★★★ 4+</option>
-      <option>★★★ 3+</option>
-      <option>★★ 2 i niže</option>
+    <select class="filter-select" (change)="onRatingChange($any($event.target).value)">
+      <option value="">Sve ocene</option>
+      <option value="5">★★★★★ 5</option>
+      <option value="4">★★★★ 4+</option>
+      <option value="3">★★★ 3+</option>
+      <option value="2">★★ 2+</option>
     </select>
 
     <select class="filter-select" (change)="onSortChange($any($event.target).value)">

@@ -300,7 +300,7 @@ namespace TouristGuide.Api.Controllers
             if (string.IsNullOrWhiteSpace(documentPath))
                 return null;
 
-            return $"/images/{documentPath.Replace("\\", "/")}";
+            return $"/images/{documentPath.TrimStart('/').TrimStart('\\').Replace("\\", "/")}";
         }
     }
 }

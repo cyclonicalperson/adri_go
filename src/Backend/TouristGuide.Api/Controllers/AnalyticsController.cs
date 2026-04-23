@@ -125,8 +125,12 @@ namespace TouristGuide.Api.Controllers
             if (!await _permissionService.CanViewAnalyticsAsync())
                 return Forbid();
 
-            var fromDate = DateTime.TryParse(from, out var fd) ? fd : DateTime.UtcNow.AddDays(-30);
-            var toDate = DateTime.TryParse(to, out var td) ? td : DateTime.UtcNow;
+            var fromDate = DateTime.TryParse(from, out var fd)
+                ? DateTime.SpecifyKind(fd, DateTimeKind.Utc)
+                : DateTime.UtcNow.AddDays(-30);
+            var toDate = DateTime.TryParse(to, out var td)
+                ? DateTime.SpecifyKind(td, DateTimeKind.Utc)
+                : DateTime.UtcNow;
 
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
@@ -136,14 +140,12 @@ namespace TouristGuide.Api.Controllers
             if (adminId.HasValue)
                 query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
 
-            var grouped = await query
-                .GroupBy(v => v.CreatedAt.Date)
-                .Select(g => new { date = g.Key, count = g.Count() })
-                .OrderBy(x => x.date)
-                .ToListAsync();
+            var rawDates = await query.Select(v => v.CreatedAt).ToListAsync();
 
-            var result = grouped
-                .Select(x => new { date = x.date.ToString("yyyy-MM-dd"), count = x.count })
+            var result = rawDates
+                .GroupBy(dt => dt.Date)
+                .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
+                .OrderBy(x => x.date)
                 .ToList();
 
             return Ok(new { data = result, success = true });

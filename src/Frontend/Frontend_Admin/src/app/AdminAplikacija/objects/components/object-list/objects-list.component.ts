@@ -249,16 +249,16 @@ export class ObjectsListComponent implements OnInit {
 
   categoryIcon(cat: ObjectCategory): string {
     const map: Record<string, string> = {
-      HOTEL: '🏨',
-      APARTMENT: '🏠',
+      HOTEL: '🏨',       // accommodation
+      APARTMENT: '🏠',   // accommodation (legacy)
       RESTAURANT: '🍽️',
       CAFE: '☕',
       CLUB: '🎵',
       SHOP: '🛍️',
-      CULTURAL: '🏛️',
+      CULTURAL: '🏛️',   // cultural_site
       MONUMENT: '🗿',
-      SPORT: '⚽',
-      NATURE: '🌿',
+      SPORT: '⚽',        // sports_facility
+      NATURE: '🌿',       // attraction
       OTHER: '📍',
     };
     return map[cat] ?? '📍';
@@ -266,7 +266,7 @@ export class ObjectsListComponent implements OnInit {
 
   categoryLabel(cat: ObjectCategory): string {
     const map: Record<string, string> = {
-      HOTEL: 'Hotel',
+      HOTEL: 'Smeštaj',
       APARTMENT: 'Smeštaj',
       RESTAURANT: 'Restoran',
       CAFE: 'Kafić',
@@ -275,7 +275,7 @@ export class ObjectsListComponent implements OnInit {
       CULTURAL: 'Kulturni',
       MONUMENT: 'Spomenik',
       SPORT: 'Sportski',
-      NATURE: 'Priroda',
+      NATURE: 'Atrakcija',
       OTHER: 'Ostalo',
     };
     return map[cat] ?? cat;
@@ -284,7 +284,7 @@ export class ObjectsListComponent implements OnInit {
   typeBadgeClass(cat: ObjectCategory): string {
     const map: Record<string, string> = {
       HOTEL: 'type-hotel',
-      APARTMENT: 'type-soba',
+      APARTMENT: 'type-hotel',
       RESTAURANT: 'type-restoran',
       CAFE: 'type-restoran',
       CULTURAL: 'type-kultura',
@@ -292,6 +292,7 @@ export class ObjectsListComponent implements OnInit {
       SPORT: 'type-sport',
       NATURE: 'type-priroda',
       CLUB: 'type-nocni',
+      SHOP: 'type-shop',
     };
     return map[cat] ?? 'type-ostalo';
   }

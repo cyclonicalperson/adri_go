@@ -34,14 +34,9 @@
     <div class="panel">
       <div class="panel-header">
         <div>
-          <div class="panel-title">Posete platformi (30 dana)</div>
-          <div class="panel-sub">Lokacije · Aktivnosti · Dogadjaji</div>
+          <div class="panel-title">Posete platformi</div>
+          <div class="panel-sub">Poslednjih 30 dana · Ukupno: {{ totalDailyViews | number }} pregleda</div>
         </div>
-        <select class="chart-select">
-          <option>Poslednjih 30 dana</option>
-          <option>7 dana</option>
-          <option>90 dana</option>
-        </select>
       </div>
       <div class="panel-body">
         <div class="chart-area">
@@ -70,16 +65,7 @@
         <div class="panel-title">Po kategoriji</div>
       </div>
       <div class="panel-body">
-        <div class="donut-wrap">
-          <div class="donut donut-1"></div>
-          <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Smeštaj (38%)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Kultura (23%)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Sport (15%)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Hrana (13%)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Ostalo (11%)</div>
-          </div>
-        </div>
+        <app-preferences-chart [objects]="popularObjectsWithCategory" />
       </div>
     </div>
 

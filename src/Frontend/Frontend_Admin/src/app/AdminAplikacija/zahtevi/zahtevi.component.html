@@ -164,14 +164,19 @@
   <div class="detail-overlay" (click)="closeDetail()">
     <div class="detail-panel" (click)="$event.stopPropagation()">
       <div class="detail-header">
-        <div class="detail-title-row">
-          <div class="detail-avatar">{{ initials(selected.fullName) }}</div>
-          <div>
-            <div class="detail-name">{{ selected.fullName }}</div>
-            <div class="detail-type">{{ typeLabel(selected) }}</div>
-          </div>
+        <div>
+          <div class="detail-panel-title">Zahtev za registraciju</div>
+          <div class="detail-panel-sub">Pregled podnetog zahteva</div>
         </div>
         <button class="btn-close" (click)="closeDetail()">✕</button>
+      </div>
+
+      <div class="detail-applicant">
+        <div class="detail-avatar">{{ initials(selected.fullName) }}</div>
+        <div>
+          <div class="detail-name">{{ selected.fullName }}</div>
+          <div class="detail-type">{{ typeLabel(selected) }}</div>
+        </div>
       </div>
 
       <div class="detail-body">

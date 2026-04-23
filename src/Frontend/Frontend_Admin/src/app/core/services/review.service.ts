@@ -28,6 +28,7 @@ export class ReviewService {
   getAll(req: PageRequest & {
     status?: string;
     entityType?: string;
+    minRating?: number;
   }, options?: { context?: any }): Observable<PaginatedResponse<Review>> {
     // Šaljemo pravi pageSize backendu — backend radi server-side paginaciju
     let params = new HttpParams()
@@ -38,6 +39,7 @@ export class ReviewService {
     if (req.sortDir) params = params.set('sortDir', req.sortDir!);
     if (req.status) params = params.set('status', req.status);
     if (req.entityType) params = params.set('entityType', req.entityType);
+    if (req.minRating != null) params = params.set('minRating', req.minRating);
 
     return this.http.get<any>(this.url, { params, ...(options ?? {}) }).pipe(
       map(res => {

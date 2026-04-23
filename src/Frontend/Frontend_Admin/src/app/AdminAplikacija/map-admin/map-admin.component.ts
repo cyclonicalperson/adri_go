@@ -42,7 +42,7 @@ export class MapAdminComponent implements OnInit {
   showHeatmap = false;
   heatPoints: HeatPoint[] = [];
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) { }
 
   ngOnInit(): void {
     this.loadData();
@@ -68,11 +68,11 @@ export class MapAdminComponent implements OnInit {
         this.posts = (posts.data ?? [])
           .filter((p: any) => p.lat != null && p.lng != null)
           .map((p: any) => ({
-            id:         p.id ?? p.postId,
-            title:      p.title ?? '',
-            postType:   p.postType ?? 'other',
-            lat:        +p.lat,
-            lng:        +p.lng,
+            id: p.id ?? p.postId,
+            title: p.title ?? '',
+            postType: p.postType ?? 'other',
+            lat: +p.lat,
+            lng: +p.lng,
             regionName: p.region?.name ?? p.regionName ?? null,
           }));
 
@@ -92,9 +92,9 @@ export class MapAdminComponent implements OnInit {
               } catch { wps = []; }
             }
             return {
-              routeId:    r.routeId ?? r.id,
-              name:       r.name ?? '',
-              waypoints:  wps,
+              routeId: r.routeId ?? r.id,
+              name: r.name ?? '',
+              waypoints: wps,
               regionName: r.region?.name ?? null,
             } as RoutePin;
           })
@@ -106,10 +106,10 @@ export class MapAdminComponent implements OnInit {
         this.heatPoints = moves
           .filter((m: any) => m.latitude && m.longitude)
           .map((m: any) => ({
-            lat:       +m.latitude,
-            lng:       +m.longitude,
+            lat: +m.latitude,
+            lng: +m.longitude,
             intensity: (m.visitCount ?? 0) / maxVisits,
-            label:     `${m.regionName}: ${m.visitCount} poseta`,
+            label: `${m.regionName}: ${m.visitCount} poseta`,
           }));
 
         this.loading = false;
@@ -118,11 +118,25 @@ export class MapAdminComponent implements OnInit {
     });
   }
 
+  // Paleta boja po tipu — usklađena sa bojama u turističkoj aplikaciji
+  private readonly typeColorMap: Record<string, string> = {
+    accommodation: '#3b82f6', // plava   — smeštaj
+    restaurant: '#ef4444', // crvena  — restorani
+    club: '#8b5cf6', // ljubičasta — klubovi
+    cultural_site: '#f59e0b', // amber   — kulturni
+    monument: '#d97706', // tamni amber — spomenici
+    sports_facility: '#22c55e', // zelena  — sport
+    event: '#ec4899', // pink    — eventi
+    attraction: '#10b981', // emerald — atrakcije/priroda
+    shop: '#f97316', // narandžasta — prodavnice
+    other: '#6b7280', // siva    — ostalo
+  };
+
   get markers(): MapMarker[] {
     const result: MapMarker[] = [];
     const showLocations = this.layer === 'all' || this.layer === 'locations';
-    const showEvents    = this.layer === 'all' || this.layer === 'events';
-    const showRoutes    = this.layer === 'all' || this.layer === 'routes';
+    const showEvents = this.layer === 'all' || this.layer === 'events';
+    const showRoutes = this.layer === 'all' || this.layer === 'routes';
 
     if (showLocations || showEvents) {
       for (const p of this.posts) {
@@ -131,11 +145,12 @@ export class MapAdminComponent implements OnInit {
         if (isEvent && !showEvents) continue;
         if (!isEvent && !showLocations) continue;
         result.push({
-          id:       p.id,
-          lat:      p.lat,
-          lng:      p.lng,
-          label:    p.title,
+          id: p.id,
+          lat: p.lat,
+          lng: p.lng,
+          label: p.title,
           category: this.typeLabel(p.postType) + (p.regionName ? ` · ${p.regionName}` : ''),
+          color: this.typeColorMap[p.postType] ?? '#6b7280',
         });
       }
     }
@@ -145,11 +160,12 @@ export class MapAdminComponent implements OnInit {
         const wp = r.waypoints[0];
         if (!wp) continue;
         result.push({
-          id:       100000 + r.routeId,
-          lat:      wp.lat,
-          lng:      wp.lng,
-          label:    r.name,
+          id: 100000 + r.routeId,
+          lat: wp.lat,
+          lng: wp.lng,
+          label: r.name,
           category: '🗺️ Ruta' + (r.regionName ? ` · ${r.regionName}` : ''),
+          color: '#0ea5e9', // sky plava — rute
         });
       }
     }
@@ -162,8 +178,8 @@ export class MapAdminComponent implements OnInit {
   }
 
   get locationCount(): number { return this.posts.filter(p => p.postType !== 'event').length; }
-  get eventCount(): number    { return this.posts.filter(p => p.postType === 'event').length; }
-  get routeCount(): number    { return this.routes.length; }
+  get eventCount(): number { return this.posts.filter(p => p.postType === 'event').length; }
+  get routeCount(): number { return this.routes.length; }
 
   onMarkerClicked(m: MapMarker): void { this.selectedMarker = m; }
   clearSelection(): void { this.selectedMarker = null; }
@@ -196,17 +212,31 @@ export class MapAdminComponent implements OnInit {
 
   typeLabel(postType: string): string {
     const map: Record<string, string> = {
-      accommodation:    '🏨 Smeštaj',
-      restaurant:       '🍽️ Restoran',
-      club:             '🎵 Klub',
-      cultural_site:    '🏛️ Kulturni objekat',
-      monument:         '🗿 Spomenik',
-      sports_facility:  '⚽ Sportski objekat',
-      event:            '🎟️ Dogadjaj',
-      attraction:       '🌟 Atrakcija',
-      shop:             '🛍️ Prodavnica',
-      other:            '📍 Ostalo',
+      accommodation: '🏨 Smeštaj',
+      restaurant: '🍽️ Restoran',
+      club: '🎵 Klub',
+      cultural_site: '🏛️ Kulturni objekat',
+      monument: '🗿 Spomenik',
+      sports_facility: '⚽ Sportski objekat',
+      event: '🎟️ Dogadjaj',
+      attraction: '🌟 Atrakcija',
+      shop: '🛍️ Prodavnica',
+      other: '📍 Ostalo',
     };
     return map[postType] ?? postType;
   }
+
+  readonly legendEntries: { color: string; label: string }[] = [
+    { color: '#3b82f6', label: '🏨 Smeštaj' },
+    { color: '#ef4444', label: '🍽️ Restoran' },
+    { color: '#8b5cf6', label: '🎵 Klub' },
+    { color: '#f59e0b', label: '🏛️ Kulturni objekat' },
+    { color: '#d97706', label: '🗿 Spomenik' },
+    { color: '#22c55e', label: '⚽ Sportski objekat' },
+    { color: '#ec4899', label: '🎟️ Dogadjaj' },
+    { color: '#10b981', label: '🌟 Atrakcija' },
+    { color: '#f97316', label: '🛍️ Prodavnica' },
+    { color: '#0ea5e9', label: '🗺️ Ruta' },
+    { color: '#6b7280', label: '📍 Ostalo' },
+  ];
 }

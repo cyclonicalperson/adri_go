@@ -34,6 +34,7 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] string? entityType,
             [FromQuery] string? sortBy,
             [FromQuery] string? sortDir,
+            [FromQuery] int? minRating,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -58,6 +59,15 @@ namespace TouristGuide.Api.Controllers
                     "EVENT" => filtered.Where(r => r.PostType == "event"),
                     "OBJECT" => filtered.Where(r => r.PostId.HasValue && r.PostType != "event"),
                     _ => filtered
+                };
+            }
+
+            if (minRating.HasValue && minRating.Value >= 1)
+            {
+                filtered = minRating.Value switch
+                {
+                    5 => filtered.Where(r => r.Rating == 5),
+                    _ => filtered.Where(r => r.Rating >= minRating.Value)
                 };
             }
 

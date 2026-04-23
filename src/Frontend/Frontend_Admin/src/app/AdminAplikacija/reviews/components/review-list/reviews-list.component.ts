@@ -31,6 +31,7 @@ export class ReviewsListComponent implements OnInit {
   req: PageRequest & {
     status?: ReviewStatus;
     entityType?: ReviewEntityType;
+    minRating?: number;
   } = { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' };
 
   constructor(
@@ -80,6 +81,12 @@ export class ReviewsListComponent implements OnInit {
 
   onEntityTypeChange(t: string): void {
     this.req = { ...this.req, entityType: (t as ReviewEntityType) || undefined, page: 1 };
+    this.load();
+  }
+
+  onRatingChange(val: string): void {
+    const minRating = val ? +val : undefined;
+    this.req = { ...this.req, minRating, page: 1 };
     this.load();
   }
 

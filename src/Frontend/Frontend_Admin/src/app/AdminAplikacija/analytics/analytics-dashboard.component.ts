@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import {
   AnalyticsService,
   DailyVisit,
@@ -8,12 +9,26 @@ import {
   TouristMovement,
 } from '@core/services/analytics.service';
 import { TouristMovementsComponent } from './components/tourist-movements/tourist-movements.component';
+import { PreferencesChartComponent } from './components/preferences-chart/preferences-chart.component';
+
+// Mapa post_type → čitljiva kategorija za grafikon
+const POST_TYPE_LABEL: Record<string, string> = {
+  accommodation: '🏨 Smeštaj',
+  restaurant: '🍽️ Restorani',
+  club: '🎵 Klubovi',
+  cultural_site: '🏛️ Kulturna mesta',
+  monument: '🗿 Spomenici',
+  sports_facility: '⚽ Sportski objekti',
+  attraction: '🌿 Priroda i atrakcije',
+  shop: '🛍️ Prodavnice',
+  other: '📍 Ostalo',
+};
 
 @Component({
   selector: 'app-analytics-dashboard',
   templateUrl: './analytics-dashboard.component.html',
   styleUrl: './analytics-dashboard.component.scss',
-  imports: [TouristMovementsComponent, DecimalPipe],
+  imports: [TouristMovementsComponent, PreferencesChartComponent, DecimalPipe],
 })
 export class AnalyticsDashboardComponent implements OnInit {
   visits: DailyVisit[] = [];
@@ -21,6 +36,14 @@ export class AnalyticsDashboardComponent implements OnInit {
   popularEvents: PopularPost[] = [];
   movements: TouristMovement[] = [];
   loading = true;
+
+  /** Objekti s ispravnom `category` labelom za PreferencesChart */
+  get popularObjectsWithCategory(): any[] {
+    return this.popularObjects.map(o => ({
+      ...o,
+      category: POST_TYPE_LABEL[o.postType] ?? o.postType,
+    }));
+  }
 
   constructor(private analytics: AnalyticsService) { }
 
@@ -31,10 +54,14 @@ export class AnalyticsDashboardComponent implements OnInit {
     const fmt = (d: Date) => d.toISOString().split('T')[0];
 
     forkJoin({
-      visits: this.analytics.getDailyVisits(fmt(from), fmt(today)),
-      objects: this.analytics.getPopularPosts(5),
-      events: this.analytics.getPopularEvents(5),
-      movements: this.analytics.getTouristMovements(),
+      visits: this.analytics.getDailyVisits(fmt(from), fmt(today))
+        .pipe(catchError(() => of({ data: [] as DailyVisit[] }))),
+      objects: this.analytics.getPopularPosts(5)
+        .pipe(catchError(() => of({ data: [] as PopularPost[] }))),
+      events: this.analytics.getPopularEvents(5)
+        .pipe(catchError(() => of({ data: [] as PopularPost[] }))),
+      movements: this.analytics.getTouristMovements()
+        .pipe(catchError(() => of({ data: [] as TouristMovement[] }))),
     }).subscribe({
       next: res => {
         this.visits = res.visits.data;
@@ -66,6 +93,10 @@ export class AnalyticsDashboardComponent implements OnInit {
     const objViews = this.popularObjects.reduce((s, p) => s + p.viewCount, 0);
     const evViews = this.popularEvents.reduce((s, p) => s + p.viewCount, 0);
     return objViews + evViews;
+  }
+
+  get totalDailyViews(): number {
+    return this.visits.reduce((s, v) => s + v.count, 0);
   }
 
   get avgRating(): string {
