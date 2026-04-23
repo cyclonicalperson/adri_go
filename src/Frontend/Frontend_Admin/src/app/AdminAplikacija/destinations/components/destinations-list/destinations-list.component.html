@@ -24,12 +24,7 @@
             Naziv {{ sortIcon('name') }}
           </th>
           <th>Tip</th>
-          <th class="sortable" (click)="onSort('region')">
-            Region {{ sortIcon('region') }}
-          </th>
-          <th class="sortable" (click)="onSort('city')">
-            Grad {{ sortIcon('city') }}
-          </th>
+          <th>Država</th>
           <th class="num">Objekti</th>
           <th class="actions-col">Akcije</th>
         </tr>
@@ -43,8 +38,7 @@
               {{ typeLabel(d.type) }}
             </app-badge>
           </td>
-          <td>{{ d.region }}</td>
-          <td>{{ d.city }}</td>
+          <td>{{ d.country }}</td>
           <td class="num">{{ d.objectCount ?? 0 }}</td>
           <td class="actions-cell" (click)="$event.stopPropagation()">
             <button class="btn-edit" (click)="goEdit(d)">Izmeni</button>

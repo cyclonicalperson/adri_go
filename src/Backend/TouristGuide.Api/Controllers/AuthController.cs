@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
+using TouristGuide.Api.Models;
 using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
@@ -11,21 +12,107 @@ namespace TouristGuide.Api.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
+        private const long MaxVerificationDocumentSizeBytes = 5 * 1024 * 1024;
+
         private readonly AppDbContext _dbContext;
         private readonly JwtService _jwtService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthController> _logger;
+        private readonly IWebHostEnvironment _environment;
+        private readonly NotificationService _notifService;
 
         public AuthController(
             AppDbContext dbContext,
             JwtService jwtService,
             IConfiguration configuration,
-            ILogger<AuthController> logger)
+            ILogger<AuthController> logger,
+            IWebHostEnvironment environment,
+            NotificationService notifService)
         {
             _dbContext = dbContext;
             _jwtService = jwtService;
             _configuration = configuration;
             _logger = logger;
+            _environment = environment;
+            _notifService = notifService;
+        }
+
+        [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromForm] AdminRegistrationSubmitRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            try
+            {
+                if (request.Document.Length == 0)
+                    return BadRequest(new { message = "Verifikacioni dokument je obavezan." });
+
+                if (request.Document.Length > MaxVerificationDocumentSizeBytes)
+                    return BadRequest(new { message = "Verifikacioni dokument ne sme biti veci od 5 MB." });
+
+                if (!TryGetDocumentMetadata(request.Document.FileName, out var extension, out var fileType))
+                    return BadRequest(new { message = "Dozvoljeni formati dokumenta su PDF, JPG i PNG." });
+
+                var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+                var emailInUse = await _dbContext.AdminUsers.AnyAsync(x => x.Email.ToLower() == normalizedEmail);
+                if (emailInUse)
+                    return Conflict(new { message = "Admin nalog sa ovim emailom vec postoji." });
+
+                var pendingRequestExists = await _dbContext.AdminRegistrationRequests
+                    .AnyAsync(x => x.Email.ToLower() == normalizedEmail && x.Status == "pending");
+                if (pendingRequestExists)
+                    return Conflict(new { message = "Vec postoji aktivan zahtev za ovaj email." });
+
+                var now = DateTime.UtcNow;
+                var registrationRequest = new AdminRegistrationRequest
+                {
+                    FullName = request.FullName.Trim(),
+                    Email = normalizedEmail,
+                    PasswordHash = PasswordHelper.Hash(request.Password),
+                    IsOrganization = !string.IsNullOrWhiteSpace(request.OrganizationName),
+                    IsIndividual = string.IsNullOrWhiteSpace(request.OrganizationName),
+                    OrganizationName = request.OrganizationName?.Trim(),
+                    OrganizationEmail = string.IsNullOrWhiteSpace(request.OrganizationName) ? null : normalizedEmail,
+                    Status = "pending",
+                    SubmittedAt = now
+                };
+
+                _dbContext.AdminRegistrationRequests.Add(registrationRequest);
+                await _dbContext.SaveChangesAsync();
+
+                var verificationDocument = await SaveVerificationDocumentAsync(
+                    registrationRequest.Id,
+                    request.Document,
+                    fileType,
+                    extension);
+
+                _dbContext.VerificationDocuments.Add(verificationDocument);
+                await _dbContext.SaveChangesAsync();
+
+                await _notifService.BroadcastToSuperAdminsAsync(
+                    "new_registration",
+                    "Novi zahtev za registraciju",
+                    $"{registrationRequest.FullName} je poslao zahtev za admin nalog.",
+                    new { requestId = registrationRequest.Id });
+
+                return StatusCode(StatusCodes.Status201Created, new
+                {
+                    requestId = registrationRequest.Id,
+                    status = registrationRequest.Status,
+                    message = "Zahtev za admin nalog je poslat i ceka pregled superadmina."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error during admin registration submission for email {Email}.", request.Email);
+                return Problem(
+                    title: "Registration failed",
+                    detail: "Doslo je do neocekivane greske prilikom slanja registracionog zahteva.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         }
 
         [HttpPost("login")]
@@ -107,6 +194,46 @@ namespace TouristGuide.Api.Controllers
                     detail: "Doslo je do neocekivane greske prilikom prijave.",
                     statusCode: StatusCodes.Status500InternalServerError);
             }
+        }
+
+        private async Task<VerificationDocument> SaveVerificationDocumentAsync(
+            uint registrationRequestId,
+            IFormFile document,
+            string fileType,
+            string extension)
+        {
+            var documentsFolder = Path.Combine(_environment.ContentRootPath, "images", "verification-documents");
+            Directory.CreateDirectory(documentsFolder);
+
+            var storedFileName = $"{registrationRequestId}-{Guid.NewGuid():N}{extension}";
+            var absolutePath = Path.Combine(documentsFolder, storedFileName);
+
+            await using var stream = System.IO.File.Create(absolutePath);
+            await document.CopyToAsync(stream);
+
+            return new VerificationDocument
+            {
+                RegistrationRequestId = registrationRequestId,
+                FilePath = Path.Combine("verification-documents", storedFileName).Replace("\\", "/"),
+                FileName = Path.GetFileName(document.FileName),
+                FileType = fileType,
+                FileSizeKb = (uint)Math.Ceiling(document.Length / 1024d),
+                UploadedAt = DateTime.UtcNow
+            };
+        }
+
+        private static bool TryGetDocumentMetadata(string fileName, out string extension, out string fileType)
+        {
+            extension = Path.GetExtension(fileName).ToLowerInvariant();
+            fileType = extension switch
+            {
+                ".pdf" => "pdf",
+                ".jpg" or ".jpeg" => "jpg",
+                ".png" => "png",
+                _ => string.Empty
+            };
+
+            return !string.IsNullOrWhiteSpace(fileType);
         }
     }
 }

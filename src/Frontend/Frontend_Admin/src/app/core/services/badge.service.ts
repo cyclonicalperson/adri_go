@@ -38,21 +38,26 @@ export class BadgeService {
   }
 
   refresh(): void {
-    // Direktan lagan poziv - samo 1 recenzija za count, ne 1000
-    const reviewParams = new HttpParams().set('status', 'PENDING').set('page', 1).set('pageSize', 1);
-    this.http.get<any>(`${environment.apiUrl}/reviews`, {
-      params: reviewParams,
-      context: new HttpContext().set(SILENT_REQUEST, true),
-    }).subscribe({
-      next: res => this._pendingReviews$.next(res.total ?? 0),
-      error: () => { },
-    });
+    if (this.auth.hasPermission('manage_reviews')) {
+      const reviewParams = new HttpParams().set('status', 'PENDING').set('page', 1).set('pageSize', 1);
+      this.http.get<any>(`${environment.apiUrl}/reviews`, {
+        params: reviewParams,
+        context: new HttpContext().set(SILENT_REQUEST, true),
+      }).subscribe({
+        next: res => this._pendingReviews$.next(res.total ?? 0),
+        error: () => { },
+      });
+    } else {
+      this._pendingReviews$.next(0);
+    }
 
     if (this.auth.isRole('superadmin')) {
       this.userService.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' }, SILENT).subscribe({
         next: res => this._pendingRequests$.next(res.total),
         error: () => { },
       });
+    } else {
+      this._pendingRequests$.next(0);
     }
 
     this.userService.getNotifications(SILENT).subscribe({

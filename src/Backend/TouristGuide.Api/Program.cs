@@ -1,60 +1,85 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using Microsoft.Extensions.FileProviders; 
+using Microsoft.Extensions.FileProviders;
+using System.IO;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
 
-    var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
+var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "DataProtectionKeys");
 
-    // ────────────────────────────────────────────────────────────
-    // 1. CORS
-    // ────────────────────────────────────────────────────────────
-    builder.Services.AddCors(options =>
+Directory.CreateDirectory(dataProtectionPath);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
+    .SetApplicationName("TouristGuide.Api");
+
+// ────────────────────────────────────────────────────────────
+// 1. CORS
+// ────────────────────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontends", policy =>
     {
-        options.AddPolicy("AllowFrontends", policy =>
-        {
-            policy
-                .WithOrigins(
-                    "http://localhost:4200",   // Admin Angular app
-                    "http://localhost:4201"    // Turista Angular app
-                )
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
+        policy
+            .WithOrigins(
+                "http://localhost:4200",   // Admin Angular app
+                "http://localhost:4201"    // Turista Angular app
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // Obavezno za SignalR WebSocket
     });
+});
 
-    // ────────────────────────────────────────────────────────────
-    // 2. JWT AUTENTIFIKACIJA
-    // ────────────────────────────────────────────────────────────
-    var jwtSecret = builder.Configuration["Jwt:Secret"]
-        ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
+// ────────────────────────────────────────────────────────────
+// 2. JWT AUTENTIFIKACIJA
+// ────────────────────────────────────────────────────────────
+var jwtSecret = builder.Configuration["Jwt:Secret"]
+    ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
 
-    builder.Services.AddAuthentication(options =>
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero
+    };
+    options.Events = new JwtBearerEvents
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        OnMessageReceived = context =>
         {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ClockSkew = TimeSpan.Zero
-        };
-    });
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                context.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
+});
 
-    builder.Services.AddAuthorization();
+builder.Services.AddAuthorization();
 
 // ────────────────────────────────────────────────────────────
 // 3. REGISTRACIJA SERVISA
@@ -62,37 +87,38 @@ using TouristGuide.Api.Interfaces;
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<EmailService>();
-builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
-// Servis za Review-ove
-builder.Services.AddScoped<IReviewService, ReviewService>();
-    builder.Services.AddScoped<DatabaseSeeder>();
 
-    builder.Services.AddControllers();
-    builder.Services.AddEndpointsApiExplorer();
+// ── SignalR ────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+builder.Services.AddScoped<NotificationService>();
 
-    // ────────────────────────────────────────────────────────────
-    // 4. SWAGGER SA JWT PODRŠKOM
-    // ────────────────────────────────────────────────────────────
-    builder.Services.AddSwaggerGen(options =>
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
+// ────────────────────────────────────────────────────────────
+// 4. SWAGGER SA JWT PODRŠKOM
+// ────────────────────────────────────────────────────────────
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "TouristGuide API", Version = "v1" });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        options.SwaggerDoc("v1", new OpenApiInfo { Title = "TouristGuide API", Version = "v1" });
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Unesi JWT token ovako: Bearer {token}"
+    });
 
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "Unesi JWT token ovako: Bearer {token}"
-        });
-
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
         {
             {
                 new OpenApiSecurityScheme
@@ -102,44 +128,63 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
                 Array.Empty<string>()
             }
         });
-    });
+});
 
-    // ────────────────────────────────────────────────────────────
-    // 5. POSTGRESQL KONEKCIJA
-    // ────────────────────────────────────────────────────────────
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(
-            builder.Configuration.GetConnectionString("DefaultConnection")
-        ));
+// ────────────────────────────────────────────────────────────
+// 5. POSTGRESQL KONEKCIJA
+// ────────────────────────────────────────────────────────────
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    ));
 
-    var app = builder.Build();
-    // ────────────────────────────────────────────────────────────
-    // 6. MIGRACIJE + SEED
-    // MigrateAsync kreira tabele i primjenjuje sve migracije.
-    // Seeder puni početnim podacima ako su tabele prazne.
-    // ────────────────────────────────────────────────────────────
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+var app = builder.Build();
+// ────────────────────────────────────────────────────────────
+// 6. MIGRACIJE + SEED
+// MigrateAsync kreira tabele i primjenjuje sve migracije.
+// Seeder puni početnim podacima ako su tabele prazne.
+// ────────────────────────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
 
-        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-        await seeder.SeedAsync();
-    }
+    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+    await seeder.SeedAsync();
+}
 
-    // ────────────────────────────────────────────────────────────
-    // 7. MIDDLEWARE PIPELINE
-    // ────────────────────────────────────────────────────────────
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+// ────────────────────────────────────────────────────────────
+// 7. MIDDLEWARE PIPELINE
+// ────────────────────────────────────────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-    app.UseHttpsRedirection();
+app.UseHttpsRedirection();
+
+// ── Lokalne slike (verifikacioni dokumenti i sl.) ─────────────────────
+// Backend čuva fajlove u ContentRootPath/images/ a ne u wwwroot,
+// pa moramo eksplicitno registrovati taj folder za statički sadržaj.
+var imagesPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "images");
+Directory.CreateDirectory(imagesPhysicalPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(imagesPhysicalPath),
+    RequestPath = "/images",
+});
+
+if (Directory.Exists(app.Environment.WebRootPath))
+{
     app.UseStaticFiles();
-    app.UseCors("AllowFrontends");
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.MapControllers();
-    app.Run();
+}
+app.UseCors("AllowFrontends");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+// ── SignalR Hub ────────────────────────────────────────────────────────
+app.MapHub<TouristGuide.Api.Hubs.AdminNotificationHub>("/hubs/notifications");
+
+app.Run();

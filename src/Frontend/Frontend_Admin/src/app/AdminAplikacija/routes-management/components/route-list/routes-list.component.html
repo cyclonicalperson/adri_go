@@ -23,7 +23,9 @@
       }
     </select>
 
+    @if (canCreateRoutes) {
     <button class="btn-new" (click)="goNew()">+ Nova ruta</button>
+    }
   </div>
 
   @if (loading) {

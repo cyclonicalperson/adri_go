@@ -1,13 +1,11 @@
 <div class="page-content">
-
-  <!-- ── STATS STRIP ──────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="filterByStatus('')">
       <div class="num">{{ globalTotal }}</div>
-      <div class="lbl">Ukupno dogadjaja</div>
+      <div class="lbl">Ukupno događaja</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'published'" (click)="filterByStatus('published')">
-      <div class="num" style="color:#15803d">{{ upcomingCount }}</div>
+      <div class="num" style="color:#15803d">{{ publishedCount }}</div>
       <div class="lbl">Objavljeno</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'draft'" (click)="filterByStatus('draft')">
@@ -18,25 +16,22 @@
       }
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'archived'" (click)="filterByStatus('archived')">
-      <div class="num" style="color:#6b7280">{{ pastCount }}</div>
+      <div class="num" style="color:#6b7280">{{ archivedCount }}</div>
       <div class="lbl">Arhivirano</div>
     </div>
   </div>
 
-  <!-- ── FILTER TABS ──────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!req.category" (click)="onCategoryChange('')">
       Svi
     </button>
     @for (opt of categoryOptions.slice(1); track opt.value) {
-    <button class="ftab" [class.active]="req.category === opt.value"
-            (click)="onCategoryChange(opt.value)">
+    <button class="ftab" [class.active]="req.category === opt.value" (click)="onCategoryChange(opt.value)">
       {{ opt.label }}
     </button>
     }
   </div>
 
-  <!-- ── STATUS FILTER ────────────────────────────────────────────────── -->
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!activeStatusFilter" (click)="filterByStatus('')">
       Svi statusi
@@ -52,13 +47,12 @@
     </button>
   </div>
 
-  <!-- ── TOOLBAR ──────────────────────────────────────────────────────── -->
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretraži dogadjaje po nazivu…"
+             placeholder="Pretraži događaje po nazivu..."
              [value]="req.search ?? ''"
              (input)="onSearch($any($event.target).value)" />
     </div>
@@ -90,11 +84,12 @@
     <div class="btn-group">
       <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
       <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
-      <button class="btn btn-primary" (click)="goNew()">➕ Novi dogadjaj</button>
+      @if (canCreateEvents) {
+      <button class="btn btn-primary" (click)="goNew()">➕ Novi događaj</button>
+      }
     </div>
   </div>
 
-  <!-- ── TABLE / CALENDAR VIEW ────────────────────────────────────────── -->
   @if (loading) {
   <div class="state-msg">Učitavanje...</div>
   } @else if (events.length === 0) {
@@ -104,11 +99,10 @@
   @if (viewMode === 'calendar') {
   <app-event-calendar [events]="events" (editEvent)="openDetail($event)" />
   } @else {
-
   <div class="panel">
     <div class="panel-header">
       <div>
-        <div class="panel-title">Svi dogadjaji</div>
+        <div class="panel-title">Svi događaji</div>
         <div class="panel-sub">{{ total }} rezultata · stranica {{ req.page }} od {{ totalPages }}</div>
       </div>
     </div>
@@ -116,11 +110,11 @@
     <table>
       <thead>
         <tr>
-          <th (click)="onSortCol('name')">Dogadjaj <span class="sort">↕</span></th>
+          <th (click)="onSortCol('name')">Događaj <span class="sort">↕</span></th>
           <th>Kategorija</th>
           <th>Status</th>
-          <th (click)="onSortCol('startAt')">Početak <span class="sort">↕</span></th>
-          <th (click)="onSortCol('endAt')">Kraj <span class="sort">↕</span></th>
+          <th>Početak</th>
+          <th>Kraj</th>
           <th>Lokacija</th>
           <th>Admin</th>
           <th>Akcije</th>
@@ -135,7 +129,7 @@
               <div>
                 <div class="item-name">{{ e.title }}</div>
                 <div class="item-desc">{{ e.description | truncate:55 }}</div>
-                @if ((e.externalUrl)) {
+                @if (e.externalUrl) {
                 <div style="font-size:11px;color:#1d4ed8;margin-top:3px">🎟 Karte dostupne</div>
                 }
               </div>
@@ -148,7 +142,7 @@
           </td>
           <td>
             <span class="badge" [class]="postStatusBadgeClass(e.status)">{{ postStatusLabel(e.status) }}</span>
-            @if (e.status === 'draft') {
+            @if (e.status === 'draft' && canManageEvents) {
             <div style="margin-top:6px;display:flex;gap:6px">
               <button class="btn-icon approve-btn" title="Odobri" (click)="setEventStatus(e, 'published')">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="setEventStatus(e, 'archived')">❌</button>
@@ -169,8 +163,10 @@
             <div class="actions">
               <button class="btn-icon map-btn" title="Mapa" (click)="showOnMap(e)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="openDetail(e)">👁️</button>
+              @if (canManageEvents) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(e)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(e)">🗑️</button>
+              }
             </div>
           </td>
         </tr>
@@ -179,7 +175,7 @@
     </table>
 
     <div class="pagination">
-      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} dogadjaja</div>
+      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} događaja</div>
       <div class="pg-btns">
         <button class="pg-btn" [disabled]="req.page === 1" (click)="onPage(req.page - 1)">←</button>
         @for (p of pageNumbers; track p) {
@@ -189,25 +185,21 @@
       </div>
     </div>
   </div>
-
   }
   }
-
 </div>
 
 <app-confirm-dialog [visible]="!!deleteTarget"
-                    title="Obriši dogadjaj"
+                    title="Obriši događaj"
                     [message]="'Da li ste sigurni da želite da obrišete &quot;' + (deleteTarget?.title ?? '') + '&quot;?'"
                     confirmLabel="Obriši"
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
 
-<!-- ── DETAIL PANEL ──────────────────────────────────────────────────── -->
 @if (detailOpen && detailEvent) {
 <div class="modal-overlay" (click)="closeDetail()">
   <div class="modal-wide" (click)="$event.stopPropagation()">
-
     <div class="modal-header">
       <div class="modal-title-row">
         <span class="modal-icon">{{ categoryIcon(eventCategory(detailEvent)) }}</span>
@@ -269,14 +261,14 @@
 
     <div class="modal-footer">
       <button class="btn btn-outline" (click)="closeDetail()">Zatvori</button>
+      @if (canManageEvents) {
       <button class="btn btn-primary" (click)="goEdit(detailEvent); closeDetail()">✏️ Izmeni</button>
+      }
     </div>
-
   </div>
 </div>
 }
 
-<!-- ── MAP PANEL ─────────────────────────────────────────────────────── -->
 @if (mapOpen && mapEvent) {
 <div class="detail-overlay" (click)="closeMap()">
   <div class="detail-panel" (click)="$event.stopPropagation()" style="max-width:700px">
@@ -292,7 +284,7 @@
                [zoom]="13"
                height="400px" />
       } @else {
-      <div class="state-msg">Ovaj dogadjaj nema definisanu lokaciju.</div>
+      <div class="state-msg">Ovaj događaj nema definisanu lokaciju.</div>
       }
     </div>
   </div>
@@ -300,16 +292,16 @@
 }
 
 <app-confirm-dialog [visible]="!!statusChangeTarget && statusChangeValue === 'published'"
-                    title="Odobri dogadjaj"
-                    [message]="'Odobrite dogadjaj &quot;' + (statusChangeTarget?.title ?? '') + '&quot;? Biće vidljiv turistima.'"
+                    title="Odobri događaj"
+                    [message]="'Odobrite događaj &quot;' + (statusChangeTarget?.title ?? '') + '&quot;? Biće vidljiv turistima.'"
                     confirmLabel="Odobri"
                     [danger]="false"
                     (confirmed)="doStatusChange()"
                     (cancelled)="cancelStatusChange()" />
 
 <app-confirm-dialog [visible]="!!statusChangeTarget && statusChangeValue === 'archived'"
-                    title="Odbij dogadjaj"
-                    [message]="'Odbijte dogadjaj &quot;' + (statusChangeTarget?.title ?? '') + '&quot;? Biće arhiviran.'"
+                    title="Odbij događaj"
+                    [message]="'Odbijte događaj &quot;' + (statusChangeTarget?.title ?? '') + '&quot;? Biće arhiviran.'"
                     confirmLabel="Odbij"
                     [danger]="true"
                     (confirmed)="doStatusChange()"

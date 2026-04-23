@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { RouteService } from '@core/services/route.service';
 import { RegionService } from '@core/services/region.service';
 import { TouristRoute, RouteType, RouteDifficulty } from '@core/models/route.model';
@@ -59,6 +60,7 @@ export class RoutesListComponent implements OnInit {
     private service: RouteService,
     private destService: RegionService,
     private router: Router,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -112,8 +114,12 @@ export class RoutesListComponent implements OnInit {
     this.load();
   }
 
-  goNew(): void { this.router.navigate(['/admin/routes-mgmt/new']); }
-  goEdit(r: TouristRoute): void { this.router.navigate(['/admin/routes-mgmt', r.routeId, 'edit']); }
+  get canCreateRoutes(): boolean {
+    return this.auth.hasPermission('create_route');
+  }
+
+  goNew(): void { this.router.navigate(['/admin/routes-management/new']); }
+  goEdit(r: TouristRoute): void { this.router.navigate(['/admin/routes-management', r.routeId, 'edit']); }
   confirmDelete(r: TouristRoute): void { this.deleteTarget = r; }
   cancelDelete(): void { this.deleteTarget = null; }
 

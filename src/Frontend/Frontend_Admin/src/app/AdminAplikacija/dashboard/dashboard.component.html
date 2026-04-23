@@ -1,6 +1,4 @@
 <div class="dash-root" [class.customise-active]="customiseMode">
-
-  <!-- ── PAGE HEADER ───────────────────────────────────────────────────── -->
   <div class="dash-header">
     <div>
       <div class="dash-title">Dashboard</div>
@@ -8,7 +6,7 @@
         @if (customiseMode) {
         Prevucite widgete da ih prerasporedite · ⟷ za promenu širine · × za uklanjanje
         } @else {
-        Dobrodošli, {{ auth.currentUser?.fullName?.split(' ')[0] }} 👋
+        Dobrodošli, {{ auth.currentUser?.fullName?.split(' ')[0] }}
         }
       </div>
     </div>
@@ -27,11 +25,9 @@
   @if (loading) {
   <div class="loading-state">
     <div class="loading-spinner"></div>
-    <span>Učitavanje podataka…</span>
+    <span>Učitavanje podataka...</span>
   </div>
   } @else {
-
-  <!-- ── WIDGET GRID ────────────────────────────────────────────────────── -->
   <div class="widget-grid"
        cdkDropList
        [cdkDropListData]="config.slots"
@@ -81,8 +77,6 @@
       }
 
       @switch (slot.id) {
-
-      <!-- ── KPI STATS ──────────────────────────────────────────────── -->
       @case ('kpi_stats') {
       <div class="panel widget">
         <div class="panel-header">
@@ -92,7 +86,7 @@
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">🏢</div>
             <div class="kpi-val">{{ stats?.totalLocations ?? 0 }}</div>
-            <div class="kpi-lbl">Destinacije</div>
+            <div class="kpi-lbl">Lokacije</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
             <div class="kpi-icon-wrap">🗺️</div>
@@ -111,15 +105,11 @@
             <div class="kpi-icon-wrap">⭐</div>
             <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
             <div class="kpi-lbl">Recenzije čekaju</div>
-            @if ((stats?.pendingReviews ?? 0) > 0) {
-            <div class="kpi-trend down">⚠ Treba pregled</div>
-            }
           </div>
         </div>
       </div>
       }
 
-      <!-- ── TOURIST KPIs ───────────────────────────────────────────── -->
       @case ('tourist_kpis') {
       <div class="panel widget">
         <div class="panel-header">
@@ -131,7 +121,7 @@
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">👣</div>
             <div class="kpi-val">{{ stats?.totalTourists ?? 0 }}</div>
-            <div class="kpi-lbl">Registrovanih turista</div>
+            <div class="kpi-lbl">Registrovani turisti</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
             <div class="kpi-icon-wrap">📍</div>
@@ -148,25 +138,29 @@
         <div class="kpi-row">
           <div class="kpi-tile" style="--accent:#22c55e;--accent-bg:#f0fdf4">
             <div class="kpi-icon-wrap">📍</div>
-            <div class="kpi-val">{{ stats?.totalPosts ?? 0 }}</div>
-            <div class="kpi-lbl">Mojih lokacija</div>
+            <div class="kpi-val">{{ stats?.totalLocations ?? 0 }}</div>
+            <div class="kpi-lbl">Moje lokacije</div>
           </div>
           <div class="kpi-tile" style="--accent:#3b82f6;--accent-bg:#eff6ff">
-            <div class="kpi-icon-wrap">⭐</div>
-            <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
-            <div class="kpi-lbl">Recenzija na čekanju</div>
+            <div class="kpi-icon-wrap">🗺️</div>
+            <div class="kpi-val">{{ stats?.totalRoutes ?? 0 }}</div>
+            <div class="kpi-lbl">Moje rute</div>
           </div>
           <div class="kpi-tile" style="--accent:#f59e0b;--accent-bg:#fffbeb">
-            <div class="kpi-icon-wrap">📍</div>
+            <div class="kpi-icon-wrap">⭐</div>
+            <div class="kpi-val">{{ stats?.pendingReviews ?? 0 }}</div>
+            <div class="kpi-lbl">Recenzije za pregled</div>
+          </div>
+          <div class="kpi-tile" style="--accent:#8b5cf6;--accent-bg:#f5f3ff">
+            <div class="kpi-icon-wrap">👁️</div>
             <div class="kpi-val">{{ totalVisits }}</div>
-            <div class="kpi-lbl">Poseta na mojim obj.</div>
+            <div class="kpi-lbl">Ukupno pregleda</div>
           </div>
         </div>
         }
       </div>
       }
 
-      <!-- ── VISITS CHART ──────────────────────────────────────────── -->
       @case ('visits_chart') {
       <div class="panel widget">
         <div class="panel-header">
@@ -208,14 +202,16 @@
       </div>
       }
 
-      <!-- ── CATEGORY DONUT ────────────────────────────────────────── -->
       @case ('category_donut') {
       <div class="panel widget">
-        <div class="panel-header"><div class="panel-title">Raspored po tipu</div><div class="panel-sub">Na osnovu stvarnih podataka</div></div>
+        <div class="panel-header">
+          <div class="panel-title">Raspored po tipu</div>
+          <div class="panel-sub">Objavljene lokacije po backend tipu sadržaja</div>
+        </div>
         <div class="panel-body">
           @if (categoryBreakdown.length === 0) {
-          <div class="state-msg">Učitavanje…</div>
-          }
+          <div class="state-msg">Nema podataka.</div>
+          } @else {
           <div class="category-bars">
             @for (cat of categoryBreakdown; track cat.label) {
             <div class="cat-row">
@@ -227,21 +223,21 @@
             </div>
             }
           </div>
+          }
         </div>
       </div>
       }
 
-      <!-- ── TOP LOKACIJE ──────────────────────────────────────────── -->
       @case ('top_lokacije') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Top destinacije</div><div class="panel-sub">Po broju pregleda</div></div>
+          <div><div class="panel-title">Top lokacije</div><div class="panel-sub">Po broju pregleda</div></div>
           <a routerLink="/admin/lokacije" class="panel-link">Sve →</a>
         </div>
         <div class="panel-body">
-          @for (obj of popularObjects.slice(0, 5); track obj.id; let i = $index) {
+          @for (obj of popularObjects.slice(0, 5); track obj.id; let idx = $index) {
           <div class="rank-item">
-            <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
+            <span class="rank-num" [class]="['gold','silver','bronze'][idx] ?? ''">{{ idx + 1 }}</span>
             <span class="rank-name">{{ obj.title }}</span>
             <div class="rank-bar"><div class="rank-fill" [style.width.%]="topBarWidth(obj.viewCount, popularObjects)" style="background:#22c55e"></div></div>
             <span class="rank-val">{{ obj.viewCount | number }}</span>
@@ -254,17 +250,16 @@
       </div>
       }
 
-      <!-- ── TOP DOGADJAJI ─────────────────────────────────────────── -->
       @case ('top_dogadjaji') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Top dogadjaji</div><div class="panel-sub">Po broju pregleda</div></div>
+          <div><div class="panel-title">Top događaji</div><div class="panel-sub">Po broju pregleda</div></div>
           <a routerLink="/admin/events" class="panel-link">Svi →</a>
         </div>
         <div class="panel-body">
-          @for (ev of popularEvents.slice(0, 5); track ev.id; let i = $index) {
+          @for (ev of popularEvents.slice(0, 5); track ev.id; let idx = $index) {
           <div class="rank-item">
-            <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
+            <span class="rank-num" [class]="['gold','silver','bronze'][idx] ?? ''">{{ idx + 1 }}</span>
             <span class="rank-name">{{ ev.title }}</span>
             <div class="rank-bar"><div class="rank-fill" [style.width.%]="topBarWidth(ev.viewCount, popularEvents)" style="background:#3b82f6"></div></div>
             <span class="rank-val">{{ ev.viewCount | number }}</span>
@@ -277,18 +272,19 @@
       </div>
       }
 
-      <!-- ── TOP AKTIVNOSTI ────────────────────────────────────────── -->
       @case ('top_aktivnosti') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Top aktivnosti</div><div class="panel-sub">Registrovane na platformi</div></div>
+          <div><div class="panel-title">Top aktivnosti</div><div class="panel-sub">Po broju pregleda vezanih lokacija</div></div>
           <a routerLink="/admin/aktivnosti" class="panel-link">Sve →</a>
         </div>
         <div class="panel-body">
-          @for (item of topActivities; track item.id; let i = $index) {
+          @for (item of topActivities; track item.id; let idx = $index) {
           <div class="rank-item">
-            <span class="rank-num" [class]="['gold','silver','bronze'][i] ?? ''">{{ i + 1 }}</span>
+            <span class="rank-num" [class]="['gold','silver','bronze'][idx] ?? ''">{{ idx + 1 }}</span>
             <span class="rank-name">{{ item.name }}</span>
+            <div class="rank-bar"><div class="rank-fill" [style.width.%]="topActivityWidth(item.viewCount)" style="background:#8b5cf6"></div></div>
+            <span class="rank-val">{{ item.viewCount | number }}</span>
           </div>
           }
           @if (topActivities.length === 0) {
@@ -298,12 +294,11 @@
       </div>
       }
 
-      <!-- ── PENDING REQUESTS ──────────────────────────────────────── -->
       @case ('pending_requests') {
       <div class="panel widget">
         <div class="panel-header">
           <div><div class="panel-title">Zahtevi na čekanju</div><div class="panel-sub">{{ pendingCount }} čeka odobrenje</div></div>
-          <a routerLink="/admin/users" class="panel-link">Svi →</a>
+          <a routerLink="/admin/zahtevi" class="panel-link">Svi →</a>
         </div>
         <div class="panel-body">
           @for (req of pendingRequests; track req.id) {
@@ -315,7 +310,7 @@
             </div>
             <div class="req-actions">
               <button class="btn btn-xs btn-approve" (click)="approveRequest(req); $event.stopPropagation()">✓</button>
-              <button class="btn btn-xs btn-reject" (click)="rejectRequest(req); $event.stopPropagation()">✗</button>
+              <button class="btn btn-xs btn-reject" (click)="rejectRequest(req); $event.stopPropagation()">✕</button>
             </div>
           </div>
           }
@@ -326,7 +321,6 @@
       </div>
       }
 
-      <!-- ── ACTIVITY LOG ───────────────────────────────────────────── -->
       @case ('activity_log') {
       <div class="panel widget">
         <div class="panel-header"><div class="panel-title">Nedavne aktivnosti</div></div>
@@ -338,11 +332,13 @@
             <div class="activity-time">{{ item.time }}</div>
           </div>
           }
+          @if (!activityLog.length) {
+          <div class="state-msg">Nema aktivnosti.</div>
+          }
         </div>
       </div>
       }
 
-      <!-- ── MAP PREVIEW (Tourist heatmap) ─────────────────────────── -->
       @case ('map_preview') {
       <div class="panel widget">
         <div class="panel-header">
@@ -372,27 +368,29 @@
       </div>
       }
 
-      <!-- ── TOURIST MAP (Mapa lokacija) ──────────────────────────────── -->
       @case ('tourist_map') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Mapa destinacija</div><div class="panel-sub">Sve destinacije na platformi</div></div>
+          <div><div class="panel-title">Mapa lokacija</div><div class="panel-sub">Objavljene lokacije sa koordinatama</div></div>
           <a routerLink="/admin/map-admin" class="panel-link">Puna mapa →</a>
         </div>
         <div class="panel-body">
+          @if (locationMarkers.length) {
           <app-map [markers]="locationMarkers"
                    [centerLat]="43.15"
                    [centerLng]="19.10"
                    [zoom]="9"
                    height="320px" />
+          } @else {
+          <div class="state-msg">Nema lokacija sa koordinatama.</div>
+          }
         </div>
       </div>
       }
 
-      <!-- ── TOURIST PREFERENCES ───────────────────────────────────── -->
       @case ('tourist_preferences') {
       <div class="panel widget">
-        <div class="panel-header"><div class="panel-title">Sklonosti turista</div></div>
+        <div class="panel-header"><div class="panel-title">Sklonosti turista</div><div class="panel-sub">Na osnovu pregleda lokacija</div></div>
         <div class="panel-body">
           @if (preferences.length === 0) {
           <div class="state-msg">Nema pregleda.</div>
@@ -407,10 +405,9 @@
       </div>
       }
 
-      <!-- ── CITY BREAKDOWN ────────────────────────────────────────── -->
       @case ('city_breakdown') {
       <div class="panel widget">
-        <div class="panel-header"><div class="panel-title">Po gradu</div><div class="panel-sub">Distribucija pregleda</div></div>
+        <div class="panel-header"><div class="panel-title">Po gradu</div><div class="panel-sub">Distribucija pregleda po regionima</div></div>
         <div class="panel-body">
           @if (cityBreakdown.length === 0) {
           <div class="state-msg">Nema pregleda.</div>
@@ -425,20 +422,20 @@
       </div>
       }
 
-      <!-- ── RECENT REVIEWS ────────────────────────────────────────── -->
       @case ('recent_reviews') {
       <div class="panel widget">
         <div class="panel-header">
-          <div><div class="panel-title">Nedavne recenzije</div><div class="panel-sub">Čekaju moderaciju</div></div>
+          <div><div class="panel-title">Nedavne recenzije</div><div class="panel-sub">Samo recenzije koje čekaju moderaciju</div></div>
           <a routerLink="/admin/reviews" class="panel-link">Sve →</a>
         </div>
         <div class="panel-body">
-          @for (r of recentReviews; track r.name) {
+          @for (r of recentReviews; track r.id) {
           <div class="review-row">
             <div class="rev-av">{{ r.initials }}</div>
             <div class="rev-body">
               <div class="rev-name">{{ r.name }}</div>
               <div class="rev-comment">{{ r.comment }}</div>
+              <div class="rev-entity">{{ r.entityName }}</div>
             </div>
             <div class="rev-right">
               <div class="rev-stars">{{ r.stars }}</div>
@@ -454,14 +451,11 @@
         </div>
       </div>
       }
-
       }
     </div>
     }
-
   </div>
 
-  <!-- Empty dashboard -->
   @if (config.slots.length === 0) {
   <div class="empty-dashboard">
     <div class="empty-icon">📭</div>
@@ -470,12 +464,9 @@
     <button class="btn btn-primary" (click)="toggleCustomise(); openPicker()">＋ Dodaj widget</button>
   </div>
   }
-
   }
-
 </div>
 
-<!-- ══ WIDGET PICKER DRAWER ══════════════════════════════════════════════ -->
 @if (pickerOpen) {
 <div class="picker-backdrop" (click)="closePicker()"></div>
 <aside class="picker-drawer">
@@ -485,7 +476,7 @@
   </div>
   <div class="picker-body">
     @if (availableToAdd.length === 0) {
-    <div class="picker-empty">Svi widgeti su već na dashboardu.</div>
+    <div class="picker-empty">Svi dostupni widgeti su već na dashboardu.</div>
     }
     @for (def of availableToAdd; track def.id) {
     <div class="picker-item" (click)="addWidget(def)">

@@ -3,7 +3,7 @@ import { of } from 'rxjs';
 
 // ── Mock credentials — EXACTLY as in README.md ───────────────────────────
 //
-//  Super Admin: superadmin@touristhub.rs   / admin123
+//  Super Admin: superadmin@adrigo.rs   / admin123
 //  Admin:       admin@kopaonik.rs          / admin123
 //
 //  Roles match DB ENUM exactly: admin_user.role = ENUM('superadmin','admin')
@@ -21,12 +21,12 @@ const MOCK_USERS: Record<string, {
     accountStatus: 'active';
   };
 }> = {
-  'superadmin@touristhub.rs': {
+  'superadmin@adrigo.rs': {
     accessToken: 'mock-token-superadmin',
     user: {
       userId: 1,
       fullName: 'Marko Petrović',
-      email: 'superadmin@touristhub.rs',  // ← mora da se poklapa sa ključem
+      email: 'superadmin@adrigo.rs',  // ← mora da se poklapa sa ključem
       role: 'superadmin',
       organizationId: null,
       isIndividual: true,
@@ -48,7 +48,7 @@ const MOCK_USERS: Record<string, {
 };
 
 const PASSWORDS: Record<string, string> = {
-  'superadmin@touristhub.rs': 'admin123',
+  'superadmin@adrigo.rs': 'admin123',
   'admin@kopaonik.rs': 'admin123',
 };
 

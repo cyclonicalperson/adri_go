@@ -45,6 +45,7 @@ PublishProfiles/
 *.trace
 logs/
 Logs/
+src/Backend/TouristGuide.Api/App_Data/
 
 ## Testovi
 [Tt]est[Rr]esult*/
@@ -168,3 +169,6 @@ desktop.ini
 *.bak
 *.orig
 /src/Frontend/.vscode
+/.claude
+/src/Backend/TouristGuide.Api/images/uploads/docs
+/src/Backend/TouristGuide.Api/images/verification-documents

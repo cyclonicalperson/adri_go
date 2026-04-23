@@ -4,6 +4,7 @@ import { UserService } from '@core/services/user.service';
 import { RegistrationRequest } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { FormsModule } from '@angular/forms';
+import { environment } from '@env/environment';
 
 type FilterStatus = '' | 'pending' | 'approved' | 'rejected';
 
@@ -14,7 +15,6 @@ type FilterStatus = '' | 'pending' | 'approved' | 'rejected';
   imports: [DateLocalPipe, FormsModule],
 })
 export class ZahteviComponent implements OnInit {
-
   requests: RegistrationRequest[] = [];
   total = 0;
   totalPages = 1;
@@ -23,17 +23,10 @@ export class ZahteviComponent implements OnInit {
   selected: RegistrationRequest | null = null;
   detailOpen = false;
 
-  // ── Brojevi kartica — iste kao na Admini stranici ─────────────────────
-  // Kartica 1: Na čekanju (registracioni zahtevi pending)
   pendingCount = 0;
-  // Kartica 2: Aktivni admini (isto kao na Admini stranici)
   activeAdminCount = 0;
-  // Kartica 3: Suspendovani admini (isto kao na Admini stranici)
   suspendedAdminCount = 0;
-  // Kartica 4: Ukupno zahteva
   allCount = 0;
-
-  // Lokalni filteri za prikaz u tabeli
   approvedCount = 0;
   rejectedCount = 0;
 
@@ -48,7 +41,10 @@ export class ZahteviComponent implements OnInit {
   rejectTarget: RegistrationRequest | null = null;
   processing = false;
 
-  constructor(private service: UserService, private badgeService: BadgeService) { }
+  constructor(
+    private service: UserService,
+    private badgeService: BadgeService,
+  ) { }
 
   ngOnInit(): void {
     this.load();
@@ -61,6 +57,7 @@ export class ZahteviComponent implements OnInit {
       page: this.page,
       pageSize: this.pageSize,
       status: this.activeStatus || undefined,
+      search: this.searchQuery || undefined,
     }).subscribe({
       next: res => {
         this.requests = res.data;
@@ -68,23 +65,35 @@ export class ZahteviComponent implements OnInit {
         this.totalPages = res.totalPages;
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: () => {
+        this.loading = false;
+      },
     });
   }
 
   private loadCounts(): void {
-    // Brojevi zahteva po statusu
     this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'pending' })
-      .subscribe(r => { this.pendingCount = r.total; this.recomputeAll(); });
-    this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'approved' })
-      .subscribe(r => { this.approvedCount = r.total; this.recomputeAll(); });
-    this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'rejected' })
-      .subscribe(r => { this.rejectedCount = r.total; this.recomputeAll(); });
+      .subscribe(r => {
+        this.pendingCount = r.total;
+        this.recomputeAll();
+      });
 
-    // Aktivni i suspendovani admini — koristimo backend total
+    this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'approved' })
+      .subscribe(r => {
+        this.approvedCount = r.total;
+        this.recomputeAll();
+      });
+
+    this.service.getRegistrationRequests({ page: 1, pageSize: 1, status: 'rejected' })
+      .subscribe(r => {
+        this.rejectedCount = r.total;
+        this.recomputeAll();
+      });
+
     this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'active' }).subscribe(res => {
       this.activeAdminCount = res.total;
     });
+
     this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'suspended' }).subscribe(res => {
       this.suspendedAdminCount = res.total;
     });
@@ -94,20 +103,33 @@ export class ZahteviComponent implements OnInit {
     this.allCount = this.pendingCount + this.approvedCount + this.rejectedCount;
   }
 
-  setStatus(s: FilterStatus): void {
-    this.activeStatus = s;
+  onSearch(query: string): void {
+    this.searchQuery = query;
     this.page = 1;
     this.load();
   }
 
-  onPage(p: number): void {
-    if (p < 1 || p > this.totalPages) return;
-    this.page = p;
+  clearFilters(): void {
+    this.activeStatus = '';
+    this.searchQuery = '';
+    this.page = 1;
     this.load();
   }
 
-  openDetail(r: RegistrationRequest): void {
-    this.selected = r;
+  setStatus(status: FilterStatus): void {
+    this.activeStatus = status;
+    this.page = 1;
+    this.load();
+  }
+
+  onPage(page: number): void {
+    if (page < 1 || page > this.totalPages) return;
+    this.page = page;
+    this.load();
+  }
+
+  openDetail(request: RegistrationRequest): void {
+    this.selected = request;
     this.detailOpen = true;
   }
 
@@ -116,9 +138,9 @@ export class ZahteviComponent implements OnInit {
     this.selected = null;
   }
 
-  approve(r: RegistrationRequest): void {
+  approve(request: RegistrationRequest): void {
     this.processing = true;
-    this.service.approveRegistration(r.id).subscribe({
+    this.service.approveRegistration(request.id).subscribe({
       next: () => {
         this.processing = false;
         this.closeDetail();
@@ -126,12 +148,14 @@ export class ZahteviComponent implements OnInit {
         this.loadCounts();
         this.badgeService.refresh();
       },
-      error: () => { this.processing = false; },
+      error: () => {
+        this.processing = false;
+      },
     });
   }
 
-  openRejectDialog(r: RegistrationRequest): void {
-    this.rejectTarget = r;
+  openRejectDialog(request: RegistrationRequest): void {
+    this.rejectTarget = request;
     this.rejectReason = '';
     this.rejectDialogOpen = true;
   }
@@ -155,43 +179,60 @@ export class ZahteviComponent implements OnInit {
         this.loadCounts();
         this.badgeService.refresh();
       },
-      error: () => { this.processing = false; },
+      error: () => {
+        this.processing = false;
+      },
     });
   }
 
   get pageNumbers(): number[] {
     const pages: number[] = [];
-    for (let i = Math.max(1, this.page - 2); i <= Math.min(this.totalPages, this.page + 2); i++) {
+    for (let i = Math.max(1, this.page - 2); i <= Math.min(this.totalPages, this.page + 2); i += 1) {
       pages.push(i);
     }
     return pages;
   }
 
-  get pageStart(): number { return (this.page - 1) * this.pageSize + 1; }
-  get pageEnd(): number { return Math.min(this.page * this.pageSize, this.total); }
+  get pageStart(): number {
+    return this.total === 0 ? 0 : (this.page - 1) * this.pageSize + 1;
+  }
+
+  get pageEnd(): number {
+    return Math.min(this.page * this.pageSize, this.total);
+  }
 
   initials(name: string): string {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   }
 
-  statusLabel(s: string): string {
-    return { pending: '⏳ Na čekanju', approved: '✅ Odobreno', rejected: '❌ Odbijeno' }[s] ?? s;
+  statusLabel(status: string): string {
+    return { pending: '⏳ Na čekanju', approved: '✅ Odobreno', rejected: '❌ Odbijeno' }[status] ?? status;
   }
 
-  statusClass(s: string): string {
-    return { pending: 'badge-amber', approved: 'badge-green', rejected: 'badge-red' }[s] ?? 'badge-gray';
+  statusClass(status: string): string {
+    return { pending: 'badge-amber', approved: 'badge-green', rejected: 'badge-red' }[status] ?? 'badge-gray';
   }
 
-  typeLabel(r: RegistrationRequest): string {
-    if (r.isIndividual) return '👤 Fizičko lice';
-    return `🏢 ${r.organizationName ?? 'Organizacija'}`;
+  typeLabel(request: RegistrationRequest): string {
+    if (request.isIndividual) return '👤 Fizičko lice';
+    return `🏢 ${request.organizationName ?? 'Organizacija'}`;
   }
 
-  hasDocument(r: RegistrationRequest): boolean {
-    return !!(r as any).documentUrl;
+  reviewedByLabel(request: RegistrationRequest): string {
+    return request.reviewedBy ? `Superadmin #${request.reviewedBy}` : '—';
   }
 
-  documentUrl(r: RegistrationRequest): string {
-    return (r as any).documentUrl ?? '';
+  hasDocument(request: RegistrationRequest): boolean {
+    return !!request.documentUrl;
+  }
+
+  documentUrl(request: RegistrationRequest): string {
+    const raw = request.documentUrl;
+    if (!raw) return '';
+    // Ako backend već vrati apsolutni URL (http://...) — koristi ga direktno
+    if (raw.startsWith('http')) return raw;
+    // Inače — sagradi apsolutni URL iz API baze (ukloni /api sufiks)
+    const apiBase = environment.apiUrl.replace(/\/api$/, '');
+    return `${apiBase}${raw.startsWith('/') ? '' : '/'}${raw}`;
   }
 }

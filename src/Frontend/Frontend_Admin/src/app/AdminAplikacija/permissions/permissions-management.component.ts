@@ -155,6 +155,7 @@ export class PermissionsManagementComponent implements OnInit {
       this.activePermCodes.delete(permCode);
       this.userService.revokePermission(this.selectedUser.userId, perm.id).subscribe({
         next: () => {
+          this.userPermissions = this.userPermissions.filter(up => up.permission.code !== permCode);
           this.addLog('revoke', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, -1);
         },
@@ -169,6 +170,14 @@ export class PermissionsManagementComponent implements OnInit {
         this.selectedRegionId ?? undefined,
       ).subscribe({
         next: () => {
+          this.userPermissions = [...this.userPermissions, {
+            id: 0,
+            adminUserId: this.selectedUser!.userId,
+            permission: perm,
+            regionId: this.selectedRegionId,
+            grantedBy: 0,
+            grantedAt: new Date().toISOString(),
+          }];
           this.addLog('grant', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, +1);
         },
@@ -234,6 +243,7 @@ export class PermissionsManagementComponent implements OnInit {
 
   // ── Log izmjena ────────────────────────────────────────────────────────
   private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {
+    // Optimistički dodaj entry lokalno (bez čekanja API-ja)
     const entry: ChangeLogEntry = {
       icon: type === 'grant' ? '✅' : '✗',
       label: type === 'grant' ? 'Dozvola dodata' : 'Dozvola uklonjena',
@@ -244,26 +254,32 @@ export class PermissionsManagementComponent implements OnInit {
       type,
     };
     this.changeLog.unshift(entry);
-    if (this.changeLog.length > 50) this.changeLog = this.changeLog.slice(0, 50);
-
-    // Persist in localStorage (nema backend endpoint za permission log)
-    this.saveChangeLog();
+    if (this.changeLog.length > 100) this.changeLog = this.changeLog.slice(0, 100);
   }
 
-  private saveChangeLog(): void {
-    try {
-      localStorage.setItem('th_permission_log', JSON.stringify(this.changeLog));
-    } catch { /* ignore */ }
-  }
-
-  // Učitaj log iz localStorage pri inicijalizaciji
+  // Učitaj log iz baze pri inicijalizaciji
   private loadChangeLog(): void {
-    try {
-      const raw = localStorage.getItem('th_permission_log');
-      this.changeLog = raw ? JSON.parse(raw) : [];
-    } catch {
-      this.changeLog = [];
-    }
+    this.http.get<{ data: any[] }>(`${environment.apiUrl}/admin-users/permission-log?limit=100`)
+      .subscribe({
+        next: res => {
+          this.changeLog = (res.data ?? []).map((e: any) => ({
+            icon: e.action === 'grant' ? '✅' : '✗',
+            label: e.action === 'grant' ? 'Dozvola dodata' : 'Dozvola uklonjena',
+            user: e.performedByName ?? 'Administrator',
+            perm: e.permCode ?? '—',
+            entity: e.targetName ?? '—',
+            time: new Date(e.performedAt).toLocaleString('sr-RS'),
+            type: e.action as 'grant' | 'revoke',
+          }));
+        },
+        error: () => {
+          // Fallback na localStorage ako backend nije dostupan
+          try {
+            const raw = localStorage.getItem('th_permission_log');
+            this.changeLog = raw ? JSON.parse(raw) : [];
+          } catch { this.changeLog = []; }
+        },
+      });
   }
 
   // Ažurira permissionCount u listi korisnika odmah
@@ -280,7 +296,7 @@ export class PermissionsManagementComponent implements OnInit {
     if (this.selectedUser?.userId === userId) {
       this.selectedUser = { ...this.selectedUser, permissionCount: newCount };
     }
-  } 
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────
   permCount(u: User): number { return u.permissionCount ?? 0; }

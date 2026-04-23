@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
 import { TouristObject, ObjectCategory } from '@core/models/object.model';
@@ -23,28 +24,39 @@ export class ObjectsListComponent implements OnInit {
   deleteTarget: TouristObject | null = null;
   activeStatusFilter = '';
 
-  // Computed stat counts (set after load)
   activeCount = 0;
   pendingCount = 0;
   inactiveCount = 0;
   globalTotal = 0;
 
   req: PageRequest & { category?: string; regionId?: number; status?: string } = {
-    page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc',
+    page: 1,
+    pageSize: 10,
+    sortBy: 'createdAt',
+    sortDir: 'desc',
   };
 
   constructor(
     private service: ObjectService,
-    private destService: RegionService,
+    private regionService: RegionService,
     private router: Router,
-  ) { }
+    private auth: AuthService,
+  ) {}
 
   ngOnInit(): void {
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
+    this.regionService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.regions = res.data;
     });
     this.load();
     this.loadGlobalCounts();
+  }
+
+  get canManageObjects(): boolean {
+    return this.auth.hasPermission('manage_own_posts');
+  }
+
+  private recomputeGlobalTotal(): void {
+    this.globalTotal = this.activeCount + this.pendingCount + this.inactiveCount;
   }
 
   load(): void {
@@ -56,23 +68,24 @@ export class ObjectsListComponent implements OnInit {
         this.totalPages = res.totalPages;
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: () => {
+        this.loading = false;
+      },
     });
   }
 
   private loadGlobalCounts(): void {
-    // Koristimo backend status filter i total — ne učitavamo sve zapise
     this.service.getAll({ page: 1, pageSize: 1, status: 'published' }).subscribe(res => {
       this.activeCount = res.total;
+      this.recomputeGlobalTotal();
     });
     this.service.getAll({ page: 1, pageSize: 1, status: 'draft' }).subscribe(res => {
       this.pendingCount = res.total;
+      this.recomputeGlobalTotal();
     });
     this.service.getAll({ page: 1, pageSize: 1, status: 'archived' }).subscribe(res => {
       this.inactiveCount = res.total;
-    });
-    this.service.getAll({ page: 1, pageSize: 1 }).subscribe(res => {
-      this.globalTotal = res.total;
+      this.recomputeGlobalTotal();
     });
   }
 
@@ -84,13 +97,11 @@ export class ObjectsListComponent implements OnInit {
   onCategoryChange(cat: string): void {
     this.req = { ...this.req, category: cat || undefined, page: 1 };
     this.load();
-    this.loadGlobalCounts();
   }
 
   onDestinationChange(id: string): void {
     this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
-    this.loadGlobalCounts();
   }
 
   onStatusFilter(val: string): void {
@@ -101,11 +112,9 @@ export class ObjectsListComponent implements OnInit {
       inactive: 'archived',
     };
     const mapped = statusMap[val];
-    // Moramo kreirati nov objekat i eksplicitno ukloniti status kad je prazan
     const { status: _removed, ...rest } = this.req as any;
     this.req = mapped ? { ...rest, status: mapped, page: 1 } : { ...rest, page: 1 };
     this.load();
-    this.loadGlobalCounts();
   }
 
   onSort(val: string): void {
@@ -126,62 +135,113 @@ export class ObjectsListComponent implements OnInit {
     this.load();
   }
 
-  goNew(): void { this.router.navigate(['/admin/lokacije/new']); }
-  goEdit(o: TouristObject): void { this.router.navigate(['/admin/lokacije', o.objectId, 'edit']); }
-  goDetail(o: TouristObject): void { this.router.navigate(['/admin/lokacije', o.objectId]); }
-  goMap(o: TouristObject): void { this.router.navigate(['/admin/map-admin']); }
+  goNew(): void {
+    this.router.navigate(['/admin/lokacije/new']);
+  }
 
-  confirmDelete(o: TouristObject): void { this.deleteTarget = o; }
-  cancelDelete(): void { this.deleteTarget = null; }
+  goEdit(objectItem: TouristObject): void {
+    this.router.navigate(['/admin/lokacije', objectItem.objectId, 'edit']);
+  }
+
+  goDetail(objectItem: TouristObject): void {
+    this.router.navigate(['/admin/lokacije', objectItem.objectId]);
+  }
+
+  goMap(_: TouristObject): void {
+    this.router.navigate(['/admin/map-admin']);
+  }
+
+  confirmDelete(objectItem: TouristObject): void {
+    this.deleteTarget = objectItem;
+  }
+
+  cancelDelete(): void {
+    this.deleteTarget = null;
+  }
 
   doDelete(): void {
     if (!this.deleteTarget) return;
     this.service.delete(this.deleteTarget.objectId).subscribe(() => {
       this.deleteTarget = null;
       this.load();
+      this.loadGlobalCounts();
     });
   }
 
-  // ── Approve / Reject with ConfirmDialog ───────────────────────────────
   approveTarget: TouristObject | null = null;
   rejectTarget: TouristObject | null = null;
 
-  confirmApprove(o: TouristObject): void { if (this.objectStatus(o) === 'draft') this.approveTarget = o; }
-  cancelApprove(): void { this.approveTarget = null; }
+  confirmApprove(objectItem: TouristObject): void {
+    if (this.objectStatus(objectItem) === 'draft') {
+      this.approveTarget = objectItem;
+    }
+  }
+
+  cancelApprove(): void {
+    this.approveTarget = null;
+  }
+
   doApprove(): void {
     if (!this.approveTarget) return;
-    const o = this.approveTarget;
+    const objectItem = this.approveTarget;
     this.approveTarget = null;
-    this.service.update(o.objectId, { status: 'published' }).subscribe({
-      next: () => { (o as any).status = 'published'; this.load(); this.loadGlobalCounts(); },
+    this.service.update(objectItem.objectId, { status: 'published' }).subscribe({
+      next: () => {
+        (objectItem as any).status = 'published';
+        this.load();
+        this.loadGlobalCounts();
+      },
     });
   }
 
-  confirmReject(o: TouristObject): void { if (this.objectStatus(o) === 'draft') this.rejectTarget = o; }
-  cancelReject(): void { this.rejectTarget = null; }
+  confirmReject(objectItem: TouristObject): void {
+    if (this.objectStatus(objectItem) === 'draft') {
+      this.rejectTarget = objectItem;
+    }
+  }
+
+  cancelReject(): void {
+    this.rejectTarget = null;
+  }
+
   doReject(): void {
     if (!this.rejectTarget) return;
-    const o = this.rejectTarget;
+    const objectItem = this.rejectTarget;
     this.rejectTarget = null;
-    this.service.update(o.objectId, { status: 'archived' }).subscribe({
-      next: () => { (o as any).status = 'archived'; this.load(); this.loadGlobalCounts(); },
+    this.service.update(objectItem.objectId, { status: 'archived' }).subscribe({
+      next: () => {
+        (objectItem as any).status = 'archived';
+        this.load();
+        this.loadGlobalCounts();
+      },
     });
   }
 
-  // Keep old names as aliases so HTML buttons can call approve(o)/reject(o)
-  approve(o: TouristObject): void { this.confirmApprove(o); }
-  reject(o: TouristObject): void { this.confirmReject(o); }
+  approve(objectItem: TouristObject): void {
+    this.confirmApprove(objectItem);
+  }
 
-  printReport(): void { window.print(); }
-  exportCsv(): void { /* TODO: implement CSV export */ }
+  reject(objectItem: TouristObject): void {
+    this.confirmReject(objectItem);
+  }
 
-  // ── View helpers ──────────────────────────────────────────────────────
-  get pageStart(): number { return (this.req.page - 1) * this.req.pageSize + 1; }
-  get pageEnd(): number { return Math.min(this.req.page * this.req.pageSize, this.total); }
+  printReport(): void {
+    window.print();
+  }
+
+  exportCsv(): void {}
+
+  get pageStart(): number {
+    return this.total === 0 ? 0 : (this.req.page - 1) * this.req.pageSize + 1;
+  }
+
+  get pageEnd(): number {
+    return Math.min(this.req.page * this.req.pageSize, this.total);
+  }
 
   get pageNumbers(): number[] {
     const pages: number[] = [];
-    for (let i = Math.max(1, this.req.page - 2); i <= Math.min(this.totalPages, this.req.page + 2); i++) {
+    for (let i = Math.max(1, this.req.page - 2); i <= Math.min(this.totalPages, this.req.page + 2); i += 1) {
       pages.push(i);
     }
     return pages;
@@ -189,28 +249,50 @@ export class ObjectsListComponent implements OnInit {
 
   categoryIcon(cat: ObjectCategory): string {
     const map: Record<string, string> = {
-      HOTEL: '🏔️', APARTMENT: '🏠', RESTAURANT: '🍽️', CAFE: '☕',
-      CLUB: '🎵', SHOP: '🛍️', CULTURAL: '🏛️', MONUMENT: '🗿',
-      SPORT: '⚽', NATURE: '🌿', OTHER: '📍',
+      HOTEL: '🏨',       // accommodation
+      APARTMENT: '🏠',   // accommodation (legacy)
+      RESTAURANT: '🍽️',
+      CAFE: '☕',
+      CLUB: '🎵',
+      SHOP: '🛍️',
+      CULTURAL: '🏛️',   // cultural_site
+      MONUMENT: '🗿',
+      SPORT: '⚽',        // sports_facility
+      NATURE: '🌿',       // attraction
+      OTHER: '📍',
     };
     return map[cat] ?? '📍';
   }
 
   categoryLabel(cat: ObjectCategory): string {
     const map: Record<string, string> = {
-      HOTEL: 'Hotel', APARTMENT: 'Smeštaj', RESTAURANT: 'Restoran',
-      CAFE: 'Kafić', CLUB: 'Klub', SHOP: 'Prodavnica',
-      CULTURAL: 'Kulturni', MONUMENT: 'Spomenik', SPORT: 'Sportski',
-      NATURE: 'Priroda', OTHER: 'Ostalo',
+      HOTEL: 'Smeštaj',
+      APARTMENT: 'Smeštaj',
+      RESTAURANT: 'Restoran',
+      CAFE: 'Kafić',
+      CLUB: 'Klub',
+      SHOP: 'Prodavnica',
+      CULTURAL: 'Kulturni',
+      MONUMENT: 'Spomenik',
+      SPORT: 'Sportski',
+      NATURE: 'Atrakcija',
+      OTHER: 'Ostalo',
     };
     return map[cat] ?? cat;
   }
 
   typeBadgeClass(cat: ObjectCategory): string {
     const map: Record<string, string> = {
-      HOTEL: 'type-hotel', APARTMENT: 'type-soba', RESTAURANT: 'type-restoran',
-      CAFE: 'type-restoran', CULTURAL: 'type-kultura', MONUMENT: 'type-kultura',
-      SPORT: 'type-sport', NATURE: 'type-priroda', CLUB: 'type-noćni',
+      HOTEL: 'type-hotel',
+      APARTMENT: 'type-hotel',
+      RESTAURANT: 'type-restoran',
+      CAFE: 'type-restoran',
+      CULTURAL: 'type-kultura',
+      MONUMENT: 'type-kultura',
+      SPORT: 'type-sport',
+      NATURE: 'type-priroda',
+      CLUB: 'type-nocni',
+      SHOP: 'type-shop',
     };
     return map[cat] ?? 'type-ostalo';
   }
@@ -220,11 +302,11 @@ export class ObjectsListComponent implements OnInit {
     return '★'.repeat(full) + '☆'.repeat(5 - full);
   }
 
-  ownerName(o: TouristObject): string {
-    return o.destination?.name ?? o.region?.name ?? 'Sistem';
+  ownerName(objectItem: TouristObject): string {
+    return objectItem.destination?.name ?? objectItem.region?.name ?? 'Sistem';
   }
 
-  objectStatus(o: TouristObject): string {
-    return (o as any).status ?? 'published';
+  objectStatus(objectItem: TouristObject): string {
+    return (objectItem as any).status ?? 'published';
   }
 }

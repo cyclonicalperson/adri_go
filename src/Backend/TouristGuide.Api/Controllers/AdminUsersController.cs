@@ -281,6 +281,24 @@ namespace TouristGuide.Api.Controllers
                 GrantedAt = DateTime.UtcNow
             });
 
+            // Audit log — čuva se u bazi za prikaz u ekranu Dozvola
+            var permCode = await _db.AdminPermissions
+                .Where(p => p.Id == dto.PermissionId)
+                .Select(p => p.Code)
+                .FirstOrDefaultAsync();
+
+            _db.AdminAuditLogs.Add(new AdminAuditLog
+            {
+                AdminUserId = id,
+                PerformedBy = grantedBy,
+                Action = "grant",
+                EntityType = "permission",
+                EntityId = dto.PermissionId,
+                NewValue = permCode,
+                PerformedAt = DateTime.UtcNow,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+            });
+
             await _db.SaveChangesAsync();
             return Ok(new { success = true, message = "Permisija je dodeljena." });
         }
@@ -296,10 +314,59 @@ namespace TouristGuide.Api.Controllers
             if (perm is null)
                 return NotFound(new { message = "Permisija nije pronađena." });
 
+            var revokedBy = GetCurrentAdminId() ?? 0;
+
+            // Audit log pred brisanjem (dok još znamo koji je permissionId)
+            var permCode = await _db.AdminPermissions
+                .Where(p => p.Id == permissionId)
+                .Select(p => p.Code)
+                .FirstOrDefaultAsync();
+
+            _db.AdminAuditLogs.Add(new AdminAuditLog
+            {
+                AdminUserId = id,
+                PerformedBy = revokedBy,
+                Action = "revoke",
+                EntityType = "permission",
+                EntityId = permissionId,
+                OldValue = permCode,
+                PerformedAt = DateTime.UtcNow,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
+            });
+
             _db.AdminUserPermissions.Remove(perm);
             await _db.SaveChangesAsync();
 
             return Ok(new { success = true, message = "Permisija je uklonjena." });
+        }
+
+        // ── GET /api/admin-users/permission-log ───────────────────────────────
+        /// <summary>
+        /// Vraća log izmjena dozvola iz baze (admin_audit_log WHERE entity_type='permission').
+        /// Zamjena za localStorage rješenje u frontendu.
+        /// </summary>
+        [HttpGet("permission-log")]
+        [Authorize(Roles = "superadmin")]
+        public async Task<IActionResult> GetPermissionLog([FromQuery] int limit = 100)
+        {
+            var entries = await _db.AdminAuditLogs
+                .Where(l => l.EntityType == "permission")
+                .OrderByDescending(l => l.PerformedAt)
+                .Take(Math.Min(limit, 500))
+                .Select(l => new
+                {
+                    id = l.Id,
+                    action = l.Action,            // "grant" | "revoke"
+                    permCode = l.Action == "grant" ? l.NewValue : l.OldValue,
+                    targetAdminId = l.AdminUserId,
+                    targetName = l.AdminUser != null ? l.AdminUser.FullName : null,
+                    performedBy = l.PerformedBy,
+                    performedByName = l.PerformedByAdmin != null ? l.PerformedByAdmin.FullName : null,
+                    performedAt = l.PerformedAt,
+                })
+                .ToListAsync();
+
+            return Ok(new { data = entries, success = true });
         }
 
         // ── PATCH /api/admin-users/me — Self profile update (any admin) ────────

@@ -11,6 +11,8 @@ export interface MapMarker {
   lng: number;
   label: string;
   category?: string;
+  /** Hex boja pina — ako nije proslijeđena koristi se defaultna zelena */
+  color?: string;
 }
 
 export interface MapClickEvent {
@@ -132,8 +134,9 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   private renderMarkers(): void {
     this.markerLayer.clearLayers();
     this.markers.forEach(m => {
+      const isSelected = m.id === this.selectedMarkerId;
       const marker = L.marker([m.lat, m.lng], {
-        icon: this.buildIcon(m.id === this.selectedMarkerId ? 'selected' : 'default'),
+        icon: this.buildIcon(isSelected ? 'selected' : 'default', m.color),
       });
       marker.bindPopup(`<strong>${m.label}</strong>${m.category ? '<br><small>' + m.category + '</small>' : ''}`);
       marker.on('click', () => this.zone.run(() => this.markerClicked.emit(m)));
@@ -141,8 +144,15 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  private buildIcon(type: 'default' | 'selected' | 'picked'): L.DivIcon {
-    const c = ({ default: '#3FA26E', selected: '#E24B4A', picked: '#1A73E8' })[type];
+  private buildIcon(type: 'default' | 'selected' | 'picked', markerColor?: string): L.DivIcon {
+    let c: string;
+    if (type === 'selected') {
+      c = '#E24B4A';
+    } else if (type === 'picked') {
+      c = '#1A73E8';
+    } else {
+      c = markerColor ?? '#3FA26E';
+    }
     return L.divIcon({
       className: '',
       html: `<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:${c};border:2px solid #fff;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.35)"></div>`,

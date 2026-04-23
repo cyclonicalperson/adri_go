@@ -1,16 +1,14 @@
 <div class="page-content">
-
-  <!-- ── STATS ──────────────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === ''" (click)="setStatus('')">
       <div class="num">{{ allCount }}</div>
-      <div class="lbl">Ukupno primljeno</div>
+      <div class="lbl">Ukupno zahteva</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
       <div class="lbl">Na čekanju</div>
       @if (pendingCount > 0) {
-      <div class="trend warn">⚠ Traže pregled</div>
+      <div class="trend warn">⚠ Čekaju pregled</div>
       }
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'approved'" (click)="setStatus('approved')">
@@ -23,7 +21,46 @@
     </div>
   </div>
 
-  <!-- ── TABLE ────────────────────────────────────────────────────────── -->
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="activeStatus === ''" (click)="setStatus('')">
+      Svi zahtevi
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
+      ⏳ Na čekanju ({{ pendingCount }})
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'approved'" (click)="setStatus('approved')">
+      ✅ Odobreni
+    </button>
+    <button class="ftab" [class.active]="activeStatus === 'rejected'" (click)="setStatus('rejected')">
+      ❌ Odbijeni
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input"
+             type="text"
+             placeholder="Pretraži po imenu, emailu ili organizaciji..."
+             [value]="searchQuery"
+             (input)="onSearch($any($event.target).value)" />
+    </div>
+
+    <select class="filter-select" [value]="activeStatus" (change)="setStatus($any($event.target).value)">
+      <option value="">Svi statusi</option>
+      <option value="pending">⏳ Na čekanju</option>
+      <option value="approved">✅ Odobreno</option>
+      <option value="rejected">❌ Odbijeno</option>
+    </select>
+
+    <div class="spacer"></div>
+
+    <div class="summary-pills">
+      <span class="summary-pill">Aktivni admini: {{ activeAdminCount }}</span>
+      <span class="summary-pill">Suspendovani: {{ suspendedAdminCount }}</span>
+    </div>
+  </div>
+
   @if (loading) {
   <div class="state-msg">Učitavanje...</div>
   } @else if (requests.length === 0) {
@@ -36,42 +73,62 @@
         <div class="panel-sub">{{ total }} rezultata · stranica {{ page }} od {{ totalPages }}</div>
       </div>
     </div>
+
     <table>
       <thead>
         <tr>
           <th>Podnosilac</th>
           <th>Tip</th>
           <th>Email</th>
-          <th>Podneseno</th>
+          <th>Dokument</th>
+          <th>Podneto</th>
+          <th>Obrada</th>
           <th>Status</th>
           <th>Akcije</th>
         </tr>
       </thead>
       <tbody>
         @for (r of requests; track r.id) {
-        <tr (click)="openDetail(r)" style="cursor:pointer">
+        <tr (click)="openDetail(r)">
           <td>
             <div class="author-cell">
               <div class="author-av">{{ initials(r.fullName) }}</div>
               <div>
-                <div style="font-weight:700;font-size:13px">{{ r.fullName }}</div>
+                <div class="primary-text">{{ r.fullName }}</div>
                 @if (!r.isIndividual && r.organizationName) {
-                <div style="font-size:11px;color:#6b7280">🏢 {{ r.organizationName }}</div>
+                <div class="secondary-text">🏢 {{ r.organizationName }}</div>
+                } @else {
+                <div class="secondary-text">Samostalni zahtev</div>
                 }
               </div>
             </div>
           </td>
           <td><span class="type-tag">{{ typeLabel(r) }}</span></td>
           <td>
-            <div style="font-size:12px;color:#374151">{{ r.email }}</div>
-            @if (r.emailVerifiedAt) {
-            <div style="font-size:11px;color:#16a34a">✅ Verifikovan</div>
+            <div class="primary-text">{{ r.email }}</div>
+            <div class="secondary-text">
+              {{ r.emailVerifiedAt ? 'Verifikovan email' : 'Email nije verifikovan' }}
+            </div>
+          </td>
+          <td>
+            @if (hasDocument(r)) {
+            <a class="doc-link" [href]="documentUrl(r)" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+              📎 Pregledaj
+            </a>
             } @else {
-            <div style="font-size:11px;color:#d97706">⏳ Nije verifikovan</div>
+            <span class="secondary-text">Nema priloga</span>
             }
           </td>
-          <td style="font-size:12px;color:#6b7280;white-space:nowrap">
+          <td style="white-space:nowrap">
             {{ r.submittedAt | dateLocal:'datetime' }}
+          </td>
+          <td>
+            @if (r.reviewedAt) {
+            <div class="primary-text">{{ r.reviewedAt | dateLocal:'datetime' }}</div>
+            <div class="secondary-text">{{ reviewedByLabel(r) }}</div>
+            } @else {
+            <span class="secondary-text">Još nije obrađeno</span>
+            }
           </td>
           <td>
             <span class="badge" [class]="statusClass(r.status)">{{ statusLabel(r.status) }}</span>
@@ -89,80 +146,92 @@
         }
       </tbody>
     </table>
-  </div>
 
-  @if (totalPages > 1) {
-  <div class="pagination">
-    <button class="pg-btn" [disabled]="page <= 1" (click)="goPage(page - 1)">←</button>
-    @for (n of pageNumbers; track n) {
-    <button class="pg-btn" [class.active]="n === page" (click)="goPage(n)">{{ n }}</button>
-    }
-    <button class="pg-btn" [disabled]="page >= totalPages" (click)="goPage(page + 1)">→</button>
+    <div class="pagination">
+      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} zahteva</div>
+      <div class="pg-btns">
+        <button class="pg-btn" [disabled]="page <= 1" (click)="onPage(page - 1)">←</button>
+        @for (n of pageNumbers; track n) {
+        <button class="pg-btn" [class.active]="n === page" (click)="onPage(n)">{{ n }}</button>
+        }
+        <button class="pg-btn" [disabled]="page >= totalPages" (click)="onPage(page + 1)">→</button>
+      </div>
+    </div>
   </div>
   }
-  }
 
-  <!-- ── DETAIL MODAL ───────────────────────────────────────────────────── -->
   @if (selected) {
   <div class="detail-overlay" (click)="closeDetail()">
-    <div class="detail-panel" (click)="$event.stopPropagation()">
+    <div class="detail-modal" (click)="$event.stopPropagation()">
 
-      <div class="detail-header">
-        <div class="detail-title-row">
-          <div class="detail-avatar">{{ initials(selected.fullName) }}</div>
-          <div>
-            <div class="detail-name">{{ selected.fullName }}</div>
-            <div class="detail-type">{{ typeLabel(selected) }}</div>
-          </div>
-        </div>
+      <div class="modal-header">
+        <h3 class="modal-title">Zahtev za registraciju</h3>
         <button class="btn-close" (click)="closeDetail()">✕</button>
       </div>
 
-      <div class="detail-body">
-        <div class="detail-rows">
-          <div class="detail-row">
-            <span class="detail-lbl">📧 Email</span>
-            <span class="detail-val">{{ selected.email }}</span>
+      <div class="modal-body">
+
+        <div class="applicant-strip">
+          <div class="applicant-av">{{ initials(selected.fullName) }}</div>
+          <div class="applicant-info">
+            <div class="applicant-name">{{ selected.fullName }}</div>
+            <div class="applicant-sub">{{ typeLabel(selected) }}</div>
+          </div>
+          <span class="badge" [class]="statusClass(selected.status)">{{ statusLabel(selected.status) }}</span>
+        </div>
+
+        <div class="info-rows">
+          <div class="info-row">
+            <span class="info-lbl">📧 Email</span>
+            <span class="info-val">{{ selected.email }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">✅ Verifikacija</span>
+            <span class="info-val">{{ selected.emailVerifiedAt ? 'Verifikovan email' : 'Email nije verifikovan' }}</span>
           </div>
           @if (!selected.isIndividual && selected.organizationName) {
-          <div class="detail-row">
-            <span class="detail-lbl">🏢 Organizacija</span>
-            <span class="detail-val">{{ selected.organizationName }}</span>
+          <div class="info-row">
+            <span class="info-lbl">🏢 Organizacija</span>
+            <span class="info-val">{{ selected.organizationName }}</span>
           </div>
           }
-          @if (!selected.isIndividual && selected.organizationEmail) {
-          <div class="detail-row">
-            <span class="detail-lbl">📧 Email org.</span>
-            <span class="detail-val">{{ selected.organizationEmail }}</span>
+          <div class="info-row">
+            <span class="info-lbl">🗓️ Podneto</span>
+            <span class="info-val">{{ selected.submittedAt | dateLocal:'datetime' }}</span>
+          </div>
+          @if (selected.reviewedAt) {
+          <div class="info-row">
+            <span class="info-lbl">🛡️ Obradio</span>
+            <span class="info-val">{{ reviewedByLabel(selected) }} · {{ selected.reviewedAt | dateLocal:'datetime' }}</span>
           </div>
           }
-          <div class="detail-row">
-            <span class="detail-lbl">✅ Email verif.</span>
-            <span class="detail-val">{{ selected.emailVerifiedAt ? 'Verifikovan' : 'Nije verifikovan' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-lbl">🗓️ Podneseno</span>
-            <span class="detail-val">{{ selected.submittedAt | dateLocal:'datetime' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-lbl">📋 Status</span>
-            <span class="badge" [class]="statusClass(selected.status)">{{ statusLabel(selected.status) }}</span>
-          </div>
           @if (selected.rejectionReason) {
-          <div class="detail-row">
-            <span class="detail-lbl">❌ Razlog odb.</span>
-            <span class="detail-val" style="color:#ef4444">{{ selected.rejectionReason }}</span>
+          <div class="info-row">
+            <span class="info-lbl">❌ Razlog odbijanja</span>
+            <span class="info-val" style="color:#ef4444">{{ selected.rejectionReason }}</span>
           </div>
           }
         </div>
+
+        <div class="doc-block">
+          <div class="doc-block-title">Priložena dokumentacija</div>
+          @if (hasDocument(selected)) {
+          <a class="doc-btn" [href]="documentUrl(selected)" target="_blank" rel="noopener">
+            📎 Otvori dokument
+          </a>
+          } @else {
+          <span class="doc-none">Dokument nije dostupan.</span>
+          }
+        </div>
+
       </div>
 
       @if (selected.status === 'pending') {
-      <div class="detail-actions">
-        <button class="btn-reject" [disabled]="processing" (click)="openRejectDialog(selected)">
+      <div class="modal-actions">
+        <button class="btn-modal-reject" [disabled]="processing" (click)="openRejectDialog(selected)">
           Odbij
         </button>
-        <button class="btn-approve" [disabled]="processing" (click)="approve(selected)">
+        <button class="btn-modal-approve" [disabled]="processing" (click)="approve(selected)">
           {{ processing ? 'Obrada...' : 'Odobri' }}
         </button>
       </div>
@@ -172,7 +241,6 @@
   </div>
   }
 
-  <!-- ── REJECT DIALOG ─────────────────────────────────────────────────── -->
   @if (rejectDialogOpen) {
   <div class="reject-overlay" (click)="cancelReject()">
     <div class="reject-dialog" (click)="$event.stopPropagation()">
@@ -196,5 +264,4 @@
     </div>
   </div>
   }
-
 </div>

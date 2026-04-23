@@ -14,8 +14,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         // KRITIČNO: login zahtev ne sme biti preusmeren — obrađuje grešku sam.
         // Suspended admin dobija 401 sa { status: 'suspended' } — login.component
         // mora videti tu grešku, ne biti preusmjeren na /login gde već jeste.
-        const isLoginRequest = req.url.includes('/auth/login');
-        if (!isLoginRequest) {
+        const isPublicAuthRequest = req.url.includes('/auth/login') || req.url.includes('/auth/register');
+        if (!isPublicAuthRequest) {
           storage.clear();
           router.navigate(['/login']);
         }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
@@ -17,10 +18,12 @@ namespace TouristGuide.Api.Controllers
     public class AnalyticsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly AdminPermissionService _permissionService;
 
-        public AnalyticsController(AppDbContext db)
+        public AnalyticsController(AppDbContext db, AdminPermissionService permissionService)
         {
             _db = db;
+            _permissionService = permissionService;
         }
 
         // ── GET /api/analytics/stats ──────────────────────────────────────────
@@ -28,6 +31,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("stats")]
         public async Task<IActionResult> GetStats()
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var isSuperAdmin = IsSuperAdmin();
 
             if (isSuperAdmin)
@@ -69,9 +75,22 @@ namespace TouristGuide.Api.Controllers
                 var adminId = GetCurrentAdminId();
                 if (adminId is null) return Unauthorized();
 
-                var myPosts = await _db.Posts.CountAsync(p => p.AdminId == adminId.Value && p.Status == "published");
+                var myPublishedLocations = await _db.Posts.CountAsync(p =>
+                    p.AdminId == adminId.Value &&
+                    p.Status == "published" &&
+                    p.PostType != "event");
+
+                var myPublishedRoutes = await _db.Routes.CountAsync(r =>
+                    r.AdminId == adminId.Value &&
+                    r.Status == "published");
+
                 var myPendingReviews = await _db.Reviews
-                    .Where(r => r.Post != null && r.Post.AdminId == adminId.Value && r.Status == "PENDING")
+                    .Where(r =>
+                        r.Status == "PENDING" &&
+                        (
+                            (r.Post != null && r.Post.AdminId == adminId.Value) ||
+                            (r.Route != null && r.Route.AdminId == adminId.Value)
+                        ))
                     .CountAsync();
                 var unreadNotifs = await _db.AdminNotifications
                     .CountAsync(n => n.AdminUserId == adminId.Value && !n.IsRead);
@@ -82,8 +101,10 @@ namespace TouristGuide.Api.Controllers
                     {
                         totalTourists = 0,
                         totalAdmins = 0,
-                        totalPosts = myPosts,
-                        totalRoutes = 0,
+                        totalLocations = myPublishedLocations,
+                        totalPosts = myPublishedLocations,
+                        totalRegions = 0,
+                        totalRoutes = myPublishedRoutes,
                         pendingRegistrations = 0,
                         pendingReviews = myPendingReviews,
                         ticketsIssued = 0,
@@ -101,8 +122,15 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] string? from,
             [FromQuery] string? to)
         {
-            var fromDate = DateTime.TryParse(from, out var fd) ? fd : DateTime.UtcNow.AddDays(-30);
-            var toDate = DateTime.TryParse(to, out var td) ? td : DateTime.UtcNow;
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
+            var fromDate = DateTime.TryParse(from, out var fd)
+                ? DateTime.SpecifyKind(fd, DateTimeKind.Utc)
+                : DateTime.UtcNow.AddDays(-30);
+            var toDate = DateTime.TryParse(to, out var td)
+                ? DateTime.SpecifyKind(td, DateTimeKind.Utc)
+                : DateTime.UtcNow;
 
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
@@ -112,14 +140,12 @@ namespace TouristGuide.Api.Controllers
             if (adminId.HasValue)
                 query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
 
-            var grouped = await query
-                .GroupBy(v => v.CreatedAt.Date)
-                .Select(g => new { date = g.Key, count = g.Count() })
-                .OrderBy(x => x.date)
-                .ToListAsync();
+            var rawDates = await query.Select(v => v.CreatedAt).ToListAsync();
 
-            var result = grouped
-                .Select(x => new { date = x.date.ToString("yyyy-MM-dd"), count = x.count })
+            var result = rawDates
+                .GroupBy(dt => dt.Date)
+                .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
+                .OrderBy(x => x.date)
                 .ToList();
 
             return Ok(new { data = result, success = true });
@@ -129,6 +155,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("popular/posts")]
         public async Task<IActionResult> GetPopularPosts([FromQuery] int limit = 10)
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
             var query = _db.Posts
@@ -162,6 +191,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("popular/events")]
         public async Task<IActionResult> GetPopularEvents([FromQuery] int limit = 10)
         {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
             var query = _db.Posts
@@ -196,19 +228,40 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("regions")]
         public async Task<IActionResult> GetRegionPopularity()
         {
-            var regions = await _db.Regions
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
+            var isSuperAdmin = IsSuperAdmin();
+            var adminId = isSuperAdmin ? (uint?)null : GetCurrentAdminId();
+            if (!isSuperAdmin && adminId is null)
+                return Unauthorized();
+
+            var regionsQuery = _db.Regions
                 .Where(r => r.IsActive)
+                .AsQueryable();
+
+            if (adminId.HasValue)
+            {
+                regionsQuery = regionsQuery.Where(r =>
+                    r.Posts.Any(p => p.Status == "published" && p.AdminId == adminId.Value));
+            }
+
+            var regions = await regionsQuery
                 .Select(r => new
                 {
                     regionId = r.Id,
                     name = r.Name,
                     type = r.Type,
-                    numPosts = r.Posts.Count(p => p.Status == "published"),
-                    totalViews = r.Posts.Sum(p => (int?)p.ViewCount) ?? 0,
-                    totalLikes = r.Posts.Sum(p => (int?)p.LikeCount) ?? 0,
-                    avgRating = r.Posts.Any(p => p.AvgRating != null)
-                        ? r.Posts.Where(p => p.AvgRating != null).Average(p => (double?)p.AvgRating)
-                        : (double?)null
+                    numPosts = r.Posts.Count(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value)),
+                    totalViews = r.Posts
+                        .Where(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value))
+                        .Sum(p => (int?)p.ViewCount) ?? 0,
+                    totalLikes = r.Posts
+                        .Where(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value))
+                        .Sum(p => (int?)p.LikeCount) ?? 0,
+                    avgRating = r.Posts
+                        .Where(p => p.Status == "published" && (!adminId.HasValue || p.AdminId == adminId.Value))
+                        .Average(p => (double?)p.AvgRating)
                 })
                 .OrderByDescending(r => r.totalViews)
                 .ToListAsync();
@@ -221,25 +274,47 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("movements")]
         public async Task<IActionResult> GetTouristMovements()
         {
-            var movements = await _db.PostViews
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
+            var isSuperAdmin = IsSuperAdmin();
+            var adminId = isSuperAdmin ? (uint?)null : GetCurrentAdminId();
+            if (!isSuperAdmin && adminId is null)
+                return Unauthorized();
+
+            var query = _db.PostViews
                 .Where(v => v.Post != null && v.Post.Region != null)
-                .GroupBy(v => new
+                .AsQueryable();
+
+            if (adminId.HasValue)
+            {
+                query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
+            }
+
+            // EF Core / Npgsql cannot translate GroupBy with navigation-property keys to SQL.
+            // Fetch the raw projection first, then group client-side.
+            var raw = await query
+                .Select(v => new
                 {
-                    v.Post!.RegionId,
+                    RegionId   = v.Post!.RegionId,
                     RegionName = v.Post.Region!.Name,
-                    Lat = v.Post.Region!.Lat,
-                    Lng = v.Post.Region!.Lng
+                    Lat        = v.Post.Region!.Lat,
+                    Lng        = v.Post.Region!.Lng,
                 })
+                .ToListAsync();
+
+            var movements = raw
+                .GroupBy(v => new { v.RegionId, v.RegionName, v.Lat, v.Lng })
                 .Select(g => new
                 {
-                    regionId = g.Key.RegionId,
+                    regionId   = g.Key.RegionId,
                     regionName = g.Key.RegionName,
-                    latitude = g.Key.Lat,
-                    longitude = g.Key.Lng,
+                    latitude   = g.Key.Lat,
+                    longitude  = g.Key.Lng,
                     visitCount = g.Count()
                 })
                 .OrderByDescending(m => m.visitCount)
-                .ToListAsync();
+                .ToList();
 
             return Ok(new { data = movements, success = true });
         }

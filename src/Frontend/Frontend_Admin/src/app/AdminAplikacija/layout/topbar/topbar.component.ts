@@ -1,12 +1,14 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, Output, EventEmitter } from '@angular/core';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { AsyncPipe, DatePipe } from '@angular/common';
 import { inject } from '@angular/core';
 import { AuthService } from '@core/auth/auth.service';
 import { BadgeService } from '@core/services/badge.service';
 import { UserService } from '@core/services/user.service';
 import { AdminNotification } from '@core/models/user.model';
+import { NotificationHubService } from '@core/services/notification-hub.service';
 
 @Component({
   selector: 'app-topbar',
@@ -14,27 +16,44 @@ import { AdminNotification } from '@core/models/user.model';
   styleUrl: './topbar.component.scss',
   imports: [RouterModule, AsyncPipe, DatePipe],
 })
-export class TopbarComponent implements OnInit {
+export class TopbarComponent implements OnInit, OnDestroy {
   @Output() toggleSidebar = new EventEmitter<void>();
 
   private router = inject(Router);
   auth = inject(AuthService);
   private userService = inject(UserService);
   private badgeService = inject(BadgeService);
+  readonly notifHub = inject(NotificationHubService);
 
   notifications: AdminNotification[] = [];
   notifOpen = false;
   notifLoading = false;
 
+  private subs: Subscription[] = [];
+
+  // Unread count dolazi iz SignalR streama
   get unreadCount(): number {
-    return this.notifications.filter(n => !n.isRead).length;
+    return this.notifHub.unreadCount$.value;
   }
 
   ngOnInit(): void {
-    this.loadNotifications();
+    // Pokeni SignalR konekciju
+    this.notifHub.connect();
+
+    // Prati listu notifikacija iz huba
+    this.subs.push(
+      this.notifHub.notifications$.subscribe(list => {
+        this.notifications = list as any;
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subs.forEach(s => s.unsubscribe());
   }
 
   loadNotifications(): void {
+    // Refresh iz baze (backup uz SignalR)
     this.notifLoading = true;
     this.userService.getNotifications().subscribe({
       next: res => { this.notifications = res.data; this.notifLoading = false; },
@@ -48,16 +67,19 @@ export class TopbarComponent implements OnInit {
   }
 
   markAllRead(): void {
-    this.userService.markAllNotificationsRead().subscribe(() => {
+    this.notifHub.markAllAsRead().subscribe(() => {
       this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
+      this.notifHub.unreadCount$.next(0);
       this.badgeService.refresh();
     });
   }
 
   openNotification(n: AdminNotification): void {
     if (!n.isRead) {
-      this.userService.markNotificationRead(n.id).subscribe();
+      this.notifHub.markAsRead(n.id).subscribe();
       n.isRead = true;
+      const newCount = Math.max(0, this.notifHub.unreadCount$.value - 1);
+      this.notifHub.unreadCount$.next(newCount);
     }
     this.notifOpen = false;
     const url = (n.payload as Record<string, string> | null)?.['url'];
@@ -69,6 +91,9 @@ export class TopbarComponent implements OnInit {
     this.userService.deleteNotification(n.id).subscribe({
       next: () => {
         this.notifications = this.notifications.filter(x => x.id !== n.id);
+        if (!n.isRead) {
+          this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
+        }
       },
     });
   }
@@ -76,15 +101,15 @@ export class TopbarComponent implements OnInit {
   clearAllNotifications(event: Event): void {
     event.stopPropagation();
     const ids = this.notifications.map(n => n.id);
-    // Delete all sequentially — backend has no bulk delete
-    let completed = 0;
     if (ids.length === 0) return;
+    let completed = 0;
     ids.forEach(id => {
       this.userService.deleteNotification(id).subscribe({
         next: () => {
           completed++;
           if (completed === ids.length) {
             this.notifications = [];
+            this.notifHub.unreadCount$.next(0);
           }
         },
       });

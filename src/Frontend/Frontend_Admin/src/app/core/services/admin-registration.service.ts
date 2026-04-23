@@ -36,7 +36,7 @@ export class AdminRegistrationService {
   approve(id: number, reviewedBy?: string): Observable<AdminRegistrationActionResponse> {
     return this.http.post<AdminRegistrationActionResponse>(
       `${this.url}/${id}/approve`,
-      reviewedBy ? { reviewedBy } : {}
+      {}
     );
   }
 
@@ -48,7 +48,7 @@ export class AdminRegistrationService {
   ): Observable<AdminRegistrationActionResponse> {
     return this.http.post<AdminRegistrationActionResponse>(
       `${this.url}/${id}/reject`,
-      { rejectionReason, reviewedBy }
+      { rejectionReason }
     );
   }
 }

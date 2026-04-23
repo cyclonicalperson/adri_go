@@ -14,13 +14,18 @@ namespace TouristGuide.Api.Controllers
     {
         private readonly AppDbContext _context;
         private readonly AdminIdentityService _adminIdentityService;
+        private readonly AdminPermissionService _permissionService;
         private const char SEP = '|';
         private const string INNER_SEP = "\u2630";
 
-        public ActivitiesController(AppDbContext context, AdminIdentityService adminIdentityService)
+        public ActivitiesController(
+            AppDbContext context,
+            AdminIdentityService adminIdentityService,
+            AdminPermissionService permissionService)
         {
             _context = context;
             _adminIdentityService = adminIdentityService;
+            _permissionService = permissionService;
         }
 
         private static readonly Dictionary<string, string> ColorMap = new()
@@ -90,6 +95,9 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] string? sortBy, [FromQuery] string? sortDir,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
+            if (!await _permissionService.CanManageTagsAsync())
+                return Forbid();
+
             var query = _context.Tags.Where(t => t.Category == "aktivnost").AsQueryable();
 
             if (!_adminIdentityService.IsSuperAdmin())
@@ -180,6 +188,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(uint id)
         {
+            if (!await _permissionService.CanManageTagsAsync())
+                return Forbid();
+
             var tag = await _context.Tags
                 .Include(t => t.PostTags).ThenInclude(pt => pt.Post).ThenInclude(p => p.Region)
                 .FirstOrDefaultAsync(t => t.Id == id && t.Category == "aktivnost");
@@ -221,6 +232,9 @@ namespace TouristGuide.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateActivityDto dto)
         {
+            if (!await _permissionService.CanManageTagsAsync())
+                return Forbid();
+
             if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest(new { message = "Naziv aktivnosti je obavezan." });
 
             var subcat = dto.Category?.ToUpper() ?? "OTHER";
@@ -238,6 +252,9 @@ namespace TouristGuide.Api.Controllers
 
             if (dto.PostId.HasValue)
             {
+                if (!await CanAttachToPostAsync(dto.PostId.Value))
+                    return Forbid();
+
                 if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
                 {
                     _context.PostTags.Add(new PostTag { PostId = dto.PostId.Value, TagId = noviTag.Id });
@@ -250,6 +267,9 @@ namespace TouristGuide.Api.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(uint id, [FromBody] CreateActivityDto dto)
         {
+            if (!await _permissionService.CanManageTagsAsync())
+                return Forbid();
+
             var tag = await _context.Tags.FindAsync(id);
             if (tag == null) return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
@@ -288,6 +308,9 @@ namespace TouristGuide.Api.Controllers
             }
             else if (dto.PostId.HasValue)
             {
+                if (!await CanAttachToPostAsync(dto.PostId.Value))
+                    return Forbid();
+
                 var links = await _context.PostTags.Where(pt => pt.TagId == id).ToListAsync();
                 _context.PostTags.RemoveRange(links);
                 if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
@@ -301,6 +324,9 @@ namespace TouristGuide.Api.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(uint id)
         {
+            if (!await _permissionService.CanManageTagsAsync())
+                return Forbid();
+
             var tag = await _context.Tags.FindAsync(id);
             if (tag == null) return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
@@ -313,6 +339,18 @@ namespace TouristGuide.Api.Controllers
             _context.Tags.Remove(tag);
             await _context.SaveChangesAsync();
             return Ok(new { success = true });
+        }
+
+        private async Task<bool> CanAttachToPostAsync(uint postId)
+        {
+            if (_adminIdentityService.IsSuperAdmin())
+                return await _context.Posts.AnyAsync(p => p.Id == postId);
+
+            var adminId = _adminIdentityService.GetAdminId();
+            if (adminId == null)
+                return false;
+
+            return await _context.Posts.AnyAsync(p => p.Id == postId && p.AdminId == adminId.Value);
         }
     }
 

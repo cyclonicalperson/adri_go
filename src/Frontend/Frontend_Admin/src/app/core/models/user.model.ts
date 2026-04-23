@@ -119,6 +119,7 @@ export interface RegistrationRequest {
   submittedAt: string;
   reviewedAt: string | null;
   reviewedBy: number | null;
+  documentUrl?: string | null;
 }
 
 // ── Admin Notification ────────────────────────────────────────────────────

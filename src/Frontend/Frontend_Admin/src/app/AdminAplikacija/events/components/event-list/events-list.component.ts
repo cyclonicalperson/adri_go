@@ -6,6 +6,7 @@ import { environment } from '@env/environment';
 import { Post, PostStatus } from '@core/models/post.model';
 import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
+import { AuthService } from '@core/auth/auth.service';
 import { RegionService } from '@core/services/region.service';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -25,23 +26,20 @@ export class EventsListComponent implements OnInit {
   events: Post[] = [];
   regions: Region[] = [];
   total = 0;
-  globalTotal = 0;  // uvijek ukupan broj svih dogadjaja, ne mijenja se pri filteru
+  globalTotal = 0;
   totalPages = 1;
   loading = true;
   viewMode: ViewMode = 'table';
   deleteTarget: Post | null = null;
 
-  upcomingCount = 0;  // published
-  ongoingCount = 0;
-  pastCount = 0;      // archived
-  draftCount = 0;     // draft (= Na čekanju)
+  publishedCount = 0;
+  archivedCount = 0;
+  draftCount = 0;
   activeStatusFilter = '';
 
-  // Detail panel
   detailEvent: Post | null = null;
   detailOpen = false;
 
-  // Map panel
   mapEvent: Post | null = null;
   mapOpen = false;
 
@@ -66,15 +64,18 @@ export class EventsListComponent implements OnInit {
   readonly statusOptions = [
     { value: '', label: 'Svi statusi' },
     { value: 'published', label: '✅ Objavljeno' },
-    { value: 'draft', label: '📝 Nacrt' },
+    { value: 'draft', label: '⏳ Na čekanju' },
     { value: 'archived', label: '📦 Arhivirano' },
   ];
+
+  private search$ = new Subject<string>();
 
   constructor(
     private http: HttpClient,
     private regionService: RegionService,
     private router: Router,
-  ) { }
+    private auth: AuthService,
+  ) {}
 
   ngOnInit(): void {
     this.initSearch();
@@ -85,25 +86,42 @@ export class EventsListComponent implements OnInit {
     this.load();
   }
 
+  get canManageEvents(): boolean {
+    return this.auth.hasPermission('manage_own_posts');
+  }
+
+  get canCreateEvents(): boolean {
+    return this.auth.hasPermission('create_event');
+  }
+
+  private recomputeGlobalTotal(): void {
+    this.globalTotal = this.publishedCount + this.draftCount + this.archivedCount;
+  }
+
   private loadCounts(): void {
-    // Stabilni countovi — nezavisni od aktivnih filtera, uvijek tačni
     const base = new HttpParams().set('type', 'event').set('page', 1).set('pageSize', 1);
-    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base })
-      .subscribe(r => { this.globalTotal = r.total ?? 0; });
+
     this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'published') })
-      .subscribe(r => { this.upcomingCount = r.total ?? 0; this.ongoingCount = r.total ?? 0; });
+      .subscribe(r => {
+        this.publishedCount = r.total ?? 0;
+        this.recomputeGlobalTotal();
+      });
+
     this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'draft') })
-      .subscribe(r => { this.draftCount = r.total ?? 0; });
+      .subscribe(r => {
+        this.draftCount = r.total ?? 0;
+        this.recomputeGlobalTotal();
+      });
+
     this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'archived') })
-      .subscribe(r => { this.pastCount = r.total ?? 0; });
+      .subscribe(r => {
+        this.archivedCount = r.total ?? 0;
+        this.recomputeGlobalTotal();
+      });
   }
 
   load(): void {
     this.loading = true;
-
-    // Kada je aktivan category filter, učitavamo max dozvoljenih 100 zapisa
-    // jer backend čuva category unutar JSON details polja i ne može filtrirati na njemu.
-    // Manuelna paginacija se primjenjuje client-side na filtriranom skupu.
     const fetchSize = this.req.category ? 100 : this.req.pageSize;
 
     let params = new HttpParams()
@@ -117,25 +135,21 @@ export class EventsListComponent implements OnInit {
     if (this.req.regionId) params = params.set('region_id', this.req.regionId);
     if (this.req.status) params = params.set('status', this.req.status);
 
-    this.http.get<{ data: any[]; total: number; totalPages: number }>(
-      `${environment.apiUrl}/posts`, { params }
-    ).subscribe({
+    this.http.get<{ data: any[]; total: number; totalPages: number }>(`${environment.apiUrl}/posts`, { params }).subscribe({
       next: res => {
-        // Normalize: backend returns 'id', model uses 'postId'
         const normalize = (p: any): Post => ({ ...p, postId: p.postId ?? p.id });
         let all: Post[] = (res.data ?? []).map(normalize);
 
-        // Client-side category filter (backend can't filter on JSON details field)
         if (this.req.category) {
           all = all.filter(e => this.eventCategory(e) === this.req.category);
         }
 
-        // Manuelna paginacija kada je category filter aktivan
         if (this.req.category) {
           this.total = all.length;
           this.totalPages = Math.max(1, Math.ceil(all.length / this.req.pageSize));
-          // Osiguraj da page nije van opsega nakon filtera
-          if (this.req.page > this.totalPages) this.req = { ...this.req, page: 1 };
+          if (this.req.page > this.totalPages) {
+            this.req = { ...this.req, page: 1 };
+          }
           const start = (this.req.page - 1) * this.req.pageSize;
           this.events = all.slice(start, start + this.req.pageSize);
         } else {
@@ -146,14 +160,21 @@ export class EventsListComponent implements OnInit {
 
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: () => {
+        this.loading = false;
+      },
     });
   }
 
-  // ── Event date helpers ────────────────────────────────────────────────────
   private parseDet(e: Post): any {
     let det = e.details as any;
-    if (typeof det === 'string') { try { det = JSON.parse(det); } catch { det = {}; } }
+    if (typeof det === 'string') {
+      try {
+        det = JSON.parse(det);
+      } catch {
+        det = {};
+      }
+    }
     return det ?? {};
   }
 
@@ -167,42 +188,45 @@ export class EventsListComponent implements OnInit {
     return ds?.endAt ? new Date(ds.endAt) : (ds?.eventEnd ? new Date(ds.eventEnd) : new Date(e.createdAt));
   }
 
-  isUpcoming(e: Post): boolean { return this.eventStart(e) > new Date(); }
-  isOngoing(e: Post): boolean {
-    const n = new Date();
-    return this.eventStart(e) <= n && this.eventEnd(e) >= n;
+  isUpcoming(e: Post): boolean {
+    return this.eventStart(e) > new Date();
   }
 
-  // ── Filters ───────────────────────────────────────────────────────────────
-  private search$ = new Subject<string>();
+  isOngoing(e: Post): boolean {
+    const now = new Date();
+    return this.eventStart(e) <= now && this.eventEnd(e) >= now;
+  }
 
   private initSearch(): void {
     this.search$.pipe(debounceTime(350), distinctUntilChanged())
-      .subscribe(q => { this.req = { ...this.req, search: q, page: 1 }; this.load(); });
+      .subscribe(q => {
+        this.req = { ...this.req, search: q, page: 1 };
+        this.load();
+      });
   }
 
   onSearch(q: string): void {
     this.search$.next(q);
   }
 
-
-
   onCategoryChange(cat: string): void {
-    this.req = { ...this.req, category: cat || undefined, page: 1 }; this.load();
+    this.req = { ...this.req, category: cat || undefined, page: 1 };
+    this.load();
   }
 
   onRegionChange(id: string): void {
-    this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 }; this.load();
+    this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
+    this.load();
   }
 
   onStatusFilter(val: string): void {
-    this.req = { ...this.req, status: (val as PostStatus) || undefined, page: 1 }; this.load();
+    this.activeStatusFilter = val;
+    this.req = { ...this.req, status: (val as PostStatus) || undefined, page: 1 };
+    this.load();
   }
 
   filterByStatus(status: string): void {
-    this.activeStatusFilter = status;
-    this.req = { ...this.req, status: (status as PostStatus) || undefined, page: 1 };
-    this.load();
+    this.onStatusFilter(status);
   }
 
   onSortCol(col: string): void {
@@ -212,22 +236,47 @@ export class EventsListComponent implements OnInit {
   }
 
   onPage(p: number): void {
-    if (p >= 1 && p <= this.totalPages) { this.req = { ...this.req, page: p }; this.load(); }
+    if (p >= 1 && p <= this.totalPages) {
+      this.req = { ...this.req, page: p };
+      this.load();
+    }
   }
 
-  // ── CRUD ─────────────────────────────────────────────────────────────────
-  goNew(): void { this.router.navigate(['/admin/events/new']); }
-  goEdit(e: Post): void { this.router.navigate(['/admin/events', e.postId, 'edit']); }
-  confirmDelete(e: Post): void { this.deleteTarget = e; }
-  cancelDelete(): void { this.deleteTarget = null; }
+  goNew(): void {
+    this.router.navigate(['/admin/events/new']);
+  }
 
-  // ── Detail panel ────────────────────────────────────────────────────────
-  openDetail(e: Post): void { this.detailEvent = e; this.detailOpen = true; }
-  closeDetail(): void { this.detailOpen = false; this.detailEvent = null; }
+  goEdit(e: Post): void {
+    this.router.navigate(['/admin/events', e.postId, 'edit']);
+  }
 
-  // ── Map panel ───────────────────────────────────────────────────────────
-  showOnMap(e: Post): void { this.mapEvent = e; this.mapOpen = true; }
-  closeMap(): void { this.mapOpen = false; this.mapEvent = null; }
+  confirmDelete(e: Post): void {
+    this.deleteTarget = e;
+  }
+
+  cancelDelete(): void {
+    this.deleteTarget = null;
+  }
+
+  openDetail(e: Post): void {
+    this.detailEvent = e;
+    this.detailOpen = true;
+  }
+
+  closeDetail(): void {
+    this.detailOpen = false;
+    this.detailEvent = null;
+  }
+
+  showOnMap(e: Post): void {
+    this.mapEvent = e;
+    this.mapOpen = true;
+  }
+
+  closeMap(): void {
+    this.mapOpen = false;
+    this.mapEvent = null;
+  }
 
   get mapMarkers(): MapMarker[] {
     if (!this.mapEvent || !this.mapEvent.lat || !this.mapEvent.lng) return [];
@@ -243,10 +292,13 @@ export class EventsListComponent implements OnInit {
   doDelete(): void {
     if (!this.deleteTarget) return;
     this.http.delete(`${environment.apiUrl}/posts/${this.deleteTarget.postId}`)
-      .subscribe(() => { this.deleteTarget = null; this.load(); });
+      .subscribe(() => {
+        this.deleteTarget = null;
+        this.load();
+        this.loadCounts();
+      });
   }
 
-  // ── Status change with ConfirmDialog ───────────────────────────────────
   statusChangeTarget: Post | null = null;
   statusChangeValue: PostStatus | null = null;
 
@@ -254,33 +306,46 @@ export class EventsListComponent implements OnInit {
     this.statusChangeTarget = e;
     this.statusChangeValue = status;
   }
-  cancelStatusChange(): void { this.statusChangeTarget = null; this.statusChangeValue = null; }
+
+  cancelStatusChange(): void {
+    this.statusChangeTarget = null;
+    this.statusChangeValue = null;
+  }
 
   doStatusChange(): void {
-    const e = this.statusChangeTarget;
+    const event = this.statusChangeTarget;
     const status = this.statusChangeValue;
     this.statusChangeTarget = null;
     this.statusChangeValue = null;
-    if (!e || !status) return;
-    this.http.put(`${environment.apiUrl}/posts/${e.postId}`, { status }).subscribe({
+
+    if (!event || !status) return;
+
+    this.http.put(`${environment.apiUrl}/posts/${event.postId}`, { status }).subscribe({
       next: () => {
-        e.status = status;
+        event.status = status;
         this.load();
-        this.loadCounts();  // ažuriraj kockice (draftCount, upcomingCount itd.)
+        this.loadCounts();
       },
     });
   }
 
-  // Kept for HTML backward compat — now opens ConfirmDialog instead
-  setEventStatus(e: Post, status: PostStatus): void { this.requestStatusChange(e, status); }
+  setEventStatus(e: Post, status: PostStatus): void {
+    this.requestStatusChange(e, status);
+  }
 
-  printReport(): void { window.print(); }
+  printReport(): void {
+    window.print();
+  }
 
   exportCsv(): void {
     const header = ['ID', 'Naslov', 'Kategorija', 'Status', 'Region', 'Datum'];
     const rows = this.events.map(e => [
-      e.postId, e.title, this.eventCategory(e),
-      e.status, e.region?.name ?? '—', e.createdAt,
+      e.postId,
+      e.title,
+      this.eventCategory(e),
+      e.status,
+      e.region?.name ?? '—',
+      e.createdAt,
     ]);
     const csv = [header, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -292,12 +357,19 @@ export class EventsListComponent implements OnInit {
     URL.revokeObjectURL(url);
   }
 
-  // ── Display helpers ───────────────────────────────────────────────────────
-  get pageStart(): number { return (this.req.page - 1) * this.req.pageSize + 1; }
-  get pageEnd(): number { return Math.min(this.req.page * this.req.pageSize, this.total); }
+  get pageStart(): number {
+    return this.total === 0 ? 0 : (this.req.page - 1) * this.req.pageSize + 1;
+  }
+
+  get pageEnd(): number {
+    return Math.min(this.req.page * this.req.pageSize, this.total);
+  }
+
   get pageNumbers(): number[] {
     const pages: number[] = [];
-    for (let i = Math.max(1, this.req.page - 2); i <= Math.min(this.totalPages, this.req.page + 2); i++) pages.push(i);
+    for (let i = Math.max(1, this.req.page - 2); i <= Math.min(this.totalPages, this.req.page + 2); i += 1) {
+      pages.push(i);
+    }
     return pages;
   }
 
@@ -310,35 +382,50 @@ export class EventsListComponent implements OnInit {
   statusLabel(e: Post): string {
     if (this.isOngoing(e)) return '🟢 U toku';
     if (this.isUpcoming(e)) return '📅 Predstojeći';
-    return '✔ Završen';
+    return '✔ Završeno';
   }
 
   eventCategory(e: Post): string {
     let det = e.details as any;
     if (typeof det === 'string') {
-      try { det = JSON.parse(det); } catch { return ''; }
+      try {
+        det = JSON.parse(det);
+      } catch {
+        return '';
+      }
     }
     return det?.category ?? '';
   }
 
   categoryIcon(cat: string): string {
     const map: Record<string, string> = {
-      CONCERT: '🎵', FESTIVAL: '🎪', SPORT: '⚽', EXHIBITION: '🖼️',
-      TOUR: '🗺️', THEATER: '🎭', CONFERENCE: '💼', OTHER: '📌',
+      CONCERT: '🎵',
+      FESTIVAL: '🎪',
+      SPORT: '⚽',
+      EXHIBITION: '🖼️',
+      TOUR: '🗺️',
+      THEATER: '🎭',
+      CONFERENCE: '💼',
+      OTHER: '📌',
     };
     return map[cat] ?? '🎟️';
   }
 
   categoryLabel(cat: string): string {
     const found = this.categoryOptions.find(o => o.value === cat);
-    return found?.label.replace(/^[^\s]+ /, '') ?? (cat || 'Dogadjaj');
+    return found?.label.replace(/^[^\s]+ /, '') ?? (cat || 'Događaj');
   }
 
   catBadgeClass(cat: string): string {
     const map: Record<string, string> = {
-      CONCERT: 'type-noćni', FESTIVAL: 'type-ostalo', SPORT: 'type-sport',
-      EXHIBITION: 'type-kultura', TOUR: 'type-priroda', THEATER: 'type-kultura',
-      CONFERENCE: 'type-soba', OTHER: 'type-ostalo',
+      CONCERT: 'type-nocni',
+      FESTIVAL: 'type-ostalo',
+      SPORT: 'type-sport',
+      EXHIBITION: 'type-kultura',
+      TOUR: 'type-priroda',
+      THEATER: 'type-kultura',
+      CONFERENCE: 'type-soba',
+      OTHER: 'type-ostalo',
     };
     return map[cat] ?? 'type-ostalo';
   }
@@ -348,6 +435,6 @@ export class EventsListComponent implements OnInit {
   }
 
   postStatusLabel(status: PostStatus): string {
-    return { published: '✅ Objavljeno', draft: '📝 Nacrt', archived: '📦 Arhivirano' }[status] ?? status;
+    return { published: '✅ Objavljeno', draft: '⏳ Na čekanju', archived: '📦 Arhivirano' }[status] ?? status;
   }
 }

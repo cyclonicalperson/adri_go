@@ -153,30 +153,23 @@ export class UserService {
   // ── Registration Requests ──────────────────────────────────────────────────
   // Frontend zove /registrations ali backend ima /admin-registration
   getRegistrationRequests(
-    req: PageRequest & { status?: string },
+    req: PageRequest & { status?: string; search?: string },
     options?: { context?: any }
   ): Observable<PaginatedResponse<RegistrationRequest>> {
     let params = new HttpParams()
       .set('page', req.page)
       .set('pageSize', req.pageSize);
     if (req.status) params = params.set('status', req.status);
+    if (req.search) params = params.set('search', req.search);
 
-    return this.http.get<any>(`${environment.apiUrl}/admin-registration/pending`, { params }).pipe(
-      map(res => {
-        // AdminRegistrationController.GetPending vraća plain niz, ne paginirani objekat
-        const list: any[] = Array.isArray(res) ? res : res.data ?? [];
-        let filtered = list;
-        if (req.status) filtered = list.filter((r: any) => r.status === req.status);
-
-        const total = filtered.length;
-        const page = req.page;
-        const pageSize = req.pageSize;
-        const data = filtered
-          .slice((page - 1) * pageSize, page * pageSize)
-          .map(mapRegistration);
-
-        return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
-      })
+    return this.http.get<any>(`${environment.apiUrl}/admin-registration`, { params, ...options }).pipe(
+      map(res => ({
+        data: (res.data ?? []).map(mapRegistration),
+        total: res.total ?? 0,
+        page: res.page ?? req.page,
+        pageSize: res.pageSize ?? req.pageSize,
+        totalPages: res.totalPages ?? 0,
+      }))
     );
   }
 
@@ -261,5 +254,6 @@ function mapRegistration(r: any): RegistrationRequest {
     submittedAt: r.submittedAt ?? r.submitted_at ?? '',
     reviewedAt: r.reviewedAt ?? null,
     reviewedBy: r.reviewedBy ?? null,
+    documentUrl: r.documentUrl ?? null,
   };
 }

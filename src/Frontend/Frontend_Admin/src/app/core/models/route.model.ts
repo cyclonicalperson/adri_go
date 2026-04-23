@@ -19,6 +19,7 @@ export interface TouristRoute {
   createdBy: number;
   waypoints?: Waypoint[];
   destination?: { destinationId: number; name: string };
+  status?: string;
 }
 
 export interface Waypoint {
@@ -42,6 +43,7 @@ export interface CreateRouteRequest {
   startLongitude: number;
   endLatitude: number;
   endLongitude: number;
+  isActive?: boolean;
   waypoints?: Omit<Waypoint, 'waypointId' | 'routeId'>[];
 }
 

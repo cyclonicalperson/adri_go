@@ -59,9 +59,10 @@ export class DestinationService {
     const body = {
       name:    payload.name,
       type:    payload.type?.toLowerCase() ?? 'city',
+      description: payload.description,
       lat:     payload.latitude,
       lng:     payload.longitude,
-      country: 'Montenegro',
+      country: payload.country || 'Montenegro',
     };
     return this.http.post<any>(this.url, body).pipe(
       map(res => ({ data: regionToDestination(res.data ?? res), success: true }))
@@ -72,6 +73,8 @@ export class DestinationService {
     const body: any = {};
     if (payload.name !== undefined) body['name'] = payload.name;
     if (payload.type !== undefined) body['type'] = payload.type.toLowerCase();
+    if (payload.description !== undefined) body['description'] = payload.description;
+    if (payload.country !== undefined) body['country'] = payload.country;
     if (payload.latitude !== undefined) body['lat'] = payload.latitude;
     if (payload.longitude !== undefined) body['lng'] = payload.longitude;
     return this.http.put<any>(`${this.url}/${id}`, body).pipe(
@@ -94,8 +97,7 @@ function regionToDestination(r: any): Destination {
     name:          r.name ?? '',
     type:          (r.type ?? 'other').toUpperCase() as any,
     description:   r.description ?? '',
-    city:          r.name ?? '',
-    region:        r.type ?? '',
+    country:       r.country ?? 'Montenegro',
     latitude:      r.lat ?? 0,
     longitude:     r.lng ?? 0,
     createdBy:     0,
