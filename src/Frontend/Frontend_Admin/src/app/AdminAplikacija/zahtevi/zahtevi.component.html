@@ -6,9 +6,9 @@
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
-      <div class="lbl">Na čekanju</div>
+      <div class="lbl">Na cekanju</div>
       @if (pendingCount > 0) {
-      <div class="trend warn">⚠ Čekaju pregled</div>
+      <div class="trend warn">Cekaju pregled</div>
       }
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'approved'" (click)="setStatus('approved')">
@@ -26,13 +26,13 @@
       Svi zahtevi
     </button>
     <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
-      ⏳ Na čekanju ({{ pendingCount }})
+      Na cekanju ({{ pendingCount }})
     </button>
     <button class="ftab" [class.active]="activeStatus === 'approved'" (click)="setStatus('approved')">
-      ✅ Odobreni
+      Odobreni
     </button>
     <button class="ftab" [class.active]="activeStatus === 'rejected'" (click)="setStatus('rejected')">
-      ❌ Odbijeni
+      Odbijeni
     </button>
   </div>
 
@@ -41,16 +41,16 @@
       <span class="search-icon">🔍</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretraži po imenu, emailu ili organizaciji..."
+             placeholder="Pretrazi po imenu, emailu ili organizaciji..."
              [value]="searchQuery"
              (input)="onSearch($any($event.target).value)" />
     </div>
 
     <select class="filter-select" [value]="activeStatus" (change)="setStatus($any($event.target).value)">
       <option value="">Svi statusi</option>
-      <option value="pending">⏳ Na čekanju</option>
-      <option value="approved">✅ Odobreno</option>
-      <option value="rejected">❌ Odbijeno</option>
+      <option value="pending">Na cekanju</option>
+      <option value="approved">Odobreno</option>
+      <option value="rejected">Odbijeno</option>
     </select>
 
     <div class="spacer"></div>
@@ -62,7 +62,7 @@
   </div>
 
   @if (loading) {
-  <div class="state-msg">Učitavanje...</div>
+  <div class="state-msg">Ucitavanje...</div>
   } @else if (requests.length === 0) {
   <div class="state-msg">Nema zahteva za prikaz.</div>
   } @else {
@@ -127,7 +127,7 @@
             <div class="primary-text">{{ r.reviewedAt | dateLocal:'datetime' }}</div>
             <div class="secondary-text">{{ reviewedByLabel(r) }}</div>
             } @else {
-            <span class="secondary-text">Još nije obrađeno</span>
+            <span class="secondary-text">Jos nije obradjeno</span>
             }
           </td>
           <td>
@@ -137,7 +137,7 @@
             <div class="actions">
               <button class="btn-icon" title="Detalji" (click)="openDetail(r)">👁️</button>
               @if (r.status === 'pending') {
-              <button class="btn-icon approve-btn" title="Odobri" (click)="approve(r)">✅</button>
+              <button class="btn-icon approve-btn" [disabled]="!canApprove(r) || processing" [title]="approveTitle(r)" (click)="approve(r)">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="openRejectDialog(r)">❌</button>
               }
             </div>
@@ -148,7 +148,7 @@
     </table>
 
     <div class="pagination">
-      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} zahteva</div>
+      <div class="pg-info">Prikazano {{ pageStart }}-{{ pageEnd }} od {{ total }} zahteva</div>
       <div class="pg-btns">
         <button class="pg-btn" [disabled]="page <= 1" (click)="onPage(page - 1)">←</button>
         @for (n of pageNumbers; track n) {
@@ -170,7 +170,6 @@
       </div>
 
       <div class="modal-body">
-
         <div class="applicant-strip">
           <div class="applicant-av">{{ initials(selected.fullName) }}</div>
           <div class="applicant-info">
@@ -214,7 +213,7 @@
         </div>
 
         <div class="doc-block">
-          <div class="doc-block-title">Priložena dokumentacija</div>
+          <div class="doc-block-title">Prilozena dokumentacija</div>
           @if (hasDocument(selected)) {
           <a class="doc-btn" [href]="documentUrl(selected)" target="_blank" rel="noopener">
             📎 Otvori dokument
@@ -223,7 +222,6 @@
           <span class="doc-none">Dokument nije dostupan.</span>
           }
         </div>
-
       </div>
 
       @if (selected.status === 'pending') {
@@ -231,12 +229,16 @@
         <button class="btn-modal-reject" [disabled]="processing" (click)="openRejectDialog(selected)">
           Odbij
         </button>
-        <button class="btn-modal-approve" [disabled]="processing" (click)="approve(selected)">
+        <button class="btn-modal-approve" [disabled]="processing || !canApprove(selected)" [title]="approveTitle(selected)" (click)="approve(selected)">
           {{ processing ? 'Obrada...' : 'Odobri' }}
         </button>
       </div>
+      @if (!selected.emailVerifiedAt) {
+      <div class="doc-none" style="padding: 0 24px 24px;">
+        Zahtev ne moze biti odobren dok korisnik ne potvrdi email adresu iz verifikacionog mejla.
+      </div>
       }
-
+      }
     </div>
   </div>
   }
@@ -254,7 +256,7 @@
                 placeholder="npr. Nepotpuna dokumentacija..."
                 rows="4"></textarea>
       <div class="reject-actions">
-        <button class="btn-cancel-sm" (click)="cancelReject()">Otkaži</button>
+        <button class="btn-cancel-sm" (click)="cancelReject()">Otkazi</button>
         <button class="btn-reject-confirm"
                 [disabled]="!rejectReason.trim() || processing"
                 (click)="submitReject()">

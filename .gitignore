@@ -172,3 +172,4 @@ desktop.ini
 /.claude
 /src/Backend/TouristGuide.Api/images/uploads/docs
 /src/Backend/TouristGuide.Api/images/verification-documents
+/.appdata/NuGet

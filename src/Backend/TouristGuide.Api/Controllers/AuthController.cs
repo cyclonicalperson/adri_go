@@ -20,6 +20,7 @@ namespace TouristGuide.Api.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly NotificationService _notifService;
+        private readonly EmailService _emailService;
 
         public AuthController(
             AppDbContext dbContext,
@@ -27,7 +28,8 @@ namespace TouristGuide.Api.Controllers
             IConfiguration configuration,
             ILogger<AuthController> logger,
             IWebHostEnvironment environment,
-            NotificationService notifService)
+            NotificationService notifService,
+            EmailService emailService)
         {
             _dbContext = dbContext;
             _jwtService = jwtService;
@@ -35,6 +37,7 @@ namespace TouristGuide.Api.Controllers
             _logger = logger;
             _environment = environment;
             _notifService = notifService;
+            _emailService = emailService;
         }
 
         [AllowAnonymous]
@@ -67,11 +70,14 @@ namespace TouristGuide.Api.Controllers
                     return Conflict(new { message = "Vec postoji aktivan zahtev za ovaj email." });
 
                 var now = DateTime.UtcNow;
+                var verificationToken = Guid.NewGuid().ToString("N");
                 var registrationRequest = new AdminRegistrationRequest
                 {
                     FullName = request.FullName.Trim(),
                     Email = normalizedEmail,
                     PasswordHash = PasswordHelper.Hash(request.Password),
+                    EmailVerificationToken = verificationToken,
+                    EmailVerificationTokenExpiresAt = now.AddHours(24),
                     IsOrganization = !string.IsNullOrWhiteSpace(request.OrganizationName),
                     IsIndividual = string.IsNullOrWhiteSpace(request.OrganizationName),
                     OrganizationName = request.OrganizationName?.Trim(),
@@ -92,6 +98,18 @@ namespace TouristGuide.Api.Controllers
                 _dbContext.VerificationDocuments.Add(verificationDocument);
                 await _dbContext.SaveChangesAsync();
 
+                try
+                {
+                    await _emailService.SendAdminRegistrationVerificationEmailAsync(
+                        registrationRequest.Email,
+                        registrationRequest.FullName,
+                        verificationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send admin registration verification email to {Email}.", registrationRequest.Email);
+                }
+
                 await _notifService.BroadcastToSuperAdminsAsync(
                     "new_registration",
                     "Novi zahtev za registraciju",
@@ -102,7 +120,7 @@ namespace TouristGuide.Api.Controllers
                 {
                     requestId = registrationRequest.Id,
                     status = registrationRequest.Status,
-                    message = "Zahtev za admin nalog je poslat i ceka pregled superadmina."
+                    message = "Zahtev za admin nalog je poslat. Proverite email i potvrdite adresu da bi superadmin mogao da obradi registraciju."
                 });
             }
             catch (Exception ex)
@@ -113,6 +131,59 @@ namespace TouristGuide.Api.Controllers
                     detail: "Doslo je do neocekivane greske prilikom slanja registracionog zahteva.",
                     statusCode: StatusCodes.Status500InternalServerError);
             }
+        }
+
+        [AllowAnonymous]
+        [HttpGet("verify-registration-email")]
+        public async Task<IActionResult> VerifyRegistrationEmail([FromQuery] string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return BadRequest(new { message = "Token nije prosledjen." });
+
+            var request = await _dbContext.AdminRegistrationRequests
+                .FirstOrDefaultAsync(x => x.EmailVerificationToken == token);
+
+            if (request is null)
+                return NotFound(new { message = "Verifikacioni token nije validan." });
+
+            if (request.EmailVerifiedAt.HasValue)
+            {
+                return Ok(new
+                {
+                    message = "Email adresa je vec potvrdjena. Zahtev je spreman za pregled superadmina.",
+                    verifiedAt = request.EmailVerifiedAt
+                });
+            }
+
+            if (!string.Equals(request.Status, "pending", StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(new
+                {
+                    message = "Registracioni zahtev vise nije aktivan i email ne moze dodatno da se verifikuje."
+                });
+            }
+
+            if (request.EmailVerificationTokenExpiresAt.HasValue &&
+                request.EmailVerificationTokenExpiresAt.Value < DateTime.UtcNow)
+            {
+                return BadRequest(new
+                {
+                    message = "Verifikacioni link je istekao. Posaljite novi registracioni zahtev ili kontaktirajte superadmin tim.",
+                    expired = true
+                });
+            }
+
+            request.EmailVerifiedAt = DateTime.UtcNow;
+            request.EmailVerificationToken = null;
+            request.EmailVerificationTokenExpiresAt = null;
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Email adresa je uspesno potvrdjena. Superadmin sada moze da pregleda vas zahtev.",
+                verifiedAt = request.EmailVerifiedAt
+            });
         }
 
         [HttpPost("login")]

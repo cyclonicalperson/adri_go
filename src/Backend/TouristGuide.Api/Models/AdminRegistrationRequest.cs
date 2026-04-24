@@ -30,6 +30,10 @@ namespace TouristGuide.Api.Models
         [MaxLength(100)]
         public string? EmailVerificationToken { get; set; }
 
+        /// <summary>Rok vazenja tokena za verifikaciju emaila</summary>
+        [Column("email_verification_token_expires_at")]
+        public DateTime? EmailVerificationTokenExpiresAt { get; set; }
+
         /// <summary>Kada je email verifikovan</summary>
         [Column("email_verified_at")]
         public DateTime? EmailVerifiedAt { get; set; }

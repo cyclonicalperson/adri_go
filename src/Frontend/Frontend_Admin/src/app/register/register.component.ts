@@ -28,7 +28,6 @@ type AccountType = 'organization' | 'individual';
 })
 export class RegisterComponent {
   form: FormGroup;
-  // Signals garantuju reaktivnost bez potrebe za ChangeDetectorRef ili ApplicationRef
   loading = signal(false);
   error = signal<string | null>(null);
   showPassword = false;
@@ -75,7 +74,7 @@ export class RegisterComponent {
 
   get verificationDocumentHint(): string {
     return this.isIndividualSelected
-      ? 'Lična karta ili pasoš (JPG, PNG ili PDF, max 5MB).'
+      ? 'Licna karta ili pasos (JPG, PNG ili PDF, max 5MB).'
       : 'Dokaz o registraciji firme ili organizacije (JPG, PNG ili PDF, max 5MB).';
   }
 
@@ -110,7 +109,7 @@ export class RegisterComponent {
     }
 
     if (file.size > maxSizeMb * 1024 * 1024) {
-      this.fileError = `Maksimalna veličina fajla je ${maxSizeMb} MB.`;
+      this.fileError = `Maksimalna velicina fajla je ${maxSizeMb} MB.`;
       this.selectedFile = null;
       input.value = '';
       return;
@@ -144,8 +143,8 @@ export class RegisterComponent {
 
     if (!this.selectedFile) {
       this.fileError = this.isIndividualSelected
-        ? 'Dokument je obavezan. Priložite ličnu kartu ili pasoš.'
-        : 'Dokument je obavezan. Priložite registraciju firme ili organizacije.';
+        ? 'Dokument je obavezan. Prilozite licnu kartu ili pasos.'
+        : 'Dokument je obavezan. Prilozite registraciju firme ili organizacije.';
       return;
     }
 
@@ -170,7 +169,7 @@ export class RegisterComponent {
       }),
     ).subscribe({
       next: () => {
-        this.successMsg = `Zahtev za admin nalog je uspešno poslat za ${submittedEmail}. Superadmin će ga pregledati nakon provere dokumentacije.`;
+        this.successMsg = `Zahtev za admin nalog je uspesno poslat za ${submittedEmail}. Proverite inbox i kliknite na verifikacioni link kako bi superadmin mogao da pregleda registraciju.`;
         this.form.reset({
           accountType: 'organization',
           firstName: '',
@@ -187,8 +186,8 @@ export class RegisterComponent {
       error: err => {
         this.error.set(
           err?.name === 'TimeoutError'
-            ? 'Slanje zahteva traje predugo. Proverite konekciju i pokušajte ponovo.'
-            : (err?.error?.message ?? 'Došlo je do greške. Pokušajte ponovo.'),
+            ? 'Slanje zahteva traje predugo. Proverite konekciju i pokusajte ponovo.'
+            : (err?.error?.message ?? 'Doslo je do greske. Pokusajte ponovo.'),
         );
       },
     });
