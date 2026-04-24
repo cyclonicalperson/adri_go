@@ -33,7 +33,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     public auth: AuthService,
     private router: Router,
     private badgeService: BadgeService,
-  ) { }
+  ) {}
 
   ngOnInit(): void {
     this.badgeService.startPolling();
@@ -60,19 +60,20 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   get mainItems(): NavItem[] {
     return [
-      { label: 'Dashboard', route: '/admin/dashboard', icon: '📊' },
-      ...(this.canManageContent ? [{ label: 'Destinacije', route: '/admin/lokacije', icon: '🏢' }] : []),
-      ...(this.canManageActivities ? [{ label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '🎯' }] : []),
-      ...(this.canManageContent ? [{ label: 'Dogadjaji', route: '/admin/events', icon: '🎟️' }] : []),
-      ...(this.canManageReviews ? [{ label: 'Recenzije', route: '/admin/reviews', icon: '⭐', badge: this.reviewBadge }] : []),
+      { label: 'Dashboard', route: '/admin/dashboard', icon: '\u{1F4CA}' },
+      ...(this.canManageContent ? [{ label: 'Destinacije', route: '/admin/lokacije', icon: '\u{1F3E2}' }] : []),
+      ...(this.canManageContent ? [{ label: 'Rute', route: '/admin/routes-management', icon: '\u{1F5FA}\uFE0F' }] : []),
+      ...(this.canManageActivities ? [{ label: 'Aktivnosti', route: '/admin/aktivnosti', icon: '\u{1F3AF}' }] : []),
+      ...(this.canManageContent ? [{ label: 'Dogadjaji', route: '/admin/events', icon: '\u{1F39F}\uFE0F' }] : []),
+      ...(this.canManageReviews ? [{ label: 'Recenzije', route: '/admin/reviews', icon: '\u2B50', badge: this.reviewBadge }] : []),
     ];
   }
 
   get adminItems(): NavItem[] {
     return [
-      { label: 'Admini', route: '/admin/users', icon: '👥' },
-      { label: 'Zahtevi', route: '/admin/zahtevi', icon: '📋', badge: this.requestsBadge },
-      { label: 'Dozvole', route: '/admin/permissions', icon: '🔐' },
+      { label: 'Admini', route: '/admin/users', icon: '\u{1F465}' },
+      { label: 'Zahtevi', route: '/admin/zahtevi', icon: '\u{1F4CB}', badge: this.requestsBadge },
+      { label: 'Dozvole', route: '/admin/permissions', icon: '\u{1F510}' },
     ];
   }
 

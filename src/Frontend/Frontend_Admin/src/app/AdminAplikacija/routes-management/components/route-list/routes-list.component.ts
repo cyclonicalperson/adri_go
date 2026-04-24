@@ -1,29 +1,29 @@
+import { SlicePipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { AuthService } from '@core/auth/auth.service';
-import { RouteService } from '@core/services/route.service';
-import { RegionService } from '@core/services/region.service';
-import { TouristRoute, RouteType, RouteDifficulty } from '@core/models/route.model';
-import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
-import { SearchBarComponent } from '@shared/components/search-bar/search-bar.component';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { Region } from '@core/models/region.model';
+import { RouteDifficulty, RouteStatus, TouristRoute } from '@core/models/route.model';
+import { RegionService } from '@core/services/region.service';
+import { RouteService } from '@core/services/route.service';
 import { BadgeComponent, BadgeVariant } from '@shared/components/badge/badge.component';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+
+type StatusFilter = '' | RouteStatus;
 
 @Component({
   selector: 'app-routes-list',
   standalone: true,
   imports: [
-    SearchBarComponent,
-    PaginationComponent,
+    SlicePipe,
     BadgeComponent,
     ConfirmDialogComponent,
   ],
   templateUrl: './routes-list.component.html',
   styleUrl: './routes-list.component.scss',
 })
-
 export class RoutesListComponent implements OnInit {
   routes: TouristRoute[] = [];
   destinations: Region[] = [];
@@ -33,27 +33,37 @@ export class RoutesListComponent implements OnInit {
   req: PageRequest & {
     regionId?: number;
     difficulty?: string;
-    routeType?: string;
+    status?: StatusFilter;
   } = { page: 1, pageSize: 12, sortBy: 'name', sortDir: 'asc' };
 
+  summary = {
+    total: 0,
+    published: 0,
+    pending: 0,
+    archived: 0,
+  };
+
+  approveTarget: TouristRoute | null = null;
+  rejectTarget: TouristRoute | null = null;
   deleteTarget: TouristRoute | null = null;
   loading = true;
 
   readonly difficultyOptions = [
-    { value: '', label: 'Sve težine' },
+    { value: '', label: 'Sve tezine' },
     { value: 'easy', label: 'Lako' },
     { value: 'moderate', label: 'Srednje' },
-    { value: 'hard', label: 'Teško' },
+    { value: 'hard', label: 'Tesko' },
     { value: 'expert', label: 'Ekspertsko' },
   ];
 
-  readonly typeOptions = [
-    { value: '', label: 'Svi tipovi' },
-    { value: 'HIKING', label: 'Pešačenje' },
-    { value: 'CYCLING', label: 'Biciklizam' },
-    { value: 'WALKING', label: 'Šetnja' },
-    { value: 'DRIVING', label: 'Automobilom' },
-    { value: 'OTHER', label: 'Ostalo' },
+  readonly sortOptions = [
+    { value: 'name:asc', label: 'Naziv A-Z' },
+    { value: 'name:desc', label: 'Naziv Z-A' },
+    { value: 'distanceKm:desc', label: 'Distanca opadajuce' },
+    { value: 'distanceKm:asc', label: 'Distanca rastuce' },
+    { value: 'durationMin:desc', label: 'Trajanje opadajuce' },
+    { value: 'durationMin:asc', label: 'Trajanje rastuce' },
+    { value: 'createdAt:desc', label: 'Najnovije prvo' },
   ];
 
   constructor(
@@ -61,10 +71,10 @@ export class RoutesListComponent implements OnInit {
     private destService: RegionService,
     private router: Router,
     private auth: AuthService,
-  ) { }
+  ) {}
 
   ngOnInit(): void {
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[]; }) => {
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[] }) => {
       this.destinations = res.data;
     });
     this.load();
@@ -72,45 +82,62 @@ export class RoutesListComponent implements OnInit {
 
   load(): void {
     this.loading = true;
-    this.service.getAll(this.req).subscribe({
-      next: (res: { data: TouristRoute[]; total: number; totalPages: number; }) => {
-        this.routes = res.data;
-        this.total = res.total;
-        this.totalPages = res.totalPages;
+
+    const baseSummaryRequest = this.buildBaseRequest();
+
+    forkJoin({
+      list: this.service.getAll({ ...this.req }),
+      totalSummary: this.service.getAll(baseSummaryRequest),
+      publishedSummary: this.service.getAll({ ...baseSummaryRequest, status: 'published' }),
+      pendingSummary: this.service.getAll({ ...baseSummaryRequest, status: 'draft' }),
+      archivedSummary: this.service.getAll({ ...baseSummaryRequest, status: 'archived' }),
+    }).subscribe({
+      next: ({ list, totalSummary, publishedSummary, pendingSummary, archivedSummary }) => {
+        this.routes = list.data;
+        this.total = list.total;
+        this.totalPages = list.totalPages;
+        this.summary = {
+          total: totalSummary.total,
+          published: publishedSummary.total,
+          pending: pendingSummary.total,
+          archived: archivedSummary.total,
+        };
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: () => {
+        this.loading = false;
+      },
     });
   }
 
-  onSearch(q: string): void {
-    this.req = { ...this.req, search: q, page: 1 };
+  onSearch(value: string): void {
+    this.req = { ...this.req, search: value, page: 1 };
     this.load();
   }
 
-  onDifficultyChange(val: string): void {
-    this.req = { ...this.req, difficulty: val || undefined, page: 1 };
+  onDifficultyChange(value: string): void {
+    this.req = { ...this.req, difficulty: value || undefined, page: 1 };
     this.load();
   }
 
-  onTypeChange(val: string): void {
-    this.req = { ...this.req, routeType: val || undefined, page: 1 };
+  onDestinationChange(value: string): void {
+    this.req = { ...this.req, regionId: value ? Number(value) : undefined, page: 1 };
     this.load();
   }
 
-  onDestinationChange(id: string): void {
-    this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
+  onStatusChange(status: StatusFilter): void {
+    this.req = { ...this.req, status: status || undefined, page: 1 };
     this.load();
   }
 
-  onSort(col: string): void {
-    const dir = this.req.sortBy === col && this.req.sortDir === 'asc' ? 'desc' : 'asc';
-    this.req = { ...this.req, sortBy: col, sortDir: dir, page: 1 };
+  onSortChange(value: string): void {
+    const [sortBy, sortDir] = value.split(':');
+    this.req = { ...this.req, sortBy, sortDir: sortDir as 'asc' | 'desc', page: 1 };
     this.load();
   }
 
-  onPage(p: number): void {
-    this.req = { ...this.req, page: p };
+  onPage(page: number): void {
+    this.req = { ...this.req, page };
     this.load();
   }
 
@@ -118,45 +145,179 @@ export class RoutesListComponent implements OnInit {
     return this.auth.hasPermission('create_route');
   }
 
-  goNew(): void { this.router.navigate(['/admin/routes-management/new']); }
-  goEdit(r: TouristRoute): void { this.router.navigate(['/admin/routes-management', r.routeId, 'edit']); }
-  confirmDelete(r: TouristRoute): void { this.deleteTarget = r; }
-  cancelDelete(): void { this.deleteTarget = null; }
+  get canModerateRoutes(): boolean {
+    return this.auth.currentUser?.role === 'superadmin' || this.auth.hasPermission('manage_own_posts');
+  }
 
-  doDelete(): void {
-    if (!this.deleteTarget) return;
-    this.service.delete(this.deleteTarget.routeId).subscribe(() => {
-      this.deleteTarget = null;
+  get activeSortValue(): string {
+    return `${this.req.sortBy ?? 'name'}:${this.req.sortDir ?? 'asc'}`;
+  }
+
+  goNew(): void {
+    void this.router.navigate(['/admin/routes-management/new']);
+  }
+
+  goDetails(route: TouristRoute): void {
+    void this.router.navigate(['/admin/routes-management', route.routeId]);
+  }
+
+  goEdit(route: TouristRoute): void {
+    void this.router.navigate(['/admin/routes-management', route.routeId, 'edit']);
+  }
+
+  confirmApprove(route: TouristRoute): void {
+    if (route.status === 'draft') {
+      this.approveTarget = route;
+    }
+  }
+
+  cancelApprove(): void {
+    this.approveTarget = null;
+  }
+
+  doApprove(): void {
+    if (!this.approveTarget) return;
+
+    const route = this.approveTarget;
+    this.approveTarget = null;
+
+    this.service.update(route.routeId, { status: 'published' }).subscribe(() => {
       this.load();
     });
   }
 
-  difficultyBadge(d: RouteDifficulty): BadgeVariant {
+  confirmReject(route: TouristRoute): void {
+    if (route.status === 'draft') {
+      this.rejectTarget = route;
+    }
+  }
+
+  cancelReject(): void {
+    this.rejectTarget = null;
+  }
+
+  doReject(): void {
+    if (!this.rejectTarget) return;
+
+    const route = this.rejectTarget;
+    this.rejectTarget = null;
+
+    this.service.update(route.routeId, { status: 'archived' }).subscribe(() => {
+      this.load();
+    });
+  }
+
+  confirmDelete(route: TouristRoute): void {
+    this.deleteTarget = route;
+  }
+
+  cancelDelete(): void {
+    this.deleteTarget = null;
+  }
+
+  doDelete(): void {
+    if (!this.deleteTarget) return;
+
+    const route = this.deleteTarget;
+    this.deleteTarget = null;
+
+    this.service.delete(route.routeId).subscribe(() => {
+      this.load();
+    });
+  }
+
+  difficultyBadge(difficulty: RouteDifficulty): BadgeVariant {
     const map: Record<string, BadgeVariant> = {
-      easy: 'success', moderate: 'info', hard: 'warning', expert: 'danger',
+      easy: 'success',
+      moderate: 'info',
+      hard: 'warning',
+      expert: 'danger',
     };
-    return map[d] ?? 'default';
+
+    return map[difficulty.toLowerCase()] ?? 'default';
   }
 
-  difficultyLabel(d: RouteDifficulty): string {
-    const found = this.difficultyOptions.find(o => o.value === d);
-    return found?.label ?? d;
+  difficultyLabel(difficulty: RouteDifficulty): string {
+    const map: Record<string, string> = {
+      easy: 'Lako',
+      moderate: 'Srednje',
+      hard: 'Tesko',
+      expert: 'Ekspertsko',
+    };
+
+    return map[difficulty.toLowerCase()] ?? difficulty;
   }
 
-  typeLabel(t: RouteType): string {
-    const found = this.typeOptions.find(o => o.value === t);
-    return found?.label ?? t;
+  statusLabel(status?: RouteStatus): string {
+    const map: Record<RouteStatus, string> = {
+      published: 'Objavljena',
+      draft: 'Na cekanju',
+      archived: 'Arhivirana',
+    };
+
+    return status ? map[status] : 'Na cekanju';
   }
 
-  sortIcon(col: string): string {
-    if (this.req.sortBy !== col) return '↕';
-    return this.req.sortDir === 'asc' ? '↑' : '↓';
+  statusBadgeClass(status?: RouteStatus): string {
+    switch (status) {
+      case 'published':
+        return 'badge-green';
+      case 'draft':
+        return 'badge-amber';
+      case 'archived':
+        return 'badge-gray';
+      default:
+        return 'badge-gray';
+    }
   }
 
-  formatDuration(min: number): string {
-    if (min < 60) return `${min} min`;
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  formatDuration(minutes: number): string {
+    if (minutes < 60) return `${minutes} min`;
+
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest > 0 ? `${hours}h ${rest}min` : `${hours}h`;
+  }
+
+  routeExcerpt(route: TouristRoute): string {
+    return route.description?.trim() || 'Ruta nema dodatni opis.';
+  }
+
+  routeStats(route: TouristRoute): string {
+    return `${route.viewCount ?? 0} pregleda | ${route.saveCount ?? 0} cuvanja`;
+  }
+
+  waypointCount(route: TouristRoute): number {
+    return route.waypoints?.length ?? 0;
+  }
+
+  get pageStart(): number {
+    return this.total === 0 ? 0 : (this.req.page - 1) * this.req.pageSize + 1;
+  }
+
+  get pageEnd(): number {
+    return Math.min(this.req.page * this.req.pageSize, this.total);
+  }
+
+  get pageNumbers(): number[] {
+    const pages: number[] = [];
+
+    for (let index = Math.max(1, this.req.page - 2); index <= Math.min(this.totalPages, this.req.page + 2); index += 1) {
+      pages.push(index);
+    }
+
+    return pages;
+  }
+
+  private buildBaseRequest() {
+    return {
+      page: 1,
+      pageSize: 1,
+      search: this.req.search,
+      regionId: this.req.regionId,
+      difficulty: this.req.difficulty,
+      sortBy: 'name',
+      sortDir: 'asc' as const,
+    };
   }
 }

@@ -1,11 +1,12 @@
 export type RouteType = 'HIKING' | 'CYCLING' | 'WALKING' | 'DRIVING' | 'OTHER';
 export type RouteDifficulty = 'EASY' | 'MODERATE' | 'HARD' | 'EXPERT';
+export type RouteStatus = 'draft' | 'published' | 'archived';
 
 export interface TouristRoute {
   routeId: number;
   destinationId: number;
   name: string;
-  routeType: RouteType;
+  routeType?: RouteType | null;
   difficulty: RouteDifficulty;
   distanceKm: number;
   durationMin: number;
@@ -18,8 +19,11 @@ export interface TouristRoute {
   isActive: boolean;
   createdBy: number;
   waypoints?: Waypoint[];
+  images?: string[];
   destination?: { destinationId: number; name: string };
-  status?: string;
+  status?: RouteStatus;
+  viewCount?: number;
+  saveCount?: number;
 }
 
 export interface Waypoint {
@@ -33,7 +37,6 @@ export interface Waypoint {
 export interface CreateRouteRequest {
   destinationId: number;
   name: string;
-  routeType: RouteType;
   difficulty: RouteDifficulty;
   distanceKm: number;
   durationMin: number;
@@ -43,8 +46,9 @@ export interface CreateRouteRequest {
   startLongitude: number;
   endLatitude: number;
   endLongitude: number;
+  status?: RouteStatus;
   isActive?: boolean;
   waypoints?: Omit<Waypoint, 'waypointId' | 'routeId'>[];
 }
 
-export interface UpdateRouteRequest extends Partial<CreateRouteRequest> { }
+export interface UpdateRouteRequest extends Partial<CreateRouteRequest> {}

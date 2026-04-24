@@ -2,8 +2,8 @@
   <div class="left">
     <button class="btn-toggle"
             (click)="toggleSidebar.emit()"
-            aria-label="Otvori/zatvori meni">
-      ☰
+            aria-label="Otvori ili zatvori meni">
+      &#9776;
     </button>
 
     <div class="header-left">
@@ -13,37 +13,64 @@
   </div>
 
   <div class="right">
-    <!-- Notifications bell -->
-    <div class="notif-btn"
-         role="button"
-         tabindex="0"
-         aria-label="Obaveštenja"
-         [class.has-notifications]="notifications.length > 0"
-         (click)="toggleNotifications()"
-         (keydown.enter)="toggleNotifications()">
-      🔔
-      @if (unreadCount > 0) {
-      <span class="notif-dot" aria-label="{{ unreadCount }} nepročitanih">{{ unreadCount }}</span>
+    <div class="lang-switch" data-no-translate="true">
+      <button class="lang-btn"
+              type="button"
+              aria-label="Promeni jezik"
+              [class.active]="languageMenuOpen"
+              (click)="toggleLanguageMenu()">
+        <span class="lang-icon">A</span>
+        <span class="lang-code">{{ currentLanguageCode }}</span>
+      </button>
+
+      @if (languageMenuOpen) {
+      <div class="notif-backdrop" (click)="languageMenuOpen = false"></div>
+      <div class="lang-menu">
+        <div class="lang-menu-title">Interface language</div>
+        @for (language of languages; track language.code) {
+        <button class="lang-option"
+                type="button"
+                [class.selected]="i18n.currentLanguage === language.code"
+                (click)="changeLanguage(language.code)">
+          <span>{{ language.label }}</span>
+          @if (i18n.currentLanguage === language.code) {
+          <span class="lang-option-check">OK</span>
+          }
+        </button>
+        }
+      </div>
       }
     </div>
 
-    <!-- Notification panel -->
+    <div class="notif-btn"
+         role="button"
+         tabindex="0"
+         aria-label="Obavestenja"
+         [class.has-notifications]="notifications.length > 0"
+         (click)="toggleNotifications()"
+         (keydown.enter)="toggleNotifications()">
+      &#128276;
+      @if (unreadCount > 0) {
+      <span class="notif-dot" aria-label="{{ unreadCount }} neprocitanih">{{ unreadCount }}</span>
+      }
+    </div>
+
     @if (notifOpen) {
     <div class="notif-backdrop" (click)="notifOpen = false"></div>
     <div class="notif-panel">
       <div class="notif-panel-header">
-        <span class="notif-panel-title">Obaveštenja</span>
+        <span class="notif-panel-title">Obavestenja</span>
         <button class="notif-mark-all" [disabled]="unreadCount === 0" (click)="markAllRead()">
-          ✓ Označi sve kao pročitano
+          &#10003; Oznaci sve kao procitano
           @if (unreadCount > 0) { <span class="notif-mark-count">({{ unreadCount }})</span> }
         </button>
       </div>
       <div class="notif-list">
         @if (notifications.length === 0) {
         @if (notifLoading) {
-        <div class="notif-empty">Učitavanje…</div>
+        <div class="notif-empty">Ucitavanje...</div>
         } @else {
-        <div class="notif-empty">Nema novih obaveštenja.</div>
+        <div class="notif-empty">Nema novih obavestenja.</div>
         }
         }
         @for (n of notifications; track n.id) {
@@ -59,9 +86,9 @@
             <div class="notif-unread-dot"></div>
             }
             <button class="notif-delete-btn"
-                    title="Obriši obaveštenje"
+                    title="Obrisi obavestenje"
                     (click)="deleteNotification(n, $event)">
-              ✕
+              &#10005;
             </button>
           </div>
         </div>
@@ -69,13 +96,12 @@
       </div>
       @if (notifications.length > 0) {
       <div class="notif-panel-footer">
-        <button class="notif-clear-all" (click)="clearAllNotifications($event)">🗑️ Obriši sva obaveštenja</button>
+        <button class="notif-clear-all" (click)="clearAllNotifications($event)">&#128465; Obrisi sva obavestenja</button>
       </div>
       }
     </div>
     }
 
-    <!-- Avatar + name → profile page -->
     <a class="user-chip" routerLink="/admin/profile" aria-label="Moj profil">
       <div class="user-meta user-meta--desktop">
         <div class="user-name">{{ auth.currentUser?.fullName }}</div>

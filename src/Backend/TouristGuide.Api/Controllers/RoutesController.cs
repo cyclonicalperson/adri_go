@@ -16,16 +16,21 @@ namespace TouristGuide.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly AdminPermissionService _permissionService;
+        private readonly NotificationService _notifService;
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
             "draft", "published", "archived"
         };
 
-        public RoutesController(AppDbContext db, AdminPermissionService permissionService)
+        public RoutesController(
+            AppDbContext db,
+            AdminPermissionService permissionService,
+            NotificationService notifService)
         {
             _db = db;
             _permissionService = permissionService;
+            _notifService = notifService;
         }
 
         [HttpGet]
@@ -65,9 +70,9 @@ namespace TouristGuide.Api.Controllers
                     query = query.Where(r => r.AdminId == adminId.Value);
 
                     var normalizedStatus = NormalizeStatus(status);
-                    if (!string.IsNullOrWhiteSpace(normalizedStatus) &&
-                        !string.Equals(normalizedStatus, "published", StringComparison.OrdinalIgnoreCase) &&
-                        !await _permissionService.HasPermissionAsync("manage_own_posts", region_id))
+                    if (!string.IsNullOrWhiteSpace(normalizedStatus)
+                        && !string.Equals(normalizedStatus, "published", StringComparison.OrdinalIgnoreCase)
+                        && !await _permissionService.HasPermissionAsync("manage_own_posts", region_id))
                     {
                         return Forbid();
                     }
@@ -128,10 +133,10 @@ namespace TouristGuide.Api.Controllers
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (route is null)
-                return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
 
             if (!await CanViewRouteAsync(route))
-                return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
 
             return Ok(new { data = MapToDto(route), success = true });
         }
@@ -181,6 +186,20 @@ namespace TouristGuide.Api.Controllers
             await _db.Entry(route).Reference(r => r.Admin).LoadAsync();
             await _db.Entry(route).Reference(r => r.Region).LoadAsync();
 
+            if (string.Equals(route.Status, "draft", StringComparison.OrdinalIgnoreCase))
+            {
+                await _notifService.BroadcastToSuperAdminsAsync(
+                    "route_pending",
+                    "Nova ruta ceka pregled",
+                    $"{route.Name} je poslata na pregled.",
+                    new
+                    {
+                        routeId = route.Id,
+                        route_id = route.Id,
+                        url = $"/admin/routes-management/{route.Id}"
+                    });
+            }
+
             return CreatedAtAction(nameof(GetById), new { id = route.Id },
                 new { data = MapToDto(route), success = true });
         }
@@ -198,7 +217,7 @@ namespace TouristGuide.Api.Controllers
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (route is null)
-                return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
 
             if (!await CanManageRouteAsync(route))
                 return Forbid();
@@ -241,7 +260,7 @@ namespace TouristGuide.Api.Controllers
         {
             var route = await _db.Routes.FindAsync(id);
             if (route is null)
-                return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
 
             if (!await CanManageRouteAsync(route))
                 return Forbid();
@@ -256,8 +275,15 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetReviews(uint id)
         {
-            if (!await _db.Routes.AnyAsync(r => r.Id == id && r.Status == "published"))
-                return NotFound(new { message = $"Ruta sa ID={id} nije pronađena." });
+            var route = await _db.Routes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (route is null)
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
+
+            if (!await CanViewRouteAsync(route))
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
 
             var reviews = await _db.Reviews
                 .Where(r => r.RouteId == id && r.Status == "APPROVED")
@@ -310,8 +336,8 @@ namespace TouristGuide.Api.Controllers
         private async Task<bool> CanCreateRouteAsync(uint? regionId)
         {
             var role = User.FindFirstValue(ClaimTypes.Role);
-            if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -319,8 +345,8 @@ namespace TouristGuide.Api.Controllers
             if (IsSuperAdmin())
                 return true;
 
-            return await _permissionService.HasPermissionAsync("manage_own_posts", regionId) &&
-                   await _permissionService.HasPermissionAsync("create_route", regionId);
+            return await _permissionService.HasPermissionAsync("manage_own_posts", regionId)
+                   && await _permissionService.HasPermissionAsync("create_route", regionId);
         }
 
         private static string? NormalizeStatus(string? status)
@@ -332,32 +358,32 @@ namespace TouristGuide.Api.Controllers
             return AllowedStatuses.Contains(normalized) ? normalized : null;
         }
 
-        private static object MapToDto(RouteModel r) => new
+        private static object MapToDto(RouteModel route) => new
         {
-            routeId = r.Id,
-            adminId = r.AdminId,
-            adminName = r.Admin?.FullName ?? string.Empty,
-            regionId = r.RegionId,
-            destinationId = r.RegionId,
-            name = r.Name,
-            difficulty = r.Difficulty,
-            distanceKm = r.DistanceKm,
-            durationMin = r.DurationMin,
-            elevationGainM = r.ElevationGain,
-            description = r.Description,
-            waypoints = r.Waypoints,
-            images = r.Images,
-            status = r.Status,
-            viewCount = r.ViewCount,
-            saveCount = r.SaveCount,
-            createdAt = r.CreatedAt,
-            updatedAt = r.UpdatedAt,
-            region = r.Region == null ? null : new
+            routeId = route.Id,
+            adminId = route.AdminId,
+            adminName = route.Admin?.FullName ?? string.Empty,
+            regionId = route.RegionId,
+            destinationId = route.RegionId,
+            name = route.Name,
+            difficulty = route.Difficulty,
+            distanceKm = route.DistanceKm,
+            durationMin = route.DurationMin,
+            elevationGainM = route.ElevationGain,
+            description = route.Description,
+            waypoints = route.Waypoints,
+            images = route.Images,
+            status = route.Status,
+            viewCount = route.ViewCount,
+            saveCount = route.SaveCount,
+            createdAt = route.CreatedAt,
+            updatedAt = route.UpdatedAt,
+            region = route.Region == null ? null : new
             {
-                regionId = r.Region.Id,
-                name = r.Region.Name,
-                lat = r.Region.Lat,
-                lng = r.Region.Lng
+                regionId = route.Region.Id,
+                name = route.Region.Name,
+                lat = route.Region.Lat,
+                lng = route.Region.Lng
             }
         };
     }

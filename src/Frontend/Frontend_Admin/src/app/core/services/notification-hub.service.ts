@@ -1,22 +1,10 @@
 import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, map } from 'rxjs';
 import { environment } from '@env/environment';
-import { AuthService } from '@core/auth/auth.service';
 import { TokenStorageService } from '@core/auth/token-storage.service';
-
-export interface AdminNotification {
-  id: number;
-  adminUserId: number;
-  type: string;
-  title: string;
-  body: string;
-  payload?: string | null;
-  isRead: boolean;
-  createdAt: string;
-  sentAt?: string | null;
-}
+import { AdminNotification } from '@core/models/user.model';
 
 /**
  * NotificationHubService — real-time notifikacije za admin panel.
@@ -42,7 +30,6 @@ export class NotificationHubService implements OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private auth: AuthService,
     private tokenStorage: TokenStorageService,
     private ngZone: NgZone,
   ) { }
@@ -68,7 +55,7 @@ export class NotificationHubService implements OnDestroy {
     this.connection.on('NewNotification', (notif: AdminNotification) => {
       this.ngZone.run(() => {
         const current = this.notifications$.value;
-        this.notifications$.next([notif, ...current].slice(0, 100));
+        this.notifications$.next([normalizeNotification(notif), ...current].slice(0, 100));
         this.unreadCount$.next(this.unreadCount$.value + 1);
       });
     });
@@ -129,13 +116,25 @@ export class NotificationHubService implements OnDestroy {
     );
   }
 
+  list(limit = 20): Observable<AdminNotification[]> {
+    return this.http.get<{ data: AdminNotification[] }>(
+      `${environment.apiUrl}/notifications?limit=${limit}`
+    ).pipe(
+      map(res => (res.data ?? []).map(normalizeNotification))
+    );
+  }
+
+  delete(id: number): Observable<any> {
+    return this.http.delete(`${environment.apiUrl}/notifications/${id}`);
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────
   private fetchInitialData(): void {
     // Dohvati zadnjih 20 notifikacija iz baze
     this.http.get<{ data: AdminNotification[] }>(
       `${environment.apiUrl}/notifications?limit=20`
     ).subscribe({
-      next: res => this.notifications$.next(res.data ?? []),
+      next: res => this.notifications$.next((res.data ?? []).map(normalizeNotification)),
       error: () => { },
     });
 
@@ -153,5 +152,29 @@ export class NotificationHubService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.connection?.stop();
+  }
+}
+
+function normalizeNotification(notification: any): AdminNotification {
+  return {
+    ...notification,
+    payload: parseNotificationPayload(notification?.payload),
+  };
+}
+
+function parseNotificationPayload(payload: unknown): Record<string, unknown> | null {
+  if (!payload) return null;
+  if (typeof payload === 'object') {
+    return payload as Record<string, unknown>;
+  }
+  if (typeof payload !== 'string') {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(payload);
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
   }
 }
