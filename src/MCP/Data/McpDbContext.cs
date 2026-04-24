@@ -13,6 +13,13 @@ internal sealed class McpDbContext : DbContext
     public DbSet<TagEntity> Tags => Set<TagEntity>();
     public DbSet<PostTagEntity> PostTags => Set<PostTagEntity>();
 
+    // Novo
+    public DbSet<ReviewEntity> Reviews => Set<ReviewEntity>();
+    public DbSet<TouristEntity> Tourists => Set<TouristEntity>();
+    public DbSet<PostViewEntity> PostViews => Set<PostViewEntity>();
+    public DbSet<PostLikeEntity> PostLikes => Set<PostLikeEntity>();
+    public DbSet<ContentShareEntity> ContentShares => Set<ContentShareEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<RegionEntity>(e =>
@@ -74,9 +81,11 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Name).HasColumnName("name");
             e.Property(x => x.Category).HasColumnName("category");
+            e.Property(x => x.Color).HasColumnName("color");
             e.Property(x => x.Description).HasColumnName("description");
-            e.Property(x => x.Difficulty).HasColumnName("difficulty");
             e.Property(x => x.Duration).HasColumnName("duration");
+            e.Property(x => x.Difficulty).HasColumnName("difficulty");
+            e.Property(x => x.MaxCapacity).HasColumnName("max_capacity");
         });
 
         modelBuilder.Entity<PostTagEntity>(e =>
@@ -86,6 +95,67 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.PostId).HasColumnName("post_id");
             e.Property(x => x.TagId).HasColumnName("tag_id");
             e.HasOne(x => x.Tag).WithMany().HasForeignKey(x => x.TagId);
+        });
+
+        modelBuilder.Entity<ReviewEntity>(e =>
+        {
+            e.ToTable("review");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.Rating).HasColumnName("rating");
+            e.Property(x => x.Comment).HasColumnName("comment");
+            e.Property(x => x.IsApproved).HasColumnName("is_approved");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.Tourist).WithMany().HasForeignKey(x => x.TouristId);
+        });
+
+        modelBuilder.Entity<TouristEntity>(e =>
+        {
+            e.ToTable("tourist");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.Name).HasColumnName("name");
+            e.Property(x => x.Email).HasColumnName("email");
+            e.Property(x => x.Language).HasColumnName("language");
+            e.Property(x => x.Interests).HasColumnName("interests");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.IsEmailVerified).HasColumnName("is_email_verified");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<PostViewEntity>(e =>
+        {
+            e.ToTable("post_view");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.ViewedAt).HasColumnName("viewed_at");
+            e.Property(x => x.DurationSec).HasColumnName("duration_sec");
+        });
+
+        modelBuilder.Entity<PostLikeEntity>(e =>
+        {
+            e.ToTable("post_like");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.LikedAt).HasColumnName("liked_at");
+        });
+
+        modelBuilder.Entity<ContentShareEntity>(e =>
+        {
+            e.ToTable("content_share");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.RouteId).HasColumnName("route_id");
+            e.Property(x => x.Platform).HasColumnName("platform");
+            e.Property(x => x.SharedAt).HasColumnName("shared_at");
         });
     }
 }
