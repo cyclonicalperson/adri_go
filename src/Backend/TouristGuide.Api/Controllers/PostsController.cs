@@ -113,7 +113,17 @@ namespace TouristGuide.Api.Controllers
             if (!string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) && !await CanViewUnpublishedPostAsync(post))
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            return Ok(MapToDto(post));
+            // Include like/save status for the requesting tourist (if logged in as tourist)
+            bool? isLiked = null;
+            bool? isSaved = null;
+            var touristId = GetAuthorizedTouristId();
+            if (touristId.HasValue)
+            {
+                isLiked = await _context.PostLikes.AnyAsync(l => l.PostId == id && l.TouristId == touristId.Value);
+                isSaved = await _context.SavedPosts.AnyAsync(s => s.PostId == id && s.TouristId == touristId.Value);
+            }
+
+            return Ok(MapToDto(post, isLiked, isSaved));
         }
 
         [HttpGet("my-saved")]
@@ -635,7 +645,7 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
-        private static PostDto MapToDto(Post post) => new()
+        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null) => new()
         {
             Id = post.Id,
             AdminId = post.AdminId,
@@ -665,7 +675,9 @@ namespace TouristGuide.Api.Controllers
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,
             TagIds = post.PostTags?.Select(pt => pt.TagId).ToList() ?? new List<uint>(),
-            TagNames = post.PostTags?.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList() ?? new List<string>()
+            TagNames = post.PostTags?.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList() ?? new List<string>(),
+            IsLiked = isLiked,
+            IsSaved = isSaved
         };
 
         private static ReviewDto MapToReviewDto(Review review, string? touristName = null) => new()

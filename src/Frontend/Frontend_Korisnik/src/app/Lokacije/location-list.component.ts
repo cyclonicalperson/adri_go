@@ -44,10 +44,15 @@ export class LocationListComponent implements OnInit {
   onLike(loc: Location, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
-    this.locationService.likeLocation(loc.id).subscribe({
+    const action$ = loc.isLiked
+      ? this.locationService.unlikeLocation(loc.id)
+      : this.locationService.likeLocation(loc.id);
+    action$.subscribe({
       next: (res) => {
+        loc.isLiked = !loc.isLiked;
         if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
-        this.showFeedback('Liked!');
+        this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Removed like');
+        this.cdr.markForCheck();
       },
       error: (err) => {
         if (err.status === 401) this.router.navigate(['/login']);
@@ -59,10 +64,15 @@ export class LocationListComponent implements OnInit {
   onSave(loc: Location, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
-    this.locationService.saveLocation(loc.id).subscribe({
+    const action$ = loc.isSaved
+      ? this.locationService.unsaveLocation(loc.id)
+      : this.locationService.saveLocation(loc.id);
+    action$.subscribe({
       next: (res) => {
+        loc.isSaved = !loc.isSaved;
         if (res.saveCount !== undefined) loc.saveCount = res.saveCount;
-        this.showFeedback('Saved!');
+        this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
+        this.cdr.markForCheck();
       },
       error: (err) => {
         if (err.status === 401) this.router.navigate(['/login']);

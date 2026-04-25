@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   font-family: var(--font-sans);
-  background: var(--gray-900);
+  background: linear-gradient(180deg, #fff 60%, rgba(134, 239, 172, 0.4) 100%);
   padding: 0 20px 40px;
 }
 
@@ -19,19 +19,19 @@
   font-family: var(--font-display);
   font-size: 26px;
   font-weight: 800;
-  color: #fff;
+  color: var(--gray-900);
   margin: 0 0 8px;
   line-height: 1.2;
 }
 
-.header-area p { font-size: 14px; color: rgba(255,255,255,0.65); margin: 0; line-height: 1.5; }
+.header-area p { font-size: 14px; color: var(--gray-500); margin: 0; line-height: 1.5; }
 
 /* ── ROLE CARDS ──────────────────────────────────────────────── */
 .role-cards { display: flex; flex-direction: column; gap: 14px; flex: 1; }
 
 .role-card {
-  background: rgba(255,255,255,0.06);
-  border: 2px solid rgba(255,255,255,0.12);
+  background: #fff;
+  border: 2px solid var(--gray-200);
   border-radius: var(--radius-xl);
   padding: 20px;
   display: flex;
@@ -43,22 +43,23 @@
   font-family: inherit;
   width: 100%;
   position: relative;
+  box-shadow: var(--shadow-sm);
 }
-.role-card:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.2); }
+.role-card:hover { border-color: var(--green-300); box-shadow: var(--shadow-md); }
 .role-card.selected {
-  background: rgba(34,197,94,0.15);
+  background: var(--green-50);
   border-color: var(--green-500);
-  box-shadow: 0 0 0 1px var(--green-500), 0 8px 24px rgba(34,197,94,0.2);
+  box-shadow: 0 0 0 1px var(--green-500), 0 8px 24px rgba(34,197,94,0.15);
 }
 
 .role-icon-box {
   width: 52px; height: 52px;
   border-radius: 16px;
-  background: rgba(255,255,255,0.10);
+  background: var(--gray-100);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.role-icon-box svg { width: 26px; height: 26px; fill: rgba(255,255,255,0.7); }
+.role-icon-box svg { width: 26px; height: 26px; fill: var(--gray-500); }
 .role-card.selected .role-icon-box {
   background: var(--green-500);
 }
@@ -67,12 +68,12 @@
 .role-text h3 {
   font-size: 17px;
   font-weight: 800;
-  color: #fff;
+  color: var(--gray-900);
   margin: 0 0 6px;
 }
 .role-text p {
   font-size: 13px;
-  color: rgba(255,255,255,0.6);
+  color: var(--gray-500);
   margin: 0;
   line-height: 1.5;
 }
@@ -96,7 +97,8 @@
 
 /* ── NOTE ────────────────────────────────────────────────────── */
 .admin-note {
-  background: rgba(255,255,255,0.06);
+  background: var(--green-50);
+  border: 1px solid var(--green-100);
   border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-top: 6px;
@@ -105,8 +107,8 @@
   align-items: flex-start;
 }
 .note-dot { width: 8px; height: 8px; background: var(--green-500); border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-.admin-note p { font-size: 12px; color: rgba(255,255,255,0.55); margin: 0; line-height: 1.5; }
-.admin-note strong { color: rgba(255,255,255,0.75); }
+.admin-note p { font-size: 12px; color: var(--gray-500); margin: 0; line-height: 1.5; }
+.admin-note strong { color: var(--gray-700); }
 
 /* ── CONTINUE BTN ────────────────────────────────────────────── */
 .continue-btn {

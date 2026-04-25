@@ -62,6 +62,7 @@
 /* ── SCROLL CONTENT ──────────────────────────────────────────── */
 .scroll-content {
   flex: 1;
+  min-height: 0; /* Required: allows flex child to scroll instead of expanding */
   overflow-y: auto;
   padding: 20px;
   display: block; /* Osnova za mobile */
@@ -170,6 +171,21 @@ section { margin-bottom: 28px; }
   background: var(--green-50);
   color: var(--green-700);
   padding-left: 20px;
+}
+
+/* ── CATEGORY CHIPS GRID ─────────────────────────────────────── */
+.category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.section-hint {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-weight: 500;
+  margin-left: auto;
 }
 
 /* ── CHIPS (KATEGORIJE I PODKATEGORIJE) ──────────────────────── */
@@ -432,12 +448,14 @@ input:checked + .slider:before { transform: translateX(22px); }
   .clear-btn { font-size: 15px; padding: 8px 14px; }
 
   /* Magija: Sadržaj se deli u 2 kolone! */
-  .scroll-content { 
-    padding: 36px 40px; 
+  .scroll-content {
+    padding: 36px 40px;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 0 40px; /* Horizontalni razmak između kolona */
     align-items: start;
+    overflow-y: auto;   /* Enable scrolling on desktop */
+    min-height: 0;      /* Allow flex child to shrink below content size */
   }
 
   /* Search sekcija treba da zauzme punu širinu (obe kolone) */

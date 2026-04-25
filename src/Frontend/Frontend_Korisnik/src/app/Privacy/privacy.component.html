@@ -104,9 +104,10 @@
           Danger Zone
         </div>
         <p class="danger-zone-desc">Permanently delete your account and all your data. This action cannot be undone.</p>
-        <button class="delete-account-btn" (click)="deleteAccount()">
+        <div *ngIf="deleteError" style="color:#dc2626;font-size:13px;margin-bottom:10px;padding:10px 14px;background:#fef2f2;border-radius:10px;">{{ deleteError }}</div>
+        <button class="delete-account-btn" (click)="deleteAccount()" [disabled]="isDeleting">
           <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Delete My Account
+          {{ isDeleting ? 'Deleting...' : 'Delete My Account' }}
         </button>
       </div>
 

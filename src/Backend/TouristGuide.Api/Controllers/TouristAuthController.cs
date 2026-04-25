@@ -18,17 +18,20 @@ namespace TouristGuide.Api.Controllers
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<TouristAuthController> _logger;
 
         public TouristAuthController(
             AppDbContext db,
             JwtService jwtService,
             EmailService emailService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<TouristAuthController> logger)
         {
             _db = db;
             _jwtService = jwtService;
             _emailService = emailService;
             _configuration = configuration;
+            _logger = logger;
         }
 
         // POST /api/tourist-auth/register
@@ -44,9 +47,13 @@ namespace TouristGuide.Api.Controllers
                 .AnyAsync(t => t.Email != null && t.Email.ToLower() == normalizedEmail);
 
             if (emailExists)
-                return Conflict(new { message = "Turista sa ovim emailom vec postoji." });
+                return Conflict(new { message = "An account with this email already exists." });
 
-            var verificationToken = Guid.NewGuid().ToString("N");
+            // When SMTP is not configured (dev / local environment), auto-verify the email
+            // so users can log in immediately without waiting for a verification link.
+            var smtpConfigured = !string.IsNullOrWhiteSpace(_configuration["Email:SmtpHost"]);
+
+            var verificationToken = smtpConfigured ? Guid.NewGuid().ToString("N") : null;
             var now = DateTime.UtcNow;
 
             var tourist = new Tourist
@@ -56,9 +63,9 @@ namespace TouristGuide.Api.Controllers
                 PasswordHash = PasswordHelper.Hash(request.Password),
                 Language = string.IsNullOrWhiteSpace(request.Language) ? "en" : request.Language.Trim().ToLowerInvariant(),
                 IsActive = true,
-                IsEmailVerified = false,
+                IsEmailVerified = !smtpConfigured, // auto-verified when no SMTP
                 EmailVerificationToken = verificationToken,
-                EmailVerificationTokenExpiresAt = now.AddHours(24),
+                EmailVerificationTokenExpiresAt = verificationToken != null ? now.AddHours(24) : null,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -66,20 +73,35 @@ namespace TouristGuide.Api.Controllers
             _db.Tourists.Add(tourist);
             await _db.SaveChangesAsync();
 
-            try
+            // If SMTP is configured, send verification email and require user to verify
+            if (smtpConfigured)
             {
-                await _emailService.SendVerificationEmailAsync(
-                    tourist.Email!,
-                    tourist.Name ?? "Korisnik",
-                    verificationToken);
-            }
-            catch (Exception) { /* greska pri emailu ne blokira registraciju */ }
+                try
+                {
+                    await _emailService.SendVerificationEmailAsync(
+                        tourist.Email!,
+                        tourist.Name ?? "User",
+                        verificationToken!);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email to {Email}", tourist.Email);
+                    // Email failure does not block registration
+                }
 
-            return Ok(new
-            {
-                message = "Registracija uspesna! Proverite email i potvrdite adresu pre prve prijave.",
-                email = tourist.Email
-            });
+                return Ok(new
+                {
+                    message = "Registration successful! Please check your email and confirm your address before logging in.",
+                    email = tourist.Email
+                });
+            }
+
+            // No SMTP configured — return a JWT token immediately so the user can log in right away
+            _logger.LogInformation(
+                "[DEV MODE] SMTP not configured. Auto-verified tourist {Email} (id={Id}).",
+                tourist.Email, tourist.Id);
+
+            return Ok(await BuildAuthResponseAsync(tourist));
         }
 
         // GET /api/tourist-auth/verify-email?token=...
@@ -278,6 +300,25 @@ namespace TouristGuide.Api.Controllers
             await _db.SaveChangesAsync();
 
             return Ok(new { message = "Lokacija je uklonjena iz sacuvanih." });
+        }
+
+        // DELETE /api/tourist-auth/account
+        [Authorize(Roles = "tourist")]
+        [HttpDelete("account")]
+        public async Task<IActionResult> DeleteAccount()
+        {
+            var touristId = GetTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Not authenticated." });
+
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
+            if (tourist is null)
+                return NotFound(new { message = "Account not found." });
+
+            _db.Tourists.Remove(tourist);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Account permanently deleted." });
         }
 
         // ─── POMOCNE METODE ───────────────────────────────────────────────────

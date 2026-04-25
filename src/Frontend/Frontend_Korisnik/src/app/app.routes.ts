@@ -22,6 +22,7 @@ import { SettingsComponent } from './settings/settings';
 import { PersonalInfoComponent } from './PersonalInfo/personal-info.component';
 import { HelpComponent } from './Help/help.component';
 import { PrivacyComponent } from './Privacy/privacy.component';
+import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
 export const routes: Routes = [
   // POČETNA RUTA
@@ -31,6 +32,7 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'choose-role', component: ChooseRoleComponent },
   { path: 'register', component: RegisterProfileComponent },
+  { path: 'verify-email', component: VerifyEmailComponent },
 
   // MAPA I LISTA
   { path: 'map-home', component: MapHomeComponent },

@@ -19,8 +19,36 @@ export class LocationDetailsCardComponent {
   // 2. Dodaj Router u konstruktor
   constructor(private router: Router) {}
 
+  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
+
   get displayImage(): string {
-    return this.locationData?.imageUrl ? this.locationData.imageUrl : this.defaultImage;
+    if (this.locationData?.imageUrl) return this.locationData.imageUrl;
+    const images = this.locationData?.images;
+    if (!images) return this.defaultImage;
+    let firstImg = '';
+    if (typeof images === 'string') {
+      try { const p = JSON.parse(images); firstImg = p[0] || ''; } catch { firstImg = images; }
+    } else if (Array.isArray(images) && images.length > 0) {
+      firstImg = images[0];
+    }
+    if (!firstImg) return this.defaultImage;
+    if (!firstImg.startsWith('http')) {
+      const clean = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
+      return `${this.IMAGE_BASE_URL}${clean}`;
+    }
+    return firstImg;
+  }
+
+  get displayCategory(): string {
+    return this.locationData?.postType || this.locationData?.category || 'General';
+  }
+
+  get displayRating(): number | null {
+    return this.locationData?.avgRating ?? this.locationData?.rating ?? null;
+  }
+
+  get displayReviews(): number | null {
+    return this.locationData?.reviewCount ?? this.locationData?.reviews ?? null;
   }
 
   onCloseClick(event: Event): void {

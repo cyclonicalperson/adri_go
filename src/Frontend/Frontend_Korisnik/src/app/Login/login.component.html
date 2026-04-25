@@ -11,6 +11,11 @@
     <h1 class="title">Welcome!</h1>
     <p class="subtitle">Sign in to continue exploring Montenegro</p>
 
+    <!-- Registration success banner -->
+    <div *ngIf="showRegisteredBanner" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
+      ✅ Account created! Please check your email to verify before logging in.
+    </div>
+
     <!-- Error message -->
     <div *ngIf="errorMessage" style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
       {{ errorMessage }}

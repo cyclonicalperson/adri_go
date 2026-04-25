@@ -36,6 +36,20 @@
 
     <!-- VIEW MODE -->
     <div class="info-group" *ngIf="!editMode">
+
+      <!-- Interests (view) -->
+      <ng-container *ngIf="selectedInterests.length > 0">
+        <div class="info-section-title">Interests</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+          <ng-container *ngFor="let interest of allInterests">
+            <span *ngIf="isInterestSelected(interest.id)"
+              style="display:inline-flex;align-items:center;gap:6px;background:var(--green-50);color:var(--green-700);border:1.5px solid var(--green-200);border-radius:100px;padding:7px 14px;font-size:13px;font-weight:600;">
+              {{ interest.icon }} {{ interest.label }}
+            </span>
+          </ng-container>
+        </div>
+      </ng-container>
+
       <div class="info-section-title">Basic Info</div>
       <div class="info-card">
         <div class="info-row">
@@ -115,6 +129,21 @@
         <div class="field-input-wrap textarea-wrap">
           <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
           <textarea class="field-input" [(ngModel)]="form.bio" placeholder="Tell others about yourself..." rows="3"></textarea>
+        </div>
+      </div>
+
+      <!-- Interests (edit) -->
+      <div class="field-group">
+        <label class="field-label">Interests</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+          <button type="button" *ngFor="let interest of allInterests"
+            (click)="toggleInterest(interest.id)"
+            [style.background]="isInterestSelected(interest.id) ? 'var(--green-500)' : '#fff'"
+            [style.color]="isInterestSelected(interest.id) ? '#fff' : 'var(--gray-600)'"
+            [style.borderColor]="isInterestSelected(interest.id) ? 'var(--green-500)' : 'var(--gray-200)'"
+            style="display:inline-flex;align-items:center;gap:6px;border:1.5px solid;border-radius:100px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;">
+            {{ interest.icon }} {{ interest.label }}
+          </button>
         </div>
       </div>
     </div>

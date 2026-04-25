@@ -242,9 +242,8 @@
   font-family: inherit;
   transition: all 0.2s ease;
 }
-.logout-btn:hover  { 
+.logout-btn:hover  {
   background: var(--green-600);
-  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
 }
 .logout-btn:active { transform: translateY(0); }
@@ -254,13 +253,16 @@
 /* ── DESKTOP OPTIMIZACIJA (NOVI ŠIRI I LUKSUZNIJI DIZAJN) ────── */
 @media (min-width: 900px) {
   .account-container {
-    max-width: 1024px; /* Znatno šire */
-    height: 90vh; /* Zauzima više prostora po visini */
+    width: 100%;
+    right: auto;
+    bottom: auto;
+    max-width: 1024px;
+    height: 90vh;
     max-height: 950px;
     top: 5vh;
     left: 50%;
     transform: translateX(-50%);
-    border-radius: 32px; /* Veće i elegantnije zaobljenje */
+    border-radius: 32px;
     box-shadow: 0 30px 60px rgba(0,0,0,0.15), 0 0 0 100vw rgba(0,0,0,0.04);
     border: 1px solid var(--gray-200);
   }
@@ -330,25 +332,24 @@
   .menu-items-group {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 16px; /* Razmak između dugmića */
-    background: transparent; /* Sklanjamo zajedničku pozadinu */
+    gap: 16px;
+    background: transparent;
     box-shadow: none;
+    overflow: visible;
   }
 
-  /* Svaki meni link postaje zasebna, lepa kartica */
   .menu-link {
     border: 1px solid var(--gray-200);
     border-radius: 20px;
     padding: 20px 24px;
-    transition: all 0.2s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
   .menu-link:first-child { border-top: 1px solid var(--gray-200); }
-  
+
   .menu-link:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.08);
     border-color: var(--green-300);
-    background: #fff; /* Zadržavamo belu na hover zbog senke */
+    background: #fff;
   }
   .menu-link:hover .link-arrow svg { transform: translateX(6px); }
 

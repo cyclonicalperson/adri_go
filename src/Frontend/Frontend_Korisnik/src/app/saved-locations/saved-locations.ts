@@ -15,118 +15,186 @@ export class SavedLocationsComponent implements OnInit {
   activeFilter: string = 'All';
   defaultImage: string = 'assets/plaza.jpg';
   isLoading: boolean = true;
-  
-  // URL tvog .NET Backenda za slike
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/'; 
+  isGuest: boolean = false;
+
+  filters = [
+    { id: 'All',             label: 'All' },
+    { id: 'attraction',      label: 'Attractions' },
+    { id: 'restaurant',      label: 'Restaurants' },
+    { id: 'cultural_site',   label: 'Culture' },
+    { id: 'monument',        label: 'Monuments' },
+    { id: 'club',            label: 'Nightlife' },
+    { id: 'sports_facility', label: 'Activities' },
+    { id: 'event',           label: 'Events' },
+    { id: 'accommodation',   label: 'Stays' },
+    { id: 'shop',            label: 'Shopping' },
+  ];
+
+  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   savedItems: any[] = [];
 
   constructor(
-    private router: Router,
+    public router: Router,
     private locationService: LocationService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
+  userPosition: [number, number] | null = null;
+
   ngOnInit() {
-    // Provera da li je korisnik ulogovan pre nego što uopšte tražimo podatke
-    if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
-      return;
+    // Request geolocation so we can show distance
+    this.requestGeolocation();
+
+    if (this.authService.isLoggedIn) {
+      this.loadSavedLocations();
+    } else {
+      this.isGuest = true;
+      this.loadGuestSavedLocations();
     }
-    this.loadSavedLocations();
   }
 
+  private requestGeolocation(): void {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.userPosition = [pos.coords.latitude, pos.coords.longitude];
+        // Recalculate distances now that we have a position
+        this.savedItems = this.savedItems.map(item => ({
+          ...item,
+          distance: item._lat && item._lng
+            ? this.haversineKm(this.userPosition![0], this.userPosition![1], item._lat, item._lng)
+            : null
+        }));
+        this.cdr.detectChanges();
+      },
+      () => {} // silent fail
+    );
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+  }
+
+  // ── Logged-in: load from API ──────────────────────────────────
   loadSavedLocations() {
     this.isLoading = true;
-    
-    // Pozivamo novi endpoint koji vraća listu DTO objekata
     this.locationService.getMySavedPosts().subscribe({
       next: (posts: Location[]) => {
-        this.savedItems = posts.map(post => {
-          
-          // Obrada slika
-          const imagesArr = this.locationService.parseImages(post.images);
-          let firstImage = imagesArr.length > 0 ? imagesArr[0] : this.defaultImage;
-
-          if (firstImage !== this.defaultImage && !firstImage.startsWith('http')) {
-            const cleanPath = firstImage.startsWith('/') ? firstImage.substring(1) : firstImage;
-            firstImage = `${this.IMAGE_BASE_URL}${cleanPath}`;
-          }
-
-          // Mapiranje na format koji tvoj HTML očekuje
-          return {
-            id: post.id,
-            title: post.title,
-            category: post.postType || 'Unknown',
-            rating: post.avgRating || 0,
-            reviews: post.reviewCount || 0,
-            distance: 1.5, 
-            status: post.status?.toLowerCase() === 'published' ? 'Open Now' : 'Closed',
-            isOpen: post.status?.toLowerCase() === 'published',
-            imageUrl: firstImage
-          };
-        });
-        
+        this.savedItems = posts.map(post => this.mapToItem(post));
         this.isLoading = false;
-        this.cdr.markForCheck(); // Osiguravamo da Angular primeti promenu podataka
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
-        console.error('Greška pri učitavanju sačuvanih lokacija:', err);
+        console.error('Error loading saved locations:', err);
         this.isLoading = false;
         if (err.status === 401) {
           this.authService.logout();
           this.router.navigate(['/login']);
         }
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
 
-  // Dinamičko filtriranje
+  // ── Guest: load from localStorage ────────────────────────────
+  loadGuestSavedLocations() {
+    this.isLoading = true;
+    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
+
+    if (savedIds.length === 0) {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    let completed = 0;
+    savedIds.forEach(id => {
+      this.locationService.getLocationById(id).subscribe({
+        next: (post) => {
+          this.savedItems.push(this.mapToItem(post));
+          completed++;
+          if (completed === savedIds.length) {
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          }
+        },
+        error: () => {
+          completed++;
+          if (completed === savedIds.length) {
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          }
+        }
+      });
+    });
+  }
+
+  private mapToItem(post: Location): any {
+    const imagesArr = this.locationService.parseImages(post.images);
+    let firstImage = imagesArr.length > 0 ? imagesArr[0] : this.defaultImage;
+    if (firstImage !== this.defaultImage && !firstImage.startsWith('http')) {
+      const cleanPath = firstImage.startsWith('/') ? firstImage.substring(1) : firstImage;
+      firstImage = `${this.IMAGE_BASE_URL}${cleanPath}`;
+    }
+    const lat = (post as any).lat ?? (post as any).latitude;
+    const lng = (post as any).lng ?? (post as any).longitude;
+    const distance = (this.userPosition && lat && lng)
+      ? this.haversineKm(this.userPosition[0], this.userPosition[1], lat, lng)
+      : null;
+    return {
+      id: post.id,
+      title: post.title,
+      category: post.postType || 'Unknown',
+      rating: post.avgRating || 0,
+      reviews: post.reviewCount || 0,
+      distance,
+      _lat: lat,   // keep for later recalculation after geolocation
+      _lng: lng,
+      status: post.status?.toLowerCase() === 'published' ? 'Open Now' : 'Closed',
+      isOpen: post.status?.toLowerCase() === 'published',
+      imageUrl: firstImage
+    };
+  }
+
   get filteredItems() {
     if (this.activeFilter === 'All') return this.savedItems;
-    return this.savedItems.filter(item => 
+    return this.savedItems.filter(item =>
       item.category.toLowerCase() === this.activeFilter.toLowerCase()
     );
   }
 
-  setFilter(filter: string) {
-    this.activeFilter = filter;
-  }
+  setFilter(filter: string) { this.activeFilter = filter; }
 
-  goBack() {
-    window.history.back();
-  }
+  goBack() { window.history.back(); }
 
-  viewDetails(id: number) {
-    this.router.navigate(['/location-details', id]);
-  }
+  viewDetails(id: number) { this.router.navigate(['/location-details', id]); }
 
-  showOnMap() {
-    this.router.navigate(['/map-home']);
-  }
+  showOnMap() { this.router.navigate(['/map-home']); }
 
-  // Brisanje iz sačuvanih (Unsave) koristeći Toggle endpoint
   removeSaved(id: number, event: Event) {
-    event.stopPropagation(); // Sprečava otvaranje detalja
-
-    // OPTIMISTIC UPDATE: Sklanjamo odmah sa ekrana
-    const originalItems = [...this.savedItems];
+    event.stopPropagation();
     this.savedItems = this.savedItems.filter(item => item.id !== id);
 
+    if (this.isGuest) {
+      const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
+      localStorage.setItem('guest_saved_ids', JSON.stringify(saved.filter(i => i !== id)));
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const originalItems = [...this.savedItems, { id }];
     this.locationService.toggleSaveLocation(id).subscribe({
-      next: (res: any) => {
-        // Ako je res.isSaved true, znači da smo ga greškom opet dodali (malo verovatno)
-        console.log(`Status lokacije ${id}: ${res.message}`);
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        console.error('Greška pri brisanju sa servera:', err);
-        // Vraćamo na staro ako server javi grešku
+      next: () => { this.cdr.detectChanges(); },
+      error: () => {
         this.savedItems = originalItems;
-        alert("Nije uspelo uklanjanje lokacije. Pokušajte ponovo.");
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
