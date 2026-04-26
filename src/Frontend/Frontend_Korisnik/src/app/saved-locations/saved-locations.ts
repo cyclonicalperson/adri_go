@@ -182,7 +182,11 @@ export class SavedLocationsComponent implements OnInit {
       _lng: lng,
       status: isOpen ? 'Open Now' : 'Closed',
       isOpen,
-      imageUrl: firstImage
+      imageUrl: firstImage,
+      isLiked: !!(post as any).isLiked,
+      isSaved: true,  // all items here are saved by definition
+      likeCount: (post as any).likeCount || 0,
+      saveCount: (post as any).saveCount || 0
     };
   }
 
@@ -203,6 +207,7 @@ export class SavedLocationsComponent implements OnInit {
 
   removeSaved(id: number, event: Event) {
     event.stopPropagation();
+    const originalItems = [...this.savedItems];
     this.savedItems = this.savedItems.filter(item => item.id !== id);
 
     if (this.isGuest) {
@@ -212,7 +217,6 @@ export class SavedLocationsComponent implements OnInit {
       return;
     }
 
-    const originalItems = [...this.savedItems, { id }];
     this.locationService.toggleSaveLocation(id).subscribe({
       next: () => { this.cdr.detectChanges(); },
       error: () => {
@@ -220,5 +224,47 @@ export class SavedLocationsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  toggleLike(item: any, event: Event) {
+    event.stopPropagation();
+
+    if (this.isGuest) {
+      // Guest: toggle in localStorage
+      const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
+      const idx = liked.indexOf(item.id);
+      if (idx >= 0) {
+        liked.splice(idx, 1);
+        item.isLiked = false;
+        item.likeCount = Math.max(0, (item.likeCount || 0) - 1);
+      } else {
+        liked.push(item.id);
+        item.isLiked = true;
+        item.likeCount = (item.likeCount || 0) + 1;
+      }
+      localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (item.isLiked) {
+      this.locationService.unlikeLocation(item.id).subscribe({
+        next: () => {
+          item.isLiked = false;
+          item.likeCount = Math.max(0, (item.likeCount || 0) - 1);
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => console.error('Unlike error:', err)
+      });
+    } else {
+      this.locationService.likeLocation(item.id).subscribe({
+        next: () => {
+          item.isLiked = true;
+          item.likeCount = (item.likeCount || 0) + 1;
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => console.error('Like error:', err)
+      });
+    }
   }
 }

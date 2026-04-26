@@ -104,8 +104,8 @@
           {{ $any(location).isSaved ? 'Saved' : 'Save' }}
         </button>
 
-        <!-- Calendar button for events -->
-        <button *ngIf="isEvent" (click)="addToCalendar()"
+        <!-- Calendar button — available for all location types -->
+        <button (click)="addToCalendar()"
           style="display:flex;align-items:center;gap:6px;background:#fdf4ff;color:#7e22ce;border:1.5px solid #e9d5ff;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
           <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#7e22ce;"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
           Add to Calendar
@@ -221,5 +221,20 @@
 
     </div>
   </ng-container>
+
+  <!-- ── AUTH MODAL ─────────────────────────────────────────────────── -->
+  <div *ngIf="showAuthModal" class="auth-modal-overlay" (click)="closeAuthModal()">
+    <div class="auth-modal-card" (click)="$event.stopPropagation()">
+      <div class="auth-modal-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      </div>
+      <h3 class="auth-modal-title">Login required</h3>
+      <p class="auth-modal-body">You need an account to do this. Log in or create a free account to save locations, write reviews, and manage your calendar.</p>
+      <div class="auth-modal-actions">
+        <button class="auth-modal-cancel" (click)="closeAuthModal()">Not now</button>
+        <button class="auth-modal-login" (click)="goToLoginFromModal()">Log in / Sign up</button>
+      </div>
+    </div>
+  </div>
 
 </div>

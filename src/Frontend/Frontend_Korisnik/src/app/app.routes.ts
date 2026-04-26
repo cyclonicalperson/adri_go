@@ -24,6 +24,10 @@ import { HelpComponent } from './Help/help.component';
 import { PrivacyComponent } from './Privacy/privacy.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
 
+// 5. Read-only legal pages
+import { TermsComponent } from './terms/terms.component';
+import { PrivacyPolicyComponent } from './privacy-policy/privacy-policy.component';
+
 export const routes: Routes = [
   // POČETNA RUTA
   { path: '', redirectTo: '/map-home', pathMatch: 'full' },
@@ -53,6 +57,10 @@ export const routes: Routes = [
   { path: 'account/personal-info', component: PersonalInfoComponent },
   { path: 'account/help', component: HelpComponent },
   { path: 'account/privacy', component: PrivacyComponent },
+
+  // LEGALNI DOKUMENTI (read-only, bez user controls)
+  { path: 'terms', component: TermsComponent },
+  { path: 'privacy-policy', component: PrivacyPolicyComponent },
 
   // WILDCARD — mora biti poslednja
   { path: '**', redirectTo: '/map-home' }

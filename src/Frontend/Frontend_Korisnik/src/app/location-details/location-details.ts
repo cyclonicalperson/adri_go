@@ -32,6 +32,7 @@ export class LocationDetailsComponent implements OnInit {
   isSubmittingReview = false;
 
   calendarMessage = '';
+  showAuthModal = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -131,6 +132,10 @@ export class LocationDetailsComponent implements OnInit {
     }
   }
 
+  openAuthModal(): void  { this.showAuthModal = true; }
+  closeAuthModal(): void { this.showAuthModal = false; }
+  goToLoginFromModal(): void { this.router.navigate(['/login']); }
+
   // ── LIKE ─────────────────────────────────────────────────────────
   onLike(): void {
     if (!this.location) return;
@@ -176,11 +181,17 @@ export class LocationDetailsComponent implements OnInit {
     if (idx >= 0) {
       liked.splice(idx, 1);
       this.likeMessage = 'Like removed';
-      if (this.location) this.location.isLiked = false;
+      if (this.location) {
+        this.location.isLiked = false;
+        this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
+      }
     } else {
       liked.push(id);
       this.likeMessage = '❤️ Liked!';
-      if (this.location) this.location.isLiked = true;
+      if (this.location) {
+        this.location.isLiked = true;
+        this.location.likeCount = (this.location.likeCount || 0) + 1;
+      }
     }
     localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
     setTimeout(() => (this.likeMessage = ''), 3000);
@@ -227,11 +238,17 @@ export class LocationDetailsComponent implements OnInit {
     if (idx >= 0) {
       saved.splice(idx, 1);
       this.saveMessage = 'Removed from saved';
-      if (this.location) (this.location as any).isSaved = false;
+      if (this.location) {
+        (this.location as any).isSaved = false;
+        this.location.saveCount = Math.max(0, (this.location.saveCount || 0) - 1);
+      }
     } else {
       saved.push(id);
       this.saveMessage = '🔖 Saved!';
-      if (this.location) (this.location as any).isSaved = true;
+      if (this.location) {
+        (this.location as any).isSaved = true;
+        this.location.saveCount = (this.location.saveCount || 0) + 1;
+      }
     }
     localStorage.setItem('guest_saved_ids', JSON.stringify(saved));
     setTimeout(() => (this.saveMessage = ''), 3000);
@@ -315,7 +332,7 @@ export class LocationDetailsComponent implements OnInit {
     return '★'.repeat(r) + '☆'.repeat(5 - r);
   }
 
-  goToLogin(): void { this.router.navigate(['/login']); }
+  goToLogin(): void { this.showAuthModal = true; }
 
   goBack(): void { window.history.back(); }
 
@@ -353,7 +370,7 @@ export class LocationDetailsComponent implements OnInit {
     if (!this.location) return;
 
     if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+      this.showAuthModal = true;
       return;
     }
 

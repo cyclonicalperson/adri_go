@@ -154,7 +154,7 @@
 
 .heart-btn {
   position: absolute;
-  top: 14px; right: 14px;
+  top: 14px;
   background: rgba(255,255,255,0.9);
   border: none;
   width: 34px; height: 34px;
@@ -166,7 +166,15 @@
   transition: transform 0.15s, background 0.15s;
 }
 .heart-btn:hover  { transform: scale(1.1); background: #fff; }
-.heart-btn svg { width: 17px; height: 17px; fill: #ef4444; }
+
+/* Like button (left of unsave) */
+.like-btn { right: 56px; }
+.like-btn svg { width: 17px; height: 17px; fill: #d1d5db; }
+.like-btn.liked svg { fill: #ef4444; }
+
+/* Unsave / remove-from-saved button */
+.unsave-btn { right: 14px; }
+.unsave-btn svg { width: 17px; height: 17px; fill: var(--green-500, #22c55e); }
 
 /* Card body */
 .card-body { padding: 18px; }
@@ -251,7 +259,17 @@
 .view-link:hover .arrow-icon svg { fill: #fff; }
 
 /* ── STATES ──────────────────────────────────────────────────── */
-.empty-state { text-align: center; padding: 48px 20px; color: var(--gray-400); }
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--gray-400);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+}
 .empty-icon { width: 52px; height: 52px; fill: var(--gray-200); display: block; margin: 0 auto 14px; }
 
 .explore-btn {

@@ -7,18 +7,36 @@
         <div style="width:72px;height:72px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
           <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:#22c55e;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
         </div>
-        <h1 class="title" style="font-size:22px;">Check your email!</h1>
-        <p class="subtitle" style="margin-bottom:8px;">We sent a verification link to</p>
-        <p style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:20px;word-break:break-all;">{{ registrationEmail }}</p>
-        <p style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:28px;">
-          Click the link in the email to verify your account before logging in.
-          Don't see it? Check your spam folder.
-        </p>
-        <button class="submit-btn" (click)="goToLogin()" style="margin-bottom:12px;">Go to Login</button>
-        <button class="submit-btn" (click)="goToMap()"
-          style="background:transparent;color:var(--green-600);border:1.5px solid var(--green-400);box-shadow:none;">
-          Continue as Guest
-        </button>
+
+        <!-- Auto-verified (token returned — dev mode or no SMTP) -->
+        <ng-container *ngIf="autoLoggedIn">
+          <h1 class="title" style="font-size:22px;">Account created! 🎉</h1>
+          <p class="subtitle" style="margin-bottom:20px;">Welcome to AdriGo, {{ registrationEmail }}.</p>
+          <p style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:28px;">
+            Your account is ready to use. Start exploring Montenegro!
+          </p>
+          <button class="submit-btn" (click)="goToMap()" style="margin-bottom:12px;">Start Exploring</button>
+          <button class="submit-btn" (click)="goToLogin()"
+            style="background:transparent;color:var(--green-600);border:1.5px solid var(--green-400);box-shadow:none;">
+            Go to Login
+          </button>
+        </ng-container>
+
+        <!-- Email verification required -->
+        <ng-container *ngIf="!autoLoggedIn">
+          <h1 class="title" style="font-size:22px;">Check your email!</h1>
+          <p class="subtitle" style="margin-bottom:8px;">We sent a verification link to</p>
+          <p style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:20px;word-break:break-all;">{{ registrationEmail }}</p>
+          <p style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:28px;">
+            Click the link in the email to verify your account before logging in.
+            Don't see it? Check your spam folder.
+          </p>
+          <button class="submit-btn" (click)="goToLogin()" style="margin-bottom:12px;">Go to Login</button>
+          <button class="submit-btn" (click)="goToMap()"
+            style="background:transparent;color:var(--green-600);border:1.5px solid var(--green-400);box-shadow:none;">
+            Continue as Guest
+          </button>
+        </ng-container>
       </div>
     </ng-container>
 
@@ -131,7 +149,7 @@
       <div class="terms-row">
         <input type="checkbox" class="terms-checkbox" formControlName="termsAccepted" id="terms">
         <label for="terms" class="terms-text">
-          I agree with the <a routerLink="/account/privacy" style="color:var(--green-600);font-weight:700;">Terms of Use</a> and the <a routerLink="/account/privacy" style="color:var(--green-600);font-weight:700;">Privacy Policy</a> of the Digital Tourist Map of Montenegro.
+          I agree with the <a routerLink="/terms" style="color:var(--green-600);font-weight:700;">Terms of Use</a> and the <a routerLink="/privacy-policy" style="color:var(--green-600);font-weight:700;">Privacy Policy</a> of the Digital Tourist Map of Montenegro.
         </label>
       </div>
       <p class="field-error" *ngIf="profileForm.get('termsAccepted')?.invalid && profileForm.touched">You must accept the terms to continue.</p>

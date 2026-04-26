@@ -18,6 +18,7 @@ export class RegisterProfileComponent implements OnInit {
   errorMessage = '';
   registrationSuccess = false;
   registrationEmail   = '';
+  autoLoggedIn        = false;  // true when token returned (no email verification needed)
 
   interests = [
     { id: 'nature',      label: 'Nature',             icon: '🌲' },
@@ -92,17 +93,18 @@ export class RegisterProfileComponent implements OnInit {
     this.authService.registerWithToken(fullName, emailOrPhone, password).subscribe({
       next: (res) => {
         this.isLoading = false;
-        this.cdr.detectChanges();
-
         if (res?.token) {
-          // JWT returned → auto-verified (dev mode) → go straight to app
-          this.router.navigate(['/map-home']);
-        } else {
-          // SMTP configured → user must verify email first → show success screen
+          // JWT returned → auto-verified (dev mode) → show success screen without email step
+          this.autoLoggedIn       = true;
+          this.registrationEmail  = emailOrPhone;
           this.registrationSuccess = true;
+        } else {
+          // SMTP configured → user must verify email first → show email verification screen
+          this.autoLoggedIn        = false;
           this.registrationEmail   = emailOrPhone;
-          this.cdr.detectChanges();
+          this.registrationSuccess = true;
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.isLoading = false;
