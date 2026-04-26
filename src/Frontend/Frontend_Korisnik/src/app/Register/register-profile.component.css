@@ -155,15 +155,65 @@ input::placeholder { color: var(--gray-400); }
 }
 .terms-checkbox {
   width: 18px; height: 18px;
+  min-width: 18px;
   border: 1.5px solid var(--gray-300);
   border-radius: 4px;
   cursor: pointer;
   flex-shrink: 0;
   margin-top: 1px;
   accent-color: var(--green-500);
+  -webkit-appearance: checkbox;
+  appearance: checkbox;
+  padding: 0;
+  background: #fff;
 }
 .terms-text { font-size: 12px; color: var(--gray-500); line-height: 1.5; }
 .terms-text a { color: var(--green-600); font-weight: 700; }
+
+/* ── VALIDATION ──────────────────────────────────────────────── */
+.error-banner {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-error {
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+  margin: 4px 0 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.input-wrapper.input-error input,
+.input-wrapper.input-error select {
+  border-color: #ef4444;
+  background: #fff5f5;
+}
+
+/* ── SELECT ──────────────────────────────────────────────────── */
+.select-wrapper { position: relative; }
+.select-wrapper select {
+  padding-right: 36px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.select-chevron {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.select-chevron svg { width: 18px; height: 18px; fill: var(--gray-400); }
 
 /* ── SUBMIT ──────────────────────────────────────────────────── */
 .submit-btn {

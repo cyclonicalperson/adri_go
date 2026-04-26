@@ -1,13 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, FormControl, Validators, AbstractControl, ValidatorFn, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
 
 @Component({
   selector: 'app-register-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule],
+  imports: [ReactiveFormsModule, CommonModule, RouterModule],
   templateUrl: './register-profile.component.html',
   styleUrls: ['./register-profile.component.css']
 })
@@ -15,6 +16,9 @@ export class RegisterProfileComponent implements OnInit {
   profileForm!: FormGroup;
   isLoading = false;
   errorMessage = '';
+  registrationSuccess = false;
+  registrationEmail   = '';
+  autoLoggedIn        = false;  // true when token returned (no email verification needed)
 
   interests = [
     { id: 'nature',      label: 'Nature',             icon: '🌲' },
@@ -28,7 +32,9 @@ export class RegisterProfileComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
+    private translateService: SiteTranslateService
   ) {}
 
   ngOnInit(): void {
@@ -36,7 +42,7 @@ export class RegisterProfileComponent implements OnInit {
       fullName:          ['', Validators.required],
       emailOrPhone:      ['', [Validators.required, Validators.email]],
       password:          ['', [Validators.required, Validators.minLength(8)]],
-      language:          ['English'],
+      language:          ['en'],
       selectedInterests: this.fb.array([], [this.minimumSelectionValidator(2)]),
       locationPermit:    [false],
       termsAccepted:     [false, Validators.requiredTrue]
@@ -68,29 +74,46 @@ export class RegisterProfileComponent implements OnInit {
     };
   }
 
+  // Called when user changes the language dropdown — immediately translate the UI
+  onLanguageChange(lang: string): void {
+    if (lang === 'en' || lang === 'sr') {
+      void this.translateService.setLanguage(lang as SiteLanguageCode);
+    }
+  }
+
   onCreateAccount(): void {
+    this.profileForm.markAllAsTouched();
     if (this.profileForm.invalid) return;
 
     this.isLoading = true;
     this.errorMessage = '';
 
-    const { fullName, emailOrPhone, password } = this.profileForm.value;
+    const { fullName, emailOrPhone, password, language } = this.profileForm.value;
 
-    // Try JWT endpoint first
     this.authService.registerWithToken(fullName, emailOrPhone, password).subscribe({
-      next: () => { this.isLoading = false; this.router.navigate(['/map-home']); },
-      error: () => {
-        // Fallback to simple endpoint
-        this.authService.register(fullName, emailOrPhone, password).subscribe({
-          next: () => { this.isLoading = false; this.router.navigate(['/map-home']); },
-          error: (err) => {
-            this.isLoading = false;
-            this.errorMessage = err?.error?.message || 'Greška pri registraciji.';
-          }
-        });
+      next: (res) => {
+        this.isLoading = false;
+        if (res?.token) {
+          // JWT returned → auto-verified (dev mode) → show success screen without email step
+          this.autoLoggedIn       = true;
+          this.registrationEmail  = emailOrPhone;
+          this.registrationSuccess = true;
+        } else {
+          // SMTP configured → user must verify email first → show email verification screen
+          this.autoLoggedIn        = false;
+          this.registrationEmail   = emailOrPhone;
+          this.registrationSuccess = true;
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.errorMessage = err?.error?.message || 'Registration failed. Please try again.';
+        this.cdr.detectChanges();
       }
     });
   }
 
-  goToLogin(): void { this.router.navigate(['/login']); }
+  goToLogin(): void  { this.router.navigate(['/login']); }
+  goToMap():   void  { this.router.navigate(['/map-home']); }
 }

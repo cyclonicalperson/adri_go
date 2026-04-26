@@ -2,6 +2,9 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { UserService, UserProfile } from '../services/user.service';
+import { AuthService } from '../services/auth.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-account',
@@ -18,26 +21,49 @@ export class AccountComponent implements OnInit {
   constructor(
     private router: Router,
     private userService: UserService,
+    private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.loadUserData();
   }
 
   loadUserData() {
     this.loading = true;
-    this.userService.getUserProfile().subscribe({
-      next: (data) => {
-        this.userData = data;
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Greška:', err);
-        this.loading = false;
-        this.cdr.detectChanges();
+    forkJoin({
+      profile:  this.userService.getUserProfile().pipe(catchError(() => of(null))),
+      calendar: this.userService.getCalendar().pipe(catchError(() => of([])))
+    }).subscribe(({ profile, calendar }) => {
+      if (profile) {
+        // Inject real calendar count into stats
+        this.userData = {
+          ...profile,
+          stats: {
+            saved:    profile.stats?.saved    ?? 0,
+            reviews:  profile.stats?.reviews  ?? 0,
+            upcoming: (calendar as any[]).length
+          }
+        };
+      } else {
+        // Fall back to session token data
+        const tourist = this.authService.currentTourist;
+        if (tourist) {
+          this.userData = {
+            fullName:     tourist.name,
+            emailOrPhone: tourist.email,
+            language:     'en',
+            interests:    [],
+            stats:        { saved: 0, reviews: 0, upcoming: (calendar as any[]).length }
+          };
+        }
       }
+      this.loading = false;
+      this.cdr.detectChanges();
     });
   }
 
@@ -49,7 +75,7 @@ export class AccountComponent implements OnInit {
   goBack() { window.history.back(); }
 
   logout() {
-    localStorage.removeItem('token');
+    this.authService.logout();
     this.router.navigate(['/login']);
   }
 
@@ -57,4 +83,5 @@ export class AccountComponent implements OnInit {
   goToPersonalInfo() { this.router.navigate(['/account/personal-info']); }
   goToHelp()         { this.router.navigate(['/account/help']); }
   goToPrivacy()      { this.router.navigate(['/account/privacy']); }
+  goToSettings()     { this.router.navigate(['/settings']); }
 }

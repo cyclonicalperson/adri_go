@@ -139,6 +139,10 @@ export class ZahteviComponent implements OnInit {
   }
 
   approve(request: RegistrationRequest): void {
+    if (!this.canApprove(request)) {
+      return;
+    }
+
     this.processing = true;
     this.service.approveRegistration(request.id).subscribe({
       next: () => {
@@ -224,6 +228,16 @@ export class ZahteviComponent implements OnInit {
 
   hasDocument(request: RegistrationRequest): boolean {
     return !!request.documentUrl;
+  }
+
+  canApprove(request: RegistrationRequest): boolean {
+    return request.status === 'pending' && !!request.emailVerifiedAt;
+  }
+
+  approveTitle(request: RegistrationRequest): string {
+    return this.canApprove(request)
+      ? 'Odobri'
+      : 'Korisnik mora prvo da verifikuje email adresu';
   }
 
   documentUrl(request: RegistrationRequest): string {

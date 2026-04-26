@@ -9,15 +9,21 @@
 
   <div class="filter-scroll" *ngIf="!isLoading || savedItems.length > 0">
     <div class="chips-row">
-      <button *ngFor="let f of ['All', 'Nature', 'Culture', 'Food', 'Beach']"
-        class="chip" [class.active]="activeFilter === f" (click)="setFilter(f)">
-        {{f}}
+      <button *ngFor="let f of filters"
+        class="chip" [class.active]="activeFilter === f.id" (click)="setFilter(f.id)">
+        {{f.label}}
       </button>
     </div>
   </div>
 
+  <!-- Guest info banner -->
+  <div *ngIf="isGuest && !isLoading" class="guest-banner">
+    <svg viewBox="0 0 24 24" class="guest-banner-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    <span>You're browsing as a guest. Saves are stored locally. <strong><a (click)="router.navigate(['/login'])" class="guest-banner-link">Log in</a></strong> to sync across devices.</span>
+  </div>
+
   <div class="scroll-content">
-    
+
     <div class="loader-box" *ngIf="isLoading">
       <div class="spinner"></div>
       <p>Discovering your gems...</p>
@@ -42,9 +48,17 @@
             {{item.category | uppercase}}
           </span>
 
-          <button class="heart-btn" (click)="removeSaved(item.id, $event)">
-            <svg viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          <!-- Like button -->
+          <button class="heart-btn like-btn" (click)="toggleLike(item, $event)" [class.liked]="item.isLiked">
+            <svg viewBox="0 0 24 24">
+              <path *ngIf="item.isLiked" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              <path *ngIf="!item.isLiked" d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/>
+            </svg>
+          </button>
+          <!-- Unsave button (bookmark) -->
+          <button class="heart-btn unsave-btn" (click)="removeSaved(item.id, $event)" title="Remove from saved">
+            <svg viewBox="0 0 24 24">
+              <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
             </svg>
           </button>
         </div>
@@ -59,7 +73,7 @@
           </div>
 
           <div class="meta-row">
-            <span class="info-pill">
+            <span class="info-pill" *ngIf="item.distance !== null">
               <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
               {{item.distance}} km away
             </span>

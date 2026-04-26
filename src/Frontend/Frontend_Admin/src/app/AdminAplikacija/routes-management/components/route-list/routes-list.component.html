@@ -1,110 +1,195 @@
-<div class="page">
+<div class="page-content">
+  <div class="stats-strip">
+    <div class="stat-chip clickable" [class.active-chip]="!req.status" (click)="onStatusChange('')">
+      <div class="num">{{ summary.total }}</div>
+      <div class="lbl">Ukupno ruta</div>
+    </div>
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'published'" (click)="onStatusChange('published')">
+      <div class="num" style="color:#15803d">{{ summary.published }}</div>
+      <div class="lbl">Objavljene</div>
+    </div>
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'draft'" (click)="onStatusChange('draft')">
+      <div class="num" style="color:#d97706">{{ summary.pending }}</div>
+      <div class="lbl">Na cekanju</div>
+      @if (summary.pending > 0) {
+      <div class="trend warn">&#9888; Trazi pregled</div>
+      }
+    </div>
+    <div class="stat-chip clickable" [class.active-chip]="req.status === 'archived'" (click)="onStatusChange('archived')">
+      <div class="num" style="color:#6b7280">{{ summary.archived }}</div>
+      <div class="lbl">Arhivirane</div>
+    </div>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="ftab" [class.active]="!req.status" (click)="onStatusChange('')">&#128203; Svi statusi</button>
+    <button class="ftab" [class.active]="req.status === 'published'" (click)="onStatusChange('published')">&#9989; Objavljene</button>
+    <button class="ftab" [class.active]="req.status === 'draft'" (click)="onStatusChange('draft')">&#9203; Na cekanju ({{ summary.pending }})</button>
+    <button class="ftab" [class.active]="req.status === 'archived'" (click)="onStatusChange('archived')">&#128230; Arhivirane</button>
+  </div>
 
   <div class="toolbar">
-    <app-search-bar placeholder="Pretraži rute…"
-                    (searched)="onSearch($event)" />
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input class="search-input"
+             type="text"
+             placeholder="Pretrazi rute po nazivu ili opisu..."
+             [value]="req.search ?? ''"
+             (input)="onSearch($any($event.target).value)" />
+    </div>
 
-    <select class="select" (change)="onTypeChange($any($event.target).value)">
-      @for (opt of typeOptions; track opt.value) {
-      <option [value]="opt.value">{{ opt.label }}</option>
-      }
-    </select>
+    <div class="select-wrap">
+      <span class="select-icon">&#128205;</span>
+      <select class="filter-select filter-select-icon" (change)="onDestinationChange($any($event.target).value)">
+        <option value="">Sve destinacije</option>
+        @for (d of destinations; track d.regionId) {
+        <option [value]="d.regionId" [selected]="req.regionId === d.regionId">{{ d.name }}</option>
+        }
+      </select>
+    </div>
 
-    <select class="select" (change)="onDifficultyChange($any($event.target).value)">
-      @for (opt of difficultyOptions; track opt.value) {
-      <option [value]="opt.value">{{ opt.label }}</option>
-      }
-    </select>
+    <div class="select-wrap">
+      <span class="select-icon">&#127919;</span>
+      <select class="filter-select filter-select-icon" (change)="onDifficultyChange($any($event.target).value)">
+        @for (opt of difficultyOptions; track opt.value) {
+        <option [value]="opt.value" [selected]="req.difficulty === (opt.value || undefined)">{{ opt.label }}</option>
+        }
+      </select>
+    </div>
 
-    <select class="select" (change)="onDestinationChange($any($event.target).value)">
-      <option value="">Sve destinacije</option>
-      @for (d of destinations; track d.regionId) {
-      <option [value]="d.regionId">{{ d.name }}</option>
-      }
-    </select>
+    <div class="select-wrap">
+      <span class="select-icon">&#8645;</span>
+      <select class="filter-select filter-select-icon" (change)="onSortChange($any($event.target).value)">
+        @for (opt of sortOptions; track opt.value) {
+        <option [value]="opt.value" [selected]="activeSortValue === opt.value">{{ opt.label }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="spacer"></div>
 
     @if (canCreateRoutes) {
-    <button class="btn-new" (click)="goNew()">+ Nova ruta</button>
+    <div class="btn-group">
+      <button class="btn btn-primary" (click)="goNew()">+ Nova ruta</button>
+    </div>
     }
   </div>
 
   @if (loading) {
-  <div class="state-msg">Učitavanje...</div>
+  <div class="state-msg">Ucitavanje...</div>
   } @else if (routes.length === 0) {
   <div class="state-msg">Nema rezultata.</div>
   } @else {
-  <div class="table-wrap">
-    <table class="table">
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">Sve rute</div>
+        <div class="panel-sub">{{ total }} rezultata | stranica {{ req.page }} od {{ totalPages }}</div>
+      </div>
+    </div>
+
+    <table>
       <thead>
         <tr>
-          <th class="sortable" (click)="onSort('name')">
-            Naziv {{ sortIcon('name') }}
-          </th>
-          <th>Tip</th>
-          <th>Težina</th>
+          <th>Ruta</th>
+          <th>Tezina</th>
           <th>Destinacija</th>
-          <th class="num sortable" (click)="onSort('distanceKm')">
-            Distanca {{ sortIcon('distanceKm') }}
-          </th>
-          <th class="num sortable" (click)="onSort('durationMin')">
-            Trajanje {{ sortIcon('durationMin') }}
-          </th>
-          <th class="num sortable" (click)="onSort('elevationGainM')">
-            Uspon {{ sortIcon('elevationGainM') }}
-          </th>
+          <th>Distanca</th>
+          <th>Trajanje</th>
+          <th>Uspon</th>
+          <th>Statistika</th>
           <th>Status</th>
-          <th class="actions-col">Akcije</th>
+          <th>Akcije</th>
         </tr>
       </thead>
       <tbody>
         @for (r of routes; track r.routeId) {
-        <tr class="row">
-          <td class="name-cell">{{ r.name }}</td>
-          <td>{{ typeLabel(r.routeType) }}</td>
+        <tr (click)="goDetails(r)">
+          <td>
+            <div class="item-cell">
+              <div class="item-thumb route-thumb">&#128506;&#65039;</div>
+              <div>
+                <div class="item-name">{{ r.name }}</div>
+                <div class="item-desc">{{ routeExcerpt(r) | slice:0:96 }}</div>
+                <div class="item-tags">
+                  <span class="tag tag-green">{{ waypointCount(r) }} waypoint-a</span>
+                  @if ((r.saveCount ?? 0) > 0) {
+                  <span class="tag">{{ r.saveCount ?? 0 }} sacuvanih</span>
+                  }
+                </div>
+              </div>
+            </div>
+          </td>
           <td>
             <app-badge [variant]="difficultyBadge(r.difficulty)">
               {{ difficultyLabel(r.difficulty) }}
             </app-badge>
           </td>
-          <td>{{ r.destination?.name ?? '—' }}</td>
-          <td class="num">{{ r.distanceKm.toFixed(1) }} km</td>
-          <td class="num">{{ formatDuration(r.durationMin) }}</td>
-          <td class="num">
-            @if (r.elevationGainM) {
-            {{ r.elevationGainM }} m
-            } @else {
-            —
+          <td>
+            <div class="meta-primary">{{ r.destination?.name ?? '-' }}</div>
+          </td>
+          <td class="num">{{ (r.distanceKm ?? 0).toFixed(1) }} km</td>
+          <td class="num">{{ formatDuration(r.durationMin ?? 0) }}</td>
+          <td class="num">{{ r.elevationGainM ? (r.elevationGainM + ' m') : '-' }}</td>
+          <td>
+            <div class="meta-primary">{{ r.viewCount ?? 0 }} pregleda</div>
+            <div class="meta-secondary">{{ routeStats(r) }}</div>
+          </td>
+          <td (click)="$event.stopPropagation()">
+            <span class="badge" [class]="statusBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
+            @if (r.status === 'draft' && canModerateRoutes) {
+            <div class="status-actions">
+              <button class="btn-icon approve-btn" title="Odobri" (click)="confirmApprove(r)">&#9989;</button>
+              <button class="btn-icon danger" title="Odbij" (click)="confirmReject(r)">&#10060;</button>
+            </div>
             }
           </td>
-          <td>
-            <app-badge [variant]="r.isActive ? 'success' : 'default'">
-              {{ r.isActive ? 'Aktivna' : 'Neaktivna' }}
-            </app-badge>
-          </td>
-          <td class="actions-cell" (click)="$event.stopPropagation()">
-            <button class="btn-edit" (click)="goEdit(r)">Izmeni</button>
-            <button class="btn-delete" (click)="confirmDelete(r)">Obriši</button>
+          <td (click)="$event.stopPropagation()">
+            <div class="actions">
+              <button class="btn-icon" title="Detalji" (click)="goDetails(r)">&#128065;&#65039;</button>
+              <button class="btn-icon" title="Izmeni" (click)="goEdit(r)">&#9998;&#65039;</button>
+              <button class="btn-icon danger" title="Obrisi" (click)="confirmDelete(r)">&#128465;&#65039;</button>
+            </div>
           </td>
         </tr>
         }
       </tbody>
     </table>
-  </div>
 
-  <div class="footer">
-    <span class="total">Ukupno: {{ total }}</span>
-    <app-pagination [page]="req.page"
-                    [totalPages]="totalPages"
-                    (pageChange)="onPage($event)" />
+    <div class="pagination">
+      <div class="pg-info">Prikazano {{ pageStart }}-{{ pageEnd }} od {{ total }} ruta</div>
+      <div class="pg-btns">
+        <button class="pg-btn" [disabled]="req.page === 1" (click)="onPage(req.page - 1)">&larr;</button>
+        @for (p of pageNumbers; track p) {
+        <button class="pg-btn" [class.active]="p === req.page" (click)="onPage(p)">{{ p }}</button>
+        }
+        <button class="pg-btn" [disabled]="req.page === totalPages" (click)="onPage(req.page + 1)">&rarr;</button>
+      </div>
+    </div>
   </div>
   }
-
 </div>
 
 <app-confirm-dialog [visible]="!!deleteTarget"
-                    title="Obriši rutu"
-                    [message]="'Da li ste sigurni da želite da obrišete rutu &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
-                    confirmLabel="Obriši"
+                    title="Obrisi rutu"
+                    [message]="'Da li ste sigurni da zelite da obrisete rutu &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
+                    confirmLabel="Obrisi"
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
+
+<app-confirm-dialog [visible]="!!approveTarget"
+                    title="Odobri rutu"
+                    [message]="'Odobrite rutu &quot;' + (approveTarget?.name ?? '') + '&quot;? Bice vidljiva turistima.'"
+                    confirmLabel="Odobri"
+                    [danger]="false"
+                    (confirmed)="doApprove()"
+                    (cancelled)="cancelApprove()" />
+
+<app-confirm-dialog [visible]="!!rejectTarget"
+                    title="Odbij rutu"
+                    [message]="'Odbijte rutu &quot;' + (rejectTarget?.name ?? '') + '&quot;? Bice arhivirana.'"
+                    confirmLabel="Odbij"
+                    [danger]="true"
+                    (confirmed)="doReject()"
+                    (cancelled)="cancelReject()" />

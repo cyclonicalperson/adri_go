@@ -439,6 +439,7 @@ export class DashboardComponent implements OnInit {
       lng: post.lng!,
       label: post.title,
       category: CONTENT_TYPE_CONFIG[post.postType]?.label ?? post.postType,
+      color: CONTENT_TYPE_CONFIG[post.postType]?.color ?? '#9ca3af',
     }));
   }
 

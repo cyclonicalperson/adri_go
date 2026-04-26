@@ -1,5 +1,5 @@
 @use 'variables' as *;
-// Same styles as object-form — copy object-form.component.scss here
+
 .page {
   padding: 28px 32px;
   display: flex;
@@ -9,31 +9,47 @@
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
 }
 
 .title {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
+  color: $gray-900;
+  margin: 0;
+}
+
+.subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  color: $gray-500;
 }
 
 .btn-back {
-  padding: 9px 16px;
+  padding: 10px 16px;
   border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #374151;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-700;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
+  }
 }
 
 .alert-error {
   background: #fef2f2;
-  border: 1px solid rgba(239,68,68,.3);
-  border-radius: 12px;
-  padding: 12px 16px;
+  border: 1px solid rgba(239, 68, 68, .25);
+  border-radius: 14px;
+  padding: 14px 16px;
   font-size: 13px;
   color: #991b1b;
   font-weight: 600;
@@ -41,30 +57,51 @@
 
 .layout {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
   gap: 20px;
 }
 
-.left-col, .right-col {
+.left-col,
+.right-col {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: 16px;
   padding: 22px 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.1);
+  box-shadow: $shadow-sm;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
 .card-title {
   font-size: 15px;
   font-weight: 800;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #f3f4f6;
+  margin: 0;
+  color: $gray-900;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: $primary-soft;
+  color: $primary-dark;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 
 .field {
@@ -77,94 +114,110 @@
 .label {
   font-size: 12px;
   font-weight: 700;
-  color: #4b5563;
+  color: $gray-600;
+}
+
+.field-help {
+  font-size: 11px;
+  color: $gray-500;
 }
 
 .input {
-  padding: 10px 14px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding: 11px 14px;
+  border: 1.5px solid $gray-200;
+  border-radius: 12px;
+  font-family: $font-sans;
   font-size: 13px;
   outline: none;
   width: 100%;
+  color: $gray-900;
+  background: $white;
+  transition: all .15s;
 
   &:focus {
-    border-color: #22c55e;
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .12);
   }
 
   &.invalid {
     border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, .08);
   }
+}
 
-  &.textarea {
-    resize: vertical;
-    min-height: 90px;
-  }
+.textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.row-2,
+.row-3 {
+  display: grid;
+  gap: 14px;
 }
 
 .row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .row-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.toggle-field {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.toggle {
+.inline-stat {
+  min-height: 46px;
+  border: 1px solid $gray-200;
+  border-radius: 12px;
+  background: $gray-50;
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
-
-  input {
-    display: none;
-  }
+  padding: 0 14px;
 }
 
-.toggle-track {
-  width: 42px;
-  height: 24px;
-  border-radius: 12px;
-  background: #e5e7eb;
-  position: relative;
-  flex-shrink: 0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #fff;
-    transition: transform .2s;
-  }
+.inline-stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: $gray-900;
 }
 
-input:checked + .toggle-track {
-  background: #22c55e;
-
-  &::after {
-    transform: translateX(18px);
-  }
-}
-
-.toggle-label {
-  font-size: 13px;
+.inline-stat-label {
+  font-size: 12px;
+  color: $gray-500;
   font-weight: 600;
-  color: #374151;
+}
+
+.summary-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fffb 100%);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-item {
+  padding: 12px 14px;
+  border: 1px solid $gray-200;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .85);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  strong {
+    font-size: 14px;
+    color: $gray-900;
+  }
+}
+
+.summary-label {
+  font-size: 11px;
+  color: $gray-500;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 800;
 }
 
 .form-actions {
@@ -173,28 +226,63 @@ input:checked + .toggle-track {
   justify-content: flex-end;
 }
 
-.btn-cancel {
+.btn-cancel,
+.btn-save {
   padding: 11px 20px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #374151;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition: all .15s;
+}
+
+.btn-cancel {
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-700;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+    background: $surface-green;
+  }
 }
 
 .btn-save {
-  padding: 11px 24px;
-  border-radius: 10px;
   border: none;
-  background: #22c55e;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+  background: $primary;
+  color: $white;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, .22);
+
+  &:hover:not(:disabled) {
+    background: $primary-hover;
+  }
 
   &:disabled {
     opacity: .6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 20px 16px;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .row-2,
+  .row-3,
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 }

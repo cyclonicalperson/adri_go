@@ -77,6 +77,103 @@
   position: relative; // anchor for notif-panel
 }
 
+.lang-switch {
+  position: relative;
+}
+
+.lang-btn {
+  min-width: 72px;
+  height: 38px;
+  border: 1px solid $gray-200;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  background: $white;
+  color: $gray-700;
+  font-size: 12px;
+  font-weight: 800;
+  transition: all .15s;
+
+  &:hover,
+  &.active {
+    border-color: $primary;
+    background: $surface-green;
+    color: $primary-dark;
+  }
+}
+
+.lang-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.lang-code {
+  letter-spacing: .08em;
+}
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 220px;
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: $radius-lg;
+  box-shadow: 0 12px 40px rgba(0,0,0,.12);
+  z-index: 150;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lang-menu-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: $gray-500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lang-option {
+  width: 100%;
+  border: 1px solid $gray-200;
+  border-radius: 10px;
+  background: $white;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: $gray-700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all .15s;
+
+  &:hover,
+  &.selected {
+    border-color: $primary;
+    background: $surface-green;
+    color: $primary-dark;
+  }
+}
+
+.lang-option-check {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
 // ── Notification bell ─────────────────────────────────────────────────────
 .notif-btn {
   width: 38px;
@@ -386,5 +483,17 @@
     right: 0;
     width: 100%;
     border-radius: 0 0 $radius-lg $radius-lg;
+  }
+
+  .lang-btn {
+    min-width: 60px;
+  }
+
+  .lang-menu {
+    position: fixed;
+    top: 56px;
+    right: 16px;
+    left: 16px;
+    width: auto;
   }
 }

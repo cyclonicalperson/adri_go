@@ -15,11 +15,19 @@ namespace TouristGuide.Api.Controllers
     {
         private readonly AppDbContext _dbContext;
         private readonly AdminIdentityService _adminIdentityService;
+        private readonly EmailService _emailService;
+        private readonly ILogger<AdminRegistrationController> _logger;
 
-        public AdminRegistrationController(AppDbContext dbContext, AdminIdentityService adminIdentityService)
+        public AdminRegistrationController(
+            AppDbContext dbContext,
+            AdminIdentityService adminIdentityService,
+            EmailService emailService,
+            ILogger<AdminRegistrationController> logger)
         {
             _dbContext = dbContext;
             _adminIdentityService = adminIdentityService;
+            _emailService = emailService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -155,6 +163,11 @@ namespace TouristGuide.Api.Controllers
                 return Conflict(new { message = "Samo pending zahtevi mogu biti odobreni." });
             }
 
+            if (!request.EmailVerifiedAt.HasValue)
+            {
+                return Conflict(new { message = "Email kandidata nije verifikovan. Odobrenje je moguce tek nakon potvrde email adrese." });
+            }
+
             var reviewerId = _adminIdentityService.GetAdminId();
             if (reviewerId is null)
                 return Unauthorized(new { message = "Superadmin nije autentifikovan." });
@@ -179,6 +192,7 @@ namespace TouristGuide.Api.Controllers
                     Role = "admin",
                     IsIndividual = !request.IsOrganization,
                     AccountStatus = "active",
+                    EmailVerifiedAt = request.EmailVerifiedAt,
                     OrganizationId = organizationId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -195,16 +209,28 @@ namespace TouristGuide.Api.Controllers
                     : existingAdmin.PasswordHash;
                 existingAdmin.IsIndividual = !request.IsOrganization;
                 existingAdmin.AccountStatus = "active";
+                existingAdmin.EmailVerifiedAt ??= request.EmailVerifiedAt;
                 existingAdmin.OrganizationId = organizationId ?? existingAdmin.OrganizationId;
                 existingAdmin.UpdatedAt = DateTime.UtcNow;
             }
 
             request.Status = "approved";
             request.RejectionReason = null;
+            request.EmailVerificationToken = null;
+            request.EmailVerificationTokenExpiresAt = null;
             request.ReviewedAt = DateTime.UtcNow;
             request.ReviewedBy = reviewerId.Value;
 
             await _dbContext.SaveChangesAsync();
+
+            try
+            {
+                await _emailService.SendAdminRegistrationApprovedEmailAsync(request.Email, request.FullName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send admin registration approval email for request {RequestId}.", request.Id);
+            }
 
             return Ok(new AdminRegistrationActionResponseDto
             {
@@ -245,10 +271,24 @@ namespace TouristGuide.Api.Controllers
             request.RejectionReason = string.IsNullOrWhiteSpace(decision?.RejectionReason)
                 ? null
                 : decision.RejectionReason.Trim();
+            request.EmailVerificationToken = null;
+            request.EmailVerificationTokenExpiresAt = null;
             request.ReviewedAt = DateTime.UtcNow;
             request.ReviewedBy = reviewerId.Value;
 
             await _dbContext.SaveChangesAsync();
+
+            try
+            {
+                await _emailService.SendAdminRegistrationRejectedEmailAsync(
+                    request.Email,
+                    request.FullName,
+                    request.RejectionReason);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send admin registration rejection email for request {RequestId}.", request.Id);
+            }
 
             return Ok(new AdminRegistrationActionResponseDto
             {

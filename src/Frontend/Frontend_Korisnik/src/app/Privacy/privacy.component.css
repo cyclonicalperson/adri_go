@@ -276,6 +276,94 @@
 .delete-account-btn:hover { opacity: 0.88; }
 .delete-account-btn svg { width: 18px; height: 18px; fill: #fff; }
 
+/* ── DELETE MODAL ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  animation: modal-pop 0.18s ease-out;
+}
+
+@keyframes modal-pop {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.modal-icon-wrap {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: #fff1f2;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+}
+.modal-icon-wrap svg { width: 32px; height: 32px; fill: #dc2626; }
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+}
+
+.modal-body {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-cancel-btn {
+  flex: 1;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: none;
+  border-radius: 12px;
+  padding: 13px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.modal-cancel-btn:hover { background: var(--gray-200); }
+
+.modal-delete-btn {
+  flex: 1;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.modal-delete-btn:hover { opacity: 0.88; }
+
 /* ── DESKTOP ─────────────────────────────────────────────────── */
 @media (min-width: 900px) {
   .subpage-container {

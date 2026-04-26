@@ -137,8 +137,43 @@
 .reviews-text { font-size: 12px; color: var(--gray-400); margin: 0 0 14px; }
 
 /* ── CTA BUTTON ──────────────────────────────────────────────── */
+/* ── CALENDAR TOAST ─────────────────────────────────────────── */
+.calendar-toast {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green-700, #15803d);
+  background: var(--green-50, #f0fdf4);
+  border: 1px solid var(--green-200, #bbf7d0);
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin: 0 0 10px;
+  text-align: center;
+}
+
+/* ── CARD ACTIONS ────────────────────────────────────────────── */
+.card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Calendar icon button */
+.btn-calendar {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  background: var(--green-50, #f0fdf4);
+  border: 1.5px solid var(--green-200, #bbf7d0);
+  border-radius: var(--radius-md, 12px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.btn-calendar:hover  { background: var(--green-100, #dcfce7); }
+.btn-calendar:active { transform: scale(0.95); }
+.btn-calendar svg { width: 20px; height: 20px; fill: var(--green-600, #16a34a); }
+
 .btn-details {
-  width: 100%;
+  flex: 1;
   padding: 13px;
   background: var(--green-500);
   color: #fff;

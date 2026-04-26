@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace TouristGuide.Api.DTOs
 {
@@ -75,7 +76,7 @@ namespace TouristGuide.Api.DTOs
     }
 
     /// <summary>
-    /// Osnovni podaci o prijavljenom turisti.
+    /// Puni profil prijavljenog turiste (koristi se i za /me i za /profile).
     /// </summary>
     public class TouristMeDto
     {
@@ -83,13 +84,35 @@ namespace TouristGuide.Api.DTOs
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Language { get; set; } = string.Empty;
+        public string? Bio { get; set; }
+        public string? Location { get; set; }
+        public string? ProfileImage { get; set; }
+        public List<string> Interests { get; set; } = new();
         public bool IsActive { get; set; }
         public bool IsEmailVerified { get; set; }
         public DateTime CreatedAt { get; set; }
-        /// <summary>Broj sačuvanih objava</summary>
         public int SavedPostsCount { get; set; }
-        /// <summary>Broj recenzija koje je turista napisao</summary>
         public int ReviewsCount { get; set; }
+    }
+
+    /// <summary>
+    /// DTO koji frontend šalje pri ažuriranju profila turiste.
+    /// </summary>
+    public class UpdateTouristProfileDto
+    {
+        [MaxLength(200)]
+        public string? Name { get; set; }
+
+        [MaxLength(5)]
+        public string? Language { get; set; }
+
+        public string? Bio { get; set; }
+
+        [MaxLength(200)]
+        public string? Location { get; set; }
+
+        /// <summary>Lista interesa kao string array (npr. ["nature","food"])</summary>
+        public List<string>? Interests { get; set; }
     }
 
     /// <summary>

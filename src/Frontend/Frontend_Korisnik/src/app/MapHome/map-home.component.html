@@ -28,45 +28,21 @@
     <div id="map"></div>
   </div>
 
-  <!-- ── CATEGORY FILTER — floating on map, top-left ────────── -->
-  <div class="map-category-filter" [class.expanded]="filterExpanded">
-    <button class="filter-toggle-btn" (click)="filterExpanded = !filterExpanded">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
-      </svg>
-      <span>Categories</span>
-      <span class="filter-active-count" *ngIf="activeFilterCount < categories.length">
-        {{ activeFilterCount }}/{{ categories.length }}
-      </span>
-      <svg class="filter-chevron" viewBox="0 0 24 24" [class.rotated]="filterExpanded">
-        <path d="M7 10l5 5 5-5z"/>
-      </svg>
+  <!-- Route panel — shown when navigating to a destination -->
+  <div *ngIf="showRoutePanel" style="position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:1000;background:#fff;border-radius:14px;padding:10px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.18);display:flex;align-items:center;gap:10px;max-width:340px;width:calc(100% - 32px);">
+    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#22c55e;flex-shrink:0;"><path d="M21.71 11.29l-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42zM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>
+    <span style="font-size:13px;font-weight:600;color:#0f172a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+      {{ routeDestTitle || 'Directions' }}
+    </span>
+    <button (click)="clearRoute()" style="background:#fef2f2;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;flex-shrink:0;">
+      ✕ Clear
     </button>
-    <div class="filter-dropdown" *ngIf="filterExpanded">
-      <div class="filter-dropdown-header">
-        <span>Categories</span>
-        <button class="category-select-all" (click)="toggleAllCategories()">
-          {{ allCategoriesActive ? 'Deselect all' : 'Select all' }}
-        </button>
-      </div>
-      <div class="category-list">
-        <label
-          *ngFor="let cat of categories"
-          class="category-item"
-          [class.active]="cat.active"
-          (click)="toggleCategory(cat)">
-          <span class="cat-checkbox">
-            <svg *ngIf="cat.active" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-          </span>
-          <span class="cat-icon">{{ cat.icon }}</span>
-          <span class="cat-label">{{ cat.label }}</span>
-        </label>
-      </div>
-    </div>
   </div>
 
   <div class="top-ui-layer">
     <div class="search-wrapper">
+
+      <!-- Search + Filters bar -->
       <div class="search-container">
         <span class="search-icon">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -85,13 +61,33 @@
           <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </button>
         <div class="search-divider"></div>
-        <button class="search-filter-btn" (click)="openFilters()">
+        <button class="search-filter-btn" [class.filter-active]="hasActiveFilters" (click)="openFilters()">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
           </svg>
           <span>Filters</span>
+          <span class="filter-badge" *ngIf="hasActiveFilters"></span>
         </button>
       </div>
+
+      <!-- Category chips row (below search bar) -->
+      <div class="category-chips-row">
+        <button
+          class="cat-chip"
+          [class.cat-chip-all]="true"
+          [class.active]="allCategoriesActive"
+          (click)="toggleAllCategories()">
+          All
+        </button>
+        <button
+          *ngFor="let cat of categories"
+          class="cat-chip"
+          [class.active]="cat.active"
+          (click)="toggleCategory(cat)">
+          <span>{{ cat.icon }}</span> {{ cat.label }}
+        </button>
+      </div>
+
       <!-- Search results dropdown -->
       <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
         <div
@@ -99,15 +95,15 @@
           class="search-result-item"
           (click)="selectSearchResult(result)">
           <div class="search-result-icon">
-            <span>{{ getCategoryIcon(result.category) }}</span>
+            <span>{{ getCategoryIcon(result.postType || result.category) }}</span>
           </div>
           <div class="search-result-info">
             <div class="search-result-title">{{ result.title }}</div>
-            <div class="search-result-meta">{{ result.category }} · {{ result.distance }} km away</div>
+            <div class="search-result-meta">{{ result.postType || result.category }}</div>
           </div>
-          <div class="search-result-rating">
+          <div class="search-result-rating" *ngIf="result.avgRating || result.rating">
             <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-            {{ result.rating }}
+            {{ (result.avgRating || result.rating) | number:'1.1-1' }}
           </div>
         </div>
       </div>
@@ -131,23 +127,20 @@
           class="recommended-card"
           (click)="focusOnLocation(loc)">
           <div class="rec-image">
-            <img [src]="loc.imageUrl" [alt]="loc.title" (error)="onImgError($event)">
+            <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="onImgError($event)">
             <div class="rec-rank">#{{ i + 1 }}</div>
-            <div class="rec-status" [class.open]="loc.status === 'Open now'" [class.closed]="loc.status !== 'Open now'">
-              {{ loc.status }}
-            </div>
           </div>
           <div class="rec-info">
             <div class="rec-title">{{ loc.title }}</div>
             <div class="rec-meta">
-              <span class="rec-category">{{ loc.category }}</span>
-              <span class="rec-dot">·</span>
-              <span class="rec-distance">{{ loc.distance }} km away</span>
+              <span class="rec-category">{{ loc.postType || loc.category }}</span>
+              <span class="rec-dot" *ngIf="loc.regionName">·</span>
+              <span class="rec-distance" *ngIf="loc.regionName">{{ loc.regionName }}</span>
             </div>
-            <div class="rec-rating">
+            <div class="rec-rating" *ngIf="loc.avgRating || loc.rating">
               <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-              <span>{{ loc.rating }}</span>
-              <span class="rec-reviews">({{ loc.reviews | number }} reviews)</span>
+              <span>{{ (loc.avgRating || loc.rating) | number:'1.1-1' }}</span>
+              <span class="rec-reviews" *ngIf="loc.reviewCount || loc.reviews">({{ (loc.reviewCount || loc.reviews) | number }} reviews)</span>
             </div>
           </div>
         </div>
@@ -164,7 +157,7 @@
     style="cursor: pointer;">
   </app-location-details-card>
 
-  <div class="app-footer" *ngIf="!selectedLocation">
+  <div class="app-footer" [class.footer-hidden]="selectedLocation">
 
     <button class="footer-btn" [class.active]="activeTab === 'map'" (click)="activeTab = 'map'">
       <span class="footer-icon">
@@ -208,7 +201,7 @@
 
   <div class="auth-modal-overlay" *ngIf="showAuthPopup">
     <div class="auth-modal">
-      <h3>Authentication Required</h3>
+      <h3>Login Required</h3>
       <p>You need to be logged in to access your account settings.</p>
       <div class="auth-modal-actions">
         <button class="btn-cancel" (click)="showAuthPopup = false">Cancel</button>

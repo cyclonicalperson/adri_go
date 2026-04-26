@@ -113,7 +113,22 @@ namespace TouristGuide.Api.Controllers
             if (!string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) && !await CanViewUnpublishedPostAsync(post))
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            return Ok(MapToDto(post));
+            // Include like/save status for the requesting tourist (if logged in as tourist)
+            bool? isLiked = null;
+            bool? isSaved = null;
+            var touristId = GetAuthorizedTouristId();
+            if (touristId.HasValue)
+            {
+                isLiked = await _context.PostLikes.AnyAsync(l => l.PostId == id && l.TouristId == touristId.Value);
+                isSaved = await _context.SavedPosts.AnyAsync(s => s.PostId == id && s.TouristId == touristId.Value);
+            }
+
+            // Always compute live counts so stale seed data doesn't display wrong numbers
+            uint liveLikeCount   = (uint)await _context.PostLikes.CountAsync(l => l.PostId == id);
+            uint liveSaveCount   = (uint)await _context.SavedPosts.CountAsync(s => s.PostId == id);
+            uint liveReviewCount = (uint)await _context.Reviews.CountAsync(r => r.PostId == id && r.Status == "APPROVED");
+
+            return Ok(MapToDto(post, isLiked, isSaved, liveLikeCount, liveSaveCount, liveReviewCount));
         }
 
         [HttpGet("my-saved")]
@@ -135,7 +150,15 @@ namespace TouristGuide.Api.Controllers
                     .ThenInclude(p => p.Region)
                 .ToListAsync();
 
-            var postsDto = savedItems.Select(sp => MapToDto(sp.Post)).ToList();
+            // Get the set of post IDs that this tourist has liked, so we can mark each post correctly
+            var likedPostIds = new HashSet<uint>(await _context.PostLikes
+                .Where(l => l.TouristId == touristId)
+                .Select(l => l.PostId)
+                .ToListAsync());
+
+            var postsDto = savedItems
+                .Select(sp => MapToDto(sp.Post, isLiked: likedPostIds.Contains(sp.PostId), isSaved: true))
+                .ToList();
             return Ok(postsDto);
         }
 
@@ -621,9 +644,33 @@ namespace TouristGuide.Api.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
-            var data = new List<PostDto>(posts.Count);
-            foreach (var post in posts)
-                data.Add(MapToDto(post));
+            // Batch-fetch live counts for this page (3 queries instead of N*3)
+            var postIds = posts.Select(p => p.Id).ToList();
+
+            var likeCounts = await _context.PostLikes
+                .Where(l => postIds.Contains(l.PostId))
+                .GroupBy(l => l.PostId)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+
+            var saveCounts = await _context.SavedPosts
+                .Where(s => postIds.Contains(s.PostId))
+                .GroupBy(s => s.PostId)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+
+            var reviewCounts = await _context.Reviews
+                .Where(r => r.PostId != null && postIds.Contains(r.PostId.Value) && r.Status == "APPROVED")
+                .GroupBy(r => r.PostId!.Value)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+
+            var data = posts.Select(post => MapToDto(
+                post,
+                likeCountOverride:   likeCounts.TryGetValue(post.Id, out var lc) ? lc : 0u,
+                saveCountOverride:   saveCounts.TryGetValue(post.Id, out var sc) ? sc : 0u,
+                reviewCountOverride: reviewCounts.TryGetValue(post.Id, out var rc) ? rc : 0u
+            )).ToList();
 
             return new
             {
@@ -635,7 +682,7 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
-        private static PostDto MapToDto(Post post) => new()
+        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null) => new()
         {
             Id = post.Id,
             AdminId = post.AdminId,
@@ -657,15 +704,17 @@ namespace TouristGuide.Api.Controllers
             Details = post.Details,
             Status = post.Status,
             ViewCount = post.ViewCount,
-            LikeCount = post.LikeCount,
-            SaveCount = post.SaveCount,
-            ReviewCount = post.ReviewCount,
+            LikeCount = likeCountOverride ?? post.LikeCount,
+            SaveCount = saveCountOverride ?? post.SaveCount,
+            ReviewCount = reviewCountOverride ?? post.ReviewCount,
             AvgRating = post.AvgRating,
             PublishedAt = post.PublishedAt,
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,
             TagIds = post.PostTags?.Select(pt => pt.TagId).ToList() ?? new List<uint>(),
-            TagNames = post.PostTags?.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList() ?? new List<string>()
+            TagNames = post.PostTags?.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList() ?? new List<string>(),
+            IsLiked = isLiked,
+            IsSaved = isSaved
         };
 
         private static ReviewDto MapToReviewDto(Review review, string? touristName = null) => new()

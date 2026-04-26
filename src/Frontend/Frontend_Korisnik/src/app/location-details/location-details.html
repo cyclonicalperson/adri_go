@@ -22,7 +22,7 @@
       <button class="back-btn" (click)="goBack()">
         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
       </button>
-      <button class="share-btn">
+      <button class="share-btn" (click)="shareLocation()">
         <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
       </button>
     </div>
@@ -33,6 +33,9 @@
       <div class="badges">
         <span class="badge category">
           <span class="dot"></span>{{ location.postType }}
+        </span>
+        <span class="badge open-badge" [class.open]="isCurrentlyOpen" [class.closed]="!isCurrentlyOpen" *ngIf="location.openingHours">
+          {{ isCurrentlyOpen ? 'Open now' : 'Closed' }}
         </span>
         <span class="badge rating">
           <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -54,6 +57,9 @@
       <p class="address" *ngIf="location.address || location.regionName">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
         {{ location.address || location.regionName }}
+        <span *ngIf="distanceKm !== null" style="margin-left:10px;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;">
+          📍 {{ distanceKm }} km away
+        </span>
       </p>
 
       <!-- Stats -->
@@ -74,20 +80,43 @@
 
       <!-- Action buttons -->
       <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-        <button (click)="onLike()" style="display:flex;align-items:center;gap:6px;background:#f0fdf4;color:#15803d;border:1.5px solid #dcfce7;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
-          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#ef4444;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-          Like
+        <button (click)="onLike()"
+          [style.background]="location.isLiked ? '#fef2f2' : '#f0fdf4'"
+          [style.color]="location.isLiked ? '#dc2626' : '#15803d'"
+          [style.border]="location.isLiked ? '1.5px solid #fecaca' : '1.5px solid #dcfce7'"
+          style="display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;"
+            [style.fill]="location.isLiked ? '#dc2626' : '#ef4444'">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          {{ location.isLiked ? 'Liked' : 'Like' }}
         </button>
-        <button (click)="onSave()" style="display:flex;align-items:center;gap:6px;background:#f0fdf4;color:#15803d;border:1.5px solid #dcfce7;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
-          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#16a34a;"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-          Save
+
+        <button (click)="onSave()"
+          [style.background]="$any(location).isSaved ? '#eff6ff' : '#f0fdf4'"
+          [style.color]="$any(location).isSaved ? '#1d4ed8' : '#15803d'"
+          [style.border]="$any(location).isSaved ? '1.5px solid #bfdbfe' : '1.5px solid #dcfce7'"
+          style="display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;"
+            [style.fill]="$any(location).isSaved ? '#3b82f6' : '#16a34a'">
+            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+          </svg>
+          {{ $any(location).isSaved ? 'Saved' : 'Save' }}
+        </button>
+
+        <!-- Calendar button — available for all location types -->
+        <button (click)="addToCalendar()"
+          style="display:flex;align-items:center;gap:6px;background:#fdf4ff;color:#7e22ce;border:1.5px solid #e9d5ff;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#7e22ce;"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+          Add to Calendar
         </button>
       </div>
 
-      <!-- Feedback -->
-      <div *ngIf="likeMessage"   style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ likeMessage }}</div>
-      <div *ngIf="saveMessage"   style="background:#eff6ff;color:#1d4ed8;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ saveMessage }}</div>
-      <div *ngIf="reviewSuccess" style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ reviewSuccess }}</div>
+      <!-- Feedback toasts -->
+      <div *ngIf="likeMessage"      style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ likeMessage }}</div>
+      <div *ngIf="saveMessage"      style="background:#eff6ff;color:#1d4ed8;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ saveMessage }}</div>
+      <div *ngIf="calendarMessage"  style="background:#fdf4ff;color:#7e22ce;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ calendarMessage }}</div>
+      <div *ngIf="reviewSuccess"    style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ reviewSuccess }}</div>
 
       <div class="section-divider"></div>
 
@@ -99,23 +128,40 @@
 
       <!-- Info Grid -->
       <div class="info-grid">
+        <!-- Working Hours (compact: today only) -->
         <div class="info-item" *ngIf="location.openingHours">
           <span class="item-icon time-bg">
             <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
           </span>
           <div class="info-text">
-            <label>WORKING HOURS</label>
-            <strong>{{ location.openingHours }}</strong>
+            <label>HOURS TODAY</label>
+            <strong [class.text-open]="isCurrentlyOpen" [class.text-closed]="!isCurrentlyOpen">
+              {{ isCurrentlyOpen ? 'Open' : 'Closed' }}
+            </strong>
+            <button class="see-hours-btn" (click)="showAllHours = !showAllHours">
+              {{ showAllHours ? 'Hide schedule ▲' : 'Full schedule ▼' }}
+            </button>
           </div>
         </div>
+
         <div class="info-item">
           <span class="item-icon pass-bg">
             <svg viewBox="0 0 24 24"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>
           </span>
           <div class="info-text">
-            <label>PASS</label>
+            <label>ENTRY</label>
             <strong>Free</strong>
           </div>
+        </div>
+      </div>
+
+      <!-- Full hours schedule (expandable) -->
+      <div *ngIf="showAllHours && location.openingHours" class="hours-schedule">
+        <div class="hours-table">
+          <ng-container *ngFor="let row of parseOpeningHours(location.openingHours)">
+            <span class="hours-day">{{ row.day }}</span>
+            <span class="hours-time" [class.hours-closed]="row.hours === 'closed'">{{ row.hours }}</span>
+          </ng-container>
         </div>
       </div>
 
@@ -128,7 +174,6 @@
           <button class="see-all" *ngIf="authService.isLoggedIn" (click)="showReviewForm = !showReviewForm">
             {{ showReviewForm ? 'Cancel' : '+ Add review' }}
           </button>
-          <!-- Using button instead of routerLink to avoid RouterModule dependency -->
           <button *ngIf="!authService.isLoggedIn"
             (click)="goToLogin()"
             style="font-size:13px;color:#16a34a;font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;">
@@ -176,5 +221,20 @@
 
     </div>
   </ng-container>
+
+  <!-- ── AUTH MODAL ─────────────────────────────────────────────────── -->
+  <div *ngIf="showAuthModal" class="auth-modal-overlay" (click)="closeAuthModal()">
+    <div class="auth-modal-card" (click)="$event.stopPropagation()">
+      <div class="auth-modal-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      </div>
+      <h3 class="auth-modal-title">Login required</h3>
+      <p class="auth-modal-body">You need an account to do this. Log in or create a free account to save locations, write reviews, and manage your calendar.</p>
+      <div class="auth-modal-actions">
+        <button class="auth-modal-cancel" (click)="closeAuthModal()">Not now</button>
+        <button class="auth-modal-login" (click)="goToLoginFromModal()">Log in / Sign up</button>
+      </div>
+    </div>
+  </div>
 
 </div>

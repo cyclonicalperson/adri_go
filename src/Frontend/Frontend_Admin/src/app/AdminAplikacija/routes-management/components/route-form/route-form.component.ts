@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { RouteService } from '@core/services/route.service';
-import { RegionService } from '@core/services/region.service';
 import { Region } from '@core/models/region.model';
-import { RouteType, RouteDifficulty, Waypoint } from '@core/models/route.model';
+import { RouteDifficulty, RouteStatus, Waypoint } from '@core/models/route.model';
+import { RegionService } from '@core/services/region.service';
+import { RouteService } from '@core/services/route.service';
 import { WaypointEditorComponent } from '../waypoint-editor/waypoint-editor.component';
 
 @Component({
@@ -14,7 +14,6 @@ import { WaypointEditorComponent } from '../waypoint-editor/waypoint-editor.comp
   templateUrl: './route-form.component.html',
   styleUrl: './route-form.component.scss',
 })
-
 export class RouteFormComponent implements OnInit {
   form!: FormGroup;
   isEdit = false;
@@ -25,19 +24,17 @@ export class RouteFormComponent implements OnInit {
   destinations: Region[] = [];
   waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[] = [];
 
-  readonly typeOptions: { value: RouteType; label: string }[] = [
-    { value: 'HIKING', label: 'Pešačenje' },
-    { value: 'CYCLING', label: 'Biciklizam' },
-    { value: 'WALKING', label: 'Šetnja' },
-    { value: 'DRIVING', label: 'Automobilom' },
-    { value: 'OTHER', label: 'Ostalo' },
-  ];
-
   readonly difficultyOptions: { value: RouteDifficulty; label: string }[] = [
     { value: 'EASY', label: 'Lako' },
     { value: 'MODERATE', label: 'Srednje' },
-    { value: 'HARD', label: 'Teško' },
+    { value: 'HARD', label: 'Tesko' },
     { value: 'EXPERT', label: 'Ekspertsko' },
+  ];
+
+  readonly statusOptions: { value: RouteStatus; label: string; hint: string }[] = [
+    { value: 'draft', label: 'Na cekanju', hint: 'Ruta ceka pregled i nije vidljiva turistima.' },
+    { value: 'published', label: 'Objavljena', hint: 'Ruta je aktivna i dostupna turistima.' },
+    { value: 'archived', label: 'Arhivirana', hint: 'Ruta se cuva u bazi, ali nije javno prikazana.' },
   ];
 
   constructor(
@@ -46,22 +43,21 @@ export class RouteFormComponent implements OnInit {
     private destService: RegionService,
     private route: ActivatedRoute,
     private router: Router,
-  ) { }
+  ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({
       regionId: [null, Validators.required],
       name: ['', Validators.required],
-      routeType: ['HIKING', Validators.required],
-      difficulty: ['EASY', Validators.required],
+      difficulty: ['MODERATE', Validators.required],
       distanceKm: [null, [Validators.required, Validators.min(0.1)]],
       durationMin: [null, [Validators.required, Validators.min(1)]],
       elevationGainM: [null],
+      status: ['draft', Validators.required],
       description: ['', Validators.required],
-      isActive: [true],
     });
 
-    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[]; }) => {
+    this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[] }) => {
       this.destinations = res.data;
     });
 
@@ -69,42 +65,69 @@ export class RouteFormComponent implements OnInit {
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
-      this.service.getById(this.id!).subscribe((res: { data: any; }) => {
+      this.service.getById(this.id!).subscribe((res: { data: any }) => {
         const r = res.data;
         this.form.patchValue({
           regionId: r.destinationId ?? r.regionId,
           name: r.name,
-          routeType: r.routeType,
           difficulty: r.difficulty,
-          distanceKm: r.distanceKm,
           durationMin: r.durationMin,
           elevationGainM: r.elevationGainM,
+          status: r.status ?? (r.isActive ? 'published' : 'draft'),
           description: r.description,
-          isActive: r.isActive,
         });
-        this.waypoints = r.waypoints?.map((w: { latitude: any; longitude: any; sequenceOrder: any; }) => ({
+
+        const mappedWaypoints = r.waypoints?.map((w: { latitude: number; longitude: number; sequenceOrder: number }) => ({
           latitude: w.latitude,
           longitude: w.longitude,
           sequenceOrder: w.sequenceOrder,
         })) ?? [];
+
+        this.setWaypoints(mappedWaypoints, r.distanceKm ?? null);
       });
     }
   }
 
   get centerLat(): number {
-    return this.waypoints[0]?.['latitude'] ?? 43.85;
+    return this.waypoints[0]?.latitude ?? 43.85;
   }
 
   get centerLng(): number {
-    return this.waypoints[0]?.['longitude'] ?? 18.41;
+    return this.waypoints[0]?.longitude ?? 18.41;
   }
 
-  f(name: string) { return this.form.get(name)!; }
+  get selectedStatusOption() {
+    if (!this.form) {
+      return this.statusOptions[0];
+    }
+
+    return this.statusOptions.find(option => option.value === this.f('status').value) ?? this.statusOptions[0];
+  }
+
+  get selectedDifficultyLabel(): string {
+    if (!this.form) {
+      return '-';
+    }
+
+    return this.difficultyOptions.find(option => option.value === this.f('difficulty').value)?.label ?? '-';
+  }
+
+  f(name: string) {
+    return this.form.get(name)!;
+  }
+
+  onWaypointsChange(next: Omit<Waypoint, 'waypointId' | 'routeId'>[]): void {
+    this.setWaypoints(next);
+  }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     if (this.waypoints.length < 2) {
-      this.error = 'Ruta mora imati najmanje 2 tačke (start i kraj).';
+      this.error = 'Ruta mora imati najmanje 2 tacke (pocetak i kraj).';
       return;
     }
 
@@ -117,10 +140,10 @@ export class RouteFormComponent implements OnInit {
     const payload = {
       ...this.form.value,
       destinationId: this.form.value.regionId,
-      startLatitude: first['latitude'],
-      startLongitude: first['longitude'],
-      endLatitude: last['latitude'],
-      endLongitude: last['longitude'],
+      startLatitude: first.latitude,
+      startLongitude: first.longitude,
+      endLatitude: last.latitude,
+      endLongitude: last.longitude,
       waypoints: this.waypoints,
     };
 
@@ -129,10 +152,62 @@ export class RouteFormComponent implements OnInit {
       : this.service.create(payload);
 
     req$.subscribe({
-      next: () => this.router.navigate(['/admin/routes-management']),
-      error: (err: { message: string | null; }) => { this.error = err.message; this.saving = false; },
+      next: () => void this.router.navigate(['/admin/routes-management']),
+      error: err => {
+        this.error = err?.error?.message ?? err?.message ?? 'Doslo je do greske pri cuvanju rute.';
+        this.saving = false;
+      },
     });
   }
 
-  cancel(): void { this.router.navigate(['/admin/routes-management']); }
+  cancel(): void {
+    void this.router.navigate(['/admin/routes-management']);
+  }
+
+  private setWaypoints(
+    next: Omit<Waypoint, 'waypointId' | 'routeId'>[],
+    fallbackDistanceKm: number | null = null,
+  ): void {
+    this.waypoints = next.map((waypoint, index) => ({
+      latitude: waypoint.latitude,
+      longitude: waypoint.longitude,
+      sequenceOrder: index + 1,
+    }));
+
+    const distanceKm = this.waypoints.length >= 2
+      ? this.calculateDistanceKm(this.waypoints)
+      : fallbackDistanceKm;
+
+    this.f('distanceKm').patchValue(distanceKm, { emitEvent: false });
+  }
+
+  private calculateDistanceKm(waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[]): number {
+    let totalKm = 0;
+
+    for (let index = 1; index < waypoints.length; index += 1) {
+      totalKm += this.haversineKm(waypoints[index - 1], waypoints[index]);
+    }
+
+    return Number(totalKm.toFixed(1));
+  }
+
+  private haversineKm(
+    start: Omit<Waypoint, 'waypointId' | 'routeId'>,
+    end: Omit<Waypoint, 'waypointId' | 'routeId'>,
+  ): number {
+    const earthRadiusKm = 6371;
+    const dLat = this.toRadians(end.latitude - start.latitude);
+    const dLng = this.toRadians(end.longitude - start.longitude);
+    const startLat = this.toRadians(start.latitude);
+    const endLat = this.toRadians(end.latitude);
+
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(startLat) * Math.cos(endLat) * Math.sin(dLng / 2) ** 2;
+
+    return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  private toRadians(value: number): number {
+    return value * (Math.PI / 180);
+  }
 }

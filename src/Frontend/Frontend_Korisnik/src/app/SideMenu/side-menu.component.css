@@ -140,8 +140,61 @@
 
 .divider { height: 1px; background: var(--gray-100); margin: 8px 8px; }
 
+/* ── GUEST HEADER ────────────────────────────────────────────── */
+.user-header-guest {
+  background: linear-gradient(135deg, var(--gray-700) 0%, var(--gray-600) 100%);
+}
+
+.guest-avatar {
+  background: rgba(255,255,255,0.18);
+}
+
+.guest-login-cta {
+  padding: 14px 14px 4px;
+}
+
+.cta-login-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--green-500);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--shadow-green);
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+.cta-login-btn:hover { opacity: 0.92; }
+.cta-login-btn svg { width: 18px; height: 18px; fill: #fff; }
+
 /* ── FOOTER ──────────────────────────────────────────────────── */
-.menu-footer { padding: 16px 12px 24px; }
+.menu-footer { padding: 16px 12px 24px; display: flex; flex-direction: column; gap: 10px; }
+
+.lang-toggle-btn {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+.lang-toggle-btn:hover { background: var(--gray-200); }
+.lang-toggle-btn svg { width: 16px; height: 16px; fill: var(--gray-500); flex-shrink: 0; }
 
 .logout-btn {
   width: 100%;

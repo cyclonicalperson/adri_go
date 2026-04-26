@@ -49,7 +49,7 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   {
     id: 'kpi_stats',
     label: 'KPI Kartice',
-    description: 'Brzi pregled: lokacije, aktivnosti, dogadjaji, recenzije.',
+    description: 'Brzi pregled: destinacije, aktivnosti, dogadjaji, recenzije.',
     icon: '📊',
     defaultSpan: 2,
     adminOnly: true,   // Globalni podaci — samo superadmin

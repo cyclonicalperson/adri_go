@@ -1,0 +1,42 @@
+<div class="page">
+  <div class="card">
+    <div class="brand">
+      <div class="logo-mark">🌿</div>
+      <span class="logo-text">AdriGo</span>
+    </div>
+
+    <div class="status-icon" [class.success]="success()" [class.error]="!success() && !loading()">
+      @if (loading()) {
+      <span class="spinner"></span>
+      } @else if (success()) {
+      ✓
+      } @else {
+      !
+      }
+    </div>
+
+    <h1 class="title">
+      @if (loading()) {
+      Verifikacija u toku
+      } @else if (success()) {
+      Email potvrdjen
+      } @else if (expired()) {
+      Link je istekao
+      } @else {
+      Verifikacija nije uspela
+      }
+    </h1>
+
+    <p class="subtitle">{{ message() }}</p>
+
+    <div class="actions">
+      @if (success()) {
+      <a routerLink="/login" class="btn-primary">Idi na prijavu</a>
+      <a routerLink="/register" class="btn-secondary">Nazad na registraciju</a>
+      } @else {
+      <a routerLink="/register" class="btn-primary">Nazad na registraciju</a>
+      <a routerLink="/login" class="btn-secondary">Admin prijava</a>
+      }
+    </div>
+  </div>
+</div>

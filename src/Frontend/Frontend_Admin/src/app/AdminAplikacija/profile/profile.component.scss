@@ -377,15 +377,44 @@
 // ── Platform summary ──────────────────────────────────────────────────────
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 12px;
 }
 
+.summary-sub {
+  font-size: 13px;
+  color: $gray-500;
+  margin: -6px 0 16px;
+}
+
 .summary-item {
-  background: $gray-50;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid $gray-200;
   border-radius: $radius-md;
   padding: 14px;
-  text-align: center;
+  text-align: left;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.summary-item.highlight {
+  border-color: #bbf7d0;
+  background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.summary-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: $white;
+  border: 1px solid $gray-200;
+  margin-bottom: 10px;
 }
 
 .summary-val {

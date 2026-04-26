@@ -28,7 +28,14 @@
 
     nav a {
       justify-content: center;
-      padding: 10px 0;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      margin: 1px auto;
+    }
+
+    .icon {
+      margin-right: 0;
     }
 
     .label {
@@ -53,6 +60,17 @@
 
     .user-row {
       justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      margin: 0 auto 8px;
+      background: transparent;
+      border-radius: 10px;
+      gap: 0;
+
+      &:hover {
+        background: transparent;
+      }
     }
   }
 }

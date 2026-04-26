@@ -1,11 +1,53 @@
 <div class="page-container">
   <div class="register-card">
 
+    <!-- ── REGISTRATION SUCCESS SCREEN ───────────────────────────── -->
+    <ng-container *ngIf="registrationSuccess">
+      <div style="text-align:center;padding:24px 0 8px;">
+        <div style="width:72px;height:72px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+          <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:#22c55e;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </div>
+
+        <!-- Auto-verified (token returned — dev mode or no SMTP) -->
+        <ng-container *ngIf="autoLoggedIn">
+          <h1 class="title" style="font-size:22px;">Account created! 🎉</h1>
+          <p class="subtitle" style="margin-bottom:20px;">Welcome to AdriGo, {{ registrationEmail }}.</p>
+          <p style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:28px;">
+            Your account is ready to use. Start exploring Montenegro!
+          </p>
+          <button class="submit-btn" (click)="goToMap()" style="margin-bottom:12px;">Start Exploring</button>
+          <button class="submit-btn" (click)="goToLogin()"
+            style="background:transparent;color:var(--green-600);border:1.5px solid var(--green-400);box-shadow:none;">
+            Go to Login
+          </button>
+        </ng-container>
+
+        <!-- Email verification required -->
+        <ng-container *ngIf="!autoLoggedIn">
+          <h1 class="title" style="font-size:22px;">Check your email!</h1>
+          <p class="subtitle" style="margin-bottom:8px;">We sent a verification link to</p>
+          <p style="font-size:14px;font-weight:700;color:var(--gray-800);margin-bottom:20px;word-break:break-all;">{{ registrationEmail }}</p>
+          <p style="font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:28px;">
+            Click the link in the email to verify your account before logging in.
+            Don't see it? Check your spam folder.
+          </p>
+          <button class="submit-btn" (click)="goToLogin()" style="margin-bottom:12px;">Go to Login</button>
+          <button class="submit-btn" (click)="goToMap()"
+            style="background:transparent;color:var(--green-600);border:1.5px solid var(--green-400);box-shadow:none;">
+            Continue as Guest
+          </button>
+        </ng-container>
+      </div>
+    </ng-container>
+
+    <!-- ── REGISTRATION FORM ──────────────────────────────────────── -->
+    <ng-container *ngIf="!registrationSuccess">
+
     <h1 class="title">Create your profile</h1>
     <p class="subtitle">Discover Montenegro your way</p>
 
     <!-- Error -->
-    <div *ngIf="errorMessage" style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
+    <div *ngIf="errorMessage" class="error-banner">
       {{ errorMessage }}
     </div>
 
@@ -17,22 +59,25 @@
           <span class="label-icon lbl-green"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
           Full name
         </label>
-        <div class="input-wrapper">
+        <div class="input-wrapper" [class.input-error]="profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched">
           <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
-          <input type="text" id="fullName" formControlName="fullName" placeholder="exp. Marko Marković">
+          <input type="text" id="fullName" formControlName="fullName" placeholder="e.g. Marko Markovic">
         </div>
+        <p class="field-error" *ngIf="profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched">Full name is required.</p>
       </div>
 
       <!-- Email -->
       <div class="form-group">
         <label class="field-label" for="emailOrPhone">
           <span class="label-icon lbl-gray"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
-          Email or phone
+          Email
         </label>
-        <div class="input-wrapper">
+        <div class="input-wrapper" [class.input-error]="profileForm.get('emailOrPhone')?.invalid && profileForm.get('emailOrPhone')?.touched">
           <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
           <input type="text" id="emailOrPhone" formControlName="emailOrPhone" placeholder="example@example.com">
         </div>
+        <p class="field-error" *ngIf="profileForm.get('emailOrPhone')?.hasError('required') && profileForm.get('emailOrPhone')?.touched">Email is required.</p>
+        <p class="field-error" *ngIf="profileForm.get('emailOrPhone')?.hasError('email') && profileForm.get('emailOrPhone')?.touched">Please enter a valid email address.</p>
       </div>
 
       <!-- Password -->
@@ -41,27 +86,37 @@
           <span class="label-icon lbl-green"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
           Password
         </label>
-        <div class="input-wrapper">
+        <div class="input-wrapper" [class.input-error]="profileForm.get('password')?.invalid && profileForm.get('password')?.touched">
           <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
           <input type="password" id="password" formControlName="password" placeholder="Minimum 8 characters">
         </div>
+        <p class="field-error" *ngIf="profileForm.get('password')?.hasError('required') && profileForm.get('password')?.touched">Password is required.</p>
+        <p class="field-error" *ngIf="profileForm.get('password')?.hasError('minlength') && profileForm.get('password')?.touched">Password must be at least 8 characters.</p>
       </div>
 
       <!-- Language -->
       <div class="form-group">
         <label class="field-label" for="language">
-          <span class="label-icon lbl-amber"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/></svg></span>
+          <span class="label-icon lbl-amber"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96z"/></svg></span>
           Language
         </label>
-        <div class="input-wrapper">
+        <div class="input-wrapper select-wrapper">
           <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96z"/></svg></span>
-          <input type="text" id="language" formControlName="language" readonly>
+          <select id="language" formControlName="language"
+            (change)="onLanguageChange(profileForm.get('language')?.value)">
+            <option value="en">English</option>
+            <option value="sr">Srpski</option>
+          </select>
+          <span class="select-chevron">
+            <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </span>
         </div>
       </div>
 
       <!-- INTERESTS -->
       <p class="interests-heading">What are you most interested in?</p>
       <p class="interests-sub">Select at least 2 options for better recommendations.</p>
+      <p class="field-error" *ngIf="selectedInterestsArray.invalid && profileForm.touched">Please select at least 2 interests.</p>
 
       <div class="interests-grid">
         <button type="button" class="interest-chip" *ngFor="let interest of interests"
@@ -94,16 +149,19 @@
       <div class="terms-row">
         <input type="checkbox" class="terms-checkbox" formControlName="termsAccepted" id="terms">
         <label for="terms" class="terms-text">
-          I agree with the <a href="#">Terms of Use</a> and the <a href="#">Privacy Policy</a> of the Digital Tourist Map of Montenegro.
+          I agree with the <a routerLink="/terms" style="color:var(--green-600);font-weight:700;">Terms of Use</a> and the <a routerLink="/privacy-policy" style="color:var(--green-600);font-weight:700;">Privacy Policy</a> of the Digital Tourist Map of Montenegro.
         </label>
       </div>
+      <p class="field-error" *ngIf="profileForm.get('termsAccepted')?.invalid && profileForm.touched">You must accept the terms to continue.</p>
 
-      <button type="submit" class="submit-btn" [disabled]="!profileForm.valid || isLoading">
+      <button type="submit" class="submit-btn" [disabled]="isLoading">
         {{ isLoading ? 'Creating account...' : 'Create account' }}
       </button>
 
       <p class="login-link">Already have an account? <a (click)="goToLogin()" style="cursor:pointer;">Log In</a></p>
 
     </form>
+
+    </ng-container><!-- end !registrationSuccess -->
   </div>
 </div>

@@ -38,5 +38,11 @@ namespace TouristGuide.Api.DTOs
 
         /// <summary>Nazivi vezanih aktivnosti (tag.name) — za prikaz u detalju</summary>
         public List<string> TagNames { get; set; } = new();
+
+        /// <summary>Da li je prijavljeni turista lajkovao ovu objavu (null = nepoznato/nije prijavljen)</summary>
+        public bool? IsLiked { get; set; }
+
+        /// <summary>Da li je prijavljeni turista sacuvao ovu objavu (null = nepoznato/nije prijavljen)</summary>
+        public bool? IsSaved { get; set; }
     }
 }

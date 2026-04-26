@@ -33,7 +33,7 @@
       <div class="card">
         <div class="card-title">Bezbednost</div>
         <button class="btn-sec" (click)="openPwMode()">🔑 Promeni lozinku</button>
-        <button class="btn-sec btn-danger-outline" (click)="logout()">⏻ Odjavi se</button>
+        <button class="btn-sec btn-danger-outline" (click)="logout()">⎋ Odjavi se</button>
       </div>
 
     </div>
@@ -130,24 +130,53 @@
       @if (isSuperAdmin) {
       <div class="card">
         <div class="card-title">Pregled platforme</div>
+        <div class="summary-sub">Analitički pregled trenutnog stanja platforme.</div>
+        @if (statsLoading) {
+        <div class="perm-empty">Učitavanje podataka...</div>
+        } @else {
         <div class="summary-grid">
           <div class="summary-item">
+            <div class="summary-icon">👥</div>
             <div class="summary-val">{{ platformStats.admins | number }}</div>
             <div class="summary-lbl">Admina</div>
           </div>
-          <div class="summary-item">
+          <div class="summary-item highlight">
+            <div class="summary-icon">🏢</div>
             <div class="summary-val">{{ platformStats.posts | number }}</div>
-            <div class="summary-lbl">Destinacija</div>
+            <div class="summary-lbl">Destinacije</div>
           </div>
           <div class="summary-item">
+            <div class="summary-icon">🗺️</div>
             <div class="summary-val">{{ platformStats.routes | number }}</div>
             <div class="summary-lbl">Ruta</div>
           </div>
           <div class="summary-item">
+            <div class="summary-icon">👣</div>
+            <div class="summary-val">{{ platformStats.tourists | number }}</div>
+            <div class="summary-lbl">Turista</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-icon">📍</div>
+            <div class="summary-val">{{ platformStats.regions | number }}</div>
+            <div class="summary-lbl">Regiona</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-icon">⏳</div>
             <div class="summary-val">{{ platformStats.pending | number }}</div>
             <div class="summary-lbl">Na čekanju</div>
           </div>
+          <div class="summary-item">
+            <div class="summary-icon">⭐</div>
+            <div class="summary-val">{{ platformStats.pendingReviews | number }}</div>
+            <div class="summary-lbl">Recenzije čekaju</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-icon">🔔</div>
+            <div class="summary-val">{{ platformStats.unreadNotifications | number }}</div>
+            <div class="summary-lbl">Obaveštenja</div>
+          </div>
         </div>
+        }
       </div>
       }
 

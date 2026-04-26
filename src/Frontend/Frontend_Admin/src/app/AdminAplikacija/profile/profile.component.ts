@@ -51,7 +51,16 @@ export class ProfileComponent implements OnInit {
   userPermissions: UserPermission[] = [];
   permsLoading = false;
 
-  platformStats = { admins: 0, posts: 0, routes: 0, pending: 0 };
+  platformStats = {
+    admins: 0,
+    posts: 0,
+    routes: 0,
+    pending: 0,
+    tourists: 0,
+    regions: 0,
+    pendingReviews: 0,
+    unreadNotifications: 0,
+  };
   statsLoading = false;
 
   constructor(
@@ -89,6 +98,10 @@ export class ProfileComponent implements OnInit {
             posts: res.data.totalLocations ?? res.data.totalPosts,
             routes: res.data.totalRoutes,
             pending: res.data.pendingRegistrations,
+            tourists: res.data.totalTourists,
+            regions: res.data.totalRegions,
+            pendingReviews: res.data.pendingReviews,
+            unreadNotifications: res.data.unreadNotifications,
           };
           this.statsLoading = false;
         },

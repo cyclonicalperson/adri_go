@@ -1,8 +1,10 @@
 <div class="page">
-
   <div class="header">
-    <h2 class="title">{{ isEdit ? 'Izmeni rutu' : 'Nova ruta' }}</h2>
-    <button class="btn-back" (click)="cancel()">← Nazad</button>
+    <div>
+      <h2 class="title">{{ isEdit ? 'Izmeni rutu' : 'Nova ruta' }}</h2>
+      <div class="subtitle">Forma je uskladjena sa kolonama iz route tabele i waypoint podacima.</div>
+    </div>
+    <button class="btn-back" type="button" (click)="cancel()">&larr; Nazad</button>
   </div>
 
   @if (error) {
@@ -10,78 +12,95 @@
   }
 
   <form class="layout" [formGroup]="form" (ngSubmit)="submit()">
-
     <div class="left-col">
-
       <div class="card">
-        <h3 class="card-title">Osnovni podaci</h3>
+        <div class="card-title-row">
+          <h3 class="card-title">Osnovni podaci</h3>
+          <span class="pill">{{ selectedStatusOption.label }}</span>
+        </div>
 
         <div class="field">
-          <label class="label">Naziv *</label>
-          <input class="input" [class.invalid]="f('name').invalid && f('name').touched"
-                 formControlName="name" placeholder="npr. Staza do Crnog jezera" />
+          <label class="label">Naziv rute *</label>
+          <input class="input"
+                 [class.invalid]="f('name').invalid && f('name').touched"
+                 formControlName="name"
+                 placeholder="npr. Staza do Crnog jezera" />
         </div>
 
         <div class="row-2">
           <div class="field">
-            <label class="label">Region *</label>
+            <label class="label">Destinacija / region *</label>
             <select class="input"
                     [class.invalid]="f('regionId').invalid && f('regionId').touched"
                     formControlName="regionId">
-              <option [ngValue]="null">— Izaberite —</option>
+              <option [ngValue]="null">Izaberite destinaciju</option>
               @for (r of destinations; track r.regionId) {
               <option [value]="r.regionId">{{ r.name }}</option>
               }
             </select>
           </div>
+
           <div class="field">
-            <label class="label">Tip rute *</label>
-            <select class="input" formControlName="routeType">
-              @for (opt of typeOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
+            <label class="label">Status u bazi *</label>
+            <select class="input" formControlName="status">
+              @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
               }
             </select>
+            <div class="field-help">{{ selectedStatusOption.hint }}</div>
           </div>
         </div>
 
         <div class="row-3">
           <div class="field">
-            <label class="label">Težina *</label>
+            <label class="label">Tezina *</label>
             <select class="input" formControlName="difficulty">
               @for (opt of difficultyOptions; track opt.value) {
               <option [value]="opt.value">{{ opt.label }}</option>
               }
             </select>
           </div>
+
           <div class="field">
             <label class="label">Distanca (km) *</label>
-            <input class="input" type="number" step="0.1" min="0.1"
+            <input class="input"
+                   type="number"
+                   step="0.1"
+                   min="0.1"
+                   readonly
                    [class.invalid]="f('distanceKm').invalid && f('distanceKm').touched"
-                   formControlName="distanceKm" placeholder="npr. 12.5" />
+                   formControlName="distanceKm"
+                   placeholder="npr. 12.5" />
+            <div class="field-help">Distanca se automatski racuna na osnovu izabranih pinova.</div>
           </div>
+
           <div class="field">
             <label class="label">Trajanje (min) *</label>
-            <input class="input" type="number" min="1"
+            <input class="input"
+                   type="number"
+                   min="1"
                    [class.invalid]="f('durationMin').invalid && f('durationMin').touched"
-                   formControlName="durationMin" placeholder="npr. 180" />
+                   formControlName="durationMin"
+                   placeholder="npr. 180" />
           </div>
         </div>
 
         <div class="row-2">
           <div class="field">
             <label class="label">Uspon (m)</label>
-            <input class="input" type="number" min="0"
-                   formControlName="elevationGainM" placeholder="npr. 450" />
+            <input class="input"
+                   type="number"
+                   min="0"
+                   formControlName="elevationGainM"
+                   placeholder="npr. 450" />
           </div>
-          <div class="field toggle-field">
-            <label class="label">Status</label>
-            <label class="toggle">
-              <input type="checkbox" formControlName="isActive" />
-              <span class="toggle-track"></span>
-              <span class="toggle-label">
-                {{ f('isActive').value ? 'Aktivna' : 'Neaktivna' }}
-              </span>
-            </label>
+
+          <div class="field">
+            <label class="label">Waypoint-i</label>
+            <div class="inline-stat">
+              <span class="inline-stat-value">{{ waypoints.length }}</span>
+              <span class="inline-stat-label">upisanih tacaka na ruti</span>
+            </div>
           </div>
         </div>
 
@@ -90,32 +109,49 @@
           <textarea class="input textarea"
                     [class.invalid]="f('description').invalid && f('description').touched"
                     formControlName="description"
-                    placeholder="Opis rute, preporuke, napomene..."
-                    rows="4"></textarea>
+                    placeholder="Opis rute, preporuke, napomene i korisni detalji..."
+                    rows="5"></textarea>
         </div>
       </div>
-
     </div>
 
     <div class="right-col">
-
       <div class="card">
-        <h3 class="card-title">Tačke rute</h3>
+        <h3 class="card-title">Tacke rute</h3>
         <app-waypoint-editor [waypoints]="waypoints"
                              [centerLat]="centerLat"
                              [centerLng]="centerLng"
-                             (waypointsChange)="waypoints = $event" />
+                             (waypointsChange)="onWaypointsChange($event)" />
+      </div>
+
+      <div class="card summary-card">
+        <h3 class="card-title">Pregled unosa</h3>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span class="summary-label">Status</span>
+            <strong>{{ selectedStatusOption.label }}</strong>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Tezina</span>
+            <strong>{{ selectedDifficultyLabel }}</strong>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Distanca</span>
+            <strong>{{ f('distanceKm').value ? (f('distanceKm').value + ' km') : '-' }}</strong>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Trajanje</span>
+            <strong>{{ f('durationMin').value || '-' }}</strong>
+          </div>
+        </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
+        <button type="button" class="btn-cancel" (click)="cancel()">Otkazi</button>
         <button type="submit" class="btn-save" [disabled]="saving">
-          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj rutu') }}
+          {{ saving ? 'Cuvanje...' : (isEdit ? 'Sacuvaj izmene' : 'Kreiraj rutu') }}
         </button>
       </div>
-
     </div>
-
   </form>
-
 </div>

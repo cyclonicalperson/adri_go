@@ -5,69 +5,53 @@
       <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
     </button>
     <h1>Filters</h1>
-    <button class="clear-btn" (click)="clearAll()">
-      Clear All
-    </button>
+    <button class="clear-btn" (click)="clearAll()">Clear All</button>
   </div>
 
   <div class="scroll-content">
 
-    <section class="search-section">
-      <div class="search-input-wrapper">
-        <span class="search-icon">🔍</span>
-        <input type="text" 
-               placeholder="Search styles (e.g. Vegan, Sandy...)" 
-               [(ngModel)]="searchQuery" 
-               (input)="onSearchChange()">
-      </div>
-      
-      <div class="recommendations-box" *ngIf="recommendations.length > 0">
-        <div class="rec-item" *ngFor="let rec of recommendations" (click)="selectRecommendation(rec)">
-          {{ rec }}
-        </div>
-      </div>
-    </section>
-
+    <!-- CATEGORIES -->
     <section>
       <div class="section-header">
         <h2>Categories</h2>
+        <span class="section-hint">Select to show only these on the map</span>
       </div>
-      
-      <div class="category-group" *ngFor="let cat of categories">
-        
-        <button class="chip main-chip" 
-                [class.active]="cat.selected" 
+      <div class="category-chips">
+        <button class="chip main-chip"
+                *ngFor="let cat of categories"
+                [class.active]="cat.selected"
                 (click)="toggleCategory(cat)">
           <span class="chip-icon">{{ cat.icon }}</span> {{ cat.label }}
         </button>
-
-        <div class="sub-chips-grid" *ngIf="cat.selected">
-          <button *ngFor="let sub of subcategoriesMap[cat.id]" 
-                  class="chip sub-chip"
-                  [class.active]="selectedSubcategories.has(cat.id + '-' + sub.id)"
-                  (click)="toggleSubcategory(cat.id, sub.id)">
-            {{ sub.label }}
-          </button>
-        </div>
       </div>
     </section>
 
+    <!-- DISTANCE -->
     <section>
       <div class="section-header">
-        <h2>Distance</h2>
+        <h2>Distance from you</h2>
       </div>
       <div class="slider-box">
         <div class="slider-labels">
           <span>Radius</span>
-          <span class="highlight">{{ radius }} km</span>
+          <span class="highlight">{{ radius === 0 ? '∞ Unlimited' : radius + ' km' }}</span>
         </div>
-        <input type="range" class="custom-slider" min="1" max="50" [(ngModel)]="radius" step="1">
+        <input type="range" class="custom-slider"
+               min="0" [max]="radiusSteps.length - 1"
+               [(ngModel)]="radiusIndex" step="1">
+        <div class="range-markers">
+          <span>0 (Unlimited)</span>
+          <span>10 km</span>
+          <span>50 km</span>
+          <span>200 km</span>
+        </div>
       </div>
     </section>
 
+    <!-- RATING -->
     <section>
       <div class="section-header">
-        <h2>Minimal rating</h2>
+        <h2>Minimum Rating</h2>
       </div>
       <div class="rating-grid">
         <button *ngFor="let r of [1,2,3,4,5]" class="rating-card"
@@ -78,6 +62,7 @@
       </div>
     </section>
 
+    <!-- OPEN NOW -->
     <section>
       <div class="section-header">
         <h2>Availability</h2>
@@ -85,7 +70,7 @@
       <div class="toggle-card">
         <div class="toggle-text">
           <h3>Open Now</h3>
-          <p>Show only objects open now</p>
+          <p>Show only places open right now</p>
         </div>
         <label class="switch">
           <input type="checkbox" [(ngModel)]="openNow">
@@ -94,9 +79,10 @@
       </div>
     </section>
 
+    <!-- EVENTS PERIOD -->
     <section>
       <div class="section-header">
-        <h2>Period for events</h2>
+        <h2>Period (for Events)</h2>
       </div>
       <div class="date-picker-row">
         <div class="date-input">

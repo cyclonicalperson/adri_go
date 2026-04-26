@@ -1,0 +1,136 @@
+@if (loading) {
+<div class="state-msg">Ucitavanje...</div>
+} @else if (!routeData) {
+<div class="state-msg">Ruta nije pronadjena.</div>
+} @else {
+<div class="page">
+  <div class="header">
+    <button class="btn-back" (click)="goBack()">&larr; Nazad</button>
+    <div class="header-actions">
+      @if (routeData.status === 'draft') {
+      <button class="btn-approve" (click)="confirmApprove()">Odobri</button>
+      <button class="btn-reject" (click)="confirmReject()">Odbij</button>
+      }
+      <button class="btn-edit" (click)="goEdit()">Izmeni</button>
+      <button class="btn-delete" (click)="confirmDelete()">Obrisi</button>
+    </div>
+  </div>
+
+  <div class="top-grid">
+    <div class="card info-card">
+      <div class="info-header">
+        <div>
+          <h2 class="route-name">{{ routeData.name }}</h2>
+          <div class="badge-row">
+            <app-badge [variant]="difficultyBadge">{{ difficultyLabel }}</app-badge>
+            <app-badge [variant]="statusBadge">{{ statusLabel }}</app-badge>
+          </div>
+          <div class="status-note">{{ statusDescription }}</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Destinacija</span>
+          <strong>{{ routeData.destination?.name ?? '-' }}</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Distanca</span>
+          <strong>{{ routeData.distanceKm | number:'1.0-1' }} km</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Trajanje</span>
+          <strong>{{ formatDuration(routeData.durationMin) }}</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Uspon</span>
+          <strong>{{ routeData.elevationGainM ? (routeData.elevationGainM + ' m') : '-' }}</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Pregledi</span>
+          <strong>{{ routeData.viewCount ?? 0 }}</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Sacuvano</span>
+          <strong>{{ routeData.saveCount ?? 0 }}</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Status</span>
+          <strong>{{ statusLabel }}</strong>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Waypoint-i</span>
+          <strong>{{ routeData.waypoints?.length ?? 0 }}</strong>
+        </div>
+      </div>
+
+      <p class="description">{{ routeData.description || 'Ruta nema dodatni opis.' }}</p>
+
+      @if (routeData.waypoints?.length) {
+      <div class="waypoints">
+        <h3 class="section-title">Waypoint-i</h3>
+        <div class="waypoint-list">
+          @for (waypoint of routeData.waypoints; track waypoint.waypointId; let index = $index) {
+          <div class="waypoint-item">
+            <span class="waypoint-index">{{ index + 1 }}</span>
+            <div>
+              <div class="waypoint-label">
+                {{ index === 0 ? 'Pocetak' : (index === routeData.waypoints.length - 1 ? 'Kraj' : 'Tacka ' + (index + 1)) }}
+              </div>
+              <div class="waypoint-coords">
+                {{ waypoint.latitude | number:'1.4-4' }}, {{ waypoint.longitude | number:'1.4-4' }}
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    <div class="card">
+      <app-map [markers]="markers"
+               [paths]="paths"
+               [centerLat]="centerLat"
+               [centerLng]="centerLng"
+               [zoom]="11"
+               height="360px" />
+    </div>
+  </div>
+
+  @if (reviews.length > 0) {
+  <div class="reviews-section">
+    <h3 class="section-title">Recenzije</h3>
+    <div class="reviews-list">
+      @for (review of reviews; track review.reviewId) {
+      <app-review-card [review]="review" [showStatus]="true" />
+      }
+    </div>
+  </div>
+  }
+</div>
+}
+
+<app-confirm-dialog [visible]="showDeleteDialog"
+                    title="Obrisi rutu"
+                    [message]="'Da li ste sigurni da zelite da obrisete rutu &quot;' + (routeData?.name ?? '') + '&quot;?'"
+                    confirmLabel="Obrisi"
+                    [danger]="true"
+                    (confirmed)="doDelete()"
+                    (cancelled)="cancelDelete()" />
+
+<app-confirm-dialog [visible]="showApproveDialog"
+                    title="Odobri rutu"
+                    [message]="'Odobrite rutu &quot;' + (routeData?.name ?? '') + '&quot;? Bice vidljiva turistima.'"
+                    confirmLabel="Odobri"
+                    [danger]="false"
+                    (confirmed)="doApprove()"
+                    (cancelled)="cancelApprove()" />
+
+<app-confirm-dialog [visible]="showRejectDialog"
+                    title="Odbij rutu"
+                    [message]="'Odbijte rutu &quot;' + (routeData?.name ?? '') + '&quot;? Bice arhivirana.'"
+                    confirmLabel="Odbij"
+                    [danger]="true"
+                    (confirmed)="doReject()"
+                    (cancelled)="cancelReject()" />
