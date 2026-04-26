@@ -83,4 +83,5 @@ export class AccountComponent implements OnInit {
   goToPersonalInfo() { this.router.navigate(['/account/personal-info']); }
   goToHelp()         { this.router.navigate(['/account/help']); }
   goToPrivacy()      { this.router.navigate(['/account/privacy']); }
+  goToSettings()     { this.router.navigate(['/settings']); }
 }

@@ -207,6 +207,8 @@
 
 .personal-bg { background: var(--green-50); }
 .personal-bg svg { fill: var(--green-600); }
+.settings-bg { background: #f0f9ff; }
+.settings-bg svg { fill: #0284c7; }
 .help-bg { background: var(--gray-100); }
 .help-bg svg { fill: var(--gray-500); }
 .privacy-bg { background: #fef2f2; }
