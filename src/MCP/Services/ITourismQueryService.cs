@@ -4,22 +4,33 @@ namespace Mcp.Services;
 
 internal interface ITourismQueryService
 {
-    // Postojeće
-    Task<IReadOnlyList<RegionSummary>> SearchRegionsAsync(SearchRegionsRequest request, CancellationToken cancellationToken);
-    Task<IReadOnlyList<PostSummary>> SearchPostsAsync(SearchPostsRequest request, CancellationToken cancellationToken);
-    Task<IReadOnlyList<RouteSummary>> SearchRoutesAsync(SearchRoutesRequest request, CancellationToken cancellationToken);
+    // ── Regije ────────────────────────────────────────────────────────────────
+    Task<PagedResult<RegionSummary>> SearchRegionsAsync(SearchRegionsRequest request, CancellationToken cancellationToken);
+    Task<RegionFullSummary?> GetRegionSummaryAsync(GetRegionSummaryRequest request, CancellationToken cancellationToken);
 
-    // Recenzije
-    Task<IReadOnlyList<ReviewSummary>> GetReviewsAsync(GetReviewsRequest request, CancellationToken cancellationToken);
+    // ── Objekti ───────────────────────────────────────────────────────────────
+    Task<PagedResult<PostSummary>> SearchPostsAsync(SearchPostsRequest request, CancellationToken cancellationToken);
+    Task<PostDetail?> GetPostDetailAsync(PostDetailRequest request, CancellationToken cancellationToken);
 
-    // Tagovi
+    // ── Rute ──────────────────────────────────────────────────────────────────
+    Task<PagedResult<RouteSummary>> SearchRoutesAsync(SearchRoutesRequest request, CancellationToken cancellationToken);
+    Task<RouteDetail?> GetRouteDetailAsync(RouteDetailRequest request, CancellationToken cancellationToken);
+
+    // ── Recenzije ─────────────────────────────────────────────────────────────
+    Task<PagedResult<ReviewSummary>> GetReviewsAsync(GetReviewsRequest request, CancellationToken cancellationToken);
+
+    // ── Tagovi ────────────────────────────────────────────────────────────────
     Task<IReadOnlyList<TagSummary>> SearchTagsAsync(SearchTagsRequest request, CancellationToken cancellationToken);
 
-    // Analitika
+    // ── Analitika ─────────────────────────────────────────────────────────────
     Task<IReadOnlyList<PostAnalyticsSummary>> GetPostAnalyticsAsync(GetPostAnalyticsRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyList<PostAnalyticsSummary>> GetTopContentAsync(GetTopContentRequest request, CancellationToken cancellationToken);
 
-    // Turisti
+    // ── Turisti ───────────────────────────────────────────────────────────────
     Task<TouristStats> GetTouristStatsAsync(GetTouristStatsRequest request, CancellationToken cancellationToken);
-    Task<IReadOnlyList<TouristSummary>> SearchTouristsAsync(SearchTouristsRequest request, CancellationToken cancellationToken);
+    Task<PagedResult<TouristSummary>> SearchTouristsAsync(SearchTouristsRequest request, CancellationToken cancellationToken);
+
+    // ── Proximity / Preporuke ─────────────────────────────────────────────────
+    Task<IReadOnlyList<PostSummary>> GetNearbyAsync(GetNearbyRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<PostSummary>> GetSimilarPostsAsync(GetSimilarPostsRequest request, CancellationToken cancellationToken);
 }

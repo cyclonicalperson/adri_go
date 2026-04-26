@@ -1,11 +1,21 @@
 namespace Mcp.Dtos;
 
-// ── Postojeći ────────────────────────────────────────────────────────────────
+// ── Paginacija ────────────────────────────────────────────────────────────────
+
+internal sealed record PagedResult<T>(
+    IReadOnlyList<T> Items,
+    int TotalCount,
+    bool HasMore);
+
+// ── Regije ────────────────────────────────────────────────────────────────────
 
 internal sealed record SearchRegionsRequest(
     string? Query = null,
     string? Type = null,
-    int Limit = 10);
+    string? Country = null,
+    bool? HasCoordinates = null,
+    int Limit = 10,
+    int Offset = 0);
 
 internal sealed record RegionSummary(
     uint Id,
@@ -16,14 +26,38 @@ internal sealed record RegionSummary(
     decimal? Lat,
     decimal? Lng);
 
+internal sealed record GetRegionSummaryRequest(uint RegionId);
+
+internal sealed record RegionFullSummary(
+    uint Id,
+    string Name,
+    string Type,
+    string Country,
+    string? Description,
+    decimal? Lat,
+    decimal? Lng,
+    int TotalPosts,
+    int TotalRoutes,
+    IReadOnlyDictionary<string, int> PostsByType,
+    double? AvgRating);
+
+// ── Objekti / Lokacije ────────────────────────────────────────────────────────
+
 internal sealed record SearchPostsRequest(
     uint? RegionId = null,
     string? Query = null,
     IReadOnlyList<string>? PostTypes = null,
     double? MinRating = null,
+    double? MaxRating = null,
     double? UserLatitude = null,
     double? UserLongitude = null,
-    int Limit = 10);
+    double? RadiusKm = null,
+    IReadOnlyList<string>? Tags = null,
+    bool? HasExternalUrl = null,
+    bool? HasOpeningHours = null,
+    string? SortBy = null,
+    int Limit = 10,
+    int Offset = 0);
 
 internal sealed record PostSummary(
     uint Id,
@@ -33,21 +67,52 @@ internal sealed record PostSummary(
     string? Description,
     string? Address,
     string? ExternalUrl,
+    string? ExternalUrlLabel,
     string? OpeningHours,
     double? Rating,
+    uint? ReviewCount,
     decimal? Lat,
     decimal? Lng,
     double? DistanceKm,
     IReadOnlyList<string> Tags);
+
+internal sealed record PostDetailRequest(uint PostId);
+
+internal sealed record PostDetail(
+    uint Id,
+    uint? RegionId,
+    string? RegionName,
+    string Title,
+    string PostType,
+    string? Description,
+    string? Address,
+    string? ExternalUrl,
+    string? ExternalUrlLabel,
+    string? OpeningHours,
+    string? Details,
+    double? Rating,
+    uint ReviewCount,
+    uint ViewCount,
+    uint LikeCount,
+    decimal? Lat,
+    decimal? Lng,
+    IReadOnlyList<string> Tags);
+
+// ── Rute ──────────────────────────────────────────────────────────────────────
 
 internal sealed record SearchRoutesRequest(
     uint? RegionId = null,
     string? Query = null,
     IReadOnlyList<string>? Difficulties = null,
     decimal? MaxDistanceKm = null,
+    decimal? MinDistanceKm = null,
     int? MaxDurationMinutes = null,
+    int? MinDurationMinutes = null,
+    uint? MaxElevationGain = null,
     double? MinRating = null,
-    int Limit = 10);
+    string? SortBy = null,
+    int Limit = 10,
+    int Offset = 0);
 
 internal sealed record RouteSummary(
     uint Id,
@@ -59,12 +124,33 @@ internal sealed record RouteSummary(
     uint? ElevationGain,
     string? Description);
 
+internal sealed record RouteDetailRequest(uint RouteId);
+
+internal sealed record RouteDetail(
+    uint Id,
+    uint? RegionId,
+    string? RegionName,
+    string Name,
+    string Difficulty,
+    decimal? DistanceKm,
+    uint? DurationMinutes,
+    uint? ElevationGain,
+    string? Description,
+    string? Waypoints,
+    string? GpxFilePath,
+    uint ViewCount,
+    uint SaveCount);
+
 // ── Recenzije ─────────────────────────────────────────────────────────────────
 
 internal sealed record GetReviewsRequest(
     uint PostId,
     bool? OnlyApproved = true,
-    int Limit = 20);
+    int? MinRating = null,
+    int? MaxRating = null,
+    string? SortBy = null,
+    int Limit = 20,
+    int Offset = 0);
 
 internal sealed record ReviewSummary(
     uint Id,
@@ -75,12 +161,13 @@ internal sealed record ReviewSummary(
     bool IsApproved,
     DateTime CreatedAt);
 
-// ── Tagovi ────────────────────────────────────────────────────────────────────
+// ── Tagovi / Aktivnosti ───────────────────────────────────────────────────────
 
 internal sealed record SearchTagsRequest(
     string? Query = null,
     string? Category = null,
     string? Difficulty = null,
+    bool? HasCapacity = null,
     int Limit = 50);
 
 internal sealed record TagSummary(
@@ -90,6 +177,7 @@ internal sealed record TagSummary(
     string? Description,
     string? Difficulty,
     string? Duration,
+    short? MaxCapacity,
     int PostCount);
 
 // ── Analitika ─────────────────────────────────────────────────────────────────
@@ -111,7 +199,7 @@ internal sealed record PostAnalyticsSummary(
     int ReviewCount);
 
 internal sealed record GetTopContentRequest(
-    string SortBy,        // views | likes | shares | rating
+    string SortBy,        // views | likes | shares | rating | review_count
     string? PostType = null,
     uint? RegionId = null,
     int Limit = 10);
@@ -131,7 +219,9 @@ internal sealed record SearchTouristsRequest(
     string? Query = null,
     bool? IsActive = null,
     bool? IsEmailVerified = null,
-    int Limit = 20);
+    string? Language = null,
+    int Limit = 20,
+    int Offset = 0);
 
 internal sealed record TouristSummary(
     uint Id,
@@ -141,3 +231,17 @@ internal sealed record TouristSummary(
     bool IsActive,
     bool IsEmailVerified,
     DateTime CreatedAt);
+
+// ── Proximity / Preporuke ─────────────────────────────────────────────────────
+
+internal sealed record GetNearbyRequest(
+    double Latitude,
+    double Longitude,
+    double RadiusKm = 5.0,
+    IReadOnlyList<string>? PostTypes = null,
+    double? MinRating = null,
+    int Limit = 10);
+
+internal sealed record GetSimilarPostsRequest(
+    uint PostId,
+    int Limit = 5);

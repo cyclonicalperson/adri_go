@@ -12,8 +12,6 @@ internal sealed class McpDbContext : DbContext
     public DbSet<RouteEntity> Routes => Set<RouteEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
     public DbSet<PostTagEntity> PostTags => Set<PostTagEntity>();
-
-    // Novo
     public DbSet<ReviewEntity> Reviews => Set<ReviewEntity>();
     public DbSet<TouristEntity> Tourists => Set<TouristEntity>();
     public DbSet<PostViewEntity> PostViews => Set<PostViewEntity>();
@@ -71,7 +69,11 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.DurationMin).HasColumnName("duration_min");
             e.Property(x => x.ElevationGain).HasColumnName("elevation_gain");
             e.Property(x => x.Description).HasColumnName("description");
+            e.Property(x => x.Waypoints).HasColumnName("waypoints");       // NOVO
+            e.Property(x => x.GpxFilePath).HasColumnName("gpx_file_path"); // NOVO
             e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.ViewCount).HasColumnName("view_count");      // NOVO
+            e.Property(x => x.SaveCount).HasColumnName("save_count");      // NOVO
         });
 
         modelBuilder.Entity<TagEntity>(e =>
