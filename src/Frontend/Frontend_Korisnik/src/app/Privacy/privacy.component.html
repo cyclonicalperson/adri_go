@@ -1,5 +1,22 @@
 <div class="subpage-container">
 
+  <!-- Delete Account Confirmation Modal -->
+  <div *ngIf="showDeleteModal" class="modal-overlay" (click)="cancelDelete()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+      </div>
+      <h2 class="modal-title">Delete Account?</h2>
+      <p class="modal-body">
+        This will permanently delete your account and all associated data — saved locations, reviews, and history. <strong>This cannot be undone.</strong>
+      </p>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" (click)="cancelDelete()">Keep Account</button>
+        <button class="modal-delete-btn" (click)="confirmDelete()">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
   <div class="header-bar">
     <button class="back-btn" (click)="goBack()">
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>

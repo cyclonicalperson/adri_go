@@ -36,11 +36,13 @@
           <span>Radius</span>
           <span class="highlight">{{ radius === 0 ? '∞ Unlimited' : radius + ' km' }}</span>
         </div>
-        <input type="range" class="custom-slider" min="0" max="200" [(ngModel)]="radius" step="5">
+        <input type="range" class="custom-slider"
+               min="0" [max]="radiusSteps.length - 1"
+               [(ngModel)]="radiusIndex" step="1">
         <div class="range-markers">
           <span>0 (Unlimited)</span>
+          <span>10 km</span>
           <span>50 km</span>
-          <span>100 km</span>
           <span>200 km</span>
         </div>
       </div>

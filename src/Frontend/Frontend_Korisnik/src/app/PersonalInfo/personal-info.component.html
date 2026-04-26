@@ -23,6 +23,11 @@
       Changes saved successfully!
     </div>
 
+    <div *ngIf="saveError" style="background:#fef2f2;color:#dc2626;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#dc2626;flex-shrink:0;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      {{ saveError }}
+    </div>
+
     <div class="avatar-section">
       <div class="avatar-wrapper">
         <img *ngIf="userData?.profilePic" [src]="userData!.profilePic" class="avatar-img" alt="Profile">
@@ -151,9 +156,12 @@
   </div>
 
   <div class="footer" *ngIf="editMode">
-    <button class="save-btn" (click)="saveChanges()">
-      <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-      Save Changes
+    <button class="save-btn" (click)="saveChanges()" [disabled]="isSaving">
+      <ng-container *ngIf="!isSaving">
+        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        Save Changes
+      </ng-container>
+      <ng-container *ngIf="isSaving">Saving...</ng-container>
     </button>
   </div>
 

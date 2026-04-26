@@ -32,6 +32,13 @@ namespace TouristGuide.Api.Models
         [Column("interests")]
         public string? Interests { get; set; }
 
+        [Column("bio")]
+        public string? Bio { get; set; }
+
+        [Column("location")]
+        [MaxLength(200)]
+        public string? Location { get; set; }
+
         [Column("home_lat")]
         public decimal? HomeLat { get; set; }
 

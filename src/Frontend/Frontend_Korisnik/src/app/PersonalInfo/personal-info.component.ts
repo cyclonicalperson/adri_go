@@ -14,9 +14,11 @@ import { AuthService } from '../services/auth.service';
 export class PersonalInfoComponent implements OnInit {
 
   userData: UserProfile | null = null;
-  loading = true;
-  editMode = false;
+  loading    = true;
+  isSaving   = false;
+  editMode   = false;
   saveSuccess = false;
+  saveError   = '';
 
   form = {
     fullName: '',
@@ -25,14 +27,13 @@ export class PersonalInfoComponent implements OnInit {
     location: ''
   };
 
-  // Available interests (same set as registration)
   allInterests = [
-    { id: 'nature',      label: 'Nature',              icon: '🌲' },
-    { id: 'food',        label: 'Food',                icon: '🍴' },
-    { id: 'beaches',     label: 'Beaches',             icon: '🏖️' },
-    { id: 'history',     label: 'History & Culture',   icon: '🏛️' },
-    { id: 'nightlife',   label: 'Night Life',          icon: '🎶' },
-    { id: 'photography', label: 'Photography',         icon: '📷' },
+    { id: 'nature',      label: 'Nature',            icon: '🌲' },
+    { id: 'food',        label: 'Food',              icon: '🍴' },
+    { id: 'beaches',     label: 'Beaches',           icon: '🏖️' },
+    { id: 'history',     label: 'History & Culture', icon: '🏛️' },
+    { id: 'nightlife',   label: 'Night Life',        icon: '🎶' },
+    { id: 'photography', label: 'Photography',       icon: '📷' },
   ];
 
   selectedInterests: string[] = [];
@@ -52,7 +53,7 @@ export class PersonalInfoComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: () => {
-        // Fall back to session data so the page is never blank
+        // Fall back to session data when the profile API is unreachable
         const tourist = this.authService.currentTourist;
         if (tourist) {
           this.userData = {
@@ -60,7 +61,7 @@ export class PersonalInfoComponent implements OnInit {
             emailOrPhone: tourist.email,
             language:     'en',
             interests:    [],
-            stats:        { saved: 0, tickets: 0, upcoming: 0 }
+            stats:        { saved: 0, reviews: 0, upcoming: 0 }
           };
           this.populateForm(this.userData);
         }
@@ -71,11 +72,11 @@ export class PersonalInfoComponent implements OnInit {
   }
 
   private populateForm(data: UserProfile): void {
-    this.form.fullName       = data.fullName || '';
-    this.form.emailOrPhone   = data.emailOrPhone || '';
-    this.form.bio            = (data as any).bio || '';
-    this.form.location       = (data as any).location || '';
-    this.selectedInterests   = Array.isArray(data.interests) ? [...data.interests] : [];
+    this.form.fullName     = data.fullName     || '';
+    this.form.emailOrPhone = data.emailOrPhone || '';
+    this.form.bio          = data.bio          || '';
+    this.form.location     = data.location     || '';
+    this.selectedInterests = Array.isArray(data.interests) ? [...data.interests] : [];
   }
 
   isInterestSelected(id: string): boolean {
@@ -88,24 +89,51 @@ export class PersonalInfoComponent implements OnInit {
     else this.selectedInterests.push(id);
   }
 
-  goBack() { window.history.back(); }
+  goBack(): void { window.history.back(); }
 
-  toggleEdit() {
-    this.editMode = !this.editMode;
+  toggleEdit(): void {
+    if (this.editMode && this.userData) {
+      // Cancel — restore form to last saved state
+      this.populateForm(this.userData);
+    }
+    this.editMode   = !this.editMode;
     this.saveSuccess = false;
+    this.saveError   = '';
   }
 
-  saveChanges() {
-    // Update local display immediately; real API save can be wired later
-    if (this.userData) {
-      this.userData.fullName     = this.form.fullName;
-      this.userData.emailOrPhone = this.form.emailOrPhone;
-      this.userData.interests    = [...this.selectedInterests];
-    }
-    this.editMode    = false;
-    this.saveSuccess = true;
-    setTimeout(() => this.saveSuccess = false, 3000);
-    this.cdr.detectChanges();
+  saveChanges(): void {
+    if (this.isSaving) return;
+    this.isSaving  = true;
+    this.saveError = '';
+
+    const payload = {
+      name:      this.form.fullName.trim(),
+      bio:       this.form.bio.trim(),
+      location:  this.form.location.trim(),
+      interests: [...this.selectedInterests]
+    };
+
+    this.userService.updateProfile(payload).subscribe({
+      next: (updated) => {
+        // Sync local state with what the server confirmed
+        if (this.userData) {
+          this.userData.fullName   = updated.name ?? this.form.fullName;
+          this.userData.bio        = updated.bio;
+          this.userData.location   = updated.location;
+          this.userData.interests  = updated.interests ?? [...this.selectedInterests];
+        }
+        this.isSaving    = false;
+        this.editMode    = false;
+        this.saveSuccess = true;
+        setTimeout(() => (this.saveSuccess = false), 3000);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isSaving  = false;
+        this.saveError = err?.error?.message || 'Could not save changes. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   getInitials(): string {

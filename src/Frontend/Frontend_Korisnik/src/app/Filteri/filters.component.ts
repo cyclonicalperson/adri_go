@@ -26,7 +26,16 @@ export class FiltersComponent implements OnInit {
     { id: 'shop',            label: 'Shopping',      icon: '🛍️', selected: false },
   ];
 
-  radius: number = 0; // 0 = unlimited
+  // Non-linear radius steps: fine-grained at short distances
+  readonly radiusSteps = [0, 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100, 150, 200];
+  radiusIndex: number = 0; // index into radiusSteps
+
+  get radius(): number { return this.radiusSteps[this.radiusIndex]; }
+  set radius(val: number) {
+    const idx = this.radiusSteps.indexOf(val);
+    this.radiusIndex = idx >= 0 ? idx : 0;
+  }
+
   minRating: number = 0;
   openNow: boolean = false;
   fromDate: string = '';
@@ -42,7 +51,11 @@ export class FiltersComponent implements OnInit {
     const state = this.filterState.get();
     this.minRating = state.minRating;
     this.openNow   = state.openNow;
-    this.radius    = state.radius;
+    // Find the nearest step to the stored radius value
+    const storedRadius = state.radius ?? 0;
+    const nearest = this.radiusSteps.reduce((prev, cur) =>
+      Math.abs(cur - storedRadius) < Math.abs(prev - storedRadius) ? cur : prev, 0);
+    this.radiusIndex = this.radiusSteps.indexOf(nearest);
     if (state.activeCategories.length > 0) {
       this.categories.forEach(c => {
         c.selected = state.activeCategories.includes(c.id);
@@ -60,7 +73,7 @@ export class FiltersComponent implements OnInit {
 
   clearAll() {
     this.categories.forEach(c => c.selected = false);
-    this.radius    = 0;
+    this.radiusIndex = 0;
     this.minRating = 0;
     this.openNow   = false;
     this.fromDate  = '';

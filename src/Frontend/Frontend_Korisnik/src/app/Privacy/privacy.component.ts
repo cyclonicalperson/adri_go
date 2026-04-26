@@ -16,6 +16,7 @@ export class PrivacyComponent {
   activeTab: 'privacy' | 'terms' = 'privacy';
   isDeleting = false;
   deleteError = '';
+  showDeleteModal = false;
 
   private readonly apiUrl = 'http://localhost:5125/api';
 
@@ -29,17 +30,25 @@ export class PrivacyComponent {
   goBack() { window.history.back(); }
 
   deleteAccount() {
-    const touristId = this.authService.touristId;
-    if (!touristId) {
+    if (!this.authService.touristId) {
       this.deleteError = 'Not logged in.';
       return;
     }
+    // Open styled modal instead of window.confirm
+    this.showDeleteModal = true;
+    this.cdr.detectChanges();
+  }
 
-    const confirmed = window.confirm(
-      'Are you sure you want to permanently delete your account? This action cannot be undone.'
-    );
-    if (!confirmed) return;
+  cancelDelete() {
+    this.showDeleteModal = false;
+    this.cdr.detectChanges();
+  }
 
+  confirmDelete() {
+    const touristId = this.authService.touristId;
+    if (!touristId) return;
+
+    this.showDeleteModal = false;
     this.isDeleting  = true;
     this.deleteError = '';
     this.cdr.detectChanges();
@@ -48,7 +57,6 @@ export class PrivacyComponent {
     this.http.delete(`${this.apiUrl}/tourist-auth/account`).subscribe({
       next: () => this.finishDelete(),
       error: () => {
-        // Fallback to tourists/{id}
         this.http.delete(`${this.apiUrl}/tourists/${touristId}`).subscribe({
           next:  () => this.finishDelete(),
           error: (err) => {

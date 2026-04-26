@@ -321,6 +321,164 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { message = "Account permanently deleted." });
         }
 
+        // PUT /api/tourist-auth/profile
+        [Authorize(Roles = "tourist")]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateTouristProfileDto dto)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null)
+                return Unauthorized(new { message = "Not authenticated." });
+
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
+            if (tourist is null)
+                return NotFound(new { message = "Tourist not found." });
+
+            if (dto.Name is not null)
+                tourist.Name = dto.Name.Trim();
+
+            if (dto.Language is not null)
+                tourist.Language = dto.Language.Trim().ToLowerInvariant();
+
+            if (dto.Bio is not null)
+                tourist.Bio = dto.Bio.Trim();
+
+            if (dto.Location is not null)
+                tourist.Location = dto.Location.Trim();
+
+            if (dto.Interests is not null)
+                tourist.Interests = System.Text.Json.JsonSerializer.Serialize(dto.Interests);
+
+            tourist.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var savedCount  = await _db.SavedPosts.CountAsync(sp => sp.TouristId == touristId.Value);
+            var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == touristId.Value);
+
+            return Ok(MapToMeDto(tourist, savedCount, reviewCount));
+        }
+
+        // ─── CALENDAR (VisitPlanner) ──────────────────────────────────────────
+
+        // GET /api/tourist-auth/calendar
+        [Authorize(Roles = "tourist")]
+        [HttpGet("calendar")]
+        public async Task<IActionResult> GetCalendar()
+        {
+            var touristId = GetTouristId();
+            if (touristId is null)
+                return Unauthorized();
+
+            // Find (or create) the tourist's single "My Calendar" planner
+            var planner = await _db.VisitPlanners
+                .FirstOrDefaultAsync(p => p.TouristId == touristId.Value);
+
+            if (planner is null)
+                return Ok(new List<object>());
+
+            var items = await _db.PlannerItems
+                .Where(pi => pi.PlannerId == planner.Id && pi.PostId != null)
+                .Include(pi => pi.Post)
+                .OrderBy(pi => pi.DayNumber).ThenBy(pi => pi.OrderInDay)
+                .Select(pi => new
+                {
+                    id        = pi.Id,
+                    postId    = pi.PostId,
+                    title     = pi.Post != null ? pi.Post.Title : "(deleted)",
+                    postType  = pi.Post != null ? pi.Post.PostType : "",
+                    address   = pi.Post != null ? pi.Post.Address : "",
+                    date      = pi.Post != null && pi.Post.PublishedAt != null
+                                    ? pi.Post.PublishedAt.Value.ToString("MMMM d, yyyy")
+                                    : "",
+                    notes     = pi.Notes,
+                    scheduledTime = pi.ScheduledTime != null ? pi.ScheduledTime.Value.ToString("HH:mm") : "",
+                    imageUrl  = ExtractFirstImage(pi.Post != null ? pi.Post.Images : null)
+                })
+                .ToListAsync();
+
+            return Ok(items);
+        }
+
+        // POST /api/tourist-auth/calendar/{postId}
+        [Authorize(Roles = "tourist")]
+        [HttpPost("calendar/{postId:int}")]
+        public async Task<IActionResult> AddToCalendar(int postId)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null)
+                return Unauthorized();
+
+            var post = await _db.Posts.FindAsync((uint)postId);
+            if (post is null)
+                return NotFound(new { message = "Post not found." });
+
+            // Get or create the tourist's "My Calendar" planner
+            var planner = await _db.VisitPlanners
+                .FirstOrDefaultAsync(p => p.TouristId == touristId.Value);
+
+            if (planner is null)
+            {
+                planner = new VisitPlanner
+                {
+                    TouristId = touristId.Value,
+                    Title     = "My Calendar",
+                    IsPublic  = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _db.VisitPlanners.Add(planner);
+                await _db.SaveChangesAsync();
+            }
+
+            // Don't add duplicates
+            var alreadyAdded = await _db.PlannerItems
+                .AnyAsync(pi => pi.PlannerId == planner.Id && pi.PostId == (uint)postId);
+
+            if (alreadyAdded)
+                return Ok(new { message = "Already in calendar.", alreadyAdded = true });
+
+            var order = (byte)(await _db.PlannerItems.CountAsync(pi => pi.PlannerId == planner.Id) + 1);
+
+            _db.PlannerItems.Add(new PlannerItem
+            {
+                PlannerId    = planner.Id,
+                PostId       = (uint)postId,
+                DayNumber    = 1,
+                OrderInDay   = order,
+                Notes        = null,
+                ScheduledTime = null
+            });
+
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Added to calendar." });
+        }
+
+        // DELETE /api/tourist-auth/calendar/{postId}
+        [Authorize(Roles = "tourist")]
+        [HttpDelete("calendar/{postId:int}")]
+        public async Task<IActionResult> RemoveFromCalendar(int postId)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null)
+                return Unauthorized();
+
+            var planner = await _db.VisitPlanners
+                .FirstOrDefaultAsync(p => p.TouristId == touristId.Value);
+
+            if (planner is null)
+                return NotFound(new { message = "Calendar not found." });
+
+            var item = await _db.PlannerItems
+                .FirstOrDefaultAsync(pi => pi.PlannerId == planner.Id && pi.PostId == (uint)postId);
+
+            if (item is null)
+                return NotFound(new { message = "Item not in calendar." });
+
+            _db.PlannerItems.Remove(item);
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Removed from calendar." });
+        }
+
         // ─── POMOCNE METODE ───────────────────────────────────────────────────
 
         private async Task<TouristAuthResponseDto> BuildAuthResponseAsync(Tourist tourist)
@@ -344,18 +502,33 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
-        private static TouristMeDto MapToMeDto(Tourist tourist, int savedCount, int reviewCount) => new()
+        private static TouristMeDto MapToMeDto(Tourist tourist, int savedCount, int reviewCount)
         {
-            Id = tourist.Id,
-            Name = tourist.Name ?? string.Empty,
-            Email = tourist.Email ?? string.Empty,
-            Language = tourist.Language,
-            IsActive = tourist.IsActive,
-            IsEmailVerified = tourist.IsEmailVerified,
-            CreatedAt = tourist.CreatedAt,
-            SavedPostsCount = savedCount,
-            ReviewsCount = reviewCount
-        };
+            // Parse interests from stored JSON string
+            List<string> interests = new();
+            if (!string.IsNullOrWhiteSpace(tourist.Interests))
+            {
+                try { interests = System.Text.Json.JsonSerializer.Deserialize<List<string>>(tourist.Interests) ?? new(); }
+                catch { /* ignore malformed JSON */ }
+            }
+
+            return new TouristMeDto
+            {
+                Id             = tourist.Id,
+                Name           = tourist.Name ?? string.Empty,
+                Email          = tourist.Email ?? string.Empty,
+                Language       = tourist.Language,
+                Bio            = tourist.Bio,
+                Location       = tourist.Location,
+                ProfileImage   = tourist.ProfileImage,
+                Interests      = interests,
+                IsActive       = tourist.IsActive,
+                IsEmailVerified = tourist.IsEmailVerified,
+                CreatedAt      = tourist.CreatedAt,
+                SavedPostsCount = savedCount,
+                ReviewsCount   = reviewCount
+            };
+        }
 
         private uint? GetTouristId()
         {

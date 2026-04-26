@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { UserService, UserProfile } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-account',
@@ -33,28 +35,35 @@ export class AccountComponent implements OnInit {
 
   loadUserData() {
     this.loading = true;
-    this.userService.getUserProfile().subscribe({
-      next: (data) => {
-        this.userData = data;
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.warn('Profile API unavailable, using session data:', err);
-        // Fall back to auth session data so the page is never blank
+    forkJoin({
+      profile:  this.userService.getUserProfile().pipe(catchError(() => of(null))),
+      calendar: this.userService.getCalendar().pipe(catchError(() => of([])))
+    }).subscribe(({ profile, calendar }) => {
+      if (profile) {
+        // Inject real calendar count into stats
+        this.userData = {
+          ...profile,
+          stats: {
+            saved:    profile.stats?.saved    ?? 0,
+            reviews:  profile.stats?.reviews  ?? 0,
+            upcoming: (calendar as any[]).length
+          }
+        };
+      } else {
+        // Fall back to session token data
         const tourist = this.authService.currentTourist;
         if (tourist) {
           this.userData = {
-            fullName: tourist.name,
+            fullName:     tourist.name,
             emailOrPhone: tourist.email,
-            language: 'en',
-            interests: [],
-            stats: { saved: 0, tickets: 0, upcoming: 0 }
+            language:     'en',
+            interests:    [],
+            stats:        { saved: 0, reviews: 0, upcoming: (calendar as any[]).length }
           };
         }
-        this.loading = false;
-        this.cdr.detectChanges();
       }
+      this.loading = false;
+      this.cdr.detectChanges();
     });
   }
 

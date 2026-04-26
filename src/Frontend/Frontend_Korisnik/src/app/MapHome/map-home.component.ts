@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import * as L from 'leaflet';
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
@@ -27,6 +27,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showAuthPopup = false;
   filterExpanded = false;
+  routePolyline: L.Polyline | null = null;
+  routeDestTitle = '';
+  showRoutePanel = false;
 
   searchQuery = '';
   searchResults: any[] = [];
@@ -61,6 +64,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private router: Router,
+    private activatedRoute: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     public authService: AuthService,
     private locationService: LocationService,
@@ -74,6 +78,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.initMap();
     this.loadLocations();
+    // Handle directTo query param (from "Directions" button in location-details)
+    this.activatedRoute.queryParams.subscribe(params => {
+      if (params['directTo']) {
+        const parts = params['directTo'].split(',');
+        const destLat = parseFloat(parts[0]);
+        const destLng = parseFloat(parts[1]);
+        const title   = params['destTitle'] || '';
+        if (!isNaN(destLat) && !isNaN(destLng)) {
+          // Wait for map to be fully ready
+          setTimeout(() => this.drawRouteToDestination(destLat, destLng, title), 800);
+        }
+      }
+    });
   }
 
   private applyFilterState(): void {
@@ -190,8 +207,81 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       const [openStr, closeStr] = todayHours.split('-');
       const toMins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
       const nowMins = now.getHours() * 60 + now.getMinutes();
-      return nowMins >= toMins(openStr) && nowMins < toMins(closeStr);
+      const openMins  = toMins(openStr);
+      const closeMins = toMins(closeStr);
+      // Handle overnight hours (e.g. 22:00–06:00)
+      if (closeMins <= openMins) {
+        return nowMins >= openMins || nowMins < closeMins;
+      }
+      return nowMins >= openMins && nowMins < closeMins;
     } catch { return true; }
+  }
+
+  private drawRouteToDestination(destLat: number, destLng: number, title: string): void {
+    this.routeDestTitle = title;
+    this.showRoutePanel  = true;
+
+    // Place a destination marker
+    const destIcon = L.divIcon({
+      html: `<div style="width:32px;height:32px;background:#ef4444;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,0.3);border:2px solid white;"><div style="transform:rotate(45deg);color:white;font-size:14px;font-weight:900;">🏁</div></div>`,
+      className: '',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
+    });
+    L.marker([destLat, destLng], { icon: destIcon }).addTo(this.map!).bindPopup(title || 'Destination');
+
+    // Fly to destination immediately
+    this.map?.flyTo([destLat, destLng], 14, { animate: true, duration: 1 });
+
+    // Try to draw OSRM route from user position
+    if (this.userPosition) {
+      this.fetchAndDrawRoute(this.userPosition[0], this.userPosition[1], destLat, destLng);
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.userPosition = [pos.coords.latitude, pos.coords.longitude];
+          this.fetchAndDrawRoute(pos.coords.latitude, pos.coords.longitude, destLat, destLng);
+        },
+        () => {
+          // No geolocation — just show the destination
+          this.cdr.detectChanges();
+        },
+        { timeout: 6000 }
+      );
+    }
+    this.cdr.detectChanges();
+  }
+
+  private fetchAndDrawRoute(fromLat: number, fromLng: number, toLat: number, toLng: number): void {
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (data.routes?.[0]?.geometry?.coordinates) {
+          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
+          );
+          if (this.routePolyline) this.map?.removeLayer(this.routePolyline);
+          this.routePolyline = L.polyline(coords, {
+            color: '#22c55e', weight: 5, opacity: 0.85
+          }).addTo(this.map!);
+          this.map?.fitBounds(this.routePolyline.getBounds(), { padding: [60, 60] });
+        }
+        this.cdr.detectChanges();
+      })
+      .catch(() => this.cdr.detectChanges());
+  }
+
+  clearRoute(): void {
+    if (this.routePolyline) {
+      this.map?.removeLayer(this.routePolyline);
+      this.routePolyline = null;
+    }
+    this.showRoutePanel  = false;
+    this.routeDestTitle  = '';
+    // Clear query params
+    this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    this.cdr.detectChanges();
   }
 
   private passesFilters(loc: any): boolean {

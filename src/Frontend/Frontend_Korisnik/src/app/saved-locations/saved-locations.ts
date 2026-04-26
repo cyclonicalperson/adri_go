@@ -73,6 +73,28 @@ export class SavedLocationsComponent implements OnInit {
     );
   }
 
+  private isOpenNow(openingHours?: string): boolean {
+    if (!openingHours) return true; // no hours → assume open
+    try {
+      const obj = JSON.parse(openingHours);
+      const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const now = new Date();
+      const todayHours: string = obj[dayKeys[now.getDay()]];
+      if (!todayHours || todayHours === 'closed') return false;
+      if (todayHours === '00:00-24:00' || todayHours === '0:00-24:00') return true;
+      const [openStr, closeStr] = todayHours.split('-');
+      const toMins = (t: string) => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + m; };
+      const nowMins   = now.getHours() * 60 + now.getMinutes();
+      const openMins  = toMins(openStr);
+      const closeMins = toMins(closeStr);
+      if (closeMins <= openMins) {
+        // Overnight (e.g. 22:00–06:00)
+        return nowMins >= openMins || nowMins < closeMins;
+      }
+      return nowMins >= openMins && nowMins < closeMins;
+    } catch { return true; }
+  }
+
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -148,6 +170,7 @@ export class SavedLocationsComponent implements OnInit {
     const distance = (this.userPosition && lat && lng)
       ? this.haversineKm(this.userPosition[0], this.userPosition[1], lat, lng)
       : null;
+    const isOpen = this.isOpenNow((post as any).openingHours);
     return {
       id: post.id,
       title: post.title,
@@ -157,8 +180,8 @@ export class SavedLocationsComponent implements OnInit {
       distance,
       _lat: lat,   // keep for later recalculation after geolocation
       _lng: lng,
-      status: post.status?.toLowerCase() === 'published' ? 'Open Now' : 'Closed',
-      isOpen: post.status?.toLowerCase() === 'published',
+      status: isOpen ? 'Open Now' : 'Closed',
+      isOpen,
       imageUrl: firstImage
     };
   }

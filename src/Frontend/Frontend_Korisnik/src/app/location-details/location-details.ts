@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LocationService, Location, Review } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
+import { UserService } from '../services/user.service';
 
 @Component({
   selector: 'app-location-details',
@@ -30,11 +31,14 @@ export class LocationDetailsComponent implements OnInit {
   reviewSuccess      = '';
   isSubmittingReview = false;
 
+  calendarMessage = '';
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private locationService: LocationService,
     public authService: AuthService,
+    private userService: UserService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -136,12 +140,14 @@ export class LocationDetailsComponent implements OnInit {
       return;
     }
 
-    // Logged-in: use API
+    // Logged-in: use API — always update count locally to avoid stale-overwrite bug
     if (this.location.isLiked) {
       this.locationService.unlikeLocation(this.location.id).subscribe({
-        next: (res) => {
-          if (res.likeCount !== undefined && this.location) this.location.likeCount = res.likeCount;
-          if (this.location) this.location.isLiked = false;
+        next: () => {
+          if (this.location) {
+            this.location.isLiked = false;
+            this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
+          }
           this.likeMessage = 'Like removed';
           setTimeout(() => (this.likeMessage = ''), 3000);
           this.cdr.markForCheck();
@@ -150,9 +156,11 @@ export class LocationDetailsComponent implements OnInit {
       });
     } else {
       this.locationService.likeLocation(this.location.id).subscribe({
-        next: (res) => {
-          if (res.likeCount !== undefined && this.location) this.location.likeCount = res.likeCount;
-          if (this.location) this.location.isLiked = true;
+        next: () => {
+          if (this.location) {
+            this.location.isLiked = true;
+            this.location.likeCount = (this.location.likeCount || 0) + 1;
+          }
           this.likeMessage = '❤️ Liked!';
           setTimeout(() => (this.likeMessage = ''), 3000);
           this.cdr.markForCheck();
@@ -188,10 +196,17 @@ export class LocationDetailsComponent implements OnInit {
       return;
     }
 
-    // Logged-in: toggle via API
+    // Logged-in: toggle via API — update saveCount locally (API doesn't return it)
     this.locationService.toggleSaveLocation(this.location.id).subscribe({
       next: (res) => {
-        (this.location as any).isSaved = res.isSaved;
+        if (this.location) {
+          (this.location as any).isSaved = res.isSaved;
+          if (res.isSaved) {
+            this.location.saveCount = (this.location.saveCount || 0) + 1;
+          } else {
+            this.location.saveCount = Math.max(0, (this.location.saveCount || 0) - 1);
+          }
+        }
         this.saveMessage = res.isSaved ? '🔖 Saved!' : 'Removed from saved';
         setTimeout(() => (this.saveMessage = ''), 3000);
         this.cdr.markForCheck();
@@ -255,80 +270,18 @@ export class LocationDetailsComponent implements OnInit {
       const toMins = (t: string) => { const [h, m] = (t || '00:00').split(':').map(Number); return h * 60 + m; };
       const now = new Date();
       const nowMins = now.getHours() * 60 + now.getMinutes();
-      return nowMins >= toMins(openStr) && nowMins < toMins(closeStr);
+      const openMins = toMins(openStr);
+      const closeMins = toMins(closeStr);
+      // Handle overnight hours (e.g. 22:00–06:00): closeMins < openMins
+      if (closeMins <= openMins) {
+        return nowMins >= openMins || nowMins < closeMins;
+      }
+      return nowMins >= openMins && nowMins < closeMins;
     } catch { return false; }
   }
 
   get isEvent(): boolean {
     return (this.location?.postType || '').toLowerCase() === 'event';
-  }
-
-  // ── CALENDAR ─────────────────────────────────────────────────────
-  downloadCalendar(): void {
-    if (!this.location) return;
-
-    const title       = (this.location.title || 'Event').replace(/[,;\\]/g, ' ');
-    const description = (this.location.description || '').replace(/\n/g, '\\n').replace(/[,;\\]/g, ' ');
-    const locationStr = (this.location.address || this.location.regionName || '').replace(/[,;\\]/g, ' ');
-    const now         = new Date();
-    const dtStamp     = this.toIcsDate(now);
-
-    // Use publishedAt as the event date if available, else today
-    const startDate = this.location.publishedAt
-      ? new Date(this.location.publishedAt)
-      : now;
-    const endDate   = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2h
-
-    const lines = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//AdriGo//Tourist Map//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:adrigo-${this.location.id}-${Date.now()}@adrigo.me`,
-      `DTSTAMP:${dtStamp}`,
-      `DTSTART:${this.toIcsDate(startDate)}`,
-      `DTEND:${this.toIcsDate(endDate)}`,
-      `SUMMARY:${title}`,
-      `DESCRIPTION:${description}`,
-      `LOCATION:${locationStr}`,
-      'END:VEVENT',
-      'END:VCALENDAR'
-    ];
-
-    const icsContent = lines.join('\r\n');
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const filename = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'event'}.ics`;
-
-    // Use data URL as fallback if createObjectURL is blocked
-    try {
-      const url = URL.createObjectURL(blob);
-      const a   = document.createElement('a');
-      a.href     = url;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 1000);
-    } catch {
-      // Fallback: data URI
-      const reader = new FileReader();
-      reader.onload = () => {
-        const a   = document.createElement('a');
-        a.href     = reader.result as string;
-        a.download = filename;
-        a.click();
-      };
-      reader.readAsDataURL(blob);
-    }
-  }
-
-  private toIcsDate(d: Date): string {
-    return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   }
 
   // ── REVIEWS ───────────────────────────────────────────────────────
@@ -369,7 +322,55 @@ export class LocationDetailsComponent implements OnInit {
   getDirections(): void {
     const lat = this.location?.lat ?? (this.location as any)?.latitude;
     const lng = this.location?.lng ?? (this.location as any)?.longitude;
-    if (lat && lng) window.open(`https://maps.google.com/?q=${lat},${lng}`, '_blank');
+    if (lat != null && lng != null) {
+      this.router.navigate(['/map-home'], {
+        queryParams: {
+          directTo: `${lat},${lng}`,
+          destTitle: this.location?.title || ''
+        }
+      });
+    }
+  }
+
+  shareLocation(): void {
+    const url = window.location.href;
+    const title = this.location?.title || 'Check this location on AdriGo';
+    if (navigator.share) {
+      navigator.share({ title, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url).then(() => {
+        this.saveMessage = '🔗 Link copied to clipboard!';
+        setTimeout(() => (this.saveMessage = ''), 3000);
+        this.cdr.markForCheck();
+      }).catch(() => {
+        // Last resort: prompt
+        prompt('Copy this link:', url);
+      });
+    }
+  }
+
+  addToCalendar(): void {
+    if (!this.location) return;
+
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.userService.addToCalendar(this.location.id).subscribe({
+      next: (res) => {
+        this.calendarMessage = res?.alreadyAdded
+          ? '📅 Already in your calendar'
+          : '📅 Added to your calendar!';
+        setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3500);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.calendarMessage = 'Could not add to calendar.';
+        setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

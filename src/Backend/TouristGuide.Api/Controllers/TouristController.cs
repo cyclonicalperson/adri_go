@@ -109,34 +109,40 @@ namespace TouristGuide.Api.Controllers
 
         // GET /api/tourists/profile
         [HttpGet("profile")]
-        [Authorize] // Samo korisnici sa validnim tokenom mogu ovde!
+        [Authorize]
         public async Task<IActionResult> GetProfile()
         {
-            // Vadi Email iz tokena koji je poslat u zaglavlju
             var userEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
                          ?? User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
 
             if (string.IsNullOrEmpty(userEmail))
-            {
                 return Unauthorized(new { message = "Nevažeći token." });
-            }
 
-            // Tražimo baš tog korisnika u bazi
             var tourist = await _context.Tourists.FirstOrDefaultAsync(t => t.Email == userEmail);
-
             if (tourist == null)
-            {
                 return NotFound(new { message = "Korisnik nije pronađen." });
+
+            // Parse interests JSON
+            List<string> interests = new();
+            if (!string.IsNullOrWhiteSpace(tourist.Interests))
+            {
+                try { interests = System.Text.Json.JsonSerializer.Deserialize<List<string>>(tourist.Interests) ?? new(); }
+                catch { }
             }
 
-            // Pravimo podatke specifično za njega
+            var savedCount  = await _context.SavedPosts.CountAsync(sp => sp.TouristId == tourist.Id);
+            var reviewCount = await _context.Reviews.CountAsync(r => r.TouristId == tourist.Id);
+
             var userProfile = new
             {
-                fullName = tourist.Name, // Sada će pisati pravo ime (npr. Arsa)
-                emailOrPhone = tourist.Email,
-                language = "English", // Ovo za sad možemo da ostavimo fiksno
-                interests = new[] { "nature", "nightlife" }, // I ovo ostavljamo za sad fiksno
-                stats = new { saved = 0, tickets = 0, upcoming = 0 }
+                fullName     = tourist.Name ?? string.Empty,
+                emailOrPhone = tourist.Email ?? string.Empty,
+                language     = tourist.Language,
+                bio          = tourist.Bio,
+                location     = tourist.Location,
+                profilePic   = tourist.ProfileImage,
+                interests,
+                stats = new { saved = savedCount, reviews = reviewCount, upcoming = 0 }
             };
 
             return Ok(userProfile);
