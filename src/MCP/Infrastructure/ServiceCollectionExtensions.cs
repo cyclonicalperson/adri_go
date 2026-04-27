@@ -12,6 +12,36 @@ internal static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // CORS
+        var corsSection = configuration.GetSection(McpCorsOptions.SectionName);
+        var corsOptions = corsSection.Get<McpCorsOptions>() ?? new McpCorsOptions();
+
+        services.Configure<McpCorsOptions>(corsSection);
+
+        services.AddCors(cors =>
+        {
+            cors.AddPolicy(McpCorsOptions.PolicyName, policy =>
+            {
+                var allowedOrigins = corsOptions.AllowedOrigins;
+
+                if (allowedOrigins.Length > 0)
+                {
+                    policy
+                        .WithOrigins(allowedOrigins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                }
+                else
+                {
+                    // Nema konfiguriranih origina — dozvoli sve (pogodno za lokalni razvoj)
+                    policy
+                        .AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                }
+            });
+        });
+
         services
             .AddMcpServer(options =>
             {
