@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 
-export type SiteLanguageCode = 'sr' | 'en';
+export type SiteLanguageCode = 'sr' | 'en' | 'de' | 'it' | 'fr';
 
 export interface SiteLanguageOption {
   code: SiteLanguageCode;
@@ -24,8 +24,11 @@ interface AttributeEntry {
 @Injectable({ providedIn: 'root' })
 export class SiteTranslateService implements OnDestroy {
   readonly languages: SiteLanguageOption[] = [
-    { code: 'sr', label: 'Srpski', shortLabel: 'SR' },
-    { code: 'en', label: 'English', shortLabel: 'EN' },
+    { code: 'sr', label: 'Srpski',   shortLabel: 'SR' },
+    { code: 'en', label: 'English',  shortLabel: 'EN' },
+    { code: 'de', label: 'Deutsch',  shortLabel: 'DE' },
+    { code: 'it', label: 'Italiano', shortLabel: 'IT' },
+    { code: 'fr', label: 'Français', shortLabel: 'FR' },
   ];
 
   readonly language$ = new BehaviorSubject<SiteLanguageCode>(this.loadStoredLanguage());
