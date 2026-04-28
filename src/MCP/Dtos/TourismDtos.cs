@@ -154,7 +154,8 @@ internal sealed record GetReviewsRequest(
 
 internal sealed record ReviewSummary(
     uint Id,
-    uint PostId,
+    uint? PostId,
+    uint? RouteId,
     string? TouristName,
     int Rating,
     string? Comment,
@@ -245,3 +246,213 @@ internal sealed record GetNearbyRequest(
 internal sealed record GetSimilarPostsRequest(
     uint PostId,
     int Limit = 5);
+
+// ── Događaji ──────────────────────────────────────────────────────────────────
+
+internal sealed record SearchEventsRequest(
+    uint? RegionId = null,
+    string? Query = null,
+    DateTime? StartFrom = null,
+    DateTime? StartTo = null,
+    string? Category = null,
+    bool? HasTicketUrl = null,
+    string? SortBy = null,
+    int Limit = 10,
+    int Offset = 0);
+
+internal sealed record EventSummary(
+    uint Id,
+    uint? RegionId,
+    string Title,
+    string? Description,
+    string? Address,
+    decimal? Lat,
+    decimal? Lng,
+    DateTime? StartAt,
+    DateTime? EndAt,
+    string Category,
+    string? TicketUrl,
+    double? AvgRating,
+    IReadOnlyList<string> Tags);
+
+// ── Preporuke ─────────────────────────────────────────────────────────────────
+
+internal sealed record GetRecommendationsRequest(
+    uint RegionId,
+    uint? TouristId = null,
+    string ContextMode = "onsite",
+    int Limit = 10);
+
+internal sealed record RecommendationItem(
+    uint EntityId,
+    string EntityType,
+    string Title,
+    string PostType,
+    uint? RegionId,
+    string? RegionName,
+    double Score,
+    string Reason,
+    IReadOnlyList<string> MatchedTags);
+
+// ── Recenzije ruta ────────────────────────────────────────────────────────────
+
+internal sealed record GetRouteReviewsRequest(
+    uint RouteId,
+    bool? OnlyApproved = true,
+    int? MinRating = null,
+    int? MaxRating = null,
+    string? SortBy = null,
+    int Limit = 20,
+    int Offset = 0);
+
+// ── Analitika regija ─────────────────────────────────────────────────────────
+
+internal sealed record GetRegionAnalyticsRequest(uint RegionId);
+
+internal sealed record RegionAnalyticsSummary(
+    uint RegionId,
+    string RegionName,
+    string RegionType,
+    int TotalPosts,
+    int TotalRoutes,
+    int TotalViews,
+    int TotalLikes,
+    int TotalShares,
+    double? AvgRating,
+    IReadOnlyDictionary<string, int> PostsByType);
+
+// ── Novi sadržaj ─────────────────────────────────────────────────────────────
+
+internal sealed record GetNewContentRequest(
+    uint? RegionId = null,
+    int DaysBack = 30,
+    int Limit = 20);
+
+internal sealed record NewContentItem(
+    uint EntityId,
+    string EntityType,
+    string Title,
+    string? PostType,
+    uint? RegionId,
+    string? RegionName,
+    DateTime PublishedAt,
+    double? Rating);
+
+// ── Trend poseta ─────────────────────────────────────────────────────────────
+
+internal sealed record GetVisitTrendsRequest(
+    uint? RegionId = null,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null,
+    string Granularity = "day");
+
+internal sealed record VisitTrendPoint(
+    string Date,
+    int VisitCount);
+
+// ── Sačuvane lokacije ─────────────────────────────────────────────────────────
+
+internal sealed record GetSavedPostsRequest(
+    uint? TouristId = null,
+    int Limit = 20,
+    int Offset = 0);
+
+internal sealed record SavedPostSummary(
+    uint SaveId,
+    uint PostId,
+    uint TouristId,
+    string PostTitle,
+    string PostType,
+    uint? RegionId,
+    double? Rating,
+    DateTime SavedAt);
+
+// ── Planeri putovanja ─────────────────────────────────────────────────────────
+
+internal sealed record GetTouristPlannerRequest(
+    uint TouristId,
+    bool OnlyPublic = false);
+
+// ── Aktivnosti sa kapacitetom ────────────────────────────────────────────────────────
+
+internal sealed record SearchActivitiesRequest(
+    string? Query = null,
+    string? Category = null,
+    string? Difficulty = null,
+    int? MinCapacity = null,
+    int? MaxCapacity = null,
+    int Limit = 50);
+
+// ── Omiljene lokacije i rute (TouristFavorite) ────────────────────────────────
+
+internal sealed record GetTouristFavoritesRequest(
+    uint? TouristId = null,
+    string? EntityType = null,
+    int Limit = 20,
+    int Offset = 0);
+
+internal sealed record TouristFavoriteSummary(
+    uint Id,
+    uint TouristId,
+    string EntityType,
+    uint? PostId,
+    uint? RouteId,
+    string? Title,
+    string? PostType,
+    uint? RegionId,
+    DateTime SavedAt);
+
+// ── Analitika klikova na external URL ──────────────────────────────────────
+
+internal sealed record GetExternalClickStatsRequest(
+    uint? PostId = null,
+    uint? RegionId = null,
+    int Limit = 20);
+
+internal sealed record ExternalClickSummary(
+    uint PostId,
+    string PostTitle,
+    string PostType,
+    uint? RegionId,
+    string? ExternalUrl,
+    int TotalClicks);
+
+// ── Analitika zahteva za pravac ──────────────────────────────────────────
+
+internal sealed record GetDirectionStatsRequest(
+    uint? RegionId = null,
+    int Limit = 20);
+
+internal sealed record DirectionRequestSummary(
+    uint PostId,
+    string PostTitle,
+    string PostType,
+    uint? RegionId,
+    decimal? Lat,
+    decimal? Lng,
+    int TotalRequests);
+
+internal sealed record PlannerSummary(
+    uint Id,
+    uint TouristId,
+    string Title,
+    DateOnly? StartDate,
+    DateOnly? EndDate,
+    string? Notes,
+    bool IsPublic,
+    IReadOnlyList<PlannerDaySummary> Days);
+
+internal sealed record PlannerDaySummary(
+    byte DayNumber,
+    IReadOnlyList<PlannerItemSummary> Items);
+
+internal sealed record PlannerItemSummary(
+    uint Id,
+    byte DayNumber,
+    byte OrderInDay,
+    string EntityType,
+    uint? PostId,
+    uint? RouteId,
+    string? Title,
+    string? Notes,
+    TimeOnly? ScheduledTime);

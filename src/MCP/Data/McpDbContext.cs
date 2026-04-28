@@ -17,6 +17,12 @@ internal sealed class McpDbContext : DbContext
     public DbSet<PostViewEntity> PostViews => Set<PostViewEntity>();
     public DbSet<PostLikeEntity> PostLikes => Set<PostLikeEntity>();
     public DbSet<ContentShareEntity> ContentShares => Set<ContentShareEntity>();
+    public DbSet<SavedPostEntity> SavedPosts => Set<SavedPostEntity>();
+    public DbSet<VisitPlannerEntity> VisitPlanners => Set<VisitPlannerEntity>();
+    public DbSet<PlannerItemEntity> PlannerItems => Set<PlannerItemEntity>();
+    public DbSet<TouristFavoriteEntity> TouristFavorites => Set<TouristFavoriteEntity>();
+    public DbSet<ExternalClickEntity> ExternalClicks => Set<ExternalClickEntity>();
+    public DbSet<DirectionRequestEntity> DirectionRequests => Set<DirectionRequestEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +57,8 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.Details).HasColumnName("details");
             e.Property(x => x.Status).HasColumnName("status");
             e.Property(x => x.AvgRating).HasColumnName("avg_rating");
+            e.Property(x => x.ReviewCount).HasColumnName("review_count");
+            e.Property(x => x.PublishedAt).HasColumnName("published_at");
 
             e.HasMany(x => x.PostTags)
              .WithOne()
@@ -69,11 +77,12 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.DurationMin).HasColumnName("duration_min");
             e.Property(x => x.ElevationGain).HasColumnName("elevation_gain");
             e.Property(x => x.Description).HasColumnName("description");
-            e.Property(x => x.Waypoints).HasColumnName("waypoints");       // NOVO
-            e.Property(x => x.GpxFilePath).HasColumnName("gpx_file_path"); // NOVO
+            e.Property(x => x.Waypoints).HasColumnName("waypoints");       
+            e.Property(x => x.GpxFilePath).HasColumnName("gpx_file_path"); 
             e.Property(x => x.Status).HasColumnName("status");
-            e.Property(x => x.ViewCount).HasColumnName("view_count");      // NOVO
-            e.Property(x => x.SaveCount).HasColumnName("save_count");      // NOVO
+            e.Property(x => x.ViewCount).HasColumnName("view_count");
+            e.Property(x => x.SaveCount).HasColumnName("save_count");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
 
         modelBuilder.Entity<TagEntity>(e =>
@@ -105,6 +114,7 @@ internal sealed class McpDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.RouteId).HasColumnName("route_id");
             e.Property(x => x.TouristId).HasColumnName("tourist_id");
             e.Property(x => x.Rating).HasColumnName("rating");
             e.Property(x => x.Comment).HasColumnName("comment");
@@ -158,6 +168,86 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.RouteId).HasColumnName("route_id");
             e.Property(x => x.Platform).HasColumnName("platform");
             e.Property(x => x.SharedAt).HasColumnName("shared_at");
+        });
+
+        modelBuilder.Entity<SavedPostEntity>(e =>
+        {
+            e.ToTable("saved_post");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.Post).WithMany().HasForeignKey(x => x.PostId);
+        });
+
+        modelBuilder.Entity<VisitPlannerEntity>(e =>
+        {
+            e.ToTable("visit_planner");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.Title).HasColumnName("title");
+            e.Property(x => x.StartDate).HasColumnName("start_date");
+            e.Property(x => x.EndDate).HasColumnName("end_date");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.IsPublic).HasColumnName("is_public");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasMany(x => x.Items).WithOne().HasForeignKey(x => x.PlannerId);
+        });
+
+        modelBuilder.Entity<PlannerItemEntity>(e =>
+        {
+            e.ToTable("planner_item");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.PlannerId).HasColumnName("planner_id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.RouteId).HasColumnName("route_id");
+            e.Property(x => x.DayNumber).HasColumnName("day_number");
+            e.Property(x => x.OrderInDay).HasColumnName("order_in_day");
+            e.Property(x => x.Notes).HasColumnName("notes");
+            e.Property(x => x.ScheduledTime).HasColumnName("scheduled_time");
+            e.HasOne(x => x.Post).WithMany().HasForeignKey(x => x.PostId);
+            e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId);
+        });
+
+        modelBuilder.Entity<TouristFavoriteEntity>(e =>
+        {
+            e.ToTable("tourist_favorite");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.RouteId).HasColumnName("route_id");
+            e.Property(x => x.SavedAt).HasColumnName("saved_at");
+            e.HasOne(x => x.Post).WithMany().HasForeignKey(x => x.PostId).IsRequired(false);
+            e.HasOne(x => x.Route).WithMany().HasForeignKey(x => x.RouteId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<ExternalClickEntity>(e =>
+        {
+            e.ToTable("external_click");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.Url).HasColumnName("url");
+            e.Property(x => x.ClickedAt).HasColumnName("clicked_at");
+            e.HasOne(x => x.Post).WithMany().HasForeignKey(x => x.PostId);
+        });
+
+        modelBuilder.Entity<DirectionRequestEntity>(e =>
+        {
+            e.ToTable("direction_request");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id");
+            e.Property(x => x.TouristId).HasColumnName("tourist_id");
+            e.Property(x => x.PostId).HasColumnName("post_id");
+            e.Property(x => x.FromLat).HasColumnName("from_lat");
+            e.Property(x => x.FromLng).HasColumnName("from_lng");
+            e.Property(x => x.RequestedAt).HasColumnName("requested_at");
+            e.HasOne(x => x.Post).WithMany().HasForeignKey(x => x.PostId);
         });
     }
 }

@@ -15,5 +15,7 @@ internal sealed class PostEntity
     public string? Details { get; set; }
     public string Status { get; set; } = "draft";
     public decimal? AvgRating { get; set; }
+    public uint ReviewCount { get; set; }
+    public DateTime? PublishedAt { get; set; }
     public ICollection<PostTagEntity> PostTags { get; set; } = new List<PostTagEntity>();
 }

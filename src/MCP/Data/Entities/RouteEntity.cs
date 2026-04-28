@@ -15,4 +15,5 @@ internal sealed class RouteEntity
     public string Status { get; set; } = "draft";
     public uint ViewCount { get; set; }
     public uint SaveCount { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
