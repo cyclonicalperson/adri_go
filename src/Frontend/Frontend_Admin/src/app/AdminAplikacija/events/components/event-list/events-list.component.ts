@@ -7,6 +7,7 @@ import { Post, PostStatus } from '@core/models/post.model';
 import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { AuthService } from '@core/auth/auth.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { RegionService } from '@core/services/region.service';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -75,6 +76,7 @@ export class EventsListComponent implements OnInit {
     private regionService: RegionService,
     private router: Router,
     private auth: AuthService,
+    private csv: CsvExportService,
   ) {}
 
   ngOnInit(): void {
@@ -338,23 +340,21 @@ export class EventsListComponent implements OnInit {
   }
 
   exportCsv(): void {
-    const header = ['ID', 'Naslov', 'Kategorija', 'Status', 'Region', 'Datum'];
-    const rows = this.events.map(e => [
-      e.postId,
-      e.title,
-      this.eventCategory(e),
-      e.status,
-      e.region?.name ?? '—',
-      e.createdAt,
-    ]);
-    const csv = [header, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `dogadjaji_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const today = new Date().toISOString().split('T')[0];
+    this.csv.download(
+      `dogadjaji_${today}.csv`,
+      ['ID', 'Naslov', 'Kategorija', 'Status', 'Region', 'Kreirano', 'Pregledi', 'Recenzije'],
+      this.events.map(e => [
+        e.postId,
+        e.title,
+        this.eventCategory(e),
+        e.status,
+        e.region?.name ?? '—',
+        e.createdAt,
+        e.viewCount,
+        e.reviewCount,
+      ]),
+    );
   }
 
   get pageStart(): number {

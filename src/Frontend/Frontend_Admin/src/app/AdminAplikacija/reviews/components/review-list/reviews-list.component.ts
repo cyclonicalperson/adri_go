@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ReviewService } from '@core/services/review.service';
 import { BadgeService } from '@core/services/badge.service';
 import { AuthService } from '@core/auth/auth.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { Review, ReviewStatus, ReviewEntityType } from '@core/models/review.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -38,6 +39,7 @@ export class ReviewsListComponent implements OnInit {
     private service: ReviewService,
     private auth: AuthService,
     private badges: BadgeService,
+    private csv: CsvExportService,
   ) { }
 
   get canDelete(): boolean { return this.auth.isSuperAdmin; }
@@ -163,25 +165,21 @@ export class ReviewsListComponent implements OnInit {
   printReport(): void { window.print(); }
 
   exportCsv(): void {
-    const header = ['ID', 'Turista', 'Entitet', 'Tip', 'Ocena', 'Komentar', 'Status', 'Datum'];
-    const rows = this.reviews.map(r => [
-      r.reviewId,
-      r.touristName ?? r.user?.fullName ?? 'Anoniman',
-      r.entityName ?? '—',
-      r.entityType ?? '—',
-      r.rating,
-      (r.comment ?? '').replace(/,/g, ';'),
-      r.status,
-      r.createdAt,
-    ]);
-    const csv = [header, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `recenzije_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const today = new Date().toISOString().split('T')[0];
+    this.csv.download(
+      `recenzije_${today}.csv`,
+      ['ID', 'Turista', 'Entitet', 'Tip', 'Ocena', 'Komentar', 'Status', 'Datum'],
+      this.reviews.map(r => [
+        r.reviewId,
+        r.touristName ?? r.user?.fullName ?? 'Anoniman',
+        r.entityName ?? '—',
+        r.entityType ?? '—',
+        r.rating,
+        r.comment ?? '',
+        r.status,
+        r.createdAt,
+      ]),
+    );
   }
 
   get pageStart(): number { return (this.req.page - 1) * this.req.pageSize + 1; }

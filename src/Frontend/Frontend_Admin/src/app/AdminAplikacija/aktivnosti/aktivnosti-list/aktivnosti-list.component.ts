@@ -4,6 +4,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { environment } from '@env/environment';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
@@ -74,6 +75,7 @@ export class AktivnostiListComponent implements OnInit {
     private http: HttpClient,
     private router: Router,
     private auth: AuthService,
+    private csv: CsvExportService,
   ) {}
 
   ngOnInit(): void {
@@ -291,7 +293,23 @@ export class AktivnostiListComponent implements OnInit {
     window.print();
   }
 
-  exportCsv(): void {}
+  exportCsv(): void {
+    const today = new Date().toISOString().split('T')[0];
+    this.csv.download(
+      `aktivnosti_${today}.csv`,
+      ['ID', 'Naziv', 'Kategorija', 'Status', 'Lokacija', 'GPS Lat', 'GPS Lng', 'Pregledi'],
+      this.activities.map(a => [
+        a.id ?? a.activityId,
+        a.name,
+        this.categoryLabel(a),
+        a.status ?? '—',
+        this.locationName(a),
+        a.lat ?? '',
+        a.lng ?? '',
+        a.viewCount ?? 0,
+      ]),
+    );
+  }
 
   get pageStart(): number {
     return this.total === 0 ? 0 : (this.page - 1) * this.pageSize + 1;

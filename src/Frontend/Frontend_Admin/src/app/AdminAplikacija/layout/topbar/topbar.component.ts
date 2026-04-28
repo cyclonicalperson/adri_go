@@ -7,7 +7,7 @@ import { AuthService } from '@core/auth/auth.service';
 import { AdminNotification } from '@core/models/user.model';
 import { BadgeService } from '@core/services/badge.service';
 import { NotificationHubService } from '@core/services/notification-hub.service';
-import { SiteTranslateService } from '@core/services/site-translate.service';
+import { SiteLanguageCode, SiteTranslateService } from '@core/services/site-translate.service';
 
 @Component({
   selector: 'app-topbar',
@@ -28,13 +28,11 @@ export class TopbarComponent implements OnInit, OnDestroy {
   notifOpen = false;
   notifLoading = false;
   languageMenuOpen = false;
+  showUnreadOnly = false;
+  unreadCount = 0;
   readonly languages = this.i18n.languages;
 
   private subs: Subscription[] = [];
-
-  get unreadCount(): number {
-    return this.notifHub.unreadCount$.value;
-  }
 
   ngOnInit(): void {
     this.notifHub.connect();
@@ -42,6 +40,9 @@ export class TopbarComponent implements OnInit, OnDestroy {
     this.subs.push(
       this.notifHub.notifications$.subscribe(list => {
         this.notifications = list;
+      }),
+      this.notifHub.unreadCount$.subscribe(count => {
+        this.unreadCount = count;
       }),
     );
   }
@@ -63,6 +64,10 @@ export class TopbarComponent implements OnInit, OnDestroy {
     });
   }
 
+  get visibleNotifications(): AdminNotification[] {
+    return this.showUnreadOnly ? this.notifications.filter(n => !n.isRead) : this.notifications;
+  }
+
   toggleNotifications(): void {
     this.languageMenuOpen = false;
     this.notifOpen = !this.notifOpen;
@@ -76,7 +81,7 @@ export class TopbarComponent implements OnInit, OnDestroy {
     this.languageMenuOpen = !this.languageMenuOpen;
   }
 
-  changeLanguage(language: 'sr' | 'en'): void {
+  changeLanguage(language: SiteLanguageCode): void {
     void this.i18n.setLanguage(language);
     this.languageMenuOpen = false;
   }
@@ -89,12 +94,19 @@ export class TopbarComponent implements OnInit, OnDestroy {
     });
   }
 
+  markRead(n: AdminNotification, event: Event): void {
+    event.stopPropagation();
+    if (n.isRead) return;
+    this.notifHub.markAsRead(n.id).subscribe();
+    n.isRead = true;
+    this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
+  }
+
   openNotification(n: AdminNotification): void {
     if (!n.isRead) {
       this.notifHub.markAsRead(n.id).subscribe();
       n.isRead = true;
-      const newCount = Math.max(0, this.notifHub.unreadCount$.value - 1);
-      this.notifHub.unreadCount$.next(newCount);
+      this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
     }
 
     this.notifOpen = false;
@@ -102,6 +114,21 @@ export class TopbarComponent implements OnInit, OnDestroy {
     if (url) {
       void this.router.navigateByUrl(url);
     }
+  }
+
+  relativeTime(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 1) return 'Upravo';
+    if (mins < 60) return `Prije ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `Prije ${hrs} h`;
+    const days = Math.floor(hrs / 24);
+    if (days === 1) return 'Juče';
+    if (days < 7) return `Prije ${days} dana`;
+    return new Date(dateStr).toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
   deleteNotification(n: AdminNotification, event: Event): void {
@@ -118,20 +145,13 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   clearAllNotifications(event: Event): void {
     event.stopPropagation();
-    const ids = this.notifications.map(n => n.id);
-    if (ids.length === 0) return;
+    if (this.notifications.length === 0) return;
 
-    let completed = 0;
-    ids.forEach(id => {
-      this.notifHub.delete(id).subscribe({
-        next: () => {
-          completed++;
-          if (completed === ids.length) {
-            this.notifications = [];
-            this.notifHub.unreadCount$.next(0);
-          }
-        },
-      });
+    this.notifHub.deleteAll().subscribe({
+      next: () => {
+        this.notifications = [];
+        this.notifHub.unreadCount$.next(0);
+      },
     });
   }
 

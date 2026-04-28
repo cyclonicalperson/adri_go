@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
 import { TouristObject, ObjectCategory } from '@core/models/object.model';
@@ -41,6 +42,7 @@ export class ObjectsListComponent implements OnInit {
     private regionService: RegionService,
     private router: Router,
     private auth: AuthService,
+    private csv: CsvExportService,
   ) {}
 
   ngOnInit(): void {
@@ -229,7 +231,24 @@ export class ObjectsListComponent implements OnInit {
     window.print();
   }
 
-  exportCsv(): void {}
+  exportCsv(): void {
+    const today = new Date().toISOString().split('T')[0];
+    this.csv.download(
+      `lokacije_${today}.csv`,
+      ['ID', 'Naziv', 'Kategorija', 'Adresa', 'Region', 'GPS Lat', 'GPS Lng', 'Ocena', 'Recenzije'],
+      this.objects.map(o => [
+        o.objectId,
+        o.name,
+        o.category,
+        o.address || '—',
+        o.region?.name ?? o.destination?.name ?? '—',
+        o.latitude || '',
+        o.longitude || '',
+        o.averageRating != null ? o.averageRating.toFixed(1) : '—',
+        o.reviewCount ?? 0,
+      ]),
+    );
+  }
 
   get pageStart(): number {
     return this.total === 0 ? 0 : (this.req.page - 1) * this.req.pageSize + 1;
