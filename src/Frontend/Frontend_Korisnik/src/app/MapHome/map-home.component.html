@@ -99,7 +99,10 @@
           </div>
           <div class="search-result-info">
             <div class="search-result-title">{{ result.title }}</div>
-            <div class="search-result-meta">{{ result.postType || result.category }}</div>
+            <div class="search-result-meta">
+              {{ result.postType || result.category }}
+              <span *ngIf="formatDistance(result.distanceKm)"> • {{ formatDistance(result.distanceKm) }} away</span>
+            </div>
           </div>
           <div class="search-result-rating" *ngIf="result.avgRating || result.rating">
             <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -119,7 +122,7 @@
     <div class="recommended-panel desktop-only">
       <div class="recommended-header">
         <span class="recommended-title">✨ Recommended</span>
-        <span class="recommended-subtitle">Top rated nearby</span>
+        <span class="recommended-subtitle">{{ recommendedSubtitle }}</span>
       </div>
       <div class="recommended-list">
         <div
@@ -136,6 +139,8 @@
               <span class="rec-category">{{ loc.postType || loc.category }}</span>
               <span class="rec-dot" *ngIf="loc.regionName">·</span>
               <span class="rec-distance" *ngIf="loc.regionName">{{ loc.regionName }}</span>
+              <span class="rec-dot" *ngIf="loc.regionName && formatDistance(loc.distanceKm)">Â·</span>
+              <span class="rec-distance" *ngIf="formatDistance(loc.distanceKm)">{{ formatDistance(loc.distanceKm) }} away</span>
             </div>
             <div class="rec-rating" *ngIf="loc.avgRating || loc.rating">
               <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
