@@ -151,4 +151,40 @@ namespace TouristGuide.Api.DTOs
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// DTO za promenu lozinke turiste (zahteva staru lozinku).
+    /// </summary>
+    public class ChangePasswordDto
+    {
+        [Required]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO za iniciranje resetovanja lozinke (unos emaila).
+    /// </summary>
+    public class ForgotPasswordDto
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO za resetovanje lozinke sa tokenom iz emaila.
+    /// </summary>
+    public class ResetPasswordDto
+    {
+        [Required]
+        public string Token { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
+    }
 }

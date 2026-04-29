@@ -171,9 +171,16 @@
       <section>
         <div class="section-header">
           <h3>Reviews ({{ location.reviewCount }})</h3>
-          <button class="see-all" *ngIf="authService.isLoggedIn" (click)="showReviewForm = !showReviewForm">
+          <!-- Logged in + not yet reviewed -->
+          <button class="see-all" *ngIf="authService.isLoggedIn && !hasReviewed" (click)="showReviewForm = !showReviewForm">
             {{ showReviewForm ? 'Cancel' : '+ Add review' }}
           </button>
+          <!-- Logged in + already reviewed -->
+          <span *ngIf="authService.isLoggedIn && hasReviewed"
+            style="font-size:12px;color:#22c55e;font-weight:700;background:#f0fdf4;border:1px solid #bbf7d0;padding:4px 10px;border-radius:20px;">
+            ✓ Reviewed
+          </span>
+          <!-- Guest -->
           <button *ngIf="!authService.isLoggedIn"
             (click)="goToLogin()"
             style="font-size:13px;color:#16a34a;font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;">

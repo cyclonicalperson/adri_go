@@ -33,6 +33,7 @@ export class LocationDetailsComponent implements OnInit {
 
   calendarMessage = '';
   showAuthModal = false;
+  hasReviewed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -117,6 +118,11 @@ export class LocationDetailsComponent implements OnInit {
         // Sync reviewCount with the actual count returned by the API
         if (this.location && res.total !== undefined) {
           this.location.reviewCount = res.total;
+        }
+        // Check if current tourist has already reviewed this location
+        const touristId = this.authService.touristId;
+        if (touristId) {
+          this.hasReviewed = this.reviews.some(r => r.touristId === touristId);
         }
         this.cdr.markForCheck();
       },
@@ -311,16 +317,23 @@ export class LocationDetailsComponent implements OnInit {
     this.locationService.addReview(this.location.id, touristId, this.newRating, this.newComment).subscribe({
       next: (review) => {
         this.reviews.unshift(review);
-        this.reviewSuccess = 'Review submitted!';
-        this.newRating  = 5;
-        this.newComment = '';
+        this.reviewSuccess  = 'Review submitted!';
+        this.hasReviewed    = true;
+        this.newRating      = 5;
+        this.newComment     = '';
         this.isSubmittingReview = false;
         this.showReviewForm = false;
         if (this.location) this.location.reviewCount++;
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.reviewError = err?.error?.message || 'Error submitting review.';
+        if (err.status === 409) {
+          this.reviewError = 'You have already reviewed this location.';
+          this.hasReviewed = true;
+          this.showReviewForm = false;
+        } else {
+          this.reviewError = err?.error?.message || 'Error submitting review.';
+        }
         this.isSubmittingReview = false;
         this.cdr.markForCheck();
       }

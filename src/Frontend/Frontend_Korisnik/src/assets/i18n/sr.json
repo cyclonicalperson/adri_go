@@ -268,5 +268,46 @@
   "Email or phone number": "Email ili broj telefona",
   "e.g. Budva, Montenegro": "npr. Budva, Crna Gora",
   "Tell others about yourself...": "Recite drugima o sebi...",
-  "Saving...": "Čuvanje..."
+  "Saving...": "Čuvanje...",
+
+  "Forgot Password?": "Zaboravili lozinku?",
+  "Forgot?": "Zaboravili?",
+  "Enter your email address and we'll send you a link to reset your password.": "Unesite email adresu i poslaćemo vam link za resetovanje lozinke.",
+  "Email address": "Email adresa",
+  "Send Reset Link": "Pošalji link za reset",
+  "Sending...": "Slanje...",
+  "If an account with that email exists, a password reset link has been sent.": "Ako nalog sa tim emailom postoji, link za reset lozinke je poslat.",
+  "Back to Login": "Nazad na prijavu",
+  "← Back to Login": "← Nazad na prijavu",
+
+  "Reset Password": "Resetuj lozinku",
+  "Choose a new password for your account.": "Odaberite novu lozinku za vaš nalog.",
+  "New Password": "Nova lozinka",
+  "Confirm New Password": "Potvrdi novu lozinku",
+  "Min. 6 characters": "Min. 6 karaktera",
+  "Resetting...": "Resetovanje...",
+  "Your password has been reset successfully! You can now log in.": "Lozinka je uspješno resetovana! Možete se prijaviti.",
+  "Invalid or missing reset token. Please request a new password reset.": "Nevažeći ili nedostajući token. Zatražite novi reset lozinke.",
+  "This reset link has expired. Please request a new one.": "Ovaj link za reset je istekao. Zatražite novi.",
+  "Request a new reset link": "Zatražite novi link za reset",
+  "Go to Login →": "Idi na prijavu →",
+
+  "Show Only Saved": "Prikaži samo sačuvano",
+  "Saved Locations": "Sačuvane lokacije",
+
+  "Change Password": "Promijeni lozinku",
+  "Enter your current password and choose a new one.": "Unesite trenutnu lozinku i odaberite novu.",
+  "Current Password": "Trenutna lozinka",
+  "New passwords do not match.": "Nove lozinke se ne poklapaju.",
+  "New password must be at least 6 characters.": "Nova lozinka mora imati najmanje 6 karaktera.",
+  "Please enter your current password.": "Molimo unesite trenutnu lozinku.",
+  "Password changed successfully.": "Lozinka uspješno promijenjena.",
+  "Save Password": "Sačuvaj lozinku",
+  "✓ Password changed successfully!": "✓ Lozinka uspješno promijenjena!",
+  "Current password is incorrect.": "Trenutna lozinka nije ispravna.",
+
+  "Log in to see your notifications": "Prijavite se da vidite obavještenja",
+  "No notifications yet": "Još nema obavještenja",
+  "✓ Reviewed": "✓ Ocijenjeno",
+  "You have already reviewed this location.": "Već ste ocijenili ovu lokaciju."
 }

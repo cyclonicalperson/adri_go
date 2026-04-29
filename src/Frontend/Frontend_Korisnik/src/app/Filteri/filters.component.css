@@ -431,6 +431,8 @@ input:checked + .slider:before { transform: translateX(22px); }
     max-height: 900px;
     top: 50%;
     left: 50%;
+    bottom: auto;   /* Reset inset: 0 from base styles */
+    right: auto;    /* Reset inset: 0 from base styles */
     transform: translate(-50%, -50%);
     border-radius: 28px;
     box-shadow: 0 30px 60px rgba(0,0,0,0.15), 0 0 0 100vw rgba(0,0,0,0.04);

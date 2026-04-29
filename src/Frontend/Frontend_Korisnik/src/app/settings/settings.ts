@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService } from '../services/site-translate.service';
 
@@ -26,8 +27,18 @@ export class SettingsComponent {
   savedMessage = '';
   notifPermission: NotificationPermission = 'default';
 
+  // Change password modal
+  showPasswordModal = false;
+  changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+  passwordError    = '';
+  passwordSuccess  = '';
+  isSavingPassword = false;
+
+  private readonly authApiUrl = 'http://localhost:5125/api/tourist-auth';
+
   constructor(
     public router: Router,
+    private http: HttpClient,
     private authService: AuthService,
     public translate: SiteTranslateService
   ) {
@@ -141,7 +152,54 @@ export class SettingsComponent {
     this.router.navigate(['/login']);
   }
 
-  goToEditProfile()  { this.router.navigate(['/account/personal-info']); }
-  goToHelp()         { this.router.navigate(['/account/help']); }
-  goToPrivacy()      { this.router.navigate(['/account/privacy']); }
+  goToEditProfile() {
+    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    this.router.navigate(['/account/personal-info']);
+  }
+
+  openChangePassword() {
+    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    this.showPasswordModal = true;
+    this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    this.passwordError   = '';
+    this.passwordSuccess = '';
+  }
+
+  closePasswordModal() {
+    this.showPasswordModal = false;
+  }
+
+  submitChangePassword() {
+    this.passwordError   = '';
+    this.passwordSuccess = '';
+
+    if (!this.changePasswordForm.currentPassword) {
+      this.passwordError = 'Please enter your current password.'; return;
+    }
+    if (this.changePasswordForm.newPassword.length < 6) {
+      this.passwordError = 'New password must be at least 6 characters.'; return;
+    }
+    if (this.changePasswordForm.newPassword !== this.changePasswordForm.confirmPassword) {
+      this.passwordError = 'New passwords do not match.'; return;
+    }
+
+    this.isSavingPassword = true;
+    this.http.post(`${this.authApiUrl}/change-password`, {
+      currentPassword: this.changePasswordForm.currentPassword,
+      newPassword: this.changePasswordForm.newPassword
+    }).subscribe({
+      next: () => {
+        this.passwordSuccess  = '✓ Password changed successfully!';
+        this.isSavingPassword = false;
+        setTimeout(() => { this.showPasswordModal = false; }, 2000);
+      },
+      error: (err) => {
+        this.passwordError    = err?.error?.message || 'Failed to change password.';
+        this.isSavingPassword = false;
+      }
+    });
+  }
+
+  goToHelp()    { this.router.navigate(['/account/help']); }
+  goToPrivacy() { this.router.navigate(['/account/privacy']); }
 }

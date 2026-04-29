@@ -38,7 +38,7 @@ export class SideMenuComponent {
   }
   goToSaved() {
     this.onClose.emit();
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    // Guests can access saved (their saves are stored in localStorage)
     this.router.navigate(['/saved']);
   }
   goToCalendar() { this.router.navigate(['/calendar']); }

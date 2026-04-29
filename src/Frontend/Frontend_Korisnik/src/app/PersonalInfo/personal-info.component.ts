@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { UserService, UserProfile } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 
@@ -39,12 +40,17 @@ export class PersonalInfoComponent implements OnInit {
   selectedInterests: string[] = [];
 
   constructor(
+    private router: Router,
     private userService: UserService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.userService.getUserProfile().subscribe({
       next: (data) => {
         this.userData = data;

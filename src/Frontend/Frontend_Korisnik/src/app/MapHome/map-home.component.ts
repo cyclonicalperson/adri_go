@@ -51,15 +51,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ];
 
   // Active filter values (read from FilterStateService on init)
-  filterMinRating = 0;
-  filterOpenNow   = false;
-  filterRadius    = 0;   // 0 = unlimited
+  filterMinRating    = 0;
+  filterOpenNow      = false;
+  filterRadius       = 0;   // 0 = unlimited
+  filterShowOnlySaved = false;
+  filterSavedPostIds: number[] = [];
   userPosition: [number, number] | null = null;
 
   get hasActiveFilters(): boolean {
     return this.filterMinRating > 0 || this.filterOpenNow ||
            (this.filterRadius > 0 && !!this.userPosition) ||
-           !this.allCategoriesActive;
+           !this.allCategoriesActive || this.filterShowOnlySaved;
   }
 
   constructor(
@@ -95,9 +97,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private applyFilterState(): void {
     const state = this.filterStateService.get();
-    this.filterMinRating = state.minRating;
-    this.filterOpenNow   = state.openNow;
-    this.filterRadius    = state.radius ?? 0;
+    this.filterMinRating      = state.minRating;
+    this.filterOpenNow        = state.openNow;
+    this.filterRadius         = state.radius ?? 0;
+    this.filterShowOnlySaved  = state.showOnlySaved ?? false;
+    this.filterSavedPostIds   = state.savedPostIds ?? [];
     if (state.activeCategories.length > 0) {
       this.categories.forEach(c => {
         c.active = state.activeCategories.includes(c.key);
@@ -285,6 +289,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private passesFilters(loc: any): boolean {
+    // Saved only filter: show only locations in savedPostIds
+    if (this.filterShowOnlySaved && this.filterSavedPostIds.length > 0) {
+      if (!this.filterSavedPostIds.includes(loc.id)) return false;
+    }
     // Category: only filter when some categories are deselected
     if (!this.allCategoriesActive) {
       const key = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');

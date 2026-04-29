@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
+import { FilterStateService } from '../services/filter-state.service';
 
 @Component({
   selector: 'app-saved-locations',
@@ -38,6 +39,7 @@ export class SavedLocationsComponent implements OnInit {
     public router: Router,
     private locationService: LocationService,
     private authService: AuthService,
+    private filterStateService: FilterStateService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -203,7 +205,17 @@ export class SavedLocationsComponent implements OnInit {
 
   viewDetails(id: number) { this.router.navigate(['/location-details', id]); }
 
-  showOnMap() { this.router.navigate(['/map-home']); }
+  showOnMap() {
+    // Save current saved IDs to filter state so map can show only these
+    const ids = this.savedItems.map(item => item.id as number);
+    const currentState = this.filterStateService.get();
+    this.filterStateService.set({
+      ...currentState,
+      showOnlySaved: true,
+      savedPostIds: ids
+    });
+    this.router.navigate(['/map-home']);
+  }
 
   removeSaved(id: number, event: Event) {
     event.stopPropagation();
