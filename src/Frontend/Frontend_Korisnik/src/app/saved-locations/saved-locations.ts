@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
 import { FilterStateService } from '../services/filter-state.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 @Component({
   selector: 'app-saved-locations',
@@ -30,8 +31,6 @@ export class SavedLocationsComponent implements OnInit {
     { id: 'accommodation',   label: 'Stays' },
     { id: 'shop',            label: 'Shopping' },
   ];
-
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   savedItems: any[] = [];
 
@@ -162,11 +161,10 @@ export class SavedLocationsComponent implements OnInit {
 
   private mapToItem(post: Location): any {
     const imagesArr = this.locationService.parseImages(post.images);
-    let firstImage = imagesArr.length > 0 ? imagesArr[0] : this.defaultImage;
-    if (firstImage !== this.defaultImage && !firstImage.startsWith('http')) {
-      const cleanPath = firstImage.startsWith('/') ? firstImage.substring(1) : firstImage;
-      firstImage = `${this.IMAGE_BASE_URL}${cleanPath}`;
-    }
+    const firstImage = resolveBackendAssetUrl(
+      imagesArr.length > 0 ? imagesArr[0] : null,
+      this.defaultImage,
+    );
     const lat = (post as any).lat ?? (post as any).latitude;
     const lng = (post as any).lng ?? (post as any).longitude;
     const distance = (this.userPosition && lat && lng)

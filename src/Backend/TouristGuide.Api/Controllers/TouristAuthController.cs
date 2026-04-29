@@ -36,7 +36,7 @@ namespace TouristGuide.Api.Controllers
 
         // POST /api/tourist-auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] TouristRegisterRequestDto request)
+        public async Task<ActionResult<TouristRegistrationResponseDto>> Register([FromBody] TouristRegisterRequestDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -62,6 +62,7 @@ namespace TouristGuide.Api.Controllers
                 Email = normalizedEmail,
                 PasswordHash = PasswordHelper.Hash(request.Password),
                 Language = string.IsNullOrWhiteSpace(request.Language) ? "en" : request.Language.Trim().ToLowerInvariant(),
+                Interests = SerializeInterests(request.Interests),
                 IsActive = true,
                 IsEmailVerified = !smtpConfigured, // auto-verified when no SMTP
                 EmailVerificationToken = verificationToken,
@@ -89,10 +90,12 @@ namespace TouristGuide.Api.Controllers
                     // Email failure does not block registration
                 }
 
-                return Ok(new
+                return Ok(new TouristRegistrationResponseDto
                 {
-                    message = "Registration successful! Please check your email and confirm your address before logging in.",
-                    email = tourist.Email
+                    RequiresEmailVerification = true,
+                    Message = "Registration successful! Please check your email and confirm your address before logging in.",
+                    Email = tourist.Email ?? string.Empty,
+                    Session = null,
                 });
             }
 
@@ -101,12 +104,18 @@ namespace TouristGuide.Api.Controllers
                 "[DEV MODE] SMTP not configured. Auto-verified tourist {Email} (id={Id}).",
                 tourist.Email, tourist.Id);
 
-            return Ok(await BuildAuthResponseAsync(tourist));
+            return Ok(new TouristRegistrationResponseDto
+            {
+                RequiresEmailVerification = false,
+                Message = "Registration successful! Your account is ready to use.",
+                Email = tourist.Email ?? string.Empty,
+                Session = await BuildAuthResponseAsync(tourist),
+            });
         }
 
         // GET /api/tourist-auth/verify-email?token=...
         [HttpGet("verify-email")]
-        public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+        public async Task<ActionResult<EmailVerificationResultDto>> VerifyEmail([FromQuery] string token)
         {
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token nije prosleden." });
@@ -118,7 +127,13 @@ namespace TouristGuide.Api.Controllers
                 return NotFound(new { message = "Token nije validan." });
 
             if (tourist.IsEmailVerified)
-                return Ok(new { message = "Email je vec potvrdjen. Mozete se prijaviti." });
+            {
+                return Ok(new EmailVerificationResultDto
+                {
+                    Message = "Email je vec potvrdjen. Mozete se prijaviti.",
+                    AlreadyVerified = true
+                });
+            }
 
             if (tourist.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
                 return BadRequest(new
@@ -134,7 +149,12 @@ namespace TouristGuide.Api.Controllers
 
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Email adresa je uspesno potvrdjena! Mozete se prijaviti." });
+            return Ok(new EmailVerificationResultDto
+            {
+                Message = "Email adresa je uspesno potvrdjena! Mozete se prijaviti.",
+                AlreadyVerified = false,
+                VerifiedAt = tourist.UpdatedAt
+            });
         }
 
         // POST /api/tourist-auth/resend-verification
@@ -735,6 +755,22 @@ namespace TouristGuide.Api.Controllers
                 return urls?.FirstOrDefault();
             }
             catch { return null; }
+        }
+
+        private static string? SerializeInterests(List<string>? interests)
+        {
+            if (interests is null || interests.Count == 0)
+                return null;
+
+            var normalized = interests
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return normalized.Count == 0
+                ? null
+                : System.Text.Json.JsonSerializer.Serialize(normalized);
         }
     }
 }

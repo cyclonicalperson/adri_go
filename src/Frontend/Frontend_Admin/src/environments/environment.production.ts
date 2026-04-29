@@ -5,4 +5,6 @@
 export const environment = {
   production: true,
   apiUrl: 'https://your-api-domain.com/api',
+  adminAppUrl: 'https://your-admin-domain.com',
+  touristAppUrl: 'https://your-tourist-domain.com',
 };

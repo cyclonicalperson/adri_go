@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '@core/auth/auth.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-login',
@@ -13,10 +14,10 @@ import { AuthService } from '@core/auth/auth.service';
 })
 export class LoginComponent {
   form: FormGroup;
-  // Signals garantuju reaktivnost bez potrebe za ChangeDetectorRef ili ApplicationRef
   loading = signal(false);
   error = signal<string | null>(null);
   showPassword = false;
+  readonly touristAppUrl = environment.touristAppUrl;
 
   constructor(
     private fb: FormBuilder,
@@ -33,8 +34,14 @@ export class LoginComponent {
   get password() { return this.form.get('password')!; }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    if (this.loading()) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    if (this.loading()) {
+      return;
+    }
 
     this.loading.set(true);
     this.error.set(null);
@@ -44,9 +51,10 @@ export class LoginComponent {
         if (res.user.accountStatus === 'suspended') {
           this.auth.logout();
           this.loading.set(false);
-          this.error.set('Vaš nalog je suspendovan. Kontaktirajte administratora.');
+          this.error.set('Vas nalog je suspendovan. Kontaktirajte administratora.');
           return;
         }
+
         this.loading.set(false);
         this.router.navigate(['/admin/dashboard']);
       },
@@ -58,13 +66,13 @@ export class LoginComponent {
 
         let msg: string;
         if (errStatus === 'suspended' || message.toLowerCase().includes('aktivan')) {
-          msg = 'Vaš nalog je suspendovan. Kontaktirajte administratora.';
+          msg = 'Vas nalog je suspendovan. Kontaktirajte administratora.';
         } else if (httpStatus === 401 || httpStatus === 403) {
-          msg = 'Pogrešan email ili lozinka.';
+          msg = 'Pogresan email ili lozinka.';
         } else if (httpStatus === 0) {
           msg = 'Server nije dostupan. Proverite konekciju.';
         } else {
-          msg = message || 'Greška pri prijavi. Pokušajte ponovo.';
+          msg = message || 'Greska pri prijavi. Pokusajte ponovo.';
         }
 
         this.loading.set(false);
@@ -75,5 +83,9 @@ export class LoginComponent {
 
   goToRegister(): void {
     this.router.navigate(['/register']);
+  }
+
+  goToTouristApp(): void {
+    window.location.assign(this.touristAppUrl);
   }
 }

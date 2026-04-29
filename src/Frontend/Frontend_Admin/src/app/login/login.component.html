@@ -2,12 +2,12 @@
   <div class="card">
 
     <div class="brand">
-      <div class="logo-mark">🌿</div>
+      <div class="logo-mark">&#x1F33F;</div>
       <span class="logo-text">AdriGo</span>
     </div>
 
     <h1 class="title">Prijava</h1>
-    <p class="subtitle">Unesite vaše kredencijale za pristup admin panelu</p>
+    <p class="subtitle">Unesite vase kredencijale za pristup admin panelu</p>
 
     @if (error()) {
     <div class="alert-error">{{ error() }}</div>
@@ -37,7 +37,7 @@
                  placeholder="••••••••"
                  formControlName="password" autocomplete="current-password" />
           <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
-            {{ showPassword ? 'Sakrij' : 'Prikaži' }}
+            {{ showPassword ? 'Sakrij' : 'Prikazi' }}
           </button>
         </div>
         @if (password.invalid && password.touched) {
@@ -49,7 +49,7 @@
         @if (loading()) {
         <span class="spinner"></span>
         } @else {
-        Prijavi se →
+        Prijavi se &rarr;
         }
       </button>
 
@@ -59,6 +59,13 @@
       Nemate nalog?
       <button type="button" class="link-btn" (click)="goToRegister()">
         Kreirajte nalog
+      </button>
+    </p>
+
+    <p class="secondary-prompt">
+      Zelite turisticki nalog?
+      <button type="button" class="link-btn" (click)="goToTouristApp()">
+        Otvorite turisticku aplikaciju
       </button>
     </p>
 

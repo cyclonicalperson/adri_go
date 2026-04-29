@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
+import { environment } from '../../environments/environment';
 
 interface TouristNotification {
   id: number;
@@ -27,7 +28,7 @@ export class NotificationsComponent implements OnInit {
   isLoading = false;
   notifications: TouristNotification[] = [];
 
-  private readonly apiUrl = 'http://localhost:5125/api/tourist-auth';
+  private readonly apiUrl = `${environment.apiUrl}/tourist-auth`;
 
   constructor(
     private router: Router,

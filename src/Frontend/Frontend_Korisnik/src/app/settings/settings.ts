@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService } from '../services/site-translate.service';
 
@@ -34,11 +33,8 @@ export class SettingsComponent {
   passwordSuccess  = '';
   isSavingPassword = false;
 
-  private readonly authApiUrl = 'http://localhost:5125/api/tourist-auth';
-
   constructor(
     public router: Router,
-    private http: HttpClient,
     private authService: AuthService,
     public translate: SiteTranslateService
   ) {
@@ -184,10 +180,10 @@ export class SettingsComponent {
     }
 
     this.isSavingPassword = true;
-    this.http.post(`${this.authApiUrl}/change-password`, {
-      currentPassword: this.changePasswordForm.currentPassword,
-      newPassword: this.changePasswordForm.newPassword
-    }).subscribe({
+    this.authService.changePassword(
+      this.changePasswordForm.currentPassword,
+      this.changePasswordForm.newPassword,
+    ).subscribe({
       next: () => {
         this.passwordSuccess  = '✓ Password changed successfully!';
         this.isSavingPassword = false;

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 @Component({
   selector: 'app-location-list',
@@ -13,11 +14,6 @@ import { AuthService } from '../services/auth.service';
   styleUrls: ['./location-list.component.css']
 })
 export class LocationListComponent implements OnInit {
-
-
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
-  
   isMenuOpen = false;
   locations: Location[] = [];
   isLoading = false;
@@ -37,7 +33,7 @@ export class LocationListComponent implements OnInit {
     this.isLoading = true;
     this.locationService.getLocations().subscribe({
       next: (res) => { this.locations = res.data; this.isLoading = false; this.cdr.markForCheck(); },
-      error: () => { this.errorMessage = 'Greška pri učitavanju lokacija.'; this.isLoading = false; this.cdr.markForCheck(); }
+      error: () => { this.errorMessage = 'Greska pri ucitavanju lokacija.'; this.isLoading = false; this.cdr.markForCheck(); }
     });
   }
 
@@ -51,7 +47,7 @@ export class LocationListComponent implements OnInit {
       next: (res) => {
         loc.isLiked = !loc.isLiked;
         if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
-        this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Removed like');
+        this.showFeedback(loc.isLiked ? 'Liked!' : 'Removed like');
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -71,7 +67,7 @@ export class LocationListComponent implements OnInit {
       next: (res) => {
         loc.isSaved = !loc.isSaved;
         if (res.saveCount !== undefined) loc.saveCount = res.saveCount;
-        this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
+        this.showFeedback(loc.isSaved ? 'Saved!' : 'Removed from saved');
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -92,33 +88,23 @@ export class LocationListComponent implements OnInit {
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
 
   getFirstImage(loc: any): string {
-    // 1. Ako nema slike, vrati neku praznu/default sliku (stavi svoju putanju ako imaš placeholder)
     if (!loc || !loc.images) {
-      return 'assets/placeholder.jpg'; 
+      return 'assets/placeholder.jpg';
     }
 
     let firstImg = '';
 
-    // 2. Proveravamo da li su slike string (JSON) ili već niz
     if (typeof loc.images === 'string') {
       try {
         const parsed = JSON.parse(loc.images);
         firstImg = parsed.length > 0 ? parsed[0] : '';
       } catch {
-        firstImg = loc.images; // Ako je samo jedan obican string
+        firstImg = loc.images;
       }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) {
       firstImg = loc.images[0];
     }
 
-    if (!firstImg) return 'assets/placeholder.jpg';
-
-    // 3. ✨ GLAVNI DEO: Ako slika nema 'http', dodajemo backend putanju!
-    if (!firstImg.startsWith('http')) {
-      const cleanPath = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
-      return `${this.IMAGE_BASE_URL}${cleanPath}`;
-    }
-
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, 'assets/placeholder.jpg');
   }
 }

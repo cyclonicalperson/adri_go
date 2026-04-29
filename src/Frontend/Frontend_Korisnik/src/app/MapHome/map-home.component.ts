@@ -8,6 +8,7 @@ import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { AuthService } from '../services/auth.service';
 import { LocationService } from '../services/location.service';
 import { FilterStateService } from '../services/filter-state.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 @Component({
   selector: 'app-map-home',
@@ -35,8 +36,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchResults: any[] = [];
   recommendedLocations: any[] = [];
   locationsList: any[] = [];
-
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   categories = [
     { key: 'attraction',      label: 'Attractions',   icon: '🏖️', active: true },
@@ -140,7 +139,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getFirstImage(loc: any): string {
-    if (loc.imageUrl) return loc.imageUrl;
+    if (loc.imageUrl) return resolveBackendAssetUrl(loc.imageUrl, 'assets/placeholder.jpg');
     if (!loc.images) return 'assets/placeholder.jpg';
     let firstImg = '';
     if (typeof loc.images === 'string') {
@@ -148,12 +147,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     } else if (Array.isArray(loc.images) && loc.images.length > 0) {
       firstImg = loc.images[0];
     }
-    if (!firstImg) return 'assets/placeholder.jpg';
-    if (!firstImg.startsWith('http')) {
-      const clean = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
-      return `${this.IMAGE_BASE_URL}${clean}`;
-    }
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, 'assets/placeholder.jpg');
   }
 
   focusOnLocation(loc: any) {

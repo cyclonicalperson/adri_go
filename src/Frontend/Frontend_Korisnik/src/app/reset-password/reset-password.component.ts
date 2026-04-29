@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-reset-password',
@@ -20,12 +20,10 @@ export class ResetPasswordComponent implements OnInit {
   errorMessage = '';
   tokenInvalid = false;
 
-  private readonly apiUrl = 'http://localhost:5125/api/tourist-auth';
-
   constructor(
     private router: Router,
     private route: ActivatedRoute,
-    private http: HttpClient
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -46,10 +44,7 @@ export class ResetPasswordComponent implements OnInit {
     }
 
     this.isLoading = true;
-    this.http.post(`${this.apiUrl}/reset-password`, {
-      token: this.token,
-      newPassword: this.newPassword
-    }).subscribe({
+    this.authService.resetPassword(this.token, this.newPassword).subscribe({
       next: () => {
         this.isLoading = false;
         this.successMessage = 'Your password has been reset successfully! You can now log in.';

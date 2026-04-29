@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -17,9 +17,10 @@ export class ForgotPasswordComponent {
   successMessage = '';
   errorMessage = '';
 
-  private readonly apiUrl = 'http://localhost:5125/api/tourist-auth';
-
-  constructor(private router: Router, private http: HttpClient) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+  ) {}
 
   submit(): void {
     if (!this.email.trim()) {
@@ -30,7 +31,7 @@ export class ForgotPasswordComponent {
     this.errorMessage = '';
     this.successMessage = '';
 
-    this.http.post(`${this.apiUrl}/forgot-password`, { email: this.email }).subscribe({
+    this.authService.requestPasswordReset(this.email).subscribe({
       next: () => {
         this.isLoading = false;
         this.successMessage = 'If an account with that email exists, a password reset link has been sent.';

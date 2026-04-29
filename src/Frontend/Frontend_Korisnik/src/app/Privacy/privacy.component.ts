@@ -1,6 +1,5 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
@@ -18,11 +17,8 @@ export class PrivacyComponent {
   deleteError = '';
   showDeleteModal = false;
 
-  private readonly apiUrl = 'http://localhost:5125/api';
-
   constructor(
     private authService: AuthService,
-    private http: HttpClient,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -30,7 +26,7 @@ export class PrivacyComponent {
   goBack() { window.history.back(); }
 
   deleteAccount() {
-    if (!this.authService.touristId) {
+    if (!this.authService.isLoggedIn) {
       this.deleteError = 'Not logged in.';
       return;
     }
@@ -45,26 +41,19 @@ export class PrivacyComponent {
   }
 
   confirmDelete() {
-    const touristId = this.authService.touristId;
-    if (!touristId) return;
+    if (!this.authService.isLoggedIn) return;
 
     this.showDeleteModal = false;
     this.isDeleting  = true;
     this.deleteError = '';
     this.cdr.detectChanges();
 
-    // Try the JWT-auth delete endpoint first, fall back to the simple tourists endpoint
-    this.http.delete(`${this.apiUrl}/tourist-auth/account`).subscribe({
+    this.authService.deleteAccount().subscribe({
       next: () => this.finishDelete(),
-      error: () => {
-        this.http.delete(`${this.apiUrl}/tourists/${touristId}`).subscribe({
-          next:  () => this.finishDelete(),
-          error: (err) => {
-            this.isDeleting  = false;
-            this.deleteError = err?.error?.message || 'Could not delete account. Please try again or contact support.';
-            this.cdr.detectChanges();
-          }
-        });
+      error: (err) => {
+        this.isDeleting  = false;
+        this.deleteError = err?.error?.message || 'Could not delete account. Please try again or contact support.';
+        this.cdr.detectChanges();
       }
     });
   }

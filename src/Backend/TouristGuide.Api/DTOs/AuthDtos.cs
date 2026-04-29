@@ -60,6 +60,8 @@ namespace TouristGuide.Api.DTOs
 
         [MaxLength(5)]
         public string Language { get; set; } = "en";
+
+        public List<string>? Interests { get; set; }
     }
 
     /// <summary>
@@ -141,6 +143,22 @@ namespace TouristGuide.Api.DTOs
         public DateTime ExpiresAtUtc { get; set; }
         public TouristMeDto User { get; set; } = new();
     }
+
+public class TouristRegistrationResponseDto
+{
+    public bool RequiresEmailVerification { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public TouristAuthResponseDto? Session { get; set; }
+}
+
+public class EmailVerificationResultDto
+{
+    public string Message { get; set; } = string.Empty;
+    public bool AlreadyVerified { get; set; }
+    public bool Expired { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+}
 
     /// <summary>
     /// DTO za ponovljeno slanje verifikacionog emaila.

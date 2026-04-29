@@ -16,6 +16,10 @@ export class LoginComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
   showRegisteredBanner = false;
+  verificationPendingEmail = '';
+  resendMessage = '';
+  resendError = '';
+  isResendingVerification = false;
 
   constructor(
     private fb: FormBuilder,
@@ -27,14 +31,16 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.loginForm = this.fb.group({
-      emailOrPhone: ['', [Validators.required]],
+      emailOrPhone: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required]
     });
 
-    // Show banner when redirected from registration with email-verification required
     this.route.queryParams.subscribe(params => {
-      if (params['registered'] === '1') {
-        this.showRegisteredBanner = true;
+      const registeredEmail = params['email'];
+      this.showRegisteredBanner = params['registered'] === '1';
+
+      if (registeredEmail) {
+        this.loginForm.patchValue({ emailOrPhone: registeredEmail });
       }
     });
   }
@@ -44,18 +50,51 @@ export class LoginComponent implements OnInit {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.resendMessage = '';
+    this.resendError = '';
+    this.verificationPendingEmail = '';
 
     const { emailOrPhone, password } = this.loginForm.value;
 
-    this.authService.loginWithToken(emailOrPhone, password).subscribe({
+    this.authService.login(emailOrPhone, password).subscribe({
       next: () => {
         this.isLoading = false;
         this.cdr.detectChanges();
         this.router.navigate(['/map-home']);
       },
-      error: (err) => {
+      error: err => {
         this.isLoading = false;
-        this.errorMessage = err?.error?.message || 'Incorrect email or password. Please try again.';
+
+        if (err?.error?.emailNotVerified) {
+          this.verificationPendingEmail = emailOrPhone;
+          this.errorMessage = err?.error?.message || 'Please verify your email address before logging in.';
+        } else {
+          this.errorMessage = err?.error?.message || 'Incorrect email or password. Please try again.';
+        }
+
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  resendVerification(): void {
+    if (!this.verificationPendingEmail || this.isResendingVerification) {
+      return;
+    }
+
+    this.isResendingVerification = true;
+    this.resendMessage = '';
+    this.resendError = '';
+
+    this.authService.resendVerification(this.verificationPendingEmail).subscribe({
+      next: res => {
+        this.isResendingVerification = false;
+        this.resendMessage = res.message || 'A new verification email has been sent.';
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        this.isResendingVerification = false;
+        this.resendError = err?.error?.message || 'Could not resend the verification email.';
         this.cdr.detectChanges();
       }
     });
@@ -65,8 +104,8 @@ export class LoginComponent implements OnInit {
     this.router.navigate(['/map-home']);
   }
 
-  onGoogleLogin(): void { console.log('Google login — nije implementiran'); }
-  onAppleLogin(): void  { console.log('Apple login — nije implementiran'); }
+  onGoogleLogin(): void { console.log('Google login - not implemented'); }
+  onAppleLogin(): void  { console.log('Apple login - not implemented'); }
 
   goToRegister(): void {
     this.router.navigate(['/choose-role']);

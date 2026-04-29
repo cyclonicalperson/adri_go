@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
+import { PublicAuthService } from '@core/auth/public-auth.service';
 import { environment } from '@env/environment';
 
 @Component({
@@ -14,11 +14,13 @@ export class RegisterVerifyEmailComponent implements OnInit {
   loading = signal(true);
   success = signal(false);
   expired = signal(false);
+  alreadyVerified = signal(false);
   message = signal('Proveravamo verifikacioni link...');
+  readonly touristAppUrl = environment.touristAppUrl;
 
   constructor(
     private route: ActivatedRoute,
-    private http: HttpClient,
+    private publicAuth: PublicAuthService,
   ) { }
 
   ngOnInit(): void {
@@ -32,13 +34,17 @@ export class RegisterVerifyEmailComponent implements OnInit {
         return;
       }
 
-      this.http.get<{ message?: string }>(`${environment.apiUrl}/auth/verify-registration-email`, {
-        params: new HttpParams().set('token', token),
-      }).subscribe({
+      this.publicAuth.verifyAdminRegistrationEmail(token).subscribe({
         next: response => {
           this.loading.set(false);
           this.success.set(true);
-          this.message.set(response.message ?? 'Email adresa je uspesno potvrdjena.');
+          this.alreadyVerified.set(!!response.alreadyVerified);
+          this.message.set(
+            response.message
+            ?? (response.alreadyVerified
+              ? 'Email adresa je vec potvrdjena. Zahtev je spreman za pregled superadmina.'
+              : 'Email adresa je uspesno potvrdjena. Superadmin sada moze da pregleda zahtev.'),
+          );
         },
         error: error => {
           this.loading.set(false);
@@ -51,5 +57,9 @@ export class RegisterVerifyEmailComponent implements OnInit {
         },
       });
     });
+  }
+
+  goToTouristApp(): void {
+    window.location.assign(this.touristAppUrl);
   }
 }

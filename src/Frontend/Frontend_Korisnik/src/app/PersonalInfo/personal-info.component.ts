@@ -123,11 +123,16 @@ export class PersonalInfoComponent implements OnInit {
       next: (updated) => {
         // Sync local state with what the server confirmed
         if (this.userData) {
-          this.userData.fullName   = updated.name ?? this.form.fullName;
+          this.userData.fullName   = updated.fullName || this.form.fullName;
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
         }
+        this.authService.updateCurrentTourist({
+          name: updated.fullName || this.form.fullName,
+          email: updated.emailOrPhone || this.form.emailOrPhone,
+          language: updated.language || this.userData?.language,
+        });
         this.isSaving    = false;
         this.editMode    = false;
         this.saveSuccess = true;
