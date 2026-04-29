@@ -18,7 +18,7 @@ export interface Location {
   address?: string;
   externalUrl?: string;
   externalUrlLabel?: string;
-  images?: string;
+  images?: string | string[];
   openingHours?: string;
   details?: string;
   status: string;
@@ -27,11 +27,18 @@ export interface Location {
   saveCount: number;
   reviewCount: number;
   avgRating?: number;
+  rating?: number;
+  reviews?: number;
+  likes?: number;
+  saves?: number;
+  category?: string;
+  imageUrl?: string;
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
   isLiked?: boolean;
   isSaved?: boolean;
+  distanceKm?: number | null;
 }
 
 export interface LocationsResponse {
@@ -121,8 +128,9 @@ export class LocationService {
   getMySavedPosts(): Observable<Location[]> {
     return this.http.get<Location[]>(`${this.apiUrl}/posts/my-saved`); 
   }
-  parseImages(imagesJson?: string): string[] {
+  parseImages(imagesJson?: string | string[]): string[] {
     if (!imagesJson) return [];
+    if (Array.isArray(imagesJson)) return imagesJson;
     try {
       const parsed = JSON.parse(imagesJson);
       return Array.isArray(parsed) ? parsed : [];
