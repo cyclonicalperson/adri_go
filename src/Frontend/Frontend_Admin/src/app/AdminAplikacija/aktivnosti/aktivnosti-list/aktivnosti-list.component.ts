@@ -1,11 +1,10 @@
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { ActivityService } from '@core/services/activity.service';
 import { CsvExportService } from '@core/services/csv-export.service';
-import { environment } from '@env/environment';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { MapComponent, MapMarker } from '@shared/components/map/map.component';
@@ -72,7 +71,7 @@ export class AktivnostiListComponent implements OnInit {
   private search$ = new Subject<string>();
 
   constructor(
-    private http: HttpClient,
+    private activityService: ActivityService,
     private router: Router,
     private auth: AuthService,
     private csv: CsvExportService,
@@ -89,11 +88,9 @@ export class AktivnostiListComponent implements OnInit {
   }
 
   private loadGlobalTotal(): void {
-    this.http.get<{ total: number }>(`${environment.apiUrl}/activities`, {
-      params: new HttpParams().set('page', 1).set('pageSize', 1),
-    }).subscribe({
+    this.activityService.getAll({ page: 1, pageSize: 1 }).subscribe({
       next: res => {
-        this.globalTotal = (res as any).total ?? 0;
+        this.globalTotal = res.total ?? 0;
       },
     });
   }
@@ -108,30 +105,28 @@ export class AktivnostiListComponent implements OnInit {
   load(): void {
     this.loading = true;
 
-    let params = new HttpParams()
-      .set('page', this.page)
-      .set('pageSize', this.pageSize)
-      .set('sortBy', this.sortBy)
-      .set('sortDir', this.sortDir);
-
-    if (this.searchQuery) params = params.set('search', this.searchQuery);
-    if (this.activeCategory) params = params.set('category', this.activeCategory);
-    if (this.activeStatus) params = params.set('status', this.activeStatus);
-
-    this.http.get<{ data: BackendActivity[]; total: number; totalPages: number }>(`${environment.apiUrl}/activities`, { params }).subscribe({
+    this.activityService.getAll({
+      page: this.page,
+      pageSize: this.pageSize,
+      sortBy: this.sortBy,
+      sortDir: this.sortDir,
+      search: this.searchQuery || undefined,
+      category: this.activeCategory || undefined,
+      status: this.activeStatus || undefined,
+    }).subscribe({
       next: res => {
         this.activities = (res.data ?? []).map(a => ({
           ...a,
-          id: a.id ?? a.activityId ?? 0,
-          activityId: a.id ?? a.activityId ?? 0,
+          id: (a as any).id ?? a.activityId ?? 0,
+          activityId: (a as any).id ?? a.activityId ?? 0,
         }));
         this.total = res.total;
         this.totalPages = res.totalPages;
 
-        this.sportCount = (res as any).sportCount ?? this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
-        this.natureCount = (res as any).natureCount ?? this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
-        this.wellnessCount = (res as any).wellnessCount ?? this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
-        this.pendingCount = (res as any).pendingCount ?? this.activities.filter(a => a.status === 'pending').length;
+        this.sportCount = res.sportCount ?? this.activities.filter(a => this.inferCat(a) === 'SPORT').length;
+        this.natureCount = res.natureCount ?? this.activities.filter(a => this.inferCat(a) === 'ADVENTURE').length;
+        this.wellnessCount = res.wellnessCount ?? this.activities.filter(a => this.inferCat(a) === 'WELLNESS').length;
+        this.pendingCount = res.pendingCount ?? this.activities.filter(a => a.status === 'pending').length;
 
         this.loading = false;
       },
@@ -205,7 +200,7 @@ export class AktivnostiListComponent implements OnInit {
   }
 
   approveActivity(activity: BackendActivity): void {
-    this.http.put(`${environment.apiUrl}/activities/${activity.id}`, { status: 'approved' }).subscribe({
+    this.activityService.updateStatus(activity.id, 'approved').subscribe({
       next: () => {
         activity.status = 'approved';
         this.loadGlobalTotal();
@@ -216,7 +211,7 @@ export class AktivnostiListComponent implements OnInit {
 
   rejectActivity(activity: BackendActivity): void {
     const id = activity.id ?? activity.activityId;
-    this.http.delete(`${environment.apiUrl}/activities/${id}`).subscribe({
+    this.activityService.delete(id).subscribe({
       next: () => {
         this.activities = this.activities.filter(x => (x.id ?? x.activityId) !== id);
         this.total = Math.max(0, this.total - 1);
@@ -272,7 +267,7 @@ export class AktivnostiListComponent implements OnInit {
   doDelete(): void {
     if (!this.deleteTarget) return;
     const id = this.deleteTarget.id ?? this.deleteTarget.activityId;
-    this.http.delete(`${environment.apiUrl}/activities/${id}`).subscribe({
+    this.activityService.delete(id).subscribe({
       next: () => {
         this.deleteTarget = null;
         this.activities = this.activities.filter(a => (a.id ?? a.activityId) !== id);

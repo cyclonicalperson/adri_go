@@ -1,13 +1,12 @@
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { environment } from '@env/environment';
 import { Post, PostStatus } from '@core/models/post.model';
 import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { AuthService } from '@core/auth/auth.service';
 import { CsvExportService } from '@core/services/csv-export.service';
+import { PostService } from '@core/services/post.service';
 import { RegionService } from '@core/services/region.service';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -72,7 +71,7 @@ export class EventsListComponent implements OnInit {
   private search$ = new Subject<string>();
 
   constructor(
-    private http: HttpClient,
+    private postService: PostService,
     private regionService: RegionService,
     private router: Router,
     private auth: AuthService,
@@ -101,23 +100,21 @@ export class EventsListComponent implements OnInit {
   }
 
   private loadCounts(): void {
-    const base = new HttpParams().set('type', 'event').set('page', 1).set('pageSize', 1);
-
-    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'published') })
-      .subscribe(r => {
-        this.publishedCount = r.total ?? 0;
+    this.postService.getAll({ type: 'event', status: 'published', page: 1, pageSize: 1 })
+      .subscribe(res => {
+        this.publishedCount = res.total ?? 0;
         this.recomputeGlobalTotal();
       });
 
-    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'draft') })
-      .subscribe(r => {
-        this.draftCount = r.total ?? 0;
+    this.postService.getAll({ type: 'event', status: 'draft', page: 1, pageSize: 1 })
+      .subscribe(res => {
+        this.draftCount = res.total ?? 0;
         this.recomputeGlobalTotal();
       });
 
-    this.http.get<any>(`${environment.apiUrl}/posts`, { params: base.set('status', 'archived') })
-      .subscribe(r => {
-        this.archivedCount = r.total ?? 0;
+    this.postService.getAll({ type: 'event', status: 'archived', page: 1, pageSize: 1 })
+      .subscribe(res => {
+        this.archivedCount = res.total ?? 0;
         this.recomputeGlobalTotal();
       });
   }
@@ -126,21 +123,18 @@ export class EventsListComponent implements OnInit {
     this.loading = true;
     const fetchSize = this.req.category ? 100 : this.req.pageSize;
 
-    let params = new HttpParams()
-      .set('type', 'event')
-      .set('page', this.req.category ? 1 : this.req.page)
-      .set('pageSize', fetchSize);
-
-    if (this.req.sortBy) params = params.set('sortBy', this.req.sortBy);
-    if (this.req.sortDir) params = params.set('sortDir', this.req.sortDir!);
-    if (this.req.search) params = params.set('search', this.req.search);
-    if (this.req.regionId) params = params.set('region_id', this.req.regionId);
-    if (this.req.status) params = params.set('status', this.req.status);
-
-    this.http.get<{ data: any[]; total: number; totalPages: number }>(`${environment.apiUrl}/posts`, { params }).subscribe({
+    this.postService.getAll({
+      type: 'event',
+      page: this.req.category ? 1 : this.req.page,
+      pageSize: fetchSize,
+      sortBy: this.req.sortBy,
+      sortDir: this.req.sortDir,
+      search: this.req.search,
+      regionId: this.req.regionId,
+      status: this.req.status,
+    }).subscribe({
       next: res => {
-        const normalize = (p: any): Post => ({ ...p, postId: p.postId ?? p.id });
-        let all: Post[] = (res.data ?? []).map(normalize);
+        let all: Post[] = res.data ?? [];
 
         if (this.req.category) {
           all = all.filter(e => this.eventCategory(e) === this.req.category);
@@ -293,7 +287,7 @@ export class EventsListComponent implements OnInit {
 
   doDelete(): void {
     if (!this.deleteTarget) return;
-    this.http.delete(`${environment.apiUrl}/posts/${this.deleteTarget.postId}`)
+    this.postService.delete(this.deleteTarget.postId)
       .subscribe(() => {
         this.deleteTarget = null;
         this.load();
@@ -322,7 +316,7 @@ export class EventsListComponent implements OnInit {
 
     if (!event || !status) return;
 
-    this.http.put(`${environment.apiUrl}/posts/${event.postId}`, { status }).subscribe({
+    this.postService.update(event.postId, { status }).subscribe({
       next: () => {
         event.status = status;
         this.load();

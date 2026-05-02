@@ -1,8 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { Activity } from '@core/models/activity.model';
-import { environment } from '@env/environment';
+import { ActivityService } from '@core/services/activity.service';
 
 @Component({
   selector: 'app-activities-selector',
@@ -18,10 +17,10 @@ export class ActivitiesSelectorComponent implements OnInit {
 
   all: Activity[] = [];
 
-  constructor(private http: HttpClient) { }
+  constructor(private activityService: ActivityService) { }
 
   ngOnInit(): void {
-    this.http.get<{ data: Activity[] }>(`${environment.apiUrl}/activities`)
+    this.activityService.getAll({ page: 1, pageSize: 200, sortBy: 'name', sortDir: 'asc' })
       .subscribe(res => { this.all = res.data; });
   }
 
