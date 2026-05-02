@@ -28,21 +28,27 @@
     <div id="map"></div>
   </div>
 
-  <!-- Route panel — shown when navigating to a destination -->
-  <div *ngIf="showRoutePanel" style="position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:1000;background:#fff;border-radius:14px;padding:10px 16px;box-shadow:0 4px 20px rgba(0,0,0,0.18);display:flex;align-items:center;gap:10px;max-width:340px;width:calc(100% - 32px);">
-    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#22c55e;flex-shrink:0;"><path d="M21.71 11.29l-9-9a1 1 0 0 0-1.42 0l-9 9a1 1 0 0 0 0 1.42l9 9a1 1 0 0 0 1.42 0l9-9a1 1 0 0 0 0-1.42zM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>
-    <span style="font-size:13px;font-weight:600;color:#0f172a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-      {{ routeDestTitle || 'Directions' }}
-    </span>
-    <button (click)="clearRoute()" style="background:#fef2f2;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;flex-shrink:0;">
-      ✕ Clear
+  <div *ngIf="showRoutePanel" class="route-pill">
+    <div class="route-pill-icon">
+      <svg viewBox="0 0 24 24">
+        <path d="M7 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm10 8a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM9.5 8h5v2h-5zm0 8h5v-2h-5z"/>
+      </svg>
+    </div>
+    <div class="route-pill-info">
+      <span class="route-pill-title">{{ routeDestTitle || 'Route planner' }}</span>
+      <span class="route-pill-meta" *ngIf="routeSummary.stopCount > 0">
+        {{ routeSummary.stopCount }} stops
+        <span *ngIf="routeSummary.distanceKm > 0">&middot; {{ routeSummary.distanceKm | number:'1.1-1' }} km</span>
+        <span *ngIf="routeSummary.durationMin > 0">&middot; {{ formatDuration(routeSummary.durationMin) }}</span>
+      </span>
+    </div>
+    <button (click)="clearRoute()" class="route-pill-clear">
+      Clear
     </button>
   </div>
 
   <div class="top-ui-layer">
     <div class="search-wrapper">
-
-      <!-- Search + Filters bar -->
       <div class="search-container">
         <span class="search-icon">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -70,7 +76,6 @@
         </button>
       </div>
 
-      <!-- Category chips row (below search bar) -->
       <div class="category-chips-row">
         <button
           class="cat-chip"
@@ -88,73 +93,73 @@
         </button>
       </div>
 
-      <!-- Search results dropdown -->
       <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
         <div
           *ngFor="let result of searchResults"
           class="search-result-item"
           (click)="selectSearchResult(result)">
           <div class="search-result-icon">
-            <span>{{ getCategoryIcon(result.postType || result.category) }}</span>
+            <span>{{ getCategoryIcon(result.postType) }}</span>
           </div>
           <div class="search-result-info">
             <div class="search-result-title">{{ result.title }}</div>
-            <div class="search-result-meta">{{ result.postType || result.category }}</div>
+            <div class="search-result-meta">{{ result.postType }}</div>
           </div>
-          <div class="search-result-rating" *ngIf="result.avgRating || result.rating">
+          <div class="search-result-rating" *ngIf="result.avgRating">
             <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-            {{ (result.avgRating || result.rating) | number:'1.1-1' }}
+            {{ result.avgRating | number:'1.1-1' }}
           </div>
         </div>
       </div>
-      <!-- No results -->
+
       <div class="search-no-results" *ngIf="searchQuery && searchResults.length === 0">
         <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
         No results for "{{ searchQuery }}"
       </div>
     </div>
-    <!-- /search-wrapper -->
 
-    <!-- ── RECOMMENDED LOCATIONS (desktop only) ─────────── -->
-    <div class="recommended-panel desktop-only">
-      <div class="recommended-header">
-        <span class="recommended-title">✨ Recommended</span>
-        <span class="recommended-subtitle">Top rated nearby</span>
-      </div>
-      <div class="recommended-list">
-        <div
-          *ngFor="let loc of recommendedLocations; let i = index"
-          class="recommended-card"
-          (click)="focusOnLocation(loc)">
-          <div class="rec-image">
-            <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="onImgError($event)">
-            <div class="rec-rank">#{{ i + 1 }}</div>
-          </div>
-          <div class="rec-info">
-            <div class="rec-title">{{ loc.title }}</div>
-            <div class="rec-meta">
-              <span class="rec-category">{{ loc.postType || loc.category }}</span>
-              <span class="rec-dot" *ngIf="loc.regionName">·</span>
-              <span class="rec-distance" *ngIf="loc.regionName">{{ loc.regionName }}</span>
-            </div>
-            <div class="rec-rating" *ngIf="loc.avgRating || loc.rating">
-              <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-              <span>{{ (loc.avgRating || loc.rating) | number:'1.1-1' }}</span>
-              <span class="rec-reviews" *ngIf="loc.reviewCount || loc.reviews">({{ (loc.reviewCount || loc.reviews) | number }} reviews)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <app-trip-planner-panel
+      [plannerMode]="plannerMode"
+      [plannerStops]="plannerStops"
+      [scenicMode]="scenicMode"
+      [travelMode]="travelMode"
+      [routeSummary]="routeSummary"
+      [plannerMessage]="plannerMessage"
+      [isRenderingRoute]="isRenderingRoute"
+      [isSavingTrip]="isSavingTrip"
+      (plannerModeToggled)="togglePlannerMode()"
+      (travelModeSelected)="setTravelMode($event)"
+      (scenicModeToggled)="toggleScenicMode()"
+      (stopFocused)="focusOnPlannerStop($event)"
+      (stopMoved)="movePlannerStop($event.index, $event.direction)"
+      (stopRemoved)="removePlannerStop($event)"
+      (plannerOptimized)="optimizePlannerStops()"
+      (tripSaved)="saveTripToCalendar()"
+      (tripShared)="shareTrip()"
+      (routeCleared)="clearRoute()">
+    </app-trip-planner-panel>
 
+    <app-route-detours-panel
+      [scenicSuggestions]="scenicSuggestions"
+      (detourAdded)="applyDetourSuggestion($event)">
+    </app-route-detours-panel>
+
+    <app-map-recommendations-panel
+      [recommendationCards]="recommendationCards"
+      [hasPersonalizedRecommendations]="hasPersonalizedRecommendations"
+      [activeRecommendationTab]="activeRecommendationTab"
+      [resolveImage]="resolveRecommendationImage"
+      (tabSelected)="activeRecommendationTab = $event"
+      (locationSelected)="focusOnLocation($event)">
+    </app-map-recommendations-panel>
   </div>
 
   <app-location-details-card
     *ngIf="selectedLocation"
     [locationData]="selectedLocation"
     (onClose)="closeLocationDetails()"
-    (click)="viewFullDetails()"
-    style="cursor: pointer;">
+    (onViewDetails)="viewFullDetails()"
+    (onAddToRoute)="addSelectedLocationToPlanner()">
   </app-location-details-card>
 
   <div class="app-footer" [class.footer-hidden]="selectedLocation">

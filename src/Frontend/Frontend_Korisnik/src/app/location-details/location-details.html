@@ -104,6 +104,12 @@
           {{ $any(location).isSaved ? 'Saved' : 'Save' }}
         </button>
 
+        <button (click)="addToRoutePlanner()"
+          style="display:flex;align-items:center;gap:6px;background:#eff6ff;color:#1d4ed8;border:1.5px solid #bfdbfe;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#1d4ed8;"><path d="M14 6V4h5v5h-2V7.41l-4.29 4.3-1.42-1.42L15.59 6H14zm-4 0a4 4 0 0 1 0 8H8v4h2a4 4 0 0 1 0 8H4v-2h6a2 2 0 0 0 0-4H6v-8h4a2 2 0 0 0 0-4H4V6h6z"/></svg>
+          Add stop
+        </button>
+
         <!-- Calendar button — available for all location types -->
         <button (click)="addToCalendar()"
           style="display:flex;align-items:center;gap:6px;background:#fdf4ff;color:#7e22ce;border:1.5px solid #e9d5ff;padding:10px 18px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;">

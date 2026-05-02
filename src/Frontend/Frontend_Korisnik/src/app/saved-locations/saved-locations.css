@@ -90,6 +90,11 @@
   overflow-y: auto;
   padding: 18px;
 }
+.scroll-content.empty-scroll {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .scroll-content::-webkit-scrollbar { width: 4px; }
 .scroll-content::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
 
@@ -269,6 +274,7 @@
   align-items: center;
   justify-content: center;
   min-height: 260px;
+  width: 100%;
 }
 .empty-icon { width: 52px; height: 52px; fill: var(--gray-200); display: block; margin: 0 auto 14px; }
 

@@ -172,6 +172,24 @@
 .btn-calendar:active { transform: scale(0.95); }
 .btn-calendar svg { width: 20px; height: 20px; fill: var(--green-600, #16a34a); }
 
+.btn-route {
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 14px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: var(--radius-md, 12px);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  font-family: inherit;
+}
+.btn-route:hover  { background: #dbeafe; }
+.btn-route:active { transform: scale(0.97); }
+
 .btn-details {
   flex: 1;
   padding: 13px;

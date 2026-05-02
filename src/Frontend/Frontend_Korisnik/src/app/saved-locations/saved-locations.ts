@@ -5,6 +5,7 @@ import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
 import { FilterStateService } from '../services/filter-state.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
 
 @Component({
   selector: 'app-saved-locations',
@@ -39,14 +40,16 @@ export class SavedLocationsComponent implements OnInit {
     private locationService: LocationService,
     private authService: AuthService,
     private filterStateService: FilterStateService,
+    private preferences: TouristPreferencesService,
     private cdr: ChangeDetectorRef
   ) {}
 
   userPosition: [number, number] | null = null;
 
   ngOnInit() {
-    // Request geolocation so we can show distance
-    this.requestGeolocation();
+    if (this.preferences.snapshot.locationSharing) {
+      this.requestGeolocation();
+    }
 
     if (this.authService.isLoggedIn) {
       this.loadSavedLocations();
@@ -195,6 +198,10 @@ export class SavedLocationsComponent implements OnInit {
     return this.savedItems.filter(item =>
       item.category.toLowerCase() === this.activeFilter.toLowerCase()
     );
+  }
+
+  get isEmptyStateVisible(): boolean {
+    return !this.isLoading && this.filteredItems.length === 0;
   }
 
   setFilter(filter: string) { this.activeFilter = filter; }

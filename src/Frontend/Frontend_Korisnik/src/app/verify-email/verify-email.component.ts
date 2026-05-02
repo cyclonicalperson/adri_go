@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -61,14 +61,16 @@ import { AuthService } from '../services/auth.service';
     </div>
   `
 })
-export class VerifyEmailComponent implements OnInit {
+export class VerifyEmailComponent implements OnInit, OnDestroy {
   state: 'loading' | 'success' | 'already' | 'error' = 'loading';
   isExpired = false;
+  private redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -81,12 +83,21 @@ export class VerifyEmailComponent implements OnInit {
     this.authService.verifyEmail(token).subscribe({
       next: res => {
         this.state = res?.alreadyVerified ? 'already' : 'success';
+        this.cdr.detectChanges();
+        this.redirectTimer = setTimeout(() => this.goToLogin(), 1800);
       },
       error: err => {
         this.isExpired = err?.error?.expired === true;
         this.state = 'error';
+        this.cdr.detectChanges();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.redirectTimer) {
+      clearTimeout(this.redirectTimer);
+    }
   }
 
   goToLogin(): void {

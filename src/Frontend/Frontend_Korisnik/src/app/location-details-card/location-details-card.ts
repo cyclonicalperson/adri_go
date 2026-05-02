@@ -16,6 +16,7 @@ export class LocationDetailsCardComponent {
   @Input() locationData: any;
   @Output() onClose = new EventEmitter<void>();
   @Output() onViewDetails = new EventEmitter<void>();
+  @Output() onAddToRoute = new EventEmitter<void>();
 
   defaultImage = 'assets/plaza.jpg';
   calendarMessage = '';
@@ -66,6 +67,11 @@ export class LocationDetailsCardComponent {
       this.router.navigate(['/location-details', 1]);
     }
     this.onViewDetails.emit();
+  }
+
+  onAddToRouteClick(event: Event): void {
+    event.stopPropagation();
+    this.onAddToRoute.emit();
   }
 
   addToCalendar(event: Event): void {

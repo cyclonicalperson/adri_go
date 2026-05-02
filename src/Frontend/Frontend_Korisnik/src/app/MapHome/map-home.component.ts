@@ -2,40 +2,85 @@ import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 import * as L from 'leaflet';
+import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
+import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
+import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-planner-panel.component';
 import { AuthService } from '../services/auth.service';
-import { LocationService } from '../services/location.service';
+import { LocationService, Location } from '../services/location.service';
 import { FilterStateService } from '../services/filter-state.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { UserService, CalendarItem, UserProfile } from '../services/user.service';
+import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
+import { ComputedRoute, RoutingService, RouteSummary } from '../services/routing.service';
+import { TravelMode, TouristPreferencesService } from '../services/tourist-preferences.service';
+import { TouristAnalyticsService } from '../services/tourist-analytics.service';
+import {
+  LocationRecommendation,
+  RecommendationService,
+  RouteDetourSuggestion
+} from '../services/recommendation.service';
+
+type RecommendationTab = 'personalized' | 'global';
 
 @Component({
   selector: 'app-map-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, LocationDetailsCardComponent, SideMenuComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    LocationDetailsCardComponent,
+    SideMenuComponent,
+    TripPlannerPanelComponent,
+    RouteDetoursPanelComponent,
+    MapRecommendationsPanelComponent,
+  ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
 })
 export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
-
-  selectedLocation: any = null;
+  selectedLocation: Location | null = null;
   isMenuOpen = false;
-  activeTab: string = 'map';
+  activeTab = 'map';
   private map: L.Map | undefined;
-  private markers: { loc: any; marker: L.Marker }[] = [];
+  private markers: { loc: Location; marker: L.Marker }[] = [];
   private userMarker: L.Marker | null = null;
+  private routeStopMarkers: L.Marker[] = [];
+  private latestQueryParams: Record<string, string> = {};
+  private lastHydratedQueryKey = '';
+  private plannerRenderToken = 0;
 
   showAuthPopup = false;
-  filterExpanded = false;
   routePolyline: L.Polyline | null = null;
   routeDestTitle = '';
   showRoutePanel = false;
+  isRenderingRoute = false;
+  isSavingTrip = false;
 
   searchQuery = '';
-  searchResults: any[] = [];
-  recommendedLocations: any[] = [];
-  locationsList: any[] = [];
+  searchResults: Location[] = [];
+  globalRecommendations: LocationRecommendation[] = [];
+  personalizedRecommendations: LocationRecommendation[] = [];
+  activeRecommendationTab: RecommendationTab = 'personalized';
+  locationsList: Location[] = [];
+  plannerStops: PlannerStop[] = [];
+  scenicSuggestions: RouteDetourSuggestion[] = [];
+  plannerMessage = '';
+  plannerMode = false;
+  scenicMode = true;
+  travelMode: TravelMode = 'driving';
+  routeSummary: RouteSummary = {
+    distanceKm: 0,
+    durationMin: 0,
+    stopCount: 0,
+  };
+
+  userProfile: UserProfile | null = null;
+  savedLocationsContext: Location[] = [];
+  calendarItemsContext: CalendarItem[] = [];
 
   categories = [
     { key: 'attraction',      label: 'Attractions',   icon: '🏖️', active: true },
@@ -49,18 +94,35 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'shop',            label: 'Shopping',      icon: '🛍️', active: true },
   ];
 
-  // Active filter values (read from FilterStateService on init)
-  filterMinRating    = 0;
-  filterOpenNow      = false;
-  filterRadius       = 0;   // 0 = unlimited
+  filterMinRating = 0;
+  filterOpenNow = false;
+  filterRadius = 0;
   filterShowOnlySaved = false;
   filterSavedPostIds: number[] = [];
   userPosition: [number, number] | null = null;
+  readonly resolveRecommendationImage = (location: Location): string => this.getFirstImage(location);
 
   get hasActiveFilters(): boolean {
-    return this.filterMinRating > 0 || this.filterOpenNow ||
-           (this.filterRadius > 0 && !!this.userPosition) ||
-           !this.allCategoriesActive || this.filterShowOnlySaved;
+    return this.filterMinRating > 0
+      || this.filterOpenNow
+      || (this.filterRadius > 0 && !!this.userPosition)
+      || !this.allCategoriesActive
+      || this.filterShowOnlySaved;
+  }
+
+  get allCategoriesActive(): boolean {
+    return this.categories.every(c => c.active);
+  }
+
+  get recommendationCards(): LocationRecommendation[] {
+    if (this.activeRecommendationTab === 'personalized' && this.personalizedRecommendations.length > 0) {
+      return this.personalizedRecommendations;
+    }
+    return this.globalRecommendations;
+  }
+
+  get hasPersonalizedRecommendations(): boolean {
+    return this.personalizedRecommendations.length > 0;
   }
 
   constructor(
@@ -69,54 +131,29 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     public authService: AuthService,
     private locationService: LocationService,
-    private filterStateService: FilterStateService
+    private filterStateService: FilterStateService,
+    private userService: UserService,
+    private routePlanner: RoutePlannerService,
+    private routingService: RoutingService,
+    private preferences: TouristPreferencesService,
+    private analytics: TouristAnalyticsService,
+    private recommendationService: RecommendationService,
   ) {}
 
   ngOnInit(): void {
     this.applyFilterState();
+    this.syncPlannerStateFromServices();
   }
 
   ngAfterViewInit(): void {
     this.initMap();
+    this.loadPersonalizationContext();
     this.loadLocations();
-    // Handle directTo query param (from "Directions" button in location-details)
     this.activatedRoute.queryParams.subscribe(params => {
-      if (params['directTo']) {
-        const parts = params['directTo'].split(',');
-        const destLat = parseFloat(parts[0]);
-        const destLng = parseFloat(parts[1]);
-        const title   = params['destTitle'] || '';
-        if (!isNaN(destLat) && !isNaN(destLng)) {
-          // Wait for map to be fully ready
-          setTimeout(() => this.drawRouteToDestination(destLat, destLng, title), 800);
-        }
-      }
-    });
-  }
-
-  private applyFilterState(): void {
-    const state = this.filterStateService.get();
-    this.filterMinRating      = state.minRating;
-    this.filterOpenNow        = state.openNow;
-    this.filterRadius         = state.radius ?? 0;
-    this.filterShowOnlySaved  = state.showOnlySaved ?? false;
-    this.filterSavedPostIds   = state.savedPostIds ?? [];
-    if (state.activeCategories.length > 0) {
-      this.categories.forEach(c => {
-        c.active = state.activeCategories.includes(c.key);
-      });
-    }
-  }
-
-  loadLocations(): void {
-    this.locationService.getLocations(1, 200).subscribe({
-      next: (res) => {
-        this.locationsList = res.data;
-        this.calculateRecommendations();
-        this.addMarkers();
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Failed to load locations:', err)
+      this.latestQueryParams = Object.fromEntries(
+        Object.entries(params).map(([key, value]) => [key, String(value)])
+      );
+      this.tryHydratePlannerFromQuery();
     });
   }
 
@@ -126,62 +163,171 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  calculateRecommendations() {
-    const sorted = [...this.locationsList].map(loc => {
-      const score = ((loc.avgRating || loc.rating || 0) * 100)
-        + (loc.reviewCount || loc.reviews || 0)
-        + (loc.likeCount || loc.likes || 0)
-        + (loc.saveCount || loc.saves || 0);
-      return { ...loc, _score: score };
-    });
-    sorted.sort((a, b) => b._score - a._score);
-    this.recommendedLocations = sorted.slice(0, 3);
+  private syncPlannerStateFromServices(): void {
+    const plan = this.routePlanner.snapshot;
+    this.plannerStops = plan.stops;
+    this.plannerMode = plan.plannerMode;
+    this.scenicMode = plan.scenicMode;
+    this.travelMode = plan.travelMode || this.preferences.snapshot.preferredTravelMode;
+    this.showRoutePanel = this.plannerStops.length > 0;
+    this.routeDestTitle = this.getRouteTitle();
   }
 
-  getFirstImage(loc: any): string {
-    if (loc.imageUrl) return resolveBackendAssetUrl(loc.imageUrl, 'assets/placeholder.jpg');
-    if (!loc.images) return 'assets/placeholder.jpg';
+  private loadPersonalizationContext(): void {
+    if (!this.authService.isLoggedIn) {
+      this.userProfile = null;
+      this.savedLocationsContext = [];
+      this.calendarItemsContext = [];
+      return;
+    }
+
+    forkJoin({
+      profile: this.userService.getUserProfile().pipe(catchError(() => of(null))),
+      saved: this.locationService.getMySavedPosts().pipe(catchError(() => of([] as Location[]))),
+      calendar: this.userService.getCalendar().pipe(catchError(() => of([] as CalendarItem[]))),
+    }).subscribe({
+      next: (result) => {
+        this.userProfile = result.profile;
+        this.savedLocationsContext = result.saved;
+        this.calendarItemsContext = result.calendar;
+        this.refreshRecommendations();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.userProfile = null;
+        this.savedLocationsContext = [];
+        this.calendarItemsContext = [];
+        this.refreshRecommendations();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  loadLocations(): void {
+    this.locationService.getLocations(1, 200).subscribe({
+      next: (res) => {
+        this.locationsList = res.data;
+        this.syncGuestSavedContext();
+        this.refreshRecommendations();
+        this.addMarkers();
+        this.tryHydratePlannerFromQuery();
+        this.hydratePlannerFromStorage();
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Failed to load locations:', err)
+    });
+  }
+
+  private syncGuestSavedContext(): void {
+    if (this.authService.isLoggedIn) {
+      return;
+    }
+
+    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
+    this.savedLocationsContext = this.locationsList.filter(location => savedIds.includes(location.id));
+  }
+
+  private refreshRecommendations(): void {
+    if (this.locationsList.length === 0) {
+      this.globalRecommendations = [];
+      this.personalizedRecommendations = [];
+      return;
+    }
+
+    const preferences = this.preferences.snapshot;
+    const analyticsEvents = this.analytics.getRecentEvents();
+    const contentPreferences = preferences.contentPreferences.length > 0
+      ? preferences.contentPreferences
+      : (this.userProfile?.interests ?? []);
+
+    this.globalRecommendations = this.recommendationService.buildGlobalRecommendations(this.locationsList, {
+      userPosition: this.userPosition,
+      limit: 6,
+    });
+
+    this.personalizedRecommendations = preferences.personalizedRecs
+      ? this.recommendationService.buildPersonalizedRecommendations(
+          this.locationsList,
+          this.userProfile,
+          this.savedLocationsContext,
+          this.calendarItemsContext,
+          analyticsEvents,
+          {
+            userPosition: this.userPosition,
+            contentPreferences,
+            limit: 6,
+          }
+        )
+      : [];
+
+    if (this.personalizedRecommendations.length === 0) {
+      this.activeRecommendationTab = 'global';
+    }
+  }
+
+  getFirstImage(loc: Location): string {
+    if ((loc as any).imageUrl) return resolveBackendAssetUrl((loc as any).imageUrl, 'assets/placeholder.jpg');
+    const imagesValue = (loc as any).images;
+    if (!imagesValue) return 'assets/placeholder.jpg';
     let firstImg = '';
-    if (typeof loc.images === 'string') {
-      try { const p = JSON.parse(loc.images); firstImg = p[0] || ''; } catch { firstImg = loc.images; }
-    } else if (Array.isArray(loc.images) && loc.images.length > 0) {
-      firstImg = loc.images[0];
+    if (typeof imagesValue === 'string') {
+      try { const parsed = JSON.parse(imagesValue); firstImg = parsed[0] || ''; } catch { firstImg = imagesValue; }
+    } else if (Array.isArray(imagesValue) && imagesValue.length > 0) {
+      firstImg = imagesValue[0];
     }
     return resolveBackendAssetUrl(firstImg, 'assets/placeholder.jpg');
   }
 
-  focusOnLocation(loc: any) {
+  focusOnLocation(loc: Location): void {
     const lat = loc.lat ?? loc.latitude;
     const lng = loc.lng ?? loc.longitude;
-    if (this.map && lat && lng) {
+    if (this.map && lat != null && lng != null) {
       this.map.flyTo([lat, lng], 16, { animate: true, duration: 1 });
       this.selectedLocation = loc;
+      this.analytics.track('location_opened', {
+        postId: loc.id,
+        postType: loc.postType,
+        regionName: loc.regionName,
+      });
       this.cdr.detectChanges();
     }
   }
 
-  onImgError(event: Event) {
-    const img = event.target as HTMLImageElement;
-    img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Crect width='52' height='52' fill='%23f1f5f9'/%3E%3Cpath d='M20 34l6-8 4 5 3-4 5 7H14z' fill='%23cbd5e1'/%3E%3Ccircle cx='33' cy='20' r='3' fill='%23cbd5e1'/%3E%3C/svg%3E`;
-    img.onerror = null;
+  focusOnPlannerStop(stop: PlannerStop): void {
+    if (!this.map) {
+      return;
+    }
+
+    this.map.flyTo([stop.lat, stop.lng], 15, { animate: true, duration: 1 });
+    const matched = this.locationsList.find(location => location.id === stop.id) ?? null;
+    this.selectedLocation = matched;
+    this.cdr.detectChanges();
   }
 
-  // --- CATEGORY FILTER ---
-  toggleCategory(cat: any) {
+  toggleCategory(cat: { active: boolean }): void {
     cat.active = !cat.active;
     this.syncFilterState();
     this.applyMarkerFilter();
   }
 
-  toggleAllCategories() {
-    // Always select ALL — clicking "All" chip resets to show everything
+  toggleAllCategories(): void {
     this.categories.forEach(c => c.active = true);
     this.syncFilterState();
     this.applyMarkerFilter();
   }
 
-  get allCategoriesActive(): boolean {
-    return this.categories.every(c => c.active);
+  private applyFilterState(): void {
+    const state = this.filterStateService.get();
+    this.filterMinRating = state.minRating;
+    this.filterOpenNow = state.openNow;
+    this.filterRadius = state.radius ?? 0;
+    this.filterShowOnlySaved = state.showOnlySaved ?? false;
+    this.filterSavedPostIds = state.savedPostIds ?? [];
+    if (state.activeCategories.length > 0) {
+      this.categories.forEach(c => {
+        c.active = state.activeCategories.includes(c.key);
+      });
+    }
   }
 
   private syncFilterState(): void {
@@ -192,9 +338,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterStateService.set({ ...state, activeCategories: activeKeys });
   }
 
-  private isLocationOpen(loc: any): boolean {
+  private isLocationOpen(loc: Location): boolean {
     const raw = loc.openingHours;
-    if (!raw) return true; // no hours data → assume open
+    if (!raw) return true;
     try {
       const obj = JSON.parse(raw);
       const now = new Date();
@@ -203,101 +349,508 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!todayHours || todayHours === 'closed') return false;
       if (todayHours === '00:00-24:00' || todayHours === '0:00-24:00') return true;
       const [openStr, closeStr] = todayHours.split('-');
-      const toMins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+      const toMins = (value: string) => {
+        const [h, m] = value.split(':').map(Number);
+        return h * 60 + m;
+      };
       const nowMins = now.getHours() * 60 + now.getMinutes();
-      const openMins  = toMins(openStr);
+      const openMins = toMins(openStr);
       const closeMins = toMins(closeStr);
-      // Handle overnight hours (e.g. 22:00–06:00)
       if (closeMins <= openMins) {
         return nowMins >= openMins || nowMins < closeMins;
       }
       return nowMins >= openMins && nowMins < closeMins;
-    } catch { return true; }
+    } catch {
+      return true;
+    }
   }
 
-  private drawRouteToDestination(destLat: number, destLng: number, title: string): void {
-    this.routeDestTitle = title;
-    this.showRoutePanel  = true;
-
-    // Place a destination marker
-    const destIcon = L.divIcon({
-      html: `<div style="width:32px;height:32px;background:#ef4444;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,0.3);border:2px solid white;"><div style="transform:rotate(45deg);color:white;font-size:14px;font-weight:900;">🏁</div></div>`,
-      className: '',
-      iconSize: [32, 32],
-      iconAnchor: [16, 32]
-    });
-    L.marker([destLat, destLng], { icon: destIcon }).addTo(this.map!).bindPopup(title || 'Destination');
-
-    // Fly to destination immediately
-    this.map?.flyTo([destLat, destLng], 14, { animate: true, duration: 1 });
-
-    // Try to draw OSRM route from user position
-    if (this.userPosition) {
-      this.fetchAndDrawRoute(this.userPosition[0], this.userPosition[1], destLat, destLng);
-    } else if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          this.userPosition = [pos.coords.latitude, pos.coords.longitude];
-          this.fetchAndDrawRoute(pos.coords.latitude, pos.coords.longitude, destLat, destLng);
-        },
-        () => {
-          // No geolocation — just show the destination
-          this.cdr.detectChanges();
-        },
-        { timeout: 6000 }
-      );
-    }
+  togglePlannerMode(): void {
+    this.plannerMode = !this.plannerMode;
+    this.routePlanner.setPlannerMode(this.plannerMode);
+    this.plannerMessage = this.plannerMode
+      ? 'Route builder is active. Tap pins to add stops.'
+      : 'Route builder paused. You can still manage the current trip.';
+    setTimeout(() => {
+      this.plannerMessage = '';
+      this.cdr.detectChanges();
+    }, 2600);
     this.cdr.detectChanges();
   }
 
-  private fetchAndDrawRoute(fromLat: number, fromLng: number, toLat: number, toLng: number): void {
-    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        if (data.routes?.[0]?.geometry?.coordinates) {
-          const coords: [number, number][] = data.routes[0].geometry.coordinates.map(
-            ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
-          );
-          if (this.routePolyline) this.map?.removeLayer(this.routePolyline);
-          this.routePolyline = L.polyline(coords, {
-            color: '#22c55e', weight: 5, opacity: 0.85
-          }).addTo(this.map!);
-          this.map?.fitBounds(this.routePolyline.getBounds(), { padding: [60, 60] });
-        }
-        this.cdr.detectChanges();
-      })
-      .catch(() => this.cdr.detectChanges());
+  addSelectedLocationToPlanner(): void {
+    if (!this.selectedLocation) {
+      return;
+    }
+    this.addLocationToPlanner(this.selectedLocation, true);
   }
 
-  clearRoute(): void {
+  addLocationToPlanner(location: Location, fromPin = false, insertAfterIndex?: number): void {
+    try {
+      const beforeCount = this.routePlanner.snapshot.stops.length;
+      this.routePlanner.addStop(location, { insertAfterIndex });
+      this.routePlanner.setPlannerMode(true);
+      this.syncPlannerStateFromServices();
+      this.renderPlannerRoute();
+      if (this.routePlanner.snapshot.stops.length === beforeCount) {
+        this.plannerMessage = `${location.title} is already in your trip.`;
+      } else {
+        this.plannerMessage = fromPin
+          ? `${location.title} added from the map.`
+          : `${location.title} added to your trip.`;
+      }
+      this.analytics.track('planner_stop_added', {
+        source: fromPin ? 'map-pin' : 'planner',
+        postId: location.id,
+        postType: location.postType,
+        regionName: location.regionName,
+      });
+      this.cdr.detectChanges();
+      setTimeout(() => {
+        this.plannerMessage = '';
+        this.cdr.detectChanges();
+      }, 2800);
+    } catch {
+      this.plannerMessage = 'This location is missing coordinates.';
+      this.cdr.detectChanges();
+    }
+  }
+
+  removePlannerStop(stopId: number): void {
+    this.routePlanner.removeStop(stopId);
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+  }
+
+  movePlannerStop(index: number, direction: 'up' | 'down'): void {
+    const target = direction === 'up' ? index - 1 : index + 1;
+    this.routePlanner.moveStop(index, target);
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+  }
+
+  optimizePlannerStops(): void {
+    const optimized = this.recommendationService.optimizeStopOrder(this.plannerStops, this.userPosition);
+    this.routePlanner.replaceStops(optimized, {
+      plannerMode: true,
+      scenicMode: this.scenicMode,
+      travelMode: this.travelMode,
+    });
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+    this.plannerMessage = 'Trip order optimized for smoother travel.';
+    this.analytics.track('planner_optimized', { stopCount: optimized.length });
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.plannerMessage = '';
+      this.cdr.detectChanges();
+    }, 2400);
+  }
+
+  toggleScenicMode(): void {
+    this.scenicMode = !this.scenicMode;
+    this.routePlanner.setScenicMode(this.scenicMode);
+    this.renderPlannerRoute();
+  }
+
+  setTravelMode(mode: TravelMode): void {
+    if (this.travelMode === mode) {
+      return;
+    }
+    this.travelMode = mode;
+    this.routePlanner.setTravelMode(mode);
+    this.preferences.update({ preferredTravelMode: mode });
+    this.renderPlannerRoute();
+  }
+
+  applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
+    this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex);
+    this.analytics.track('planner_detour_applied', {
+      postId: suggestion.location.id,
+      postType: suggestion.location.postType,
+      distanceToRouteKm: suggestion.distanceToRouteKm,
+    });
+  }
+
+  private hydratePlannerFromStorage(): void {
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+  }
+
+  private tryHydratePlannerFromQuery(): void {
+    if (this.locationsList.length === 0) {
+      return;
+    }
+
+    const key = JSON.stringify(this.latestQueryParams);
+    if (key === this.lastHydratedQueryKey) {
+      return;
+    }
+    this.lastHydratedQueryKey = key;
+
+    const tripParam = this.latestQueryParams['trip'];
+    const directTo = this.latestQueryParams['directTo'];
+    const plannerFlag = this.latestQueryParams['planner'] === '1';
+    const scenicFlag = this.latestQueryParams['scenic'];
+    const modeParam = this.latestQueryParams['mode'];
+
+    if (modeParam === 'walking' || modeParam === 'cycling' || modeParam === 'driving') {
+      this.routePlanner.setTravelMode(modeParam);
+      this.travelMode = modeParam;
+    }
+
+    if (scenicFlag === '0' || scenicFlag === '1') {
+      this.routePlanner.setScenicMode(scenicFlag === '1');
+      this.scenicMode = scenicFlag === '1';
+    }
+
+    if (tripParam) {
+      const tripIds = tripParam
+        .split(',')
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value) && value > 0);
+      const locations = tripIds
+        .map(id => this.locationsList.find(location => location.id === id))
+        .filter((location): location is Location => !!location);
+      if (locations.length > 0) {
+        this.routePlanner.replaceStops(locations, {
+          plannerMode: true,
+          scenicMode: scenicFlag !== '0',
+          travelMode: this.travelMode,
+        });
+      }
+    } else if (directTo) {
+      const [latRaw, lngRaw] = directTo.split(',');
+      const lat = Number(latRaw);
+      const lng = Number(lngRaw);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        const matched = this.locationsList.find(location => {
+          const locationLat = location.lat ?? location.latitude;
+          const locationLng = location.lng ?? location.longitude;
+          return locationLat != null
+            && locationLng != null
+            && Math.abs(locationLat - lat) < 0.0001
+            && Math.abs(locationLng - lng) < 0.0001;
+        });
+
+        if (matched) {
+          this.routePlanner.replaceStops([matched], {
+            plannerMode: true,
+            scenicMode: scenicFlag !== '0',
+            travelMode: this.travelMode,
+          });
+        } else {
+          this.routePlanner.replaceStops([{
+            id: -(Math.round(lat * 100000) + Math.round(lng * 100000)),
+            title: this.latestQueryParams['destTitle'] || 'Destination',
+            postType: 'attraction',
+            lat,
+            lng,
+          }], {
+            plannerMode: true,
+            scenicMode: scenicFlag !== '0',
+            travelMode: this.travelMode,
+          });
+        }
+      }
+    } else if (plannerFlag && this.routePlanner.snapshot.stops.length > 0) {
+      this.routePlanner.setPlannerMode(true);
+    }
+
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+  }
+
+  private renderPlannerRoute(): void {
+    this.clearRouteVisuals();
+    this.syncPlannerStateFromServices();
+    this.syncStopMarkers();
+    this.showRoutePanel = this.plannerStops.length > 0;
+    this.routeDestTitle = this.getRouteTitle();
+    this.routeSummary = {
+      distanceKm: 0,
+      durationMin: 0,
+      stopCount: this.plannerStops.length,
+    };
+
+    if (!this.map || this.plannerStops.length === 0) {
+      this.scenicSuggestions = [];
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (this.plannerStops.length === 1) {
+      const onlyStop = this.plannerStops[0];
+      this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
+      this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const routeCoordinates = this.getRouteCoordinates();
+    if (routeCoordinates.length < 2) {
+      this.scenicSuggestions = [];
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isRenderingRoute = true;
+    const renderToken = ++this.plannerRenderToken;
+
+    this.routingService.computeRoute(routeCoordinates, this.travelMode)
+      .then(route => {
+        if (renderToken !== this.plannerRenderToken || !this.map) {
+          return;
+        }
+
+        this.drawPlannerPolyline(route);
+        this.routeSummary = {
+          distanceKm: route.distanceKm,
+          durationMin: route.durationMin,
+          stopCount: this.plannerStops.length,
+        };
+        this.routeDestTitle = this.getRouteTitle();
+        this.scenicSuggestions = this.scenicMode
+          ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
+              contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
+                ? this.preferences.snapshot.contentPreferences
+                : (this.userProfile?.interests ?? []),
+              userPosition: this.userPosition,
+              limit: 4,
+            })
+          : [];
+
+        if (route.usedFallback) {
+          this.plannerMessage = 'Live routing is unavailable right now. We are showing a scenic stop sequence instead.';
+        }
+      })
+      .catch(() => {
+        if (renderToken !== this.plannerRenderToken) {
+          return;
+        }
+
+        this.scenicSuggestions = [];
+        this.plannerMessage = 'We could not calculate this route right now.';
+      })
+      .finally(() => {
+        if (renderToken !== this.plannerRenderToken) {
+          return;
+        }
+
+        this.isRenderingRoute = false;
+        this.cdr.detectChanges();
+      });
+  }
+
+  private buildNearbyStopSuggestions(stop: PlannerStop): RouteDetourSuggestion[] {
+    const nearby = this.locationsList
+      .filter(location => location.id !== stop.id)
+      .map(location => {
+        const lat = location.lat ?? location.latitude;
+        const lng = location.lng ?? location.longitude;
+        if (lat == null || lng == null) {
+          return null;
+        }
+
+        const distanceKm = this.haversineKm(stop.lat, stop.lng, lat, lng);
+        return {
+          location,
+          score: (location.avgRating ?? 0) * 10 + Math.max(0, 12 - distanceKm),
+          reason: 'Easy add-on near your current stop',
+          distanceToRouteKm: Math.round(distanceKm * 10) / 10,
+          estimatedExtraMinutes: Math.max(6, Math.round(distanceKm * 5)),
+          insertAfterIndex: 0,
+        } as RouteDetourSuggestion;
+      })
+      .filter((item): item is RouteDetourSuggestion => !!item && item.distanceToRouteKm <= 12)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    return nearby;
+  }
+
+  private clearRouteVisuals(): void {
     if (this.routePolyline) {
       this.map?.removeLayer(this.routePolyline);
       this.routePolyline = null;
     }
-    this.showRoutePanel  = false;
-    this.routeDestTitle  = '';
-    // Clear query params
+    this.routeStopMarkers.forEach(marker => this.map?.removeLayer(marker));
+    this.routeStopMarkers = [];
+  }
+
+  private syncStopMarkers(): void {
+    this.routeStopMarkers.forEach(marker => this.map?.removeLayer(marker));
+    this.routeStopMarkers = [];
+
+    if (!this.map) {
+      return;
+    }
+
+    this.plannerStops.forEach((stop, index) => {
+      const marker = L.marker([stop.lat, stop.lng], {
+        icon: L.divIcon({
+          html: `<div style="width:30px;height:30px;border-radius:50%;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid #fff;box-shadow:0 8px 18px rgba(15,23,42,0.22);">${index + 1}</div>`,
+          className: '',
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        }),
+        zIndexOffset: 1400,
+      }).addTo(this.map!);
+
+      marker.bindPopup(`<strong>${stop.title}</strong>`);
+      this.routeStopMarkers.push(marker);
+    });
+  }
+
+  private getRouteCoordinates(): [number, number][] {
+    const coordinates = this.plannerStops.map(stop => [stop.lat, stop.lng] as [number, number]);
+    const allowUserStart = this.preferences.snapshot.locationSharing && !!this.userPosition;
+    return allowUserStart && this.userPosition
+      ? [this.userPosition, ...coordinates]
+      : coordinates;
+  }
+
+  private getRouteTitle(): string {
+    if (this.plannerStops.length === 0) {
+      return '';
+    }
+    if (this.plannerStops.length === 1) {
+      return this.plannerStops[0].title;
+    }
+    return this.scenicMode
+      ? `${this.plannerStops.length}-stop scenic trip`
+      : `${this.plannerStops.length}-stop route`;
+  }
+
+  clearRoute(): void {
+    this.plannerRenderToken++;
+    this.routePlanner.clear();
+    this.plannerStops = [];
+    this.plannerMode = false;
+    this.scenicMode = true;
+    this.scenicSuggestions = [];
+    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
+    this.showRoutePanel = false;
+    this.routeDestTitle = '';
+    this.plannerMessage = '';
+    this.clearRouteVisuals();
     this.router.navigate([], { queryParams: {}, replaceUrl: true });
     this.cdr.detectChanges();
   }
 
-  private passesFilters(loc: any): boolean {
-    // Saved only filter: show only locations in savedPostIds
+  shareTrip(): void {
+    if (this.plannerStops.length === 0) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.pathname = '/map-home';
+    url.searchParams.set('planner', '1');
+    url.searchParams.set('mode', this.travelMode);
+    url.searchParams.set('scenic', this.scenicMode ? '1' : '0');
+    const tripQuery = this.routePlanner.serializeTripQuery();
+    if (tripQuery) {
+      url.searchParams.set('trip', tripQuery);
+    }
+
+    const shareTitle = this.routeDestTitle || 'AdriGo trip plan';
+
+    if (navigator.share) {
+      navigator.share({
+        title: shareTitle,
+        text: 'Take a look at this AdriGo route idea.',
+        url: url.toString(),
+      }).catch(() => {});
+      return;
+    }
+
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      this.plannerMessage = 'Trip link copied to your clipboard.';
+      this.cdr.detectChanges();
+      setTimeout(() => {
+        this.plannerMessage = '';
+        this.cdr.detectChanges();
+      }, 2400);
+    });
+  }
+
+  private drawPlannerPolyline(route: ComputedRoute): void {
+    if (!this.map || route.geometry.length < 2) {
+      return;
+    }
+
+    this.routePolyline = L.polyline(route.geometry, {
+      color: route.usedFallback ? '#94a3b8' : '#22c55e',
+      weight: 5,
+      opacity: route.usedFallback ? 0.78 : 0.88,
+      dashArray: route.usedFallback ? '10 8' : undefined,
+    }).addTo(this.map);
+
+    this.map.fitBounds(this.routePolyline.getBounds(), { padding: [60, 60] });
+  }
+
+  saveTripToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
+
+    const validStops = this.plannerStops.filter(stop => stop.id > 0);
+    if (validStops.length === 0 || this.isSavingTrip) {
+      return;
+    }
+
+    this.isSavingTrip = true;
+    forkJoin(validStops.map(stop =>
+      this.userService.addToCalendar(stop.id).pipe(
+        catchError(() => of({ failed: true }))
+      )
+    )).subscribe({
+      next: (results) => {
+        const addedCount = results.filter((res: any) => !res?.failed && !res?.alreadyAdded).length;
+        const alreadyCount = results.filter((res: any) => !!res?.alreadyAdded).length;
+        const suffix = this.preferences.snapshot.emailNotifications
+          ? ' A summary will also appear in your email digest.'
+          : '';
+
+        if (addedCount > 0) {
+          this.plannerMessage = `${addedCount} stop(s) added to your calendar.${suffix}`;
+        } else if (alreadyCount > 0) {
+          this.plannerMessage = 'These stops are already in your calendar.';
+        } else {
+          this.plannerMessage = 'We could not save this trip to the calendar.';
+        }
+
+        this.analytics.track('planner_saved_to_calendar', {
+          stopCount: validStops.length,
+          addedCount,
+        });
+        this.isSavingTrip = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.plannerMessage = 'We could not save this trip to the calendar.';
+        this.isSavingTrip = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private passesFilters(loc: Location): boolean {
     if (this.filterShowOnlySaved && this.filterSavedPostIds.length > 0) {
       if (!this.filterSavedPostIds.includes(loc.id)) return false;
     }
-    // Category: only filter when some categories are deselected
+
     if (!this.allCategoriesActive) {
-      const key = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');
+      const key = (loc.postType || '').toLowerCase().replace(/\s+/g, '_');
       const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
       const isKnownType = this.categories.some(c => c.key === key);
-      // Unknown types always pass; known types must be in the active list
       if (isKnownType && !activeKeys.includes(key)) return false;
     }
+
     if (this.filterMinRating > 0 && (loc.avgRating || 0) < this.filterMinRating) return false;
     if (this.filterOpenNow && !this.isLocationOpen(loc)) return false;
-    // Radius filter (only when userPosition is known and radius > 0)
+
     if (this.filterRadius > 0 && this.userPosition) {
       const lat = loc.lat ?? loc.latitude;
       const lng = loc.lng ?? loc.longitude;
@@ -306,40 +859,32 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         if (dist > this.filterRadius) return false;
       }
     }
+
     return true;
   }
 
-  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) ** 2
-      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
-  private applyMarkerFilter() {
+  private applyMarkerFilter(): void {
     this.markers.forEach(({ loc, marker }) => {
       const visible = this.passesFilters(loc);
       if (visible) {
         if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
-      } else {
-        if (this.map!.hasLayer(marker)) this.map!.removeLayer(marker);
+      } else if (this.map!.hasLayer(marker)) {
+        this.map!.removeLayer(marker);
       }
     });
   }
 
   private readonly categoryColors: Record<string, { bg: string; icon: string }> = {
-    'accommodation':   { bg: '#3b82f6', icon: 'accommodation' },
-    'restaurant':      { bg: '#ef4444', icon: 'food' },
-    'club':            { bg: '#8b5cf6', icon: 'nightlife' },
-    'cultural_site':   { bg: '#f59e0b', icon: 'culture' },
-    'monument':        { bg: '#d97706', icon: 'monument' },
-    'sports_facility': { bg: '#22c55e', icon: 'activity' },
-    'event':           { bg: '#ec4899', icon: 'events' },
-    'attraction':      { bg: '#10b981', icon: 'beach' },
-    'shop':            { bg: '#f97316', icon: 'shop' },
-    'other':           { bg: '#6b7280', icon: 'default' },
+    accommodation:   { bg: '#3b82f6', icon: 'accommodation' },
+    restaurant:      { bg: '#ef4444', icon: 'food' },
+    club:            { bg: '#8b5cf6', icon: 'nightlife' },
+    cultural_site:   { bg: '#f59e0b', icon: 'culture' },
+    monument:        { bg: '#d97706', icon: 'monument' },
+    sports_facility: { bg: '#22c55e', icon: 'activity' },
+    event:           { bg: '#ec4899', icon: 'events' },
+    attraction:      { bg: '#10b981', icon: 'beach' },
+    shop:            { bg: '#f97316', icon: 'shop' },
+    other:           { bg: '#6b7280', icon: 'default' },
   };
 
   private readonly svgIcons: Record<string, string> = {
@@ -369,18 +914,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap'
     }).addTo(this.map);
 
-    // Request geolocation after map is ready
     this.requestGeolocation();
   }
 
   private requestGeolocation(): void {
-    if (!navigator.geolocation) return;
+    if (!this.preferences.snapshot.locationSharing || !navigator.geolocation) {
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        // Blue "you are here" dot
         const userIcon = L.divIcon({
           html: `<div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25);"></div>`,
           className: '',
@@ -393,13 +939,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           .bindPopup('<b>You are here</b>')
           .addTo(this.map!);
 
-        // Store for radius filter
         this.userPosition = [lat, lng];
-
-        // Fly to user position
         this.map!.flyTo([lat, lng], 13, { animate: true, duration: 1.5 });
-        // Re-apply filter now that we have a position (radius filter may now kick in)
         this.applyMarkerFilter();
+        this.refreshRecommendations();
+        this.renderPlannerRoute();
         this.cdr.detectChanges();
       },
       (err) => {
@@ -410,15 +954,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private addMarkers(): void {
-    this.markers.forEach(({ marker }) => { if (this.map!.hasLayer(marker)) this.map!.removeLayer(marker); });
+    this.markers.forEach(({ marker }) => {
+      if (this.map!.hasLayer(marker)) this.map!.removeLayer(marker);
+    });
     this.markers = [];
 
     this.locationsList.forEach(loc => {
-      const lat = (loc as any).lat ?? (loc as any).latitude;
-      const lng = (loc as any).lng ?? (loc as any).longitude;
-      if (!lat || !lng) return;
+      const lat = loc.lat ?? loc.latitude;
+      const lng = loc.lng ?? loc.longitude;
+      if (lat == null || lng == null) return;
 
-      const category = (loc as any).postType || (loc as any).category || 'default';
+      const category = loc.postType || 'default';
       const icon = L.divIcon({
         html: this.getMarkerHtml(category),
         className: '',
@@ -426,17 +972,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         iconAnchor: [18, 36],
         popupAnchor: [0, -36]
       });
+
       const marker = L.marker([lat, lng], { icon }).addTo(this.map!);
       this.markers.push({ loc, marker });
 
       marker.on('click', (event: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(event as any);
         this.selectedLocation = loc;
+        if (this.plannerMode) {
+          this.addLocationToPlanner(loc, true);
+        }
         this.cdr.detectChanges();
       });
     });
 
-    // Apply any saved filter state
     this.applyMarkerFilter();
   }
 
@@ -444,29 +993,31 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedLocation = null;
   }
 
-  viewFullDetails() {
+  viewFullDetails(): void {
     if (this.selectedLocation) {
       this.router.navigate(['/location-details', this.selectedLocation.id]);
     }
   }
 
-  // --- SEARCH LOGIC ---
-  onSearchInput(query: string) {
+  onSearchInput(query: string): void {
     const q = query.trim().toLowerCase();
-    if (!q) { this.searchResults = []; return; }
+    if (!q) {
+      this.searchResults = [];
+      return;
+    }
     this.searchResults = this.locationsList.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
-      (loc.postType || loc.category || '').toLowerCase().includes(q)
+      (loc.postType || '').toLowerCase().includes(q)
     ).slice(0, 8);
   }
 
-  selectSearchResult(loc: any) {
+  selectSearchResult(loc: Location): void {
     this.searchQuery = loc.title;
     this.searchResults = [];
     this.focusOnLocation(loc);
   }
 
-  clearSearch() {
+  clearSearch(): void {
     this.searchQuery = '';
     this.searchResults = [];
   }
@@ -477,8 +1028,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return cat ? cat.icon : '📍';
   }
 
-  get activeFilterCount(): number {
-    return this.categories.filter(c => c.active).length;
+  formatDuration(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   }
 
   openFilters(): void {
@@ -494,7 +1050,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToSaved(): void {
-    // Guests can also access saved (their guest saves are in localStorage)
     this.activeTab = 'saved';
     this.router.navigate(['/saved']);
   }
@@ -511,5 +1066,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleListView(): void {
     this.activeTab = 'list';
     this.router.navigate(['/location-list']);
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 }

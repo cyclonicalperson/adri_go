@@ -119,6 +119,13 @@
   width: 100%;
 }
 
+.top-ui-layer {
+  max-height: calc(100vh - 142px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.top-ui-layer::-webkit-scrollbar { display: none; }
+
 .search-container {
   display: flex;
   align-items: center;
@@ -316,6 +323,72 @@
   border: 2px solid #fff;
 }
 .search-filter-btn.filter-active { color: var(--green-600); }
+
+.route-pill {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 28px);
+  max-width: 420px;
+  background: rgba(255,255,255,0.98);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 32px rgba(15,23,42,0.15);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.route-pill-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #dcfce7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.route-pill-icon svg { width: 18px; height: 18px; fill: #16a34a; }
+
+.route-pill-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.route-pill-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.route-pill-meta {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-weight: 600;
+}
+
+.route-pill-clear {
+  background: #fef2f2;
+  color: #dc2626;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
 
 /* ── MAP FLOATING CATEGORY FILTER ────────────────────────────── */
 /* Positioned directly on top of the map, top-left corner */
@@ -616,7 +689,7 @@ app-location-details-card {
     padding: 12px 16px;
     z-index: 20;
     overflow-y: auto;
-    max-height: calc(100vh - 72px - 68px);
+    max-height: calc(100vh - 72px - 16px);
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -662,148 +735,11 @@ app-location-details-card {
   .logo-text { font-size: 22px; }
 
   /* ── RECOMMENDED PANEL ─────────────────────────────────── */
-  .recommended-panel {
-    background: #fff;
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-    pointer-events: auto;
-  }
-
-  .recommended-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 14px;
-  }
-
-  .recommended-title {
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--gray-800);
-  }
-
-  .recommended-subtitle {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--gray-400);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-  }
-
-  .recommended-list {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
   /* Vertical card with big image on top */
-  .recommended-card {
-    display: flex;
-    flex-direction: column;
-    border-radius: 14px;
-    cursor: pointer;
-    transition: transform 0.18s, box-shadow 0.18s;
-    border: 1px solid var(--gray-100);
-    overflow: hidden;
-    position: relative;
-    background: #fff;
-  }
-  .recommended-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  }
 
-  /* Rank badge overlaid on image */
-  .rec-rank {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 2;
-    font-size: 11px;
-    font-weight: 800;
-    color: #fff;
-    background: var(--green-500);
-    padding: 3px 9px;
-    border-radius: 20px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-  }
-
-  /* Status badge top-right on image */
-  .rec-status {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 9px;
-    border-radius: 20px;
-    backdrop-filter: blur(4px);
-  }
-  .rec-status.open  { background: rgba(220,252,231,0.92); color: #16a34a; }
-  .rec-status.closed { background: rgba(254,226,226,0.92); color: #dc2626; }
-
-  /* Full-width tall image */
-  .rec-image {
-    width: 100%;
-    height: 140px;
-    overflow: hidden;
-    flex-shrink: 0;
-    position: relative;
-  }
-  .rec-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
-  }
-  .recommended-card:hover .rec-image img { transform: scale(1.04); }
-
-  /* Info section below image */
-  .rec-info {
-    padding: 12px 14px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .rec-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--gray-800);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .rec-meta {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 12px;
-    color: var(--gray-400);
-  }
-  .rec-category { font-weight: 700; color: var(--gray-500); }
-  .rec-dot { color: var(--gray-300); }
-
-  .rec-rating {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--gray-700);
-    margin-top: 2px;
-  }
-  .rec-rating svg {
-    width: 14px;
-    height: 14px;
-    fill: #f59e0b;
-  }
-  .rec-reviews {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--gray-400);
+  .route-pill {
+    top: 18px;
+    left: calc(380px + ((100vw - 380px) / 2));
   }
 }
+

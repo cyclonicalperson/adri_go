@@ -1,9 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
-import { SiteTranslateService } from '../services/site-translate.service';
+import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
+import { TouristAppPreferences, TouristPreferencesService } from '../services/tourist-preferences.service';
+import { UserService } from '../services/user.service';
+import { TouristAnalyticsService } from '../services/tourist-analytics.service';
+
+type SettingsSheet = 'accounts' | 'content' | 'booking' | 'payment' | 'support' | null;
 
 @Component({
   selector: 'app-settings',
@@ -12,39 +17,59 @@ import { SiteTranslateService } from '../services/site-translate.service';
   templateUrl: './settings.html',
   styleUrls: ['./settings.css']
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnInit {
+  settings!: TouristAppPreferences;
 
-  settings = {
-    locationSharing: true,
-    anonymousAnalytics: false,
-    personalizedRecs: true,
-    pushNotifications: false,
-    emailNotifications: false,
-  };
-
-  appVersion: string = 'v1.0.0';
+  activeSheet: SettingsSheet = null;
+  appVersion = 'v1.2.0';
   savedMessage = '';
   notifPermission: NotificationPermission = 'default';
 
-  // Change password modal
+  contentOptions = [
+    { id: 'nature', label: 'Nature', icon: '🌲' },
+    { id: 'food', label: 'Food', icon: '🍽️' },
+    { id: 'beaches', label: 'Beaches', icon: '🏖️' },
+    { id: 'history', label: 'History & Culture', icon: '🏛️' },
+    { id: 'nightlife', label: 'Nightlife', icon: '🎶' },
+    { id: 'photography', label: 'Photography', icon: '📷' },
+  ];
+
+  accountOptions = [
+    { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
+    { id: 'apple' as const, label: 'Apple', desc: 'Keep Apple ready as a private sign-in option.' },
+  ];
+
+  bookingOptions = [
+    { id: 'booking', label: 'Booking.com' },
+    { id: 'airbnb', label: 'Airbnb' },
+    { id: 'tripadvisor', label: 'Tripadvisor' },
+    { id: 'getyourguide', label: 'GetYourGuide' },
+  ];
+
+  paymentOptions = [
+    { id: 'card', label: 'Card' },
+    { id: 'paypal', label: 'PayPal' },
+    { id: 'cash', label: 'Pay on arrival' },
+  ];
+
   showPasswordModal = false;
   changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
-  passwordError    = '';
-  passwordSuccess  = '';
+  passwordError = '';
+  passwordSuccess = '';
   isSavingPassword = false;
 
   constructor(
     public router: Router,
     private authService: AuthService,
-    public translate: SiteTranslateService
+    public translate: SiteTranslateService,
+    private preferences: TouristPreferencesService,
+    private userService: UserService,
+    private analytics: TouristAnalyticsService,
   ) {
-    const saved = localStorage.getItem('user_settings');
-    if (saved) { try { this.settings = { ...this.settings, ...JSON.parse(saved) }; } catch {} }
+    this.settings = this.preferences.snapshot;
 
-    // Sync push notification state with actual browser permission
     if ('Notification' in window) {
       this.notifPermission = Notification.permission;
-      // If permission was previously granted, reflect that in settings
       if (Notification.permission === 'granted') {
         this.settings.pushNotifications = true;
       } else if (Notification.permission === 'denied') {
@@ -53,130 +78,303 @@ export class SettingsComponent {
     }
   }
 
+  ngOnInit(): void {
+    if (!this.authService.isLoggedIn) {
+      return;
+    }
+
+    this.userService.getUserProfile().subscribe({
+      next: profile => {
+        if (this.settings.contentPreferences.length === 0 && profile.interests.length > 0) {
+          this.settings = {
+            ...this.settings,
+            contentPreferences: [...profile.interests],
+          };
+        }
+      },
+      error: () => {}
+    });
+  }
+
   get currentLanguageLabel(): string {
     return this.translate.currentLanguageOption.label;
   }
 
-  /** The label of the language you will switch TO (not the current one). */
   get switchToLanguageLabel(): string {
     return this.translate.currentLanguage === 'en' ? 'Srpski' : 'English';
   }
 
-  goBack() { window.history.back(); }
-
-  saveChanges() {
-    localStorage.setItem('user_settings', JSON.stringify(this.settings));
-    this.savedMessage = '✓ Settings saved';
-    setTimeout(() => (this.savedMessage = ''), 2500);
+  get connectedAccountsSummary(): string {
+    const linked = this.accountOptions
+      .filter(option => this.settings.connectedAccounts[option.id])
+      .map(option => option.label);
+    return linked.length > 0 ? linked.join(', ') : 'Not configured';
   }
 
-  toggleLanguage() {
+  get bookingServicesSummary(): string {
+    const enabled = this.bookingOptions
+      .filter(option => this.settings.bookingServices.includes(option.id))
+      .map(option => option.label);
+    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
+  }
+
+  get paymentMethodsSummary(): string {
+    const enabled = this.paymentOptions
+      .filter(option => this.settings.paymentMethods.includes(option.id))
+      .map(option => option.label);
+    return enabled.length > 0 ? enabled.join(', ') : 'No saved preferences';
+  }
+
+  get contentPreferencesSummary(): string {
+    const enabled = this.contentOptions
+      .filter(option => this.settings.contentPreferences.includes(option.id))
+      .map(option => option.label);
+    return enabled.length > 0 ? enabled.join(', ') : 'Use general discovery mode';
+  }
+
+  goBack(): void {
+    window.history.back();
+  }
+
+  saveChanges(message = '✓ Settings saved'): void {
+    this.settings = this.preferences.update(this.settings);
+    this.showSavedMessage(message);
+  }
+
+  async toggleLanguage(): Promise<void> {
     const next = this.translate.currentLanguage === 'en' ? 'sr' : 'en';
-    this.translate.setLanguage(next);
+    await this.translate.setLanguage(next as SiteLanguageCode);
+    this.authService.updateCurrentTourist({ language: next });
+
+    if (this.authService.isLoggedIn) {
+      this.userService.updateProfile({ language: next }).subscribe({
+        next: () => {},
+        error: () => {}
+      });
+    }
+
+    this.showSavedMessage(`Language switched to ${next.toUpperCase()}`);
+  }
+
+  onAnalyticsToggle(): void {
+    this.saveChanges('Analytics preference updated');
+  }
+
+  onPersonalizedRecommendationsToggle(): void {
+    this.saveChanges(
+      this.settings.personalizedRecs
+        ? 'Personalized recommendations enabled'
+        : 'Showing global recommendations only'
+    );
+  }
+
+  onEmailNotificationsToggle(): void {
+    this.saveChanges(
+      this.settings.emailNotifications
+        ? 'Trip email summaries enabled'
+        : 'Trip email summaries disabled'
+    );
   }
 
   onPushNotificationsToggle(): void {
     if (!('Notification' in window)) {
-      this.savedMessage = 'Push notifications are not supported in this browser.';
-      setTimeout(() => (this.savedMessage = ''), 3000);
       this.settings.pushNotifications = false;
+      this.showSavedMessage('Push notifications are not supported in this browser.');
       return;
     }
 
     if (this.settings.pushNotifications) {
-      // User just turned it ON → request permission
       if (Notification.permission === 'granted') {
-        this.savedMessage = '🔔 Push notifications enabled';
-        setTimeout(() => (this.savedMessage = ''), 2500);
-      } else if (Notification.permission === 'denied') {
-        this.savedMessage = 'Notifications are blocked. Please allow them in browser settings.';
-        setTimeout(() => (this.savedMessage = ''), 4000);
-        this.settings.pushNotifications = false;
-      } else {
-        Notification.requestPermission().then(perm => {
-          this.notifPermission = perm;
-          if (perm === 'granted') {
-            this.settings.pushNotifications = true;
-            this.savedMessage = '🔔 Push notifications enabled';
-          } else {
-            this.settings.pushNotifications = false;
-            this.savedMessage = 'Notification permission was not granted.';
-          }
-          setTimeout(() => (this.savedMessage = ''), 3000);
-          this.saveChanges();
-        });
+        this.saveChanges('Push notifications enabled');
+        return;
       }
-    } else {
-      // Turned OFF — we can't programmatically revoke permission, just save the preference
-      this.savedMessage = 'Push notifications disabled.';
-      setTimeout(() => (this.savedMessage = ''), 2500);
+
+      if (Notification.permission === 'denied') {
+        this.settings.pushNotifications = false;
+        this.showSavedMessage('Notifications are blocked. Please allow them in browser settings.');
+        return;
+      }
+
+      Notification.requestPermission().then(permission => {
+        this.notifPermission = permission;
+        this.settings.pushNotifications = permission === 'granted';
+        this.saveChanges(
+          permission === 'granted'
+            ? 'Push notifications enabled'
+            : 'Notification permission was not granted'
+        );
+      });
+      return;
     }
-    this.saveChanges();
+
+    this.saveChanges('Push notifications disabled');
   }
 
   onLocationSharingToggle(): void {
     if (this.settings.locationSharing) {
-      // User just turned location ON → request permission now
       if (!navigator.geolocation) {
-        this.savedMessage = 'Geolocation is not supported in this browser.';
-        setTimeout(() => (this.savedMessage = ''), 3000);
         this.settings.locationSharing = false;
+        this.showSavedMessage('Geolocation is not supported in this browser.');
         return;
       }
+
       navigator.geolocation.getCurrentPosition(
+        () => this.saveChanges('Location sharing enabled'),
         () => {
-          this.savedMessage = '📍 Location sharing enabled';
-          setTimeout(() => (this.savedMessage = ''), 2500);
-          this.saveChanges();
-        },
-        () => {
-          this.savedMessage = 'Location permission denied. Please allow it in browser settings.';
-          setTimeout(() => (this.savedMessage = ''), 4000);
           this.settings.locationSharing = false;
-          this.saveChanges();
+          this.showSavedMessage('Location permission denied. Please allow it in browser settings.');
         }
       );
-    } else {
-      this.savedMessage = 'Location sharing disabled. Nearby features will be limited.';
-      setTimeout(() => (this.savedMessage = ''), 3000);
-      this.saveChanges();
+      return;
     }
+
+    this.saveChanges('Location sharing disabled. Nearby route features will be limited.');
   }
 
-  logout() {
+  openSheet(sheet: Exclude<SettingsSheet, null>): void {
+    this.activeSheet = sheet;
+  }
+
+  closeSheet(): void {
+    this.activeSheet = null;
+  }
+
+  isContentPreferenceSelected(id: string): boolean {
+    return this.settings.contentPreferences.includes(id);
+  }
+
+  toggleContentPreference(id: string): void {
+    this.settings = {
+      ...this.settings,
+      contentPreferences: this.toggleArrayValue(this.settings.contentPreferences, id),
+    };
+  }
+
+  toggleConnectedAccount(provider: 'google' | 'apple'): void {
+    this.settings = {
+      ...this.settings,
+      connectedAccounts: {
+        ...this.settings.connectedAccounts,
+        [provider]: !this.settings.connectedAccounts[provider],
+      }
+    };
+  }
+
+  isBookingServiceEnabled(id: string): boolean {
+    return this.settings.bookingServices.includes(id);
+  }
+
+  toggleBookingService(id: string): void {
+    this.settings = {
+      ...this.settings,
+      bookingServices: this.toggleArrayValue(this.settings.bookingServices, id),
+    };
+  }
+
+  isPaymentMethodEnabled(id: string): boolean {
+    return this.settings.paymentMethods.includes(id);
+  }
+
+  togglePaymentMethod(id: string): void {
+    this.settings = {
+      ...this.settings,
+      paymentMethods: this.toggleArrayValue(this.settings.paymentMethods, id),
+    };
+  }
+
+  saveSheet(): void {
+    if (this.activeSheet === 'content' && this.authService.isLoggedIn) {
+      this.userService.updateProfile({
+        interests: [...this.settings.contentPreferences],
+      }).subscribe({
+        next: () => {
+          this.saveChanges('Content preferences updated');
+          this.closeSheet();
+        },
+        error: () => {
+          this.saveChanges('Content preferences saved locally');
+          this.closeSheet();
+        }
+      });
+      return;
+    }
+
+    if (this.activeSheet === 'support') {
+      this.closeSheet();
+      return;
+    }
+
+    const label = this.activeSheet === 'accounts'
+      ? 'Connected account preferences updated'
+      : this.activeSheet === 'booking'
+        ? 'Booking service preferences updated'
+        : this.activeSheet === 'payment'
+          ? 'Payment preferences updated'
+          : 'Settings saved';
+
+    this.saveChanges(label);
+    this.closeSheet();
+  }
+
+  resetPersonalization(): void {
+    this.analytics.clearHistory();
+    this.settings = {
+      ...this.settings,
+      contentPreferences: [],
+      personalizedRecs: false,
+    };
+    this.saveChanges('Personalization history reset');
+    this.closeSheet();
+  }
+
+  openSupportEmail(): void {
+    window.location.href = 'mailto:support@adrigo.app?subject=AdriGo%20Support';
+  }
+
+  logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
 
-  goToEditProfile() {
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+  goToEditProfile(): void {
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.router.navigate(['/account/personal-info']);
   }
 
-  openChangePassword() {
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+  openChangePassword(): void {
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
     this.showPasswordModal = true;
     this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
-    this.passwordError   = '';
+    this.passwordError = '';
     this.passwordSuccess = '';
   }
 
-  closePasswordModal() {
+  closePasswordModal(): void {
     this.showPasswordModal = false;
   }
 
-  submitChangePassword() {
-    this.passwordError   = '';
+  submitChangePassword(): void {
+    this.passwordError = '';
     this.passwordSuccess = '';
 
     if (!this.changePasswordForm.currentPassword) {
-      this.passwordError = 'Please enter your current password.'; return;
+      this.passwordError = 'Please enter your current password.';
+      return;
     }
     if (this.changePasswordForm.newPassword.length < 6) {
-      this.passwordError = 'New password must be at least 6 characters.'; return;
+      this.passwordError = 'New password must be at least 6 characters.';
+      return;
     }
     if (this.changePasswordForm.newPassword !== this.changePasswordForm.confirmPassword) {
-      this.passwordError = 'New passwords do not match.'; return;
+      this.passwordError = 'New passwords do not match.';
+      return;
     }
 
     this.isSavingPassword = true;
@@ -185,17 +383,29 @@ export class SettingsComponent {
       this.changePasswordForm.newPassword,
     ).subscribe({
       next: () => {
-        this.passwordSuccess  = '✓ Password changed successfully!';
+        this.passwordSuccess = '✓ Password changed successfully!';
         this.isSavingPassword = false;
         setTimeout(() => { this.showPasswordModal = false; }, 2000);
       },
       error: (err) => {
-        this.passwordError    = err?.error?.message || 'Failed to change password.';
+        this.passwordError = err?.error?.message || 'Failed to change password.';
         this.isSavingPassword = false;
       }
     });
   }
 
-  goToHelp()    { this.router.navigate(['/account/help']); }
-  goToPrivacy() { this.router.navigate(['/account/privacy']); }
+  goToHelp(): void {
+    this.router.navigate(['/account/help']);
+  }
+
+  private toggleArrayValue(values: string[], id: string): string[] {
+    return values.includes(id)
+      ? values.filter(value => value !== id)
+      : [...values, id];
+  }
+
+  private showSavedMessage(message: string): void {
+    this.savedMessage = message;
+    setTimeout(() => (this.savedMessage = ''), 2600);
+  }
 }

@@ -5,6 +5,9 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LocationService, Location, Review } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
 import { UserService } from '../services/user.service';
+import { RoutePlannerService } from '../services/route-planner.service';
+import { TouristAnalyticsService } from '../services/tourist-analytics.service';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
 
 @Component({
   selector: 'app-location-details',
@@ -41,6 +44,9 @@ export class LocationDetailsComponent implements OnInit {
     private locationService: LocationService,
     public authService: AuthService,
     private userService: UserService,
+    private routePlanner: RoutePlannerService,
+    private analytics: TouristAnalyticsService,
+    private preferences: TouristPreferencesService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -49,7 +55,7 @@ export class LocationDetailsComponent implements OnInit {
     if (!id) { this.router.navigate(['/location-list']); return; }
 
     // Request user geolocation for distance display
-    if (navigator.geolocation) {
+    if (this.preferences.snapshot.locationSharing && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const userLat = pos.coords.latitude;
@@ -350,16 +356,44 @@ export class LocationDetailsComponent implements OnInit {
   goBack(): void { window.history.back(); }
 
   getDirections(): void {
-    const lat = this.location?.lat ?? (this.location as any)?.latitude;
-    const lng = this.location?.lng ?? (this.location as any)?.longitude;
-    if (lat != null && lng != null) {
-      this.router.navigate(['/map-home'], {
-        queryParams: {
-          directTo: `${lat},${lng}`,
-          destTitle: this.location?.title || ''
-        }
-      });
+    if (!this.location) {
+      return;
     }
+
+    this.routePlanner.replaceStops([this.location], { plannerMode: true });
+    this.analytics.track('planner_started', {
+      source: 'location-details',
+      postId: this.location.id,
+      postType: this.location.postType,
+      regionName: this.location.regionName,
+    });
+
+    this.router.navigate(['/map-home'], {
+      queryParams: {
+        planner: '1',
+      }
+    });
+  }
+
+  addToRoutePlanner(): void {
+    if (!this.location) {
+      return;
+    }
+
+    this.routePlanner.addStop(this.location);
+    this.routePlanner.setPlannerMode(true);
+    this.analytics.track('planner_stop_added', {
+      source: 'location-details',
+      postId: this.location.id,
+      postType: this.location.postType,
+      regionName: this.location.regionName,
+    });
+
+    this.router.navigate(['/map-home'], {
+      queryParams: {
+        planner: '1',
+      }
+    });
   }
 
   shareLocation(): void {
