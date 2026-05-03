@@ -99,19 +99,24 @@
 
 .leaflet-control-attribution { display: none !important; }
 
-/* ── SEARCH BAR ──────────────────────────────────────────────── */
-.top-ui-layer {
+/* ── SIDEBAR SHELL ───────────────────────────────────────────── */
+/* On mobile: transparent – children position themselves independently */
+.sidebar { display: contents; }
+
+/* ── SEARCH STRIP (top overlay on mobile) ───────────────────── */
+.top-search-strip {
   position: absolute;
   top: 68px;
   left: 0;
-  width: 100%;
-  padding: 0 14px;
-  z-index: 10;
+  right: 0;
+  padding: 6px 14px 0;
+  z-index: 20;
   pointer-events: none;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+.top-search-strip .search-wrapper { pointer-events: auto; }
 
 .search-wrapper {
   pointer-events: auto;
@@ -119,12 +124,74 @@
   width: 100%;
 }
 
+/* ── PANELS LAYER (bottom sheet on mobile) ───────────────────── */
 .top-ui-layer {
-  max-height: calc(100vh - 142px);
-  overflow-y: auto;
+  position: fixed;
+  bottom: 68px;
+  left: 0;
+  right: 0;
+  /* Collapsed by default — only the header row peeks out */
+  max-height: 60px;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   scrollbar-width: none;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.12);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+}
+.top-ui-layer.sheet-expanded {
+  max-height: min(45dvh, calc(100dvh - 290px));
+  overflow-y: auto;
 }
 .top-ui-layer::-webkit-scrollbar { display: none; }
+
+/* Tappable header row — replaces the tiny drag handle */
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  min-height: 54px;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 20px 20px 0 0;
+  transition: background 0.15s;
+  /* Stays at top when sheet is expanded and user scrolls content */
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+.sheet-header:hover { background: var(--gray-50, #f9fafb); }
+.sheet-header:active { background: var(--gray-100); }
+
+.sheet-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-600);
+  letter-spacing: 0.2px;
+}
+
+.sheet-chevron {
+  width: 20px;
+  height: 20px;
+  fill: var(--gray-400);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+/* Chevron points up by default (collapsed = expand upward) */
+/* When open, rotate 180° so it points down (collapse) */
+.sheet-chevron.sheet-chevron-open { transform: rotate(180deg); }
+
+/* Panel content padding — inside the sheet below the header */
+.top-ui-layer > :not(.sheet-header) {
+  padding: 0 14px;
+}
+.top-ui-layer > :last-child { padding-bottom: 16px; }
 
 .search-container {
   display: flex;
@@ -323,23 +390,65 @@
   border: 2px solid #fff;
 }
 .search-filter-btn.filter-active { color: var(--green-600); }
+/* Hide the "Filters" label on mobile — icon + badge is enough */
+.search-filter-btn span:not(.filter-badge) { display: none; }
 
-.route-pill {
-  position: absolute;
-  top: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1000;
-  width: calc(100% - 28px);
-  max-width: 420px;
-  background: rgba(255,255,255,0.98);
-  border-radius: 16px;
-  padding: 12px 14px;
-  box-shadow: 0 12px 32px rgba(15,23,42,0.15);
+/* On mobile the route summary lives in the sheet header — no floating pill needed */
+.route-pill { display: none; }
+
+/* ── SHEET HEADER ROUTE ELEMENTS ─────────────────────────────── */
+.sheet-header-left {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  pointer-events: auto;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sheet-route-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-clear-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 6px;
+  transition: background 0.15s;
+}
+.sheet-clear-btn:hover { background: #fee2e2; }
+
+/* ── DESKTOP: restore floating pill in the map area ──────────── */
+@media (min-width: 900px) {
+  .route-pill {
+    display: flex;
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: calc(100% - 28px);
+    max-width: 420px;
+    background: rgba(255,255,255,0.98);
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: 0 12px 32px rgba(15,23,42,0.15);
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+  }
 }
 
 .route-pill-icon {
@@ -525,8 +634,7 @@
 /* ── DESKTOP ONLY ELEMENTS ───────────────────────────────────── */
 .desktop-only { display: none; }
 
-/* Hide footer on mobile when location card is open, keep on desktop */
-.app-footer.footer-hidden { display: none; }
+/* Footer is always visible — never hide it on any viewport */
 
 /* ── FOOTER NAV ──────────────────────────────────────────────── */
 .app-footer {
@@ -681,24 +789,50 @@ app-location-details-card {
     border-bottom: 1px solid var(--gray-100);
   }
 
-  .top-ui-layer {
-    position: fixed;
-    top: 72px;
-    left: 0;
-    width: 380px;
-    padding: 12px 16px;
-    z-index: 20;
-    overflow-y: auto;
-    max-height: calc(100vh - 72px - 16px);
+  /* Sidebar shell: stacks search strip + panel layer as a column */
+  .sidebar {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    position: fixed;
+    top: 64px; left: 0;
+    width: 380px;
+    height: calc(100vh - 64px - 68px);
+    z-index: 20;
+    background: #fff;
+    border-right: 1px solid var(--gray-100);
+  }
+
+  .top-search-strip {
+    position: static;
+    padding: 12px 16px 4px;
+    flex-shrink: 0;
     pointer-events: auto;
+  }
+
+  .top-ui-layer,
+  .top-ui-layer.sheet-expanded {
+    position: static;
+    bottom: auto;
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
+    transition: none;
+    padding: 8px 16px 16px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    gap: 16px;
     scrollbar-width: thin;
     scrollbar-color: var(--gray-200) transparent;
   }
   .top-ui-layer::-webkit-scrollbar { width: 4px; }
   .top-ui-layer::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
+
+  /* Remove mobile-only overrides for child padding */
+  .top-ui-layer > :not(.sheet-header),
+  .top-ui-layer > :last-child { padding: 0; }
+
+  .sheet-header { display: none; }
 
   /* ── Map fills right side ──────────────────────────────── */
   .map-container {

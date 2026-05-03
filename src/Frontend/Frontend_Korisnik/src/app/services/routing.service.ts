@@ -157,7 +157,7 @@ export class RoutingService {
     wazeUrl.searchParams.set('ll', this.serializeCoordinate(destination));
     wazeUrl.searchParams.set('navigate', 'yes');
 
-    const primaryLink = this.preferAppleMaps()
+    const primaryLink: ExternalNavigationLink = this.preferAppleMaps()
       ? { id: 'preferred', label: 'Start in Apple Maps', url: appleUrl.toString(), primary: true }
       : { id: 'preferred', label: 'Start in Google Maps', url: googleUrl.toString(), primary: true };
 
@@ -175,6 +175,9 @@ export class RoutingService {
   ): Promise<ComputedRoute> {
     let lastError: Error | null = null;
 
+    // The public OSRM demo only reliably serves the driving profile regardless of
+    // what profile is requested. Always fetch a driving route for accurate road
+    // geometry and distance, then compute duration using mode-appropriate speeds.
     for (const profile of this.resolveRoutingProfiles(travelMode)) {
       try {
         const response = await fetch(this.buildOsrmUrl(coordinates, profile));
@@ -194,12 +197,14 @@ export class RoutingService {
           ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
         );
 
-        return {
-          geometry,
-          distanceKm: Math.round(((route.distance ?? 0) / 1000) * 10) / 10,
-          durationMin: Math.max(1, Math.round((route.duration ?? 0) / 60)),
-          usedFallback: false,
-        };
+        const distanceKm = Math.round(((route.distance ?? 0) / 1000) * 10) / 10;
+        // For driving, trust OSRM's traffic-aware duration.
+        // For walking/cycling, OSRM returns driving durations so compute from distance.
+        const durationMin = travelMode === 'driving'
+          ? Math.max(1, Math.round((route.duration ?? 0) / 60))
+          : Math.max(1, this.estimateFallbackDurationMin(distanceKm, travelMode));
+
+        return { geometry, distanceKm, durationMin, usedFallback: false };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Failed to fetch route.');
       }

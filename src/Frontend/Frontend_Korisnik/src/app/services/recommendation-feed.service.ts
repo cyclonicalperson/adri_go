@@ -3,23 +3,9 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Location } from './location.service';
+import { RecommendationFeedItem } from '@recommended/services/recommendation-feed.service';
 
-export interface RecommendationFeedItem {
-  entityId: number;
-  entityType: 'post' | 'route';
-  title: string;
-  postType: string;
-  regionId?: number | null;
-  regionName?: string | null;
-  imageUrl?: string | null;
-  score: number;
-  reason: string;
-  matchedTags: string[];
-  avgRating?: number | null;
-  reviewCount?: number | null;
-  saveCount?: number | null;
-  viewCount?: number | null;
-}
+export type { RecommendationFeedItem };
 
 @Injectable({ providedIn: 'root' })
 export class RecommendationFeedService {

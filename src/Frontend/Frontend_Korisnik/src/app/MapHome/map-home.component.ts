@@ -45,6 +45,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedLocation: Location | null = null;
   isMenuOpen = false;
   activeTab = 'map';
+  sheetExpanded = false;
   private map: L.Map | undefined;
   private markers: { loc: Location; marker: L.Marker }[] = [];
   private userMarker: L.Marker | null = null;
@@ -979,6 +980,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       marker.on('click', (event: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(event as any);
         this.selectedLocation = loc;
+        this.analytics.track('location_opened', {
+          postId: loc.id,
+          postType: loc.postType,
+          regionName: loc.regionName,
+        });
         if (this.plannerMode) {
           this.addLocationToPlanner(loc, true);
         }
@@ -1043,6 +1049,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleMenu(): void {
     this.isMenuOpen = !this.isMenuOpen;
+  }
+
+  toggleSheet(): void {
+    this.sheetExpanded = !this.sheetExpanded;
   }
 
   goToLogin(): void {

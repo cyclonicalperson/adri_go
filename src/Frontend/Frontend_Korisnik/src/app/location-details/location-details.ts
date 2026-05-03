@@ -54,6 +54,10 @@ export class LocationDetailsComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/location-list']); return; }
 
+    // One view per page navigation — no guard needed because all duplicate
+    // calls elsewhere in this file have been removed.
+    this.locationService.registerView(id).subscribe({ error: () => {} });
+
     // Request user geolocation for distance display
     if (this.preferences.snapshot.locationSharing && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -135,13 +139,6 @@ export class LocationDetailsComponent implements OnInit {
       error: (err) => console.error('getReviews error:', err)
     });
 
-    // Register view only for logged-in users
-    const touristId = this.authService.touristId;
-    if (touristId) {
-      this.locationService.registerView(id, touristId).subscribe({
-        error: (err) => console.warn('registerView:', err.status)
-      });
-    }
   }
 
   openAuthModal(): void  { this.showAuthModal = true; }
