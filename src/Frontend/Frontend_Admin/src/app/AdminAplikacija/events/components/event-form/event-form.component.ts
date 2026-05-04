@@ -5,6 +5,7 @@ import { RegionService } from '@core/services/region.service';
 import { Region } from '@core/models/region.model';
 import { PostService } from '@core/services/post.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
+import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
 
 interface EventObjectOption {
   objectId: number;
@@ -14,7 +15,7 @@ interface EventObjectOption {
 @Component({
   selector: 'app-event-form',
   standalone: true,
-  imports: [ReactiveFormsModule, MapComponent],
+  imports: [ReactiveFormsModule, MapComponent, PostImagePickerComponent],
   templateUrl: './event-form.component.html',
   styleUrl: './event-form.component.scss',
 })
@@ -69,6 +70,7 @@ export class EventFormComponent implements OnInit {
       lat: [null],
       lng: [null],
       status: ['draft'],
+      images: [[] as string[]],
     });
 
     this.destService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
@@ -105,6 +107,7 @@ export class EventFormComponent implements OnInit {
             lat: post.lat ?? null,
             lng: post.lng ?? null,
             status: post.status ?? 'draft',
+            images: post.images ?? [],
           });
         },
         error: () => {
@@ -112,6 +115,14 @@ export class EventFormComponent implements OnInit {
         },
       });
     }
+  }
+
+  get formImages(): string[] {
+    return this.form.get('images')?.value ?? [];
+  }
+
+  onImagesChange(urls: string[]): void {
+    this.form.patchValue({ images: urls });
   }
 
   onMapClick(ev: MapClickEvent): void {
@@ -150,6 +161,7 @@ export class EventFormComponent implements OnInit {
       lng: raw.lng || null,
       externalUrl: raw.ticketUrl || raw.externalUrl || null,
       externalUrlLabel: raw.ticketUrl ? 'Kupi kartu' : undefined,
+      images: (raw.images as string[]) ?? [],
       details,
       status: raw.status || 'draft',
     };

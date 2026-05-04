@@ -5,17 +5,16 @@ import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
 import { Region } from '@core/models/region.model';
 import { ObjectCategory } from '@core/models/object.model';
-import { Media } from '@core/models/destination.model';
 import { ObjectMapPickerComponent } from '../object-map-picker/object-map-picker.component';
-import { MediaUploaderComponent } from '../media-uploader/media-uploader.component';
 import { ActivitiesSelectorComponent } from '../activities-selector/activities-selector.component';
+import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
 
 @Component({
   selector: 'app-object-form',
   imports: [
     ReactiveFormsModule,
     ObjectMapPickerComponent,
-    MediaUploaderComponent,
+    PostImagePickerComponent,
     ActivitiesSelectorComponent,
   ],
   templateUrl: './object-form.component.html',
@@ -30,7 +29,7 @@ export class ObjectFormComponent implements OnInit {
 
   destinations: Region[] = [];
   selectedActivityIds: number[] = [];
-  media: Media[] = [];
+  formImages: string[] = [];
 
   readonly categoryOptions: { value: ObjectCategory; label: string }[] = [
     { value: 'HOTEL', label: '🏔️ Hotel' },
@@ -91,7 +90,7 @@ export class ObjectFormComponent implements OnInit {
           workingHours: o.workingHours,
         });
         this.selectedActivityIds = o.activities?.map((a: any) => a.activityId) ?? [];
-        this.media = o.media ?? [];
+        this.formImages = (o.media ?? []).map(m => m.url).filter(url => !!url);
       });
     }
   }
@@ -108,12 +107,8 @@ export class ObjectFormComponent implements OnInit {
     this.saving = true;
     this.error = null;
 
-    // Filtriramo media — ne šaljemo base64 DataURL na server (nisu persistentni)
-    // Samo HTTP/HTTPS URLovi su validni za čuvanje u bazi
-    const validMedia = this.media.filter(m =>
-      m.url && (m.url.startsWith('http://') || m.url.startsWith('https://'))
-    );
-    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media: validMedia };
+    const media = this.formImages.map((url, idx) => ({ mediaId: idx + 1, url, sortOrder: idx, caption: undefined }));
+    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media };
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)

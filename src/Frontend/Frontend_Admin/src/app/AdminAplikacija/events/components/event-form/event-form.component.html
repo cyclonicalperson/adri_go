@@ -115,6 +115,14 @@
         </div>
       </div>
 
+      <div class="card">
+        <h3 class="card-title">Slike dogadjaja</h3>
+        <p class="hint">Prva slika biće naslovna. Možeš učitati sa računara ili dodati link sa interneta.</p>
+        <app-post-image-picker
+          [images]="formImages"
+          (imagesChange)="onImagesChange($event)" />
+      </div>
+
       <div class="form-actions">
         <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
         <button type="submit" class="btn-save" [disabled]="saving">
