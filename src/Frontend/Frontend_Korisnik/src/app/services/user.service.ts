@@ -228,7 +228,7 @@ export class UserService {
 
   private toLocalCalendarSeed(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }): LocalCalendarSeed {
     const firstImage = location.imageUrl
-      ?? (() => { try { return (JSON.parse(location.images ?? '[]') as string[])[0]; } catch { return undefined; } })()
+      ?? (() => { try { const imgs = Array.isArray(location.images) ? location.images : (JSON.parse(location.images ?? '[]') as string[]); return imgs[0]; } catch { return undefined; } })()
       ?? null;
 
     return {
