@@ -28,9 +28,6 @@ type RecommendationTab = 'personalized' | 'global';
 
 type MapLocation = Location & {
   distanceKm?: number | null;
-  _score?: number;
-  category?: string;
-  imageUrl?: string;
 };
 
 @Component({
@@ -75,7 +72,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   globalRecommendations: LocationRecommendation[] = [];
   personalizedRecommendations: LocationRecommendation[] = [];
   activeRecommendationTab: RecommendationTab = 'personalized';
-  recommendedLocations: MapLocation[] = [];
   locationsList: MapLocation[] = [];
   plannerStops: PlannerStop[] = [];
   scenicSuggestions: RouteDetourSuggestion[] = [];
@@ -135,10 +131,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get hasPersonalizedRecommendations(): boolean {
     return this.personalizedRecommendations.length > 0;
-  }
-
-  get recommendedSubtitle(): string {
-    return this.userPosition ? 'Closest to your location' : 'Top rated nearby';
   }
 
   private readonly categoryColors: Record<string, { bg: string; icon: string }> = {
@@ -218,34 +210,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: (err) => console.error('Failed to load locations:', err)
     });
-  }
-
-  calculateRecommendations(): void {
-    const sorted = [...this.locationsList].map((location) => {
-      const score = ((location.avgRating || location.rating || 0) * 100)
-        + (location.reviewCount || location.reviews || 0)
-        + (location.likeCount || location.likes || 0)
-        + (location.saveCount || location.saves || 0);
-
-      return { ...location, _score: score };
-    });
-
-    if (this.userPosition) {
-      sorted.sort((left, right) => {
-        const leftDistance = left.distanceKm ?? Number.POSITIVE_INFINITY;
-        const rightDistance = right.distanceKm ?? Number.POSITIVE_INFINITY;
-
-        if (leftDistance !== rightDistance) {
-          return leftDistance - rightDistance;
-        }
-
-        return (right._score ?? 0) - (left._score ?? 0);
-      });
-    } else {
-      sorted.sort((left, right) => (right._score ?? 0) - (left._score ?? 0));
-    }
-
-    this.recommendedLocations = sorted.slice(0, 3);
   }
 
   private syncPlannerStateFromServices(): void {
@@ -333,8 +297,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.personalizedRecommendations.length === 0) {
       this.activeRecommendationTab = 'global';
     }
-
-    this.calculateRecommendations();
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -371,12 +333,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return firstImg;
   }
 
-  onImgError(event: Event): void {
-    const img = event.target as HTMLImageElement;
-    img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='52' height='52' viewBox='0 0 52 52'%3E%3Crect width='52' height='52' fill='%23f1f5f9'/%3E%3Cpath d='M20 34l6-8 4 5 3-4 5 7H14z' fill='%23cbd5e1'/%3E%3Ccircle cx='33' cy='20' r='3' fill='%23cbd5e1'/%3E%3C/svg%3E`;
-    img.onerror = null;
-  }
-
   focusOnLocation(loc: MapLocation): void {
     const coordinates = this.getLocationCoordinates(loc);
     if (this.map && coordinates) {
@@ -406,14 +362,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     cat.active = !cat.active;
     this.syncFilterState();
     this.applyMarkerFilter();
-    this.calculateRecommendations();
   }
 
   toggleAllCategories(): void {
     this.categories.forEach(c => c.active = true);
     this.syncFilterState();
     this.applyMarkerFilter();
-    this.calculateRecommendations();
   }
 
   togglePlannerMode(): void {
@@ -919,8 +873,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
       return { ...location, distanceKm };
     });
-
-    this.calculateRecommendations();
   }
 
   private isLocationOpen(loc: MapLocation): boolean {
