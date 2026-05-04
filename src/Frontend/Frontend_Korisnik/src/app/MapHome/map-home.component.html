@@ -95,82 +95,121 @@
           </button>
         </div>
 
+        <!-- Search results dropdown -->
         <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
           <div
             *ngFor="let result of searchResults"
             class="search-result-item"
             (click)="selectSearchResult(result)">
             <div class="search-result-icon">
-              <span>{{ getCategoryIcon(result.postType) }}</span>
+              <span>{{ getCategoryIcon(result.postType || result.category) }}</span>
             </div>
             <div class="search-result-info">
               <div class="search-result-title">{{ result.title }}</div>
-              <div class="search-result-meta">{{ result.postType }}</div>
+              <div class="search-result-meta">
+                {{ result.postType || result.category }}
+                <span *ngIf="formatDistance(result.distanceKm)"> &bull; {{ formatDistance(result.distanceKm) }} away</span>
+              </div>
             </div>
-            <div class="search-result-rating" *ngIf="result.avgRating">
+            <div class="search-result-rating" *ngIf="result.avgRating || result.rating">
               <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-              {{ result.avgRating | number:'1.1-1' }}
+              {{ (result.avgRating || result.rating) | number:'1.1-1' }}
+            </div>
+          </div>
+
+          <div class="search-no-results" *ngIf="searchQuery && searchResults.length === 0">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            No results for "{{ searchQuery }}"
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommended locations panel (desktop only) -->
+      <div class="recommended-panel desktop-only">
+        <div class="recommended-header">
+          <span class="recommended-title">&#10024; Recommended</span>
+          <span class="recommended-subtitle">{{ recommendedSubtitle }}</span>
+        </div>
+        <div class="recommended-list">
+          <div
+            *ngFor="let loc of recommendedLocations; let i = index"
+            class="recommended-card"
+            (click)="focusOnLocation(loc)">
+            <div class="rec-image">
+              <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="onImgError($event)">
+              <div class="rec-rank">#{{ i + 1 }}</div>
+            </div>
+            <div class="rec-info">
+              <div class="rec-title">{{ loc.title }}</div>
+              <div class="rec-meta">
+                <span class="rec-category">{{ loc.postType || loc.category }}</span>
+                <span class="rec-dot" *ngIf="loc.regionName">&middot;</span>
+                <span class="rec-distance" *ngIf="loc.regionName">{{ loc.regionName }}</span>
+                <span class="rec-dot" *ngIf="loc.regionName && formatDistance(loc.distanceKm)">&middot;</span>
+                <span class="rec-distance" *ngIf="formatDistance(loc.distanceKm)">{{ formatDistance(loc.distanceKm) }} away</span>
+              </div>
+              <div class="rec-rating" *ngIf="loc.avgRating || loc.rating">
+                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                <span>{{ (loc.avgRating || loc.rating) | number:'1.1-1' }}</span>
+                <span class="rec-reviews" *ngIf="loc.reviewCount || loc.reviews">({{ (loc.reviewCount || loc.reviews) | number }} reviews)</span>
+              </div>
             </div>
           </div>
         </div>
-
-        <div class="search-no-results" *ngIf="searchQuery && searchResults.length === 0">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          No results for "{{ searchQuery }}"
-        </div>
-      </div>
-    </div>
-
-    <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded">
-      <div class="sheet-header" (click)="toggleSheet()">
-        <div class="sheet-header-left">
-          <span class="sheet-title">{{ showRoutePanel ? (routeDestTitle || 'Route') : 'Explore nearby' }}</span>
-          <span class="sheet-route-meta" *ngIf="showRoutePanel && routeSummary.stopCount > 0">
-            {{ routeSummary.stopCount }} stops
-            <ng-container *ngIf="routeSummary.distanceKm > 0"> &middot; {{ routeSummary.distanceKm | number:'1.1-1' }} km</ng-container>
-            <ng-container *ngIf="routeSummary.durationMin > 0"> &middot; {{ formatDuration(routeSummary.durationMin) }}</ng-container>
-          </span>
-        </div>
-        <button *ngIf="showRoutePanel" class="sheet-clear-btn" (click)="clearRoute(); $event.stopPropagation()">Clear</button>
-        <svg class="sheet-chevron" [class.sheet-chevron-open]="sheetExpanded" viewBox="0 0 24 24">
-          <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
-        </svg>
       </div>
 
-      <app-trip-planner-panel
-        [plannerMode]="plannerMode"
-        [plannerStops]="plannerStops"
-        [scenicMode]="scenicMode"
-        [travelMode]="travelMode"
-        [routeSummary]="routeSummary"
-        [plannerMessage]="plannerMessage"
-        [isRenderingRoute]="isRenderingRoute"
-        [isSavingTrip]="isSavingTrip"
-        (plannerModeToggled)="togglePlannerMode()"
-        (travelModeSelected)="setTravelMode($event)"
-        (scenicModeToggled)="toggleScenicMode()"
-        (stopFocused)="focusOnPlannerStop($event)"
-        (stopMoved)="movePlannerStop($event.index, $event.direction)"
-        (stopRemoved)="removePlannerStop($event)"
-        (plannerOptimized)="optimizePlannerStops()"
-        (tripSaved)="saveTripToCalendar()"
-        (tripShared)="shareTrip()"
-        (routeCleared)="clearRoute()">
-      </app-trip-planner-panel>
+      <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded">
+        <div class="sheet-header" (click)="toggleSheet()">
+          <div class="sheet-header-left">
+            <span class="sheet-title">{{ showRoutePanel ? (routeDestTitle || 'Route') : 'Explore nearby' }}</span>
+            <span class="sheet-route-meta" *ngIf="showRoutePanel && routeSummary.stopCount > 0">
+              {{ routeSummary.stopCount }} stops
+              <ng-container *ngIf="routeSummary.distanceKm > 0"> &middot; {{ routeSummary.distanceKm | number:'1.1-1' }} km</ng-container>
+              <ng-container *ngIf="routeSummary.durationMin > 0"> &middot; {{ formatDuration(routeSummary.durationMin) }}</ng-container>
+            </span>
+          </div>
+          <button *ngIf="showRoutePanel" class="sheet-clear-btn" (click)="clearRoute(); $event.stopPropagation()">Clear</button>
+          <svg class="sheet-chevron" [class.sheet-chevron-open]="sheetExpanded" viewBox="0 0 24 24">
+            <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
+          </svg>
+        </div>
 
-      <app-route-detours-panel
-        [scenicSuggestions]="scenicSuggestions"
-        (detourAdded)="applyDetourSuggestion($event)">
-      </app-route-detours-panel>
+        <app-trip-planner-panel
+          [plannerMode]="plannerMode"
+          [plannerStops]="plannerStops"
+          [scenicMode]="scenicMode"
+          [travelMode]="travelMode"
+          [routeSummary]="routeSummary"
+          [plannerMessage]="plannerMessage"
+          [isRenderingRoute]="isRenderingRoute"
+          [isSavingTrip]="isSavingTrip"
+          (plannerModeToggled)="togglePlannerMode()"
+          (travelModeSelected)="setTravelMode($event)"
+          (scenicModeToggled)="toggleScenicMode()"
+          (stopFocused)="focusOnPlannerStop($event)"
+          (stopMoved)="movePlannerStop($event.index, $event.direction)"
+          (stopRemoved)="removePlannerStop($event)"
+          (plannerOptimized)="optimizePlannerStops()"
+          (tripSaved)="saveTripToCalendar()"
+          (tripShared)="shareTrip()"
+          (routeCleared)="clearRoute()">
+        </app-trip-planner-panel>
 
-      <app-map-recommendations-panel
-        [recommendationCards]="recommendationCards"
-        [hasPersonalizedRecommendations]="hasPersonalizedRecommendations"
-        [activeRecommendationTab]="activeRecommendationTab"
-        [resolveImage]="resolveRecommendationImage"
-        (tabSelected)="activeRecommendationTab = $event"
-        (locationSelected)="focusOnLocation($event)">
-      </app-map-recommendations-panel>
+        <app-route-detours-panel
+          [scenicSuggestions]="scenicSuggestions"
+          (detourAdded)="applyDetourSuggestion($event)">
+        </app-route-detours-panel>
+
+        <app-map-recommendations-panel
+          [recommendationCards]="recommendationCards"
+          [hasPersonalizedRecommendations]="hasPersonalizedRecommendations"
+          [activeRecommendationTab]="activeRecommendationTab"
+          [resolveImage]="resolveRecommendationImage"
+          (tabSelected)="activeRecommendationTab = $event"
+          (locationSelected)="focusOnLocation($event)">
+        </app-map-recommendations-panel>
+      </div>
+
     </div>
 
   </div>

@@ -1,10 +1,10 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
-import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { GeolocationService, UserPosition } from '../services/geolocation.service';
+import { Location, LocationService } from '../services/location.service';
 
 @Component({
   selector: 'app-location-list',
@@ -14,35 +14,56 @@ import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
   styleUrls: ['./location-list.component.css']
 })
 export class LocationListComponent implements OnInit {
+  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
+
   isMenuOpen = false;
   locations: Location[] = [];
   isLoading = false;
   errorMessage = '';
   feedbackMessage = '';
+  private userPosition: UserPosition | null = null;
 
   constructor(
     private router: Router,
     private locationService: LocationService,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
-  ) { }
+    private cdr: ChangeDetectorRef,
+    private geolocationService: GeolocationService
+  ) {}
 
-  ngOnInit(): void { this.loadLocations(); }
+  ngOnInit(): void {
+    this.loadLocations();
+    this.loadUserPosition();
+  }
 
   loadLocations(): void {
     this.isLoading = true;
     this.locationService.getLocations().subscribe({
-      next: (res) => { this.locations = res.data; this.isLoading = false; this.cdr.markForCheck(); },
-      error: () => { this.errorMessage = 'Greska pri ucitavanju lokacija.'; this.isLoading = false; this.cdr.markForCheck(); }
+      next: (res) => {
+        const decoratedLocations = this.decorateLocations(res.data);
+        this.locations = decoratedLocations;
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.errorMessage = 'Greska pri ucitavanju lokacija.';
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
     });
   }
 
   onLike(loc: Location, event: Event): void {
     event.stopPropagation();
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
     const action$ = loc.isLiked
       ? this.locationService.unlikeLocation(loc.id)
       : this.locationService.likeLocation(loc.id);
+
     action$.subscribe({
       next: (res) => {
         loc.isLiked = !loc.isLiked;
@@ -59,10 +80,15 @@ export class LocationListComponent implements OnInit {
 
   onSave(loc: Location, event: Event): void {
     event.stopPropagation();
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
+
     const action$ = loc.isSaved
       ? this.locationService.unsaveLocation(loc.id)
       : this.locationService.saveLocation(loc.id);
+
     action$.subscribe({
       next: (res) => {
         loc.isSaved = !loc.isSaved;
@@ -77,17 +103,16 @@ export class LocationListComponent implements OnInit {
     });
   }
 
-  private showFeedback(msg: string): void {
-    this.feedbackMessage = msg;
-    setTimeout(() => (this.feedbackMessage = ''), 2500);
-  }
-
-  toggleMenu():    void { this.isMenuOpen = !this.isMenuOpen; }
-  goToMap():       void { this.router.navigate(['/map-home']); }
-  openFilters():   void { this.router.navigate(['/filters']); }
+  toggleMenu(): void { this.isMenuOpen = !this.isMenuOpen; }
+  goToMap(): void { this.router.navigate(['/map-home']); }
+  openFilters(): void { this.router.navigate(['/filters']); }
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
 
-  getFirstImage(loc: any): string {
+  formatDistance(distanceKm?: number | null): string {
+    return this.geolocationService.formatDistanceKm(distanceKm);
+  }
+
+  getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
     if (!loc || !loc.images) {
       return 'assets/placeholder.jpg';
     }
@@ -96,7 +121,7 @@ export class LocationListComponent implements OnInit {
 
     if (typeof loc.images === 'string') {
       try {
-        const parsed = JSON.parse(loc.images);
+        const parsed = JSON.parse(loc.images) as string[];
         firstImg = parsed.length > 0 ? parsed[0] : '';
       } catch {
         firstImg = loc.images;
@@ -105,6 +130,63 @@ export class LocationListComponent implements OnInit {
       firstImg = loc.images[0];
     }
 
-    return resolveBackendAssetUrl(firstImg, 'assets/placeholder.jpg');
+    if (!firstImg) return 'assets/placeholder.jpg';
+
+    if (!firstImg.startsWith('http')) {
+      const cleanPath = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
+      return `${this.IMAGE_BASE_URL}${cleanPath}`;
+    }
+
+    return firstImg;
+  }
+
+  private showFeedback(msg: string): void {
+    this.feedbackMessage = msg;
+    setTimeout(() => (this.feedbackMessage = ''), 2500);
+  }
+
+  private loadUserPosition(): void {
+    void this.geolocationService.requestCurrentPosition().then((position) => {
+      if (!position) {
+        return;
+      }
+
+      this.userPosition = position;
+      const decoratedLocations = this.decorateLocations(this.locations);
+      this.locations = decoratedLocations;
+      this.cdr.markForCheck();
+    });
+  }
+
+  private decorateLocations(locations: Location[]): Location[] {
+    if (!this.userPosition) {
+      return locations.map((location) => ({ ...location, distanceKm: null }));
+    }
+
+    return [...locations]
+      .map((location) => {
+        const coordinates = this.getLocationCoordinates(location);
+        const distanceKm = coordinates
+          ? this.geolocationService.haversineKm(this.userPosition!, coordinates)
+          : null;
+
+        return { ...location, distanceKm };
+      })
+      .sort((left, right) => {
+        const leftDistance = (left as any).distanceKm ?? Number.POSITIVE_INFINITY;
+        const rightDistance = (right as any).distanceKm ?? Number.POSITIVE_INFINITY;
+        return leftDistance - rightDistance;
+      });
+  }
+
+  private getLocationCoordinates(location: Partial<Location>): UserPosition | null {
+    const lat = location.lat ?? location.latitude;
+    const lng = location.lng ?? location.longitude;
+
+    if (lat == null || lng == null) {
+      return null;
+    }
+
+    return { lat: Number(lat), lng: Number(lng) };
   }
 }
