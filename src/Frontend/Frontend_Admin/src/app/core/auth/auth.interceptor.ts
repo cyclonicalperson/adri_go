@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { TokenStorageService } from './token-storage.service';
 
 /** Putanje koje ne trebaju Authorization header */
-const PUBLIC_PATHS = ['/auth/login', '/auth/register', '/tourist-auth/'];
+const PUBLIC_PATHS = ['/auth/login', '/auth/register', '/auth/verify-registration-email', '/tourist-auth/'];
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = inject(TokenStorageService).getToken();
