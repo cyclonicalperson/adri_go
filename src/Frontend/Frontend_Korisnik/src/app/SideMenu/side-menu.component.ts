@@ -2,7 +2,7 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { SiteTranslateService } from '../services/site-translate.service';
+import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
 
 @Component({
   selector: 'app-side-menu',
@@ -14,11 +14,26 @@ import { SiteTranslateService } from '../services/site-translate.service';
 export class SideMenuComponent {
   @Output() onClose = new EventEmitter<void>();
 
+  langMenuOpen = false;
+
   constructor(
     private router: Router,
     public authService: AuthService,
     public translate: SiteTranslateService
   ) {}
+
+  get languages() {
+    return this.translate.languages;
+  }
+
+  toggleLangMenu(): void {
+    this.langMenuOpen = !this.langMenuOpen;
+  }
+
+  setLang(code: SiteLanguageCode): void {
+    void this.translate.setLanguage(code);
+    this.langMenuOpen = false;
+  }
 
   logout() {
     this.authService.logout();
@@ -44,9 +59,4 @@ export class SideMenuComponent {
   goToCalendar() { this.router.navigate(['/calendar']); }
   goToNotifications() { this.router.navigate(['/notifications']); }
   goToSettings() { this.router.navigate(['/settings']); }
-
-  toggleLanguage() {
-    const next = this.translate.currentLanguage === 'en' ? 'sr' : 'en';
-    this.translate.setLanguage(next);
-  }
 }

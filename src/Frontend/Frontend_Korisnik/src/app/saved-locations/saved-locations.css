@@ -144,6 +144,7 @@
   gap: 5px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 .badge .dot { width: 7px; height: 7px; border-radius: 50%; }
 
@@ -227,8 +228,9 @@
   gap: 4px;
   color: var(--gray-500);
   font-weight: 500;
+  white-space: nowrap;
 }
-.info-pill svg { width: 13px; height: 13px; fill: var(--gray-400); }
+.info-pill svg { width: 13px; height: 13px; fill: var(--gray-400); flex-shrink: 0; }
 
 .open   { color: var(--green-700); font-weight: 700; }
 .closed { color: var(--danger); font-weight: 700; }
@@ -250,6 +252,7 @@
   cursor: pointer;
   font-family: inherit;
   letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 
 .arrow-icon {

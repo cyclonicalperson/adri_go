@@ -8,7 +8,7 @@ import { TouristAppPreferences, TouristPreferencesService } from '../services/to
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 
-type SettingsSheet = 'accounts' | 'content' | 'booking' | 'payment' | 'support' | null;
+type SettingsSheet = 'accounts' | 'content' | 'booking' | 'payment' | 'support' | 'language' | null;
 
 @Component({
   selector: 'app-settings',
@@ -100,8 +100,8 @@ export class SettingsComponent implements OnInit {
     return this.translate.currentLanguageOption.label;
   }
 
-  get switchToLanguageLabel(): string {
-    return this.translate.currentLanguage === 'en' ? 'Srpski' : 'English';
+  get languages() {
+    return this.translate.languages;
   }
 
   get connectedAccountsSummary(): string {
@@ -141,19 +141,23 @@ export class SettingsComponent implements OnInit {
     this.showSavedMessage(message);
   }
 
-  async toggleLanguage(): Promise<void> {
-    const next = this.translate.currentLanguage === 'en' ? 'sr' : 'en';
-    await this.translate.setLanguage(next as SiteLanguageCode);
-    this.authService.updateCurrentTourist({ language: next });
+  toggleLanguage(): void {
+    this.openSheet('language');
+  }
+
+  async setLanguage(code: SiteLanguageCode): Promise<void> {
+    await this.translate.setLanguage(code);
+    this.authService.updateCurrentTourist({ language: code });
 
     if (this.authService.isLoggedIn) {
-      this.userService.updateProfile({ language: next }).subscribe({
+      this.userService.updateProfile({ language: code }).subscribe({
         next: () => {},
         error: () => {}
       });
     }
 
-    this.showSavedMessage(`Language switched to ${next.toUpperCase()}`);
+    this.closeSheet();
+    this.showSavedMessage(`Language: ${this.translate.currentLanguageOption.label}`);
   }
 
   onAnalyticsToggle(): void {
@@ -299,7 +303,7 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    if (this.activeSheet === 'support') {
+    if (this.activeSheet === 'support' || this.activeSheet === 'language') {
       this.closeSheet();
       return;
     }

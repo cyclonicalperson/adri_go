@@ -40,7 +40,7 @@
           <span class="row-icon icon-language"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96z"/></svg></span>
           <div class="row-text">
             <span class="label">App Language</span>
-            <span class="value" data-no-translate="true">{{ currentLanguageLabel }} · <span style="text-decoration:underline;">{{ switchToLanguageLabel }}</span></span>
+            <span class="value" data-no-translate="true">{{ currentLanguageLabel }}</span>
           </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
@@ -157,10 +157,10 @@
     <div class="sheet-header">
       <div>
         <span class="sheet-kicker">
-          {{ activeSheet === 'accounts' ? 'Accounts' : activeSheet === 'content' ? 'Content' : activeSheet === 'booking' ? 'Booking' : activeSheet === 'payment' ? 'Payments' : 'Support' }}
+          {{ activeSheet === 'accounts' ? 'Accounts' : activeSheet === 'content' ? 'Content' : activeSheet === 'booking' ? 'Booking' : activeSheet === 'payment' ? 'Payments' : activeSheet === 'language' ? 'Language' : 'Support' }}
         </span>
         <h2>
-          {{ activeSheet === 'accounts' ? 'Connected Accounts' : activeSheet === 'content' ? 'Content Preferences' : activeSheet === 'booking' ? 'Connected Booking Services' : activeSheet === 'payment' ? 'Payment Methods' : 'Help & Support Center' }}
+          {{ activeSheet === 'accounts' ? 'Connected Accounts' : activeSheet === 'content' ? 'Content Preferences' : activeSheet === 'booking' ? 'Connected Booking Services' : activeSheet === 'payment' ? 'Payment Methods' : activeSheet === 'language' ? 'App Language' : 'Help & Support Center' }}
         </h2>
       </div>
       <button class="sheet-close" (click)="closeSheet()">✕</button>
@@ -221,7 +221,21 @@
       </div>
     </div>
 
-    <div class="sheet-footer" *ngIf="activeSheet !== 'support'">
+    <div class="sheet-body" *ngIf="activeSheet === 'language'" data-no-translate="true">
+      <p class="sheet-copy">Interface language</p>
+      <button
+        class="sheet-option lang-option-row"
+        *ngFor="let lang of languages"
+        [class.active]="translate.currentLanguage === lang.code"
+        (click)="setLanguage(lang.code)">
+        <strong>{{ lang.label }}</strong>
+        <span class="sheet-pill" [class.active]="translate.currentLanguage === lang.code">
+          {{ translate.currentLanguage === lang.code ? '✓' : lang.shortLabel }}
+        </span>
+      </button>
+    </div>
+
+    <div class="sheet-footer" *ngIf="activeSheet !== 'support' && activeSheet !== 'language'">
       <button class="sheet-secondary" (click)="closeSheet()">Cancel</button>
       <button class="sheet-primary" (click)="saveSheet()">Save</button>
     </div>

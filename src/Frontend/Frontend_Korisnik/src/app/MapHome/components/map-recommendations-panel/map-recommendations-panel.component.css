@@ -156,6 +156,7 @@
 .rec-category {
   font-weight: 700;
   color: var(--gray-500);
+  text-transform: capitalize;
 }
 
 .rec-dot {

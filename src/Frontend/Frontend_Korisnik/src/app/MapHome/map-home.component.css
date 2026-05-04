@@ -64,6 +64,8 @@
   gap: 6px;
   transition: opacity 0.2s;
   box-shadow: 0 3px 10px rgba(34,197,94,0.25);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .header-login-btn svg { width: 15px; height: 15px; fill: #fff; }
 .header-login-btn:hover { opacity: 0.9; }
@@ -174,6 +176,9 @@
   font-weight: 700;
   color: var(--gray-600);
   letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sheet-chevron {
@@ -686,6 +691,7 @@
   font-weight: 700;
   letter-spacing: 0.3px;
   line-height: 1;
+  white-space: nowrap;
 }
 
 /* ── LOCATION CARD POPUP ─────────────────────────────────────── */

@@ -413,15 +413,10 @@ export class LocationDetailsComponent implements OnInit {
   addToCalendar(): void {
     if (!this.location) return;
 
-    if (!this.authService.isLoggedIn) {
-      this.showAuthModal = true;
-      return;
-    }
-
-    this.userService.addToCalendar(this.location.id).subscribe({
+    this.userService.addLocationToCalendar(this.location).subscribe({
       next: (res) => {
-        this.calendarMessage = res?.alreadyAdded
-          ? '📅 Already in your calendar'
+        this.calendarMessage = res.message
+          ? (res.localOnly ? '📅 ' + res.message : (res.alreadyAdded ? '📅 Already in your calendar' : '📅 Added to your calendar!'))
           : '📅 Added to your calendar!';
         setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3500);
         this.cdr.markForCheck();
