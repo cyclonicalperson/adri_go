@@ -53,6 +53,40 @@ export interface CalendarMutationResult {
   savedTripId?: string;
 }
 
+export interface PostTypePreference {
+  postType: string;
+  likeCount: number;
+  saveCount: number;
+  viewCount: number;
+  score: number;
+}
+
+export interface TagPreference {
+  tagId: number;
+  tagName: string;
+  tagCategory: string;
+  likeCount: number;
+  saveCount: number;
+  viewCount: number;
+  score: number;
+}
+
+export interface RegionPreference {
+  regionId: number;
+  regionName: string;
+  likeCount: number;
+  saveCount: number;
+  viewCount: number;
+  score: number;
+}
+
+export interface ServerPreferences {
+  summary: { totalLikes: number; totalSaves: number; totalViews: number; totalReviews: number };
+  postTypePreferences: PostTypePreference[];
+  tagPreferences: TagPreference[];
+  regionPreferences: RegionPreference[];
+}
+
 interface TouristProfileResponse {
   id: number;
   name: string;
@@ -196,6 +230,18 @@ export class UserService {
         };
       }),
     );
+  }
+
+  getMyServerPreferences(): Observable<ServerPreferences | null> {
+    if (!this.authService.isLoggedIn) {
+      return of(null);
+    }
+
+    return this.http
+      .get<{ success: boolean; data: ServerPreferences }>(
+        `${environment.apiUrl}/tourist-preferences/my`,
+      )
+      .pipe(map(res => res?.data ?? null));
   }
 
   removeFromCalendar(postId: number, plannerItemId?: number): Observable<any> {

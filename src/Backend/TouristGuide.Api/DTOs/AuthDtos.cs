@@ -118,23 +118,6 @@ namespace TouristGuide.Api.DTOs
     }
 
     /// <summary>
-    /// Jedna sačuvana lokacija (post) u listi sačuvanih.
-    /// </summary>
-    public class SavedLocationDto
-    {
-        public uint SavedId { get; set; }
-        public uint PostId { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string PostType { get; set; } = string.Empty;
-        public string? Address { get; set; }
-        public decimal? Lat { get; set; }
-        public decimal? Lng { get; set; }
-        /// <summary>URL prve slike (ako postoji)</summary>
-        public string? CoverImage { get; set; }
-        public DateTime SavedAt { get; set; }
-    }
-
-    /// <summary>
     /// DTO koji backend vraća nakon uspešne registracije ili login-a turista.
     /// </summary>
     public class TouristAuthResponseDto

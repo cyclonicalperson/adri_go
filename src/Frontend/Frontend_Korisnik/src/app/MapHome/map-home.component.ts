@@ -13,7 +13,7 @@ import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
 import { FilterStateService } from '../services/filter-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
-import { UserService, CalendarItem, UserProfile } from '../services/user.service';
+import { UserService, CalendarItem, UserProfile, ServerPreferences } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
 import { ComputedRoute, RoutingService, RouteSummary } from '../services/routing.service';
 import { TravelMode, TouristPreferencesService } from '../services/tourist-preferences.service';
@@ -88,6 +88,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   userProfile: UserProfile | null = null;
   savedLocationsContext: Location[] = [];
   calendarItemsContext: CalendarItem[] = [];
+  private serverPreferenceTypes: string[] = [];
 
   categories = [
     { key: 'attraction', label: 'Attractions', icon: '🏖️', active: true },
@@ -227,6 +228,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.userProfile = null;
       this.savedLocationsContext = [];
       this.calendarItemsContext = [];
+      this.serverPreferenceTypes = [];
       return;
     }
 
@@ -234,11 +236,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       profile: this.userService.getUserProfile().pipe(catchError(() => of(null))),
       saved: this.locationService.getMySavedPosts().pipe(catchError(() => of([] as Location[]))),
       calendar: this.userService.getCalendar().pipe(catchError(() => of([] as CalendarItem[]))),
+      serverPrefs: this.userService.getMyServerPreferences().pipe(catchError(() => of(null as ServerPreferences | null))),
     }).subscribe({
       next: (result) => {
         this.userProfile = result.profile;
         this.savedLocationsContext = result.saved;
         this.calendarItemsContext = result.calendar;
+        this.serverPreferenceTypes = (result.serverPrefs?.postTypePreferences ?? [])
+          .slice(0, 5)
+          .map(p => p.postType)
+          .filter(Boolean);
         this.refreshRecommendations();
         this.cdr.detectChanges();
       },
@@ -246,6 +253,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.userProfile = null;
         this.savedLocationsContext = [];
         this.calendarItemsContext = [];
+        this.serverPreferenceTypes = [];
         this.refreshRecommendations();
         this.cdr.detectChanges();
       }
@@ -270,9 +278,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const preferences = this.preferences.snapshot;
     const analyticsEvents = this.analytics.getRecentEvents();
+    // Priority: user-set content prefs → profile interests → server-side interaction history
     const contentPreferences = preferences.contentPreferences.length > 0
       ? preferences.contentPreferences
-      : (this.userProfile?.interests ?? []);
+      : (this.userProfile?.interests ?? []).length > 0
+        ? (this.userProfile?.interests ?? [])
+        : this.serverPreferenceTypes;
 
     this.globalRecommendations = this.recommendationService.buildGlobalRecommendations(this.locationsList, {
       userPosition: this.userPosition,
