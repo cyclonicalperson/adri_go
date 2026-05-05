@@ -128,6 +128,10 @@ export class NotificationHubService implements OnDestroy {
     return this.http.delete(`${environment.apiUrl}/notifications/${id}`);
   }
 
+  deleteAll(): Observable<any> {
+    return this.http.delete(`${environment.apiUrl}/notifications`);
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────
   private fetchInitialData(): void {
     // Dohvati zadnjih 20 notifikacija iz baze

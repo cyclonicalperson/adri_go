@@ -9,6 +9,7 @@ using System.IO;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
+using TouristGuide.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "DataProtectionKeys");
@@ -91,6 +92,7 @@ builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 

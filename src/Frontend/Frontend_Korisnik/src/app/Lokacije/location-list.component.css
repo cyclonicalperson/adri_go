@@ -208,6 +208,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 .cat-dot {
   width: 7px; height: 7px;
@@ -271,7 +273,7 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.info-item { display: flex; align-items: center; gap: 5px; }
+.info-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .info-item svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
 
 .reviews-count { font-size: 11px; color: var(--gray-400); margin: 0; }

@@ -60,6 +60,8 @@ namespace TouristGuide.Api.DTOs
 
         [MaxLength(5)]
         public string Language { get; set; } = "en";
+
+        public List<string>? Interests { get; set; }
     }
 
     /// <summary>
@@ -116,23 +118,6 @@ namespace TouristGuide.Api.DTOs
     }
 
     /// <summary>
-    /// Jedna sačuvana lokacija (post) u listi sačuvanih.
-    /// </summary>
-    public class SavedLocationDto
-    {
-        public uint SavedId { get; set; }
-        public uint PostId { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string PostType { get; set; } = string.Empty;
-        public string? Address { get; set; }
-        public decimal? Lat { get; set; }
-        public decimal? Lng { get; set; }
-        /// <summary>URL prve slike (ako postoji)</summary>
-        public string? CoverImage { get; set; }
-        public DateTime SavedAt { get; set; }
-    }
-
-    /// <summary>
     /// DTO koji backend vraća nakon uspešne registracije ili login-a turista.
     /// </summary>
     public class TouristAuthResponseDto
@@ -142,6 +127,22 @@ namespace TouristGuide.Api.DTOs
         public TouristMeDto User { get; set; } = new();
     }
 
+public class TouristRegistrationResponseDto
+{
+    public bool RequiresEmailVerification { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public TouristAuthResponseDto? Session { get; set; }
+}
+
+public class EmailVerificationResultDto
+{
+    public string Message { get; set; } = string.Empty;
+    public bool AlreadyVerified { get; set; }
+    public bool Expired { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+}
+
     /// <summary>
     /// DTO za ponovljeno slanje verifikacionog emaila.
     /// </summary>
@@ -150,5 +151,41 @@ namespace TouristGuide.Api.DTOs
         [Required]
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO za promenu lozinke turiste (zahteva staru lozinku).
+    /// </summary>
+    public class ChangePasswordDto
+    {
+        [Required]
+        public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO za iniciranje resetovanja lozinke (unos emaila).
+    /// </summary>
+    public class ForgotPasswordDto
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO za resetovanje lozinke sa tokenom iz emaila.
+    /// </summary>
+    public class ResetPasswordDto
+    {
+        [Required]
+        public string Token { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

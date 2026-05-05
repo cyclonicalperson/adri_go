@@ -36,7 +36,7 @@ namespace TouristGuide.Api.Controllers
 
         // POST /api/tourist-auth/register
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] TouristRegisterRequestDto request)
+        public async Task<ActionResult<TouristRegistrationResponseDto>> Register([FromBody] TouristRegisterRequestDto request)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -62,6 +62,7 @@ namespace TouristGuide.Api.Controllers
                 Email = normalizedEmail,
                 PasswordHash = PasswordHelper.Hash(request.Password),
                 Language = string.IsNullOrWhiteSpace(request.Language) ? "en" : request.Language.Trim().ToLowerInvariant(),
+                Interests = SerializeInterests(request.Interests),
                 IsActive = true,
                 IsEmailVerified = !smtpConfigured, // auto-verified when no SMTP
                 EmailVerificationToken = verificationToken,
@@ -89,10 +90,12 @@ namespace TouristGuide.Api.Controllers
                     // Email failure does not block registration
                 }
 
-                return Ok(new
+                return Ok(new TouristRegistrationResponseDto
                 {
-                    message = "Registration successful! Please check your email and confirm your address before logging in.",
-                    email = tourist.Email
+                    RequiresEmailVerification = true,
+                    Message = "Registration successful! Please check your email and confirm your address before logging in.",
+                    Email = tourist.Email ?? string.Empty,
+                    Session = null,
                 });
             }
 
@@ -101,12 +104,18 @@ namespace TouristGuide.Api.Controllers
                 "[DEV MODE] SMTP not configured. Auto-verified tourist {Email} (id={Id}).",
                 tourist.Email, tourist.Id);
 
-            return Ok(await BuildAuthResponseAsync(tourist));
+            return Ok(new TouristRegistrationResponseDto
+            {
+                RequiresEmailVerification = false,
+                Message = "Registration successful! Your account is ready to use.",
+                Email = tourist.Email ?? string.Empty,
+                Session = await BuildAuthResponseAsync(tourist),
+            });
         }
 
         // GET /api/tourist-auth/verify-email?token=...
         [HttpGet("verify-email")]
-        public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+        public async Task<ActionResult<EmailVerificationResultDto>> VerifyEmail([FromQuery] string token)
         {
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token nije prosleden." });
@@ -118,7 +127,13 @@ namespace TouristGuide.Api.Controllers
                 return NotFound(new { message = "Token nije validan." });
 
             if (tourist.IsEmailVerified)
-                return Ok(new { message = "Email je vec potvrdjen. Mozete se prijaviti." });
+            {
+                return Ok(new EmailVerificationResultDto
+                {
+                    Message = "Email je vec potvrdjen. Mozete se prijaviti.",
+                    AlreadyVerified = true
+                });
+            }
 
             if (tourist.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
                 return BadRequest(new
@@ -134,7 +149,12 @@ namespace TouristGuide.Api.Controllers
 
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Email adresa je uspesno potvrdjena! Mozete se prijaviti." });
+            return Ok(new EmailVerificationResultDto
+            {
+                Message = "Email adresa je uspesno potvrdjena! Mozete se prijaviti.",
+                AlreadyVerified = false,
+                VerifiedAt = tourist.UpdatedAt
+            });
         }
 
         // POST /api/tourist-auth/resend-verification
@@ -219,87 +239,6 @@ namespace TouristGuide.Api.Controllers
             var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == touristId.Value);
 
             return Ok(MapToMeDto(tourist, savedCount, reviewCount));
-        }
-
-        // GET /api/tourist-auth/saved-locations
-        [Authorize(Roles = "tourist")]
-        [HttpGet("saved-locations")]
-        public async Task<ActionResult<List<SavedLocationDto>>> GetSavedLocations()
-        {
-            var touristId = GetTouristId();
-            if (touristId is null)
-                return Unauthorized(new { message = "Turista nije autentifikovan." });
-
-            var saved = await _db.SavedPosts
-                .Where(sp => sp.TouristId == touristId.Value)
-                .Include(sp => sp.Post)
-                .OrderByDescending(sp => sp.CreatedAt)
-                .Select(sp => new SavedLocationDto
-                {
-                    SavedId = sp.Id,
-                    PostId = sp.PostId,
-                    Title = sp.Post.Title,
-                    PostType = sp.Post.PostType,
-                    Address = sp.Post.Address,
-                    Lat = sp.Post.Lat,
-                    Lng = sp.Post.Lng,
-                    CoverImage = ExtractFirstImage(sp.Post.Images),
-                    SavedAt = sp.CreatedAt
-                })
-                .ToListAsync();
-
-            return Ok(saved);
-        }
-
-        // POST /api/tourist-auth/saved-locations/{postId}
-        [Authorize(Roles = "tourist")]
-        [HttpPost("saved-locations/{postId:int}")]
-        public async Task<IActionResult> SaveLocation(int postId)
-        {
-            var touristId = GetTouristId();
-            if (touristId is null)
-                return Unauthorized(new { message = "Turista nije autentifikovan." });
-
-            var postExists = await _db.Posts.AnyAsync(p => p.Id == (uint)postId);
-            if (!postExists)
-                return NotFound(new { message = "Objava nije pronadjena." });
-
-            var alreadySaved = await _db.SavedPosts
-                .AnyAsync(sp => sp.TouristId == touristId.Value && sp.PostId == (uint)postId);
-
-            if (alreadySaved)
-                return Conflict(new { message = "Lokacija je vec sacuvana." });
-
-            _db.SavedPosts.Add(new SavedPost
-            {
-                TouristId = touristId.Value,
-                PostId = (uint)postId,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _db.SaveChangesAsync();
-            return Ok(new { message = "Lokacija je uspesno sacuvana." });
-        }
-
-        // DELETE /api/tourist-auth/saved-locations/{postId}
-        [Authorize(Roles = "tourist")]
-        [HttpDelete("saved-locations/{postId:int}")]
-        public async Task<IActionResult> RemoveSavedLocation(int postId)
-        {
-            var touristId = GetTouristId();
-            if (touristId is null)
-                return Unauthorized(new { message = "Turista nije autentifikovan." });
-
-            var saved = await _db.SavedPosts
-                .FirstOrDefaultAsync(sp => sp.TouristId == touristId.Value && sp.PostId == (uint)postId);
-
-            if (saved is null)
-                return NotFound(new { message = "Sacuvana lokacija nije pronadjena." });
-
-            _db.SavedPosts.Remove(saved);
-            await _db.SaveChangesAsync();
-
-            return Ok(new { message = "Lokacija je uklonjena iz sacuvanih." });
         }
 
         // DELETE /api/tourist-auth/account
@@ -479,6 +418,195 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { message = "Removed from calendar." });
         }
 
+        // ─── NOTIFICATIONS ───────────────────────────────────────────────────
+
+        // GET /api/tourist-auth/notifications?limit=30
+        [Authorize(Roles = "tourist")]
+        [HttpGet("notifications")]
+        public async Task<IActionResult> GetNotifications([FromQuery] int limit = 30)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            var items = await _db.Notifications
+                .Where(n => n.TouristId == touristId.Value)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(Math.Min(limit, 100))
+                .Select(n => new
+                {
+                    n.Id,
+                    n.Type,
+                    n.Title,
+                    n.Body,
+                    n.Payload,
+                    isRead = n.IsRead,
+                    createdAt = n.CreatedAt,
+                    sentAt = n.SentAt
+                })
+                .ToListAsync();
+
+            var unreadCount = await _db.Notifications
+                .CountAsync(n => n.TouristId == touristId.Value && !n.IsRead);
+
+            return Ok(new { data = items, unreadCount, success = true });
+        }
+
+        // PATCH /api/tourist-auth/notifications/{id}/read
+        [Authorize(Roles = "tourist")]
+        [HttpPatch("notifications/{id}/read")]
+        public async Task<IActionResult> MarkNotificationRead(uint id)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            var notif = await _db.Notifications
+                .FirstOrDefaultAsync(n => n.Id == id && n.TouristId == touristId.Value);
+
+            if (notif is null) return NotFound();
+
+            if (!notif.IsRead)
+            {
+                notif.IsRead = true;
+                notif.SentAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+
+            return Ok(new { success = true });
+        }
+
+        // PATCH /api/tourist-auth/notifications/read-all
+        [Authorize(Roles = "tourist")]
+        [HttpPatch("notifications/read-all")]
+        public async Task<IActionResult> MarkAllNotificationsRead()
+        {
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            var unread = await _db.Notifications
+                .Where(n => n.TouristId == touristId.Value && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var n in unread)
+            {
+                n.IsRead = true;
+                n.SentAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true, count = unread.Count });
+        }
+
+        // DELETE /api/tourist-auth/notifications/{id}
+        [Authorize(Roles = "tourist")]
+        [HttpDelete("notifications/{id}")]
+        public async Task<IActionResult> DeleteNotification(uint id)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            var notif = await _db.Notifications
+                .FirstOrDefaultAsync(n => n.Id == id && n.TouristId == touristId.Value);
+
+            if (notif is null) return NotFound();
+
+            _db.Notifications.Remove(notif);
+            await _db.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        // ─── PASSWORD MANAGEMENT ──────────────────────────────────────────────
+
+        // POST /api/tourist-auth/change-password
+        [Authorize(Roles = "tourist")]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
+            if (tourist is null) return NotFound(new { message = "Tourist not found." });
+
+            if (string.IsNullOrWhiteSpace(tourist.PasswordHash) ||
+                !PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
+                return BadRequest(new { message = "Current password is incorrect." });
+
+            tourist.PasswordHash = PasswordHelper.Hash(dto.NewPassword);
+            tourist.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Password changed successfully." });
+        }
+
+        // POST /api/tourist-auth/forgot-password  (no auth required)
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+            var tourist = await _db.Tourists
+                .FirstOrDefaultAsync(t => t.Email != null && t.Email.ToLower() == normalizedEmail);
+
+            // Always return OK to prevent email enumeration
+            if (tourist is null)
+                return Ok(new { message = "If the email exists, a reset link has been sent." });
+
+            // Reuse EmailVerificationToken with "RESET_" prefix to avoid a new migration
+            var rawToken = Guid.NewGuid().ToString("N");
+            tourist.EmailVerificationToken = "RESET_" + rawToken;
+            tourist.EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(1);
+            tourist.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            try
+            {
+                await _emailService.SendPasswordResetEmailAsync(
+                    tourist.Email!,
+                    tourist.Name ?? "Korisnik",
+                    rawToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send password reset email to {Email}", tourist.Email);
+            }
+
+            return Ok(new { message = "If the email exists, a reset link has been sent." });
+        }
+
+        // POST /api/tourist-auth/reset-password  (no auth required)
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (string.IsNullOrWhiteSpace(dto.Token))
+                return BadRequest(new { message = "Token is required." });
+
+            var resetToken = "RESET_" + dto.Token;
+            var tourist = await _db.Tourists
+                .FirstOrDefaultAsync(t => t.EmailVerificationToken == resetToken);
+
+            if (tourist is null)
+                return BadRequest(new { message = "Invalid or expired reset token." });
+
+            if (tourist.EmailVerificationTokenExpiresAt < DateTime.UtcNow)
+                return BadRequest(new { message = "Reset token has expired. Please request a new one.", expired = true });
+
+            tourist.PasswordHash = PasswordHelper.Hash(dto.NewPassword);
+            tourist.EmailVerificationToken = null;
+            tourist.EmailVerificationTokenExpiresAt = null;
+            tourist.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Password has been reset successfully. You can now log in." });
+        }
+
         // ─── POMOCNE METODE ───────────────────────────────────────────────────
 
         private async Task<TouristAuthResponseDto> BuildAuthResponseAsync(Tourist tourist)
@@ -546,6 +674,22 @@ namespace TouristGuide.Api.Controllers
                 return urls?.FirstOrDefault();
             }
             catch { return null; }
+        }
+
+        private static string? SerializeInterests(List<string>? interests)
+        {
+            if (interests is null || interests.Count == 0)
+                return null;
+
+            var normalized = interests
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return normalized.Count == 0
+                ? null
+                : System.Text.Json.JsonSerializer.Serialize(normalized);
         }
     }
 }

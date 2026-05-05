@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { catchError, forkJoin, of } from 'rxjs';
 
 import {
@@ -20,8 +19,10 @@ import {
   RegionPopularity,
   TouristMovement,
 } from '@core/services/analytics.service';
+import { ActivityService } from '@core/services/activity.service';
+import { PostService } from '@core/services/post.service';
+import { ReviewService } from '@core/services/review.service';
 import { UserService } from '@core/services/user.service';
-import { environment } from '@env/environment';
 import {
   DashboardConfig,
   DEFAULT_LAYOUT_ADMIN,
@@ -139,8 +140,10 @@ export class DashboardComponent implements OnInit {
   constructor(
     public auth: AuthService,
     private analytics: AnalyticsService,
+    private activityService: ActivityService,
+    private postService: PostService,
+    private reviewService: ReviewService,
     private userService: UserService,
-    private http: HttpClient,
   ) {}
 
   ngOnInit(): void {
@@ -248,14 +251,13 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadPostDerivedData(): void {
-    const params = new HttpParams()
-      .set('page', 1)
-      .set('pageSize', 100)
-      .set('sortBy', 'createdAt')
-      .set('sortDir', 'desc');
-
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts`, { params }).pipe(
-      catchError(() => of({ data: [] })),
+    this.postService.getAll({
+      page: 1,
+      pageSize: 100,
+      sortBy: 'createdAt',
+      sortDir: 'desc',
+    }).pipe(
+      catchError(() => of({ data: [] } as any)),
     ).subscribe(res => {
       const allPosts = (res.data ?? []).map(item => this.mapDashboardPost(item));
       const locationPosts = allPosts.filter(post => post.postType !== 'event');
@@ -291,16 +293,15 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadTopActivities(): void {
-    const params = new HttpParams()
-      .set('page', 1)
-      .set('pageSize', 100);
-
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/activities`, { params }).pipe(
-      catchError(() => of({ data: [] })),
+    this.activityService.getAll({
+      page: 1,
+      pageSize: 100,
+    }).pipe(
+      catchError(() => of({ data: [] } as any)),
     ).subscribe(res => {
       this.topActivities = (res.data ?? [])
         .map((activity: any) => ({
-          id: activity.id ?? activity.activityId,
+          id: activity.activityId ?? activity.id,
           name: activity.name,
           viewCount: Number(activity.viewCount ?? 0),
         }))
@@ -310,15 +311,14 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadRecentReviews(): void {
-    const params = new HttpParams()
-      .set('status', 'PENDING')
-      .set('page', 1)
-      .set('pageSize', 5)
-      .set('sortBy', 'createdAt')
-      .set('sortDir', 'desc');
-
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/reviews`, { params }).pipe(
-      catchError(() => of({ data: [] })),
+    this.reviewService.getAll({
+      status: 'PENDING',
+      page: 1,
+      pageSize: 5,
+      sortBy: 'createdAt',
+      sortDir: 'desc',
+    }).pipe(
+      catchError(() => of({ data: [] } as any)),
     ).subscribe(res => {
       this.recentReviews = (res.data ?? []).slice(0, 3).map((review: any) => {
         const name = review.touristName ?? '—';

@@ -1,0 +1,80 @@
+<div class="picker">
+
+  <!-- Drop zona / upload dugme -->
+  <div class="drop-zone"
+       [class.drag-over]="dragOver"
+       (dragover)="onDragOver($event)"
+       (dragleave)="onDragLeave()"
+       (drop)="onDrop($event)"
+       (click)="openFilePicker()">
+    <input #fileInput
+           type="file"
+           class="file-input"
+           accept="image/*"
+           multiple
+           (change)="onFileSelected($event)" />
+    <div class="drop-icon">📁</div>
+    <div class="drop-text">Prevuci slike ovdje ili <span class="drop-link">klikni da odabereš</span></div>
+    <div class="drop-hint">PNG, JPG, WebP · max 10 slika</div>
+  </div>
+
+  <!-- URL input -->
+  <div class="url-row">
+    <div class="url-input-wrap">
+      <span class="url-prefix">🔗</span>
+      <input class="url-input"
+             type="text"
+             placeholder="Dodaj link slike sa interneta (https://...)"
+             [(ngModel)]="urlInput"
+             (keydown)="onUrlKeydown($event)" />
+    </div>
+    <button class="btn-add-url"
+            type="button"
+            [disabled]="!isValidUrl"
+            (click)="addFromUrl()">Dodaj URL</button>
+  </div>
+
+  @if (urlError) {
+  <div class="url-error">{{ urlError }}</div>
+  }
+
+  @if (globalError) {
+  <div class="url-error">{{ globalError }}</div>
+  }
+
+  <!-- Pregled slika -->
+  @if (items.length > 0) {
+  <div class="preview-grid">
+    @for (item of items; track item.url + $index; let i = $index) {
+
+    @if (item.uploading) {
+    <div class="thumb-wrap uploading">
+      <div class="thumb-spinner">⏳</div>
+      <div class="thumb-label">Upload...</div>
+    </div>
+    } @else if (item.error) {
+    <div class="thumb-wrap error">
+      <div class="thumb-error-icon">⚠️</div>
+      <div class="thumb-label error-text">{{ item.error }}</div>
+      <button class="thumb-remove" type="button" (click)="remove(i)" title="Ukloni">✕</button>
+    </div>
+    } @else {
+    <div class="thumb-wrap">
+      <img class="thumb-img" [src]="item.url" alt="Slika {{ i + 1 }}" (error)="$any($event.target).src='assets/images/placeholder.png'" />
+      @if (i === 0) {
+      <div class="thumb-primary-badge">Naslovna</div>
+      }
+      <div class="thumb-actions">
+        <button class="taction" type="button" title="Pomjeri lijevo" [disabled]="i === 0" (click)="moveLeft(i)">←</button>
+        <button class="taction" type="button" title="Pomjeri desno" [disabled]="i === items.length - 1" (click)="moveRight(i)">→</button>
+        <button class="taction danger" type="button" title="Ukloni" (click)="remove(i)">🗑</button>
+      </div>
+    </div>
+    }
+
+    }
+  </div>
+  <div class="picker-count">{{ items.filter(x => !x.uploading && !x.error).length }} slika dodato</div>
+  }
+
+</div>

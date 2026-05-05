@@ -4,6 +4,8 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './Login/login.component';
 import { ChooseRoleComponent } from './ChooseRole/choose-role.component';
 import { RegisterProfileComponent } from './Register/register-profile.component';
+import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
 
 // 2. Importi za Glavne ekrane
 import { MapHomeComponent } from './MapHome/map-home.component';
@@ -37,6 +39,8 @@ export const routes: Routes = [
   { path: 'choose-role', component: ChooseRoleComponent },
   { path: 'register', component: RegisterProfileComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
 
   // MAPA I LISTA
   { path: 'map-home', component: MapHomeComponent },

@@ -197,6 +197,10 @@ namespace TouristGuide.Api.Services
                 RegionId = post.RegionId,
                 RegionName = post.Region?.Name,
                 ImageUrl = ParseFirstImage(post.Images),
+                AvgRating = post.AvgRating,
+                ReviewCount = post.ReviewCount,
+                SaveCount = post.SaveCount,
+                ViewCount = post.ViewCount,
                 Score = Math.Round(CalculatePopularityScore(post) + contextBoost, 2),
                 Reason = BuildAnonymousPostReason(post, contextMode)
             };
@@ -213,6 +217,8 @@ namespace TouristGuide.Api.Services
                 RegionId = route.RegionId,
                 RegionName = route.Region?.Name,
                 ImageUrl = ParseFirstImage(route.Images),
+                SaveCount = route.SaveCount,
+                ViewCount = route.ViewCount,
                 Score = Math.Round(CalculateRoutePopularityScore(route), 2),
                 Reason = "Popularna ruta za ovu destinaciju"
             };
@@ -257,6 +263,10 @@ namespace TouristGuide.Api.Services
                 RegionId = post.RegionId,
                 RegionName = post.Region?.Name,
                 ImageUrl = ParseFirstImage(post.Images),
+                AvgRating = post.AvgRating,
+                ReviewCount = post.ReviewCount,
+                SaveCount = post.SaveCount,
+                ViewCount = post.ViewCount,
                 Score = Math.Round(
                     Math.Min(tagScore, 30m) +
                     Math.Min(typeScore, 20m) +
@@ -291,6 +301,8 @@ namespace TouristGuide.Api.Services
                 RegionId = route.RegionId,
                 RegionName = route.Region?.Name,
                 ImageUrl = ParseFirstImage(route.Images),
+                SaveCount = route.SaveCount,
+                ViewCount = route.ViewCount,
                 Score = Math.Round(
                     Math.Min(tokenScore, 18m) +
                     Math.Min(regionScore, 10m) +

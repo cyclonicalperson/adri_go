@@ -42,7 +42,7 @@ namespace TouristGuide.Api.Controllers
 
         [AllowAnonymous]
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromForm] AdminRegistrationSubmitRequestDto request)
+        public async Task<ActionResult<AdminRegistrationSubmitResponseDto>> Register([FromForm] AdminRegistrationSubmitRequestDto request)
         {
             if (!ModelState.IsValid)
                 return ValidationProblem(ModelState);
@@ -116,11 +116,13 @@ namespace TouristGuide.Api.Controllers
                     $"{registrationRequest.FullName} je poslao zahtev za admin nalog.",
                     new { requestId = registrationRequest.Id });
 
-                return StatusCode(StatusCodes.Status201Created, new
+                return StatusCode(StatusCodes.Status201Created, new AdminRegistrationSubmitResponseDto
                 {
-                    requestId = registrationRequest.Id,
-                    status = registrationRequest.Status,
-                    message = "Zahtev za admin nalog je poslat. Proverite email i potvrdite adresu da bi superadmin mogao da obradi registraciju."
+                    RequestId = registrationRequest.Id,
+                    Email = registrationRequest.Email,
+                    Status = registrationRequest.Status,
+                    RequiresEmailVerification = true,
+                    Message = "Zahtev za admin nalog je poslat. Proverite email i potvrdite adresu da bi superadmin mogao da obradi registraciju."
                 });
             }
             catch (Exception ex)
@@ -135,7 +137,7 @@ namespace TouristGuide.Api.Controllers
 
         [AllowAnonymous]
         [HttpGet("verify-registration-email")]
-        public async Task<IActionResult> VerifyRegistrationEmail([FromQuery] string token)
+        public async Task<ActionResult<EmailVerificationResultDto>> VerifyRegistrationEmail([FromQuery] string token)
         {
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token nije prosledjen." });
@@ -148,10 +150,11 @@ namespace TouristGuide.Api.Controllers
 
             if (request.EmailVerifiedAt.HasValue)
             {
-                return Ok(new
+                return Ok(new EmailVerificationResultDto
                 {
-                    message = "Email adresa je vec potvrdjena. Zahtev je spreman za pregled superadmina.",
-                    verifiedAt = request.EmailVerifiedAt
+                    Message = "Email adresa je vec potvrdjena. Zahtev je spreman za pregled superadmina.",
+                    AlreadyVerified = true,
+                    VerifiedAt = request.EmailVerifiedAt
                 });
             }
 
@@ -179,10 +182,11 @@ namespace TouristGuide.Api.Controllers
 
             await _dbContext.SaveChangesAsync();
 
-            return Ok(new
+            return Ok(new EmailVerificationResultDto
             {
-                message = "Email adresa je uspesno potvrdjena. Superadmin sada moze da pregleda vas zahtev.",
-                verifiedAt = request.EmailVerifiedAt
+                Message = "Email adresa je uspesno potvrdjena. Superadmin sada moze da pregleda vas zahtev.",
+                AlreadyVerified = false,
+                VerifiedAt = request.EmailVerifiedAt
             });
         }
 

@@ -126,16 +126,18 @@ namespace TouristGuide.Api.Controllers
                 return Forbid();
 
             var fromDate = DateTime.TryParse(from, out var fd)
-                ? DateTime.SpecifyKind(fd, DateTimeKind.Utc)
-                : DateTime.UtcNow.AddDays(-30);
+                ? DateTime.SpecifyKind(fd.Date, DateTimeKind.Utc)
+                : DateTime.UtcNow.Date.AddDays(-30);
+            // toDate is end-of-day: parse the date string as midnight then add 1 day
+            // so that views registered any time on that day are included
             var toDate = DateTime.TryParse(to, out var td)
-                ? DateTime.SpecifyKind(td, DateTimeKind.Utc)
-                : DateTime.UtcNow;
+                ? DateTime.SpecifyKind(td.Date.AddDays(1), DateTimeKind.Utc)
+                : DateTime.UtcNow.AddDays(1);
 
             var adminId = IsSuperAdmin() ? (uint?)null : GetCurrentAdminId();
 
             var query = _db.PostViews
-                .Where(v => v.CreatedAt >= fromDate && v.CreatedAt <= toDate);
+                .Where(v => v.CreatedAt >= fromDate && v.CreatedAt < toDate);
 
             if (adminId.HasValue)
                 query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);

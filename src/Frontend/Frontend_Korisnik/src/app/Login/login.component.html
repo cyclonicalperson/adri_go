@@ -11,14 +11,23 @@
     <h1 class="title">Welcome!</h1>
     <p class="subtitle">Sign in to continue exploring Montenegro</p>
 
-    <!-- Registration success banner -->
     <div *ngIf="showRegisteredBanner" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
-      ✅ Account created! Please check your email to verify before logging in.
+      <span>Account created!</span>
+      <span> Please check your email to verify before logging in.</span>
     </div>
 
-    <!-- Error message -->
     <div *ngIf="errorMessage" style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
       {{ errorMessage }}
+    </div>
+
+    <div *ngIf="verificationPendingEmail" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.6;">
+      <div style="font-weight:700;margin-bottom:8px;">Need a new verification email?</div>
+      <div style="margin-bottom:10px;">We can resend the confirmation link for <strong>{{ verificationPendingEmail }}</strong>.</div>
+      <button type="button" class="btn btn-guest" (click)="resendVerification()" [disabled]="isResendingVerification">
+        {{ isResendingVerification ? 'Sending...' : 'Resend verification email' }}
+      </button>
+      <div *ngIf="resendMessage" style="margin-top:10px;color:#15803d;font-weight:600;">{{ resendMessage }}</div>
+      <div *ngIf="resendError" style="margin-top:10px;color:#b91c1c;font-weight:600;">{{ resendError }}</div>
     </div>
 
     <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
@@ -27,14 +36,14 @@
         <div class="label-row">
           <label class="label-icon" for="emailOrPhone">
             <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-            Email or phone
+            Email
           </label>
         </div>
         <div class="input-wrapper">
           <span class="input-icon">
             <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
           </span>
-          <input type="text" id="emailOrPhone" formControlName="emailOrPhone" placeholder="example@mail.com">
+          <input type="email" id="emailOrPhone" formControlName="emailOrPhone" placeholder="example@mail.com">
         </div>
       </div>
 
@@ -44,13 +53,13 @@
             <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
             Password
           </label>
-          <a href="#" class="forgot-link">Forgot?</a>
+          <a (click)="goToForgotPassword()" class="forgot-link" style="cursor:pointer;">Forgot?</a>
         </div>
         <div class="input-wrapper">
           <span class="input-icon">
             <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
           </span>
-          <input type="password" id="password" formControlName="password" placeholder="••••••••">
+          <input type="password" id="password" formControlName="password" placeholder="********">
         </div>
       </div>
 

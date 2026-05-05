@@ -1,0 +1,77 @@
+<div class="planner-panel" [class.builder-mode]="plannerMode">
+  <div class="planner-header">
+    <div>
+      <span class="planner-label">Trip planner</span>
+      <h3>Build a route from real destination pins</h3>
+    </div>
+    <button type="button" class="planner-toggle" [class.active]="plannerMode" (click)="plannerModeToggled.emit()">
+      {{ plannerMode ? 'Builder on' : 'Tap pins' }}
+    </button>
+  </div>
+
+  <p class="planner-subtitle" *ngIf="plannerStops.length === 0">
+    Activate the builder and tap destinations on the map to add them as ordered stops.
+  </p>
+
+  <div class="planner-controls">
+    <div class="travel-mode-switch">
+      <button type="button" [class.active]="travelMode === 'driving'" (click)="travelModeSelected.emit('driving')">Drive</button>
+      <button type="button" [class.active]="travelMode === 'walking'" (click)="travelModeSelected.emit('walking')">Walk</button>
+      <button type="button" [class.active]="travelMode === 'cycling'" (click)="travelModeSelected.emit('cycling')">Cycle</button>
+    </div>
+    <button type="button" class="scenic-toggle" [class.active]="scenicMode" (click)="scenicModeToggled.emit()">
+      Scenic detours {{ scenicMode ? 'On' : 'Off' }}
+    </button>
+  </div>
+
+  <div class="planner-summary-grid" *ngIf="plannerStops.length > 0">
+    <div class="summary-card">
+      <span class="summary-kicker">Stops</span>
+      <strong>{{ routeSummary.stopCount }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-kicker">Distance</span>
+      <strong>{{ routeSummary.distanceKm > 0 ? (routeSummary.distanceKm | number:'1.1-1') + ' km' : 'Ready' }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-kicker">ETA</span>
+      <strong>{{ routeSummary.durationMin > 0 ? formatDuration(routeSummary.durationMin) : 'Calculating' }}</strong>
+    </div>
+  </div>
+
+  <div class="planner-message" *ngIf="plannerMessage">
+    {{ plannerMessage }}
+  </div>
+
+  <div class="planner-loading" *ngIf="isRenderingRoute">
+    <div class="planner-spinner"></div>
+    Updating your route...
+  </div>
+
+  <div class="planner-stop-list" *ngIf="plannerStops.length > 0">
+    <div class="planner-stop-card" *ngFor="let stop of plannerStops; let i = index; trackBy: trackByStopId">
+      <button type="button" class="stop-order" (click)="stopFocused.emit(stop)">{{ i + 1 }}</button>
+      <div class="stop-info">
+        <div class="stop-title">{{ stop.title }}</div>
+        <div class="stop-meta">
+          <span>{{ stop.postType || 'Destination' }}</span>
+          <span *ngIf="stop.regionName">&middot; {{ stop.regionName }}</span>
+        </div>
+      </div>
+      <div class="stop-actions">
+        <button type="button" (click)="stopMoved.emit({ index: i, direction: 'up' })" [disabled]="i === 0">&#8593;</button>
+        <button type="button" (click)="stopMoved.emit({ index: i, direction: 'down' })" [disabled]="i === plannerStops.length - 1">&#8595;</button>
+        <button type="button" class="danger" (click)="stopRemoved.emit(stop.id)">&#10005;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="planner-actions" *ngIf="plannerStops.length > 0">
+    <button type="button" (click)="plannerOptimized.emit()">Optimize order</button>
+    <button type="button" (click)="tripSaved.emit()" [disabled]="isSavingTrip">
+      {{ isSavingTrip ? 'Saving...' : 'Save trip' }}
+    </button>
+    <button type="button" (click)="tripShared.emit()">Share</button>
+    <button type="button" class="danger" (click)="routeCleared.emit()">Clear</button>
+  </div>
+</div>

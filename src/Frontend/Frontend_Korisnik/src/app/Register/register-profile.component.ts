@@ -1,5 +1,14 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, FormControl, Validators, AbstractControl, ValidatorFn, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  FormArray,
+  FormControl,
+  Validators,
+  AbstractControl,
+  ValidatorFn,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
@@ -17,16 +26,16 @@ export class RegisterProfileComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
   registrationSuccess = false;
-  registrationEmail   = '';
-  autoLoggedIn        = false;  // true when token returned (no email verification needed)
+  registrationEmail = '';
+  autoLoggedIn = false;
 
   interests = [
-    { id: 'nature',      label: 'Nature',             icon: '🌲' },
-    { id: 'food',        label: 'Food',               icon: '🍴' },
-    { id: 'beaches',     label: 'Beaches',            icon: '🏖️' },
-    { id: 'history',     label: 'History and Culture',icon: '🏛️' },
-    { id: 'nightlife',   label: 'Night Life',         icon: '🎶' },
-    { id: 'photography', label: 'Photography',        icon: '📷' }
+    { id: 'nature', label: 'Nature', icon: 'forest' },
+    { id: 'food', label: 'Food', icon: 'food' },
+    { id: 'beaches', label: 'Beaches', icon: 'beach' },
+    { id: 'history', label: 'History and Culture', icon: 'history' },
+    { id: 'nightlife', label: 'Night Life', icon: 'nightlife' },
+    { id: 'photography', label: 'Photography', icon: 'camera' }
   ];
 
   constructor(
@@ -39,13 +48,13 @@ export class RegisterProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.profileForm = this.fb.group({
-      fullName:          ['', Validators.required],
-      emailOrPhone:      ['', [Validators.required, Validators.email]],
-      password:          ['', [Validators.required, Validators.minLength(8)]],
-      language:          ['en'],
+      fullName: ['', Validators.required],
+      emailOrPhone: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      language: ['en'],
       selectedInterests: this.fb.array([], [this.minimumSelectionValidator(2)]),
-      locationPermit:    [false],
-      termsAccepted:     [false, Validators.requiredTrue]
+      locationPermit: [false],
+      termsAccepted: [false, Validators.requiredTrue]
     });
   }
 
@@ -74,7 +83,6 @@ export class RegisterProfileComponent implements OnInit {
     };
   }
 
-  // Called when user changes the language dropdown — immediately translate the UI
   onLanguageChange(lang: string): void {
     if (lang === 'en' || lang === 'sr') {
       void this.translateService.setLanguage(lang as SiteLanguageCode);
@@ -90,23 +98,18 @@ export class RegisterProfileComponent implements OnInit {
 
     const { fullName, emailOrPhone, password, language } = this.profileForm.value;
 
-    this.authService.registerWithToken(fullName, emailOrPhone, password).subscribe({
-      next: (res) => {
+    this.authService.register(fullName, emailOrPhone, password, {
+      language,
+      interests: this.selectedInterestsArray.value ?? [],
+    }).subscribe({
+      next: res => {
         this.isLoading = false;
-        if (res?.token) {
-          // JWT returned → auto-verified (dev mode) → show success screen without email step
-          this.autoLoggedIn       = true;
-          this.registrationEmail  = emailOrPhone;
-          this.registrationSuccess = true;
-        } else {
-          // SMTP configured → user must verify email first → show email verification screen
-          this.autoLoggedIn        = false;
-          this.registrationEmail   = emailOrPhone;
-          this.registrationSuccess = true;
-        }
+        this.autoLoggedIn = !res.requiresEmailVerification && !!res.session?.token;
+        this.registrationEmail = res.email || emailOrPhone;
+        this.registrationSuccess = true;
         this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: err => {
         this.isLoading = false;
         this.errorMessage = err?.error?.message || 'Registration failed. Please try again.';
         this.cdr.detectChanges();
@@ -114,6 +117,15 @@ export class RegisterProfileComponent implements OnInit {
     });
   }
 
-  goToLogin(): void  { this.router.navigate(['/login']); }
-  goToMap():   void  { this.router.navigate(['/map-home']); }
+  goToLogin(): void {
+    const queryParams = !this.autoLoggedIn && this.registrationEmail
+      ? { registered: '1', email: this.registrationEmail }
+      : undefined;
+
+    this.router.navigate(['/login'], { queryParams });
+  }
+
+  goToMap(): void {
+    this.router.navigate(['/map-home']);
+  }
 }

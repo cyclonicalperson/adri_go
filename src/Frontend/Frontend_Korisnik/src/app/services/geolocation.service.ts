@@ -12,7 +12,6 @@ interface StoredUserSettings {
 @Injectable({ providedIn: 'root' })
 export class GeolocationService {
   private readonly SETTINGS_KEY = 'user_settings';
-  private lastKnownPosition: UserPosition | null = null;
 
   isSupported(): boolean {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
@@ -38,13 +37,10 @@ export class GeolocationService {
     return new Promise<UserPosition | null>((resolve) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const userPosition = {
+          resolve({
             lat: position.coords.latitude,
             lng: position.coords.longitude
-          };
-
-          this.lastKnownPosition = userPosition;
-          resolve(userPosition);
+          });
         },
         () => resolve(null),
         {
@@ -55,10 +51,6 @@ export class GeolocationService {
         }
       );
     });
-  }
-
-  getLastKnownPosition(): UserPosition | null {
-    return this.lastKnownPosition;
   }
 
   haversineKm(from: UserPosition, to: UserPosition): number {

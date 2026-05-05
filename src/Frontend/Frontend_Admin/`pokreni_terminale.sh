@@ -1,15 +1,18 @@
 #!/bin/bash
 
-# Putanje do tvojih direktorijuma
-BACKEND_PATH="D:\Projekti\globecode\src\Backend\TouristGuide.Api"
-FRONTEND_PATH="D:\Projekti\globecode\src\Frontend\Frontend_Admin"
+BACKEND_PATH="D:\\Projekti\\globecode\\src\\Backend\\TouristGuide.Api"
+ADMIN_PATH="D:\\Projekti\\globecode\\src\\Frontend\\Frontend_Admin"
+KORISNIK_PATH="D:\\Projekti\\globecode\\src\\Frontend\\Frontend_Korisnik"
 
-echo "Pokrećem PowerShell terminale..."
+echo "Pokrecemo sve terminale..."
 
-# Otvaranje Backend terminala
-start powershell -NoExit -Command "Set-Location '$BACKEND_PATH'"
+# Backend — dotnet run
+start powershell -NoExit -Command "Set-Location '$BACKEND_PATH'; dotnet run"
 
-# Otvaranje Frontend terminala
-start powershell -NoExit -Command "Set-Location '$FRONTEND_PATH'"
+# Admin Frontend — ng serve (port 4200)
+start powershell -NoExit -Command "Set-Location '$ADMIN_PATH'; ng serve"
 
-echo "Uspešno otvoreno."
+# Tourist Frontend — ng serve (port 4201, konfigurisan u angular.json)
+start powershell -NoExit -Command "Set-Location '$KORISNIK_PATH'; ng serve"
+
+echo "Sva tri terminala su pokrenuta."

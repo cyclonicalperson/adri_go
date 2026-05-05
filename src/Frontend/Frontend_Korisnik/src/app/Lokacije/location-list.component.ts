@@ -46,7 +46,7 @@ export class LocationListComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.errorMessage = 'Error loading locations.';
+        this.errorMessage = 'Greska pri ucitavanju lokacija.';
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -173,8 +173,8 @@ export class LocationListComponent implements OnInit {
         return { ...location, distanceKm };
       })
       .sort((left, right) => {
-        const leftDistance = left.distanceKm ?? Number.POSITIVE_INFINITY;
-        const rightDistance = right.distanceKm ?? Number.POSITIVE_INFINITY;
+        const leftDistance = (left as any).distanceKm ?? Number.POSITIVE_INFINITY;
+        const rightDistance = (right as any).distanceKm ?? Number.POSITIVE_INFINITY;
         return leftDistance - rightDistance;
       });
   }

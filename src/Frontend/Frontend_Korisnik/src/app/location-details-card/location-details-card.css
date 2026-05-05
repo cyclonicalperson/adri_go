@@ -172,8 +172,28 @@
 .btn-calendar:active { transform: scale(0.95); }
 .btn-calendar svg { width: 20px; height: 20px; fill: var(--green-600, #16a34a); }
 
+.btn-route {
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 14px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: var(--radius-md, 12px);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+  font-family: inherit;
+}
+.btn-route:hover  { background: #dbeafe; }
+.btn-route:active { transform: scale(0.97); }
+
 .btn-details {
   flex: 1;
+  min-width: 0;
   padding: 13px;
   background: var(--green-500);
   color: #fff;
@@ -185,6 +205,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   box-shadow: var(--shadow-green);
   cursor: pointer;
   transition: opacity 0.2s, transform 0.15s;
@@ -192,4 +215,4 @@
 }
 .btn-details:hover  { opacity: 0.92; }
 .btn-details:active { opacity: 0.85; transform: scale(0.98); }
-.btn-details svg { width: 16px; height: 16px; fill: #fff; }
+.btn-details svg { width: 16px; height: 16px; fill: #fff; flex-shrink: 0; }

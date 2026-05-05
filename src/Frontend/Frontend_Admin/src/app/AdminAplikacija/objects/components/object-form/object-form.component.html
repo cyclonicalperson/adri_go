@@ -102,16 +102,13 @@
                                  (selectedIdsChange)="selectedActivityIds = $event" />
       </div>
 
-      @if (isEdit) {
       <div class="card">
         <h3 class="card-title">Galerija slika</h3>
-        <p class="field-hint">Podržani su samo HTTP/HTTPS URL-ovi slika. Fajlovi sa lokalnog računara nisu podržani.</p>
-        <app-media-uploader entityType="object"
-                            [entityId]="id!"
-                            [media]="media"
-                            (mediaChange)="media = $event" />
+        <p class="field-hint">Prva slika biće naslovna. Možeš učitati sa računara ili dodati link sa interneta.</p>
+        <app-post-image-picker
+          [images]="formImages"
+          (imagesChange)="formImages = $event" />
       </div>
-      }
 
     </div>
 

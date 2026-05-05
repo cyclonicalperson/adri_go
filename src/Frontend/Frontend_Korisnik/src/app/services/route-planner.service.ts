@@ -1,0 +1,161 @@
+import { Injectable } from '@angular/core';
+import { Location } from './location.service';
+import { TravelMode } from './tourist-preferences.service';
+
+export interface PlannerStop {
+  id: number;
+  title: string;
+  postType: string;
+  lat: number;
+  lng: number;
+  address?: string;
+  regionName?: string;
+  avgRating?: number;
+}
+
+export interface PlannerState {
+  stops: PlannerStop[];
+  plannerMode: boolean;
+  scenicMode: boolean;
+  travelMode: TravelMode;
+}
+
+const DEFAULT_STATE: PlannerState = {
+  stops: [],
+  plannerMode: false,
+  scenicMode: true,
+  travelMode: 'driving',
+};
+
+@Injectable({ providedIn: 'root' })
+export class RoutePlannerService {
+  private readonly storageKey = 'adrigo_route_planner_v1';
+
+  get snapshot(): PlannerState {
+    return this.load();
+  }
+
+  setPlannerMode(enabled: boolean): PlannerState {
+    return this.persist({ ...this.snapshot, plannerMode: enabled });
+  }
+
+  setScenicMode(enabled: boolean): PlannerState {
+    return this.persist({ ...this.snapshot, scenicMode: enabled });
+  }
+
+  setTravelMode(mode: TravelMode): PlannerState {
+    return this.persist({ ...this.snapshot, travelMode: mode });
+  }
+
+  addStop(location: Location | PlannerStop, options: { insertAfterIndex?: number } = {}): PlannerState {
+    const stop = this.normalizeStop(location);
+    const state = this.snapshot;
+    const exists = state.stops.some(item => item.id === stop.id);
+
+    if (exists) {
+      return this.persist({ ...state, plannerMode: true });
+    }
+
+    const stops = [...state.stops];
+    if (options.insertAfterIndex != null && options.insertAfterIndex >= 0 && options.insertAfterIndex < stops.length) {
+      stops.splice(options.insertAfterIndex + 1, 0, stop);
+    } else {
+      stops.push(stop);
+    }
+
+    return this.persist({
+      ...state,
+      plannerMode: true,
+      stops,
+    });
+  }
+
+  replaceStops(stops: Array<Location | PlannerStop>, options: Partial<PlannerState> = {}): PlannerState {
+    return this.persist({
+      ...this.snapshot,
+      ...options,
+      plannerMode: options.plannerMode ?? true,
+      stops: stops.map(stop => this.normalizeStop(stop)),
+    });
+  }
+
+  removeStop(stopId: number): PlannerState {
+    const state = this.snapshot;
+    return this.persist({
+      ...state,
+      stops: state.stops.filter(stop => stop.id !== stopId),
+    });
+  }
+
+  moveStop(fromIndex: number, toIndex: number): PlannerState {
+    const state = this.snapshot;
+    const stops = [...state.stops];
+    if (fromIndex < 0 || fromIndex >= stops.length || toIndex < 0 || toIndex >= stops.length || fromIndex === toIndex) {
+      return state;
+    }
+
+    const [moved] = stops.splice(fromIndex, 1);
+    stops.splice(toIndex, 0, moved);
+    return this.persist({ ...state, stops });
+  }
+
+  clear(): PlannerState {
+    return this.persist(DEFAULT_STATE);
+  }
+
+  serializeTripQuery(): string {
+    return this.snapshot.stops
+      .map(stop => stop.id)
+      .filter(id => id > 0)
+      .join(',');
+  }
+
+  private normalizeStop(location: Location | PlannerStop): PlannerStop {
+    const rawLocation = location as Location & PlannerStop;
+    const lat = rawLocation.lat ?? rawLocation.latitude;
+    const lng = rawLocation.lng ?? rawLocation.longitude;
+
+    if (lat == null || lng == null) {
+      throw new Error('Planner stop requires coordinates.');
+    }
+
+    return {
+      id: location.id,
+      title: 'title' in location ? location.title : '',
+      postType: 'postType' in location ? location.postType : '',
+      lat,
+      lng,
+      address: 'address' in location ? location.address : undefined,
+      regionName: 'regionName' in location ? location.regionName : undefined,
+      avgRating: 'avgRating' in location ? location.avgRating : undefined,
+    };
+  }
+
+  private load(): PlannerState {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) {
+        return DEFAULT_STATE;
+      }
+
+      const parsed = JSON.parse(raw) as Partial<PlannerState>;
+      return {
+        plannerMode: !!parsed.plannerMode,
+        scenicMode: parsed.scenicMode ?? DEFAULT_STATE.scenicMode,
+        travelMode: parsed.travelMode === 'walking' || parsed.travelMode === 'cycling'
+          ? parsed.travelMode
+          : 'driving',
+        stops: Array.isArray(parsed.stops)
+          ? parsed.stops.filter(stop => typeof stop?.id === 'number' && typeof stop?.lat === 'number' && typeof stop?.lng === 'number')
+          : [],
+      };
+    } catch {
+      return DEFAULT_STATE;
+    }
+  }
+
+  private persist(state: PlannerState): PlannerState {
+    localStorage.setItem(this.storageKey, JSON.stringify(state));
+    return state;
+  }
+}

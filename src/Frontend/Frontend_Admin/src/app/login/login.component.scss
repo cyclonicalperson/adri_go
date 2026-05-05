@@ -206,6 +206,14 @@
   line-height: 1.5;
 }
 
+.secondary-prompt {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 13px;
+  color: $gray-500;
+  line-height: 1.5;
+}
+
 // Styled as a link but implemented as a <button> for reliable navigation
 .link-btn {
   background: none;

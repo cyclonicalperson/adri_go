@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { UserService, CalendarItem } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 interface DisplayEvent {
   id: number;       // PlannerItem id — used for removal
@@ -103,12 +104,7 @@ export class CalendarComponent implements OnInit {
   }
 
   getEventImage(event: DisplayEvent): string {
-    if (!event.imageUrl) return 'assets/Budva.jpg';
-    if (!event.imageUrl.startsWith('http')) {
-      const clean = event.imageUrl.startsWith('/') ? event.imageUrl.slice(1) : event.imageUrl;
-      return `http://localhost:5125/${clean}`;
-    }
-    return event.imageUrl;
+    return resolveBackendAssetUrl(event.imageUrl, 'assets/Budva.jpg');
   }
 
   removeEvent(plannerItemId: number): void {

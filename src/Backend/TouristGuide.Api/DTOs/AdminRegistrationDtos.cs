@@ -45,6 +45,15 @@ namespace TouristGuide.Api.DTOs
         public DateTime SubmittedAt { get; set; }
     }
 
+    public class AdminRegistrationSubmitResponseDto
+    {
+        public uint RequestId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public bool RequiresEmailVerification { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+
     public class AdminRegistrationListItemDto
     {
         public uint Id { get; set; }

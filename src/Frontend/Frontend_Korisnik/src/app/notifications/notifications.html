@@ -2,7 +2,7 @@
   <div class="header">
     <button class="back-btn" (click)="goBack()">‹</button>
     <h1>Notifications</h1>
-    <button class="mark-read" (click)="markAllRead()">Mark all read</button>
+    <button class="mark-read" (click)="markAllRead()" *ngIf="authService.isLoggedIn">Mark all read</button>
   </div>
 
   <div class="filter-bar">
@@ -14,28 +14,56 @@
     </button>
   </div>
 
+  <!-- Loading -->
+  <div *ngIf="isLoading" style="padding: 40px; text-align: center; color: #94a3b8;">
+    Loading...
+  </div>
+
+  <!-- Guest: no notifications -->
+  <div *ngIf="!authService.isLoggedIn && !isLoading" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
+    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
+    <p style="font-size: 15px; font-weight: 600;">Log in to see your notifications</p>
+  </div>
+
+  <!-- Empty state for logged-in users -->
+  <div *ngIf="authService.isLoggedIn && !isLoading && filteredNotifications.length === 0"
+       style="padding: 40px 20px; text-align: center; color: #94a3b8;">
+    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
+    <p style="font-size: 15px; font-weight: 600;">No notifications yet</p>
+  </div>
+
   <div class="scroll-area">
-    <div class="notif-card" *ngFor="let n of notifications" [class.unread]="n.isNew">
+    <div class="notif-card"
+         *ngFor="let n of filteredNotifications"
+         [class.unread]="!n.isRead"
+         (click)="markRead(n)">
       <div class="card-header">
-        <div class="icon-box" [ngClass]="n.type">
-          {{n.icon}}
+        <div class="icon-box" [ngClass]="getTypeClass(n.type)">
+          {{ getIcon(n.type) }}
         </div>
         <div class="title-meta">
           <div class="title-row">
             <h3>{{n.title}}</h3>
-            <span class="new-badge" *ngIf="n.isNew">NEW</span>
+            <span class="new-badge" *ngIf="!n.isRead">NEW</span>
           </div>
-          <span class="time">🕒 {{n.time}}</span>
+          <span class="time">🕒 {{ formatTime(n.createdAt) }}</span>
         </div>
       </div>
-      
-      <p class="notif-text">{{n.text}}</p>
-      
+
+      <p class="notif-text" *ngIf="n.body">{{n.body}}</p>
+
       <div class="divider"></div>
-      
-      <button class="view-btn">
-        <span class="dot">●</span> View
-      </button>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="view-btn">
+          <span class="dot">●</span> View
+        </button>
+        <button (click)="deleteNotification(n, $event)"
+                style="background: none; border: none; color: #ef4444; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 4px 8px; border-radius: 8px;"
+                title="Delete">
+          ✕
+        </button>
+      </div>
     </div>
   </div>
 </div>

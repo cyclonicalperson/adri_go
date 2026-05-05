@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { UserService, UserProfile } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 
@@ -39,12 +40,17 @@ export class PersonalInfoComponent implements OnInit {
   selectedInterests: string[] = [];
 
   constructor(
+    private router: Router,
     private userService: UserService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.userService.getUserProfile().subscribe({
       next: (data) => {
         this.userData = data;
@@ -117,11 +123,16 @@ export class PersonalInfoComponent implements OnInit {
       next: (updated) => {
         // Sync local state with what the server confirmed
         if (this.userData) {
-          this.userData.fullName   = updated.name ?? this.form.fullName;
+          this.userData.fullName   = updated.fullName || this.form.fullName;
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
         }
+        this.authService.updateCurrentTourist({
+          name: updated.fullName || this.form.fullName,
+          email: updated.emailOrPhone || this.form.emailOrPhone,
+          language: updated.language || this.userData?.language,
+        });
         this.isSaving    = false;
         this.editMode    = false;
         this.saveSuccess = true;
