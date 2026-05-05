@@ -279,18 +279,43 @@
 
 .empty-events { text-align: center; padding: 32px 20px; color: var(--gray-400); font-size: 14px; }
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
+/* ============================================================
+   PERFEKTNO CENTRIRANA KARTICA NA DESKTOPU (Angular Bezbedno)
+   ============================================================ */
+
 @media (min-width: 900px) {
-  .calendar-container {
-    max-width: 720px;
-    margin: 0 auto;
-    background: var(--gray-50);
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+  /* DODAJ SVOJU KLASU OVDE (npr. .settings-container, .saved-container...) */
+  .IME-TVOG-KONTEJNERA {
+    
+    /* 1. Fiksiranje i centriranje na sredinu ekrana */
+    position: fixed !important;
+    inset: auto !important; /* Poništava mobilno razvlačenje od ivice do ivice */
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    
+    /* 2. Dimenzije: Ograničena širina i visina (pravi margine gore/dole) */
+    width: 95% !important;
+    max-width: 600px !important; /* Promeni na 1000px ako ti treba za "Saved" kartice */
+    height: 85vh !important;     /* Visina 85% ekrana = 15% praznog prostora */
+    
+    /* 3. Dizajn same kartice */
+    background: #ffffff !important;
+    border-radius: 28px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important; /* Sprečava da sadržaj iscuri van ivica */
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    z-index: 1000 !important;
+    
+    /* 4. Magični trik: Puni ceo ekran sivom pozadinom "iza" kartice + dodaje senku na karticu */
+    box-shadow: 0 0 0 100vw #e2e8f0, 0 25px 50px rgba(0, 0, 0, 0.15) !important;
   }
-  .header          { padding: 16px 28px; }
-  .calendar-panel  { padding: 24px 28px; }
-  .events-section  { padding: 20px 28px; }
-  .event-card      { gap: 18px; padding: 16px; }
-  .event-image     { width: 80px; height: 80px; }
-  .event-name      { font-size: 16px; }
+
+  /* 5. Unutrašnji skrol (da ne kvari oblik kartice) */
+  .scroll-content {
+    overflow-y: auto !important;
+    padding: 32px 40px !important;
+    flex: 1 !important;
+  }
 }

@@ -464,3 +464,79 @@
 }
 .auth-modal-login:hover  { opacity: 0.92; }
 .auth-modal-login:active { transform: scale(0.97); }
+/* ── DESKTOP FLOATING WINDOW ─────────────────────────── */
+@media (min-width: 900px) {
+
+  /* Overlay — zamenjuje mobilni bottom-sheet */
+  .bottom-sheet-overlay {
+    position: fixed !important;
+    inset: 0;
+    z-index: 9999;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    box-sizing: border-box;
+
+    /* Pozadina: tamna + blur */
+    background: rgba(15, 23, 42, 0.55) !important;
+    backdrop-filter: blur(10px) saturate(1.4);
+    -webkit-backdrop-filter: blur(10px) saturate(1.4);
+
+    animation: overlayIn 0.2s ease;
+  }
+
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Floating card prozor */
+  .location-details {
+    
+    width: 100%;
+    max-width: 460px !important;
+    max-height: calc(100dvh - 96px);
+    overflow-y: auto;
+    margin: 0 !important;
+
+    /* Izgled: velika zaobljenost + višeslojna senka */
+    border-radius: 28px !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.07),   /* svetli obrub */
+      0 8px 32px rgba(0,0,0,0.4),           /* meka ambijentalna */
+      0 32px 64px -12px rgba(0,0,0,0.5),    /* duboka senka */
+      0 1px 0 rgba(255,255,255,0.1) inset  /* gornji sjaj */
+      !important;
+
+    /* Animacija iskakanja */
+    animation: popInWindow 0.45s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  @keyframes popInWindow {
+    from {
+      opacity: 0;
+      transform: scale(0.90) translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* Hero slika unutar prozora */
+  .image-container {
+    height: 200px !important;
+    margin: 0 !important;
+    border-radius: 28px 28px 0 0;
+    overflow: hidden;
+  }
+
+  /* Scrollbar unutar prozora */
+  .location-details::-webkit-scrollbar { width: 5px; }
+  .location-details::-webkit-scrollbar-track { background: transparent; }
+  .location-details::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
+  }
+}

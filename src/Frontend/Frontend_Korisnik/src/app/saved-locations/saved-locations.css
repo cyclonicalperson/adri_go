@@ -360,28 +360,79 @@
   .section-label { grid-column: 1 / -1; }
 }
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
+/* ── DESKTOP ADAPTACIJA (SAVED STRANICA) ────────────────────── */
 @media (min-width: 900px) {
-  .saved-container {
-    max-width: 860px;
-    margin: 0 auto;
-    background: var(--gray-50);
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+  /* Pozadina iza glavnog kontejnera */
+  body {
+    background-color: var(--gray-200);
   }
-  .header  { padding: 16px 28px; }
-  .filter-scroll { padding: 14px 28px; }
+
+  .saved-container {
+    max-width: 900px; /* Povećano za bolji balans 2 kolone */
+    margin: 40px auto; /* Odvajanje od vrha i dna ekrana */
+    background: var(--gray-50);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+    border-radius: 24px;
+    overflow: hidden;
+    min-height: calc(100vh - 80px); /* Skoro cela visina ekrana minus margine */
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header i Filteri */
+  .header { 
+    padding: 24px 32px; 
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .filter-scroll { 
+    padding: 16px 32px;
+    background: #fff;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  /* Grid Sistem za kartice */
   .scroll-content {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    padding: 20px 28px;
+    grid-template-columns: repeat(2, 1fr); /* 2 kolone na manjim desktop ekranima */
+    gap: 24px; /* Veći razmak između kartica */
+    padding: 32px;
     align-content: start;
   }
-  .card { margin-bottom: 0; }
-  .section-label { grid-column: 1 / -1; }
-  .footer { padding: 16px 28px 24px; }
+
+  /* Labela sekcije (npr. "Recently Saved") se proteže kroz obe kolone */
+  .section-label { 
+    grid-column: 1 / -1; 
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .card { 
+    margin-bottom: 0; 
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Efekat na hover za kartice lokacija */
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+  }
+
+  .footer { 
+    padding: 24px 32px;
+    margin-top: auto; /* Footer uvek na dnu kontejnera */
+  }
 }
+
+/* Prilagođavanje za Ultra-Wide ekrane */
 @media (min-width: 1200px) {
-  .saved-container { max-width: 1100px; }
-  .scroll-content  { grid-template-columns: repeat(3, 1fr); }
+  .saved-container { 
+    max-width: 1200px; /* Još šire za 3 kolone */
+  }
+
+  .scroll-content { 
+    grid-template-columns: repeat(3, 1fr); /* 3 kolone za maksimalnu preglednost */
+    gap: 28px;
+  }
 }
