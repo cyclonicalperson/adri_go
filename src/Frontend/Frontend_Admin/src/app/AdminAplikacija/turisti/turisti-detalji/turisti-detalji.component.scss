@@ -1,0 +1,289 @@
+@use 'variables' as *;
+
+// ── Page wrapper ──────────────────────────────────────────────────────────
+.page {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.state-msg {
+  padding: 60px;
+  text-align: center;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+// ── Header row ────────────────────────────────────────────────────────────
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-back {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-700;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  transition: all .15s;
+
+  &:hover {
+    border-color: $primary;
+    color: $primary-dark;
+  }
+}
+
+.btn-action {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid $gray-200;
+  background: $white;
+  color: $gray-700;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+
+  &.btn-warn {
+    border-color: #fde68a;
+    color: #92400e;
+    background: #fffbeb;
+
+    &:hover {
+      border-color: #f59e0b;
+      background: #fef3c7;
+    }
+  }
+
+  &.btn-approve {
+    border-color: #bbf7d0;
+    color: $primary-dark;
+    background: #f0fdf4;
+
+    &:hover {
+      border-color: $primary;
+      background: #dcfce7;
+    }
+  }
+
+  &.btn-delete {
+    border-color: #fca5a5;
+    background: $danger-soft;
+    color: #991b1b;
+
+    &:hover {
+      border-color: $danger;
+      background: #fee2e2;
+    }
+  }
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────────
+.card {
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+}
+
+// ── Profile card ──────────────────────────────────────────────────────────
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.avatar-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.avatar-placeholder {
+  background: $primary-soft;
+  color: $primary-dark;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 24px;
+}
+
+.profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.profile-email {
+  font-size: 13px;
+  color: $gray-500;
+  margin-bottom: 8px;
+}
+
+.profile-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: $gray-500;
+  font-weight: 600;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.sep {
+  color: $gray-300;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-bio {
+  font-size: 13px;
+  color: $gray-500;
+  line-height: 1.6;
+  margin-top: 10px;
+}
+
+// ── Stats strip ───────────────────────────────────────────────────────────
+.profile-stats {
+  display: flex;
+  border-top: 1px solid $gray-100;
+  padding-top: 18px;
+  gap: 0;
+}
+
+.pstat {
+  flex: 1;
+  text-align: center;
+  padding: 0 8px;
+  border-right: 1px solid $gray-100;
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.pstat-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.pstat-lbl {
+  font-size: 11px;
+  color: $gray-500;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+// ── Detail grid ───────────────────────────────────────────────────────────
+.top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 16px;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  &--full {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.detail-key {
+  font-size: 11px;
+  font-weight: 700;
+  color: $gray-400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 130px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.detail-val {
+  font-size: 13px;
+  color: $gray-700;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.mono {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: $gray-600;
+}
+
+// ── Interests ─────────────────────────────────────────────────────────────
+.interests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interest-chip {
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: $primary-soft;
+  color: $primary-dark;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}

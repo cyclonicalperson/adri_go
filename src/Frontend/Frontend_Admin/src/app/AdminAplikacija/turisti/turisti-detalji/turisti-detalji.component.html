@@ -1,0 +1,182 @@
+@if (loading) {
+<div class="state-msg">Učitavanje...</div>
+} @else if (notFound || !tourist) {
+<div class="state-msg">Turist nije pronađen.</div>
+} @else {
+<div class="page">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <div class="header">
+    <a routerLink="/admin/turisti" class="btn-back">← Turisti</a>
+    <div class="header-actions">
+      @if (tourist.isActive) {
+      <button class="btn-action btn-warn" (click)="suspendDialogOpen = true">⏸ Suspenduj</button>
+      } @else {
+      <button class="btn-action btn-approve" (click)="activateDialogOpen = true">▶ Aktiviraj</button>
+      }
+      <button class="btn-action btn-delete" (click)="deleteDialogOpen = true">🗑️ Obriši</button>
+    </div>
+  </div>
+
+  <!-- ── Profile card ───────────────────────────────────────────────────── -->
+  <div class="card profile-card">
+    <div class="profile-main">
+      @if (tourist.profileImage) {
+      <img class="avatar-img" [src]="tourist.profileImage" [alt]="tourist.name" />
+      } @else {
+      <div class="avatar-img avatar-placeholder">{{ initials(tourist.name) }}</div>
+      }
+      <div class="profile-info">
+        <h2 class="profile-name">{{ tourist.name || '—' }}</h2>
+        <div class="profile-email">{{ tourist.email }}</div>
+        <div class="profile-meta">
+          <span>{{ languageFlag(tourist.language) }} {{ tourist.language | uppercase }}</span>
+          @if (tourist.location) {
+          <span class="sep">·</span>
+          <span>📍 {{ tourist.location }}</span>
+          }
+          <span class="sep">·</span>
+          <span>Registrovan {{ tourist.createdAt | dateLocal }}</span>
+        </div>
+        <div class="status-row">
+          <span class="badge" [class]="statusBadge()">{{ statusLabel() }}</span>
+        </div>
+        @if (tourist.bio) {
+        <p class="profile-bio">{{ tourist.bio }}</p>
+        }
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="profile-stats">
+      <div class="pstat">
+        <div class="pstat-val">{{ tourist.viewsCount }}</div>
+        <div class="pstat-lbl">Pregleda lokacija</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-val">{{ tourist.reviewsCount }}</div>
+        <div class="pstat-lbl">Recenzija</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-val">{{ tourist.likesCount }}</div>
+        <div class="pstat-lbl">Lajkova</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-val">{{ tourist.savedCount }}</div>
+        <div class="pstat-lbl">Sačuvano</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-val">{{ tourist.favoritesCount }}</div>
+        <div class="pstat-lbl">Favoriti</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Detail grid ────────────────────────────────────────────────────── -->
+  <div class="top-grid">
+
+    <div class="card">
+      <h3 class="section-title">Lični podaci</h3>
+      <div class="detail-list">
+        <div class="detail-item">
+          <span class="detail-key">Ime i prezime</span>
+          <span class="detail-val">{{ tourist.name || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Email adresa</span>
+          <span class="detail-val">{{ tourist.email }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Jezik aplikacije</span>
+          <span class="detail-val">{{ languageFlag(tourist.language) }} {{ tourist.language | uppercase }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Lokacija</span>
+          <span class="detail-val">{{ tourist.location || '—' }}</span>
+        </div>
+        @if (tourist.bio) {
+        <div class="detail-item detail-item--full">
+          <span class="detail-key">Biografija</span>
+          <span class="detail-val">{{ tourist.bio }}</span>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">Podaci naloga</h3>
+      <div class="detail-list">
+        <div class="detail-item">
+          <span class="detail-key">ID</span>
+          <span class="detail-val mono">#{{ tourist.id }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Status naloga</span>
+          <span class="badge" [class]="statusBadge()">{{ statusLabel() }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Email verifikovan</span>
+          @if (tourist.isEmailVerified) {
+          <span class="badge badge-green">✅ Da</span>
+          } @else {
+          <span class="badge badge-amber">⚠ Ne</span>
+          }
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Registrovan</span>
+          <span class="detail-val">{{ tourist.createdAt | dateLocal }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-key">Poslednja izmena</span>
+          <span class="detail-val">{{ tourist.updatedAt | dateLocal }}</span>
+        </div>
+        @if (tourist.homeLat && tourist.homeLng) {
+        <div class="detail-item">
+          <span class="detail-key">Matična lokacija</span>
+          <span class="detail-val mono">{{ tourist.homeLat | number:'1.4-4' }}, {{ tourist.homeLng | number:'1.4-4' }}</span>
+        </div>
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Interests ──────────────────────────────────────────────────────── -->
+  @if (parsedInterests.length > 0) {
+  <div class="card">
+    <h3 class="section-title">Interesovanja</h3>
+    <div class="interests">
+      @for (interest of parsedInterests; track interest) {
+      <span class="interest-chip">{{ interest }}</span>
+      }
+    </div>
+  </div>
+  }
+
+</div>
+}
+
+<!-- ── Confirm dialogs ───────────────────────────────────────────────────── -->
+<app-confirm-dialog [visible]="suspendDialogOpen"
+                    title="Suspenduj nalog"
+                    [message]="'Suspendovati nalog turiste &quot;' + (tourist?.name || tourist?.email || '') + '&quot;? Turist se neće moći prijaviti.'"
+                    confirmLabel="Suspenduj"
+                    [danger]="true"
+                    (confirmed)="doToggle()"
+                    (cancelled)="suspendDialogOpen = false" />
+
+<app-confirm-dialog [visible]="activateDialogOpen"
+                    title="Aktiviraj nalog"
+                    [message]="'Aktivirati nalog turiste &quot;' + (tourist?.name || tourist?.email || '') + '&quot;?'"
+                    confirmLabel="Aktiviraj"
+                    [danger]="false"
+                    (confirmed)="doToggle()"
+                    (cancelled)="activateDialogOpen = false" />
+
+<app-confirm-dialog [visible]="deleteDialogOpen"
+                    title="Obriši turistu"
+                    [message]="'Da li ste sigurni da želite da obrišete nalog &quot;' + (tourist?.name || tourist?.email || '') + '&quot;? Ova akcija je nepovratna.'"
+                    confirmLabel="Obriši"
+                    [danger]="true"
+                    (confirmed)="doDelete()"
+                    (cancelled)="deleteDialogOpen = false" />

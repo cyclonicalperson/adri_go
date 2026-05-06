@@ -79,6 +79,7 @@
   transition: all .15s;
   color: $gray-500;
   font-family: $font-sans;
+  white-space: nowrap;
 
   &:hover {
     border-color: $primary;

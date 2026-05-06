@@ -165,7 +165,7 @@
       <div class="panel widget">
         <div class="panel-header">
           <div>
-            <div class="panel-title">Posete platformi</div>
+            <div class="panel-title">Pregledi destinacija</div>
             <div class="panel-sub">Poslednjih 30 dana · Ukupno: {{ totalVisits | number }} pregleda</div>
           </div>
           <div class="chart-legend">
@@ -197,6 +197,47 @@
             <span>{{ visits30[20]?.date?.slice(5) }}</span>
             <span>{{ visits30[25]?.date?.slice(5) }}</span>
             <span>{{ visits30[29]?.date?.slice(5) }}</span>
+          </div>
+        </div>
+      </div>
+      }
+
+      @case ('app_visits_chart') {
+      <div class="panel widget">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Posete platformi</div>
+            <div class="panel-sub">Poslednjih 30 dana · Ukupno: {{ totalAppVisits | number }} sesija — svaka sesija se broji jednom dnevno</div>
+          </div>
+          <div class="chart-legend">
+            <span class="cleg"><span class="cleg-dot" style="background:#3b82f6"></span>Sesije</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="chart-wrap">
+            <div class="chart-y-axis">
+              <span>{{ maxAppVisit30 }}</span>
+              <span>{{ Math.round(maxAppVisit30 * 0.66) }}</span>
+              <span>{{ Math.round(maxAppVisit30 * 0.33) }}</span>
+              <span>0</span>
+            </div>
+            <div class="chart-area">
+              @for (v of appVisits30; track v.date) {
+              <div class="bar bar-blue"
+                   [style.height.%]="appVisitBarHeight(v.count)"
+                   [class.bar-empty]="v.count === 0"
+                   [attr.data-tooltip]="formatBarDate(v.date) + ': ' + v.count + ' sesija'"></div>
+              }
+            </div>
+          </div>
+          <div class="chart-labels">
+            <span>{{ appVisits30[0]?.date?.slice(5) }}</span>
+            <span>{{ appVisits30[5]?.date?.slice(5) }}</span>
+            <span>{{ appVisits30[10]?.date?.slice(5) }}</span>
+            <span>{{ appVisits30[15]?.date?.slice(5) }}</span>
+            <span>{{ appVisits30[20]?.date?.slice(5) }}</span>
+            <span>{{ appVisits30[25]?.date?.slice(5) }}</span>
+            <span>{{ appVisits30[29]?.date?.slice(5) }}</span>
           </div>
         </div>
       </div>
