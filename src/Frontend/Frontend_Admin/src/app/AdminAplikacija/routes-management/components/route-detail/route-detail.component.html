@@ -1,7 +1,7 @@
 @if (loading) {
-<div class="state-msg">Ucitavanje...</div>
+<div class="state-msg">Učitavanje...</div>
 } @else if (!routeData) {
-<div class="state-msg">Ruta nije pronadjena.</div>
+<div class="state-msg">Ruta nije pronađena.</div>
 } @else {
 <div class="page">
   <div class="header">
@@ -12,7 +12,7 @@
       <button class="btn-reject" (click)="confirmReject()">Odbij</button>
       }
       <button class="btn-edit" (click)="goEdit()">Izmeni</button>
-      <button class="btn-delete" (click)="confirmDelete()">Obrisi</button>
+      <button class="btn-delete" (click)="confirmDelete()">Obriši</button>
     </div>
   </div>
 
@@ -112,16 +112,16 @@
 }
 
 <app-confirm-dialog [visible]="showDeleteDialog"
-                    title="Obrisi rutu"
-                    [message]="'Da li ste sigurni da zelite da obrisete rutu &quot;' + (routeData?.name ?? '') + '&quot;?'"
-                    confirmLabel="Obrisi"
+                    title="Obriši rutu"
+                    [message]="'Da li ste sigurni da želite da obrišete rutu &quot;' + (routeData?.name ?? '') + '&quot;?'"
+                    confirmLabel="Obriši"
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />
 
 <app-confirm-dialog [visible]="showApproveDialog"
                     title="Odobri rutu"
-                    [message]="'Odobrite rutu &quot;' + (routeData?.name ?? '') + '&quot;? Bice vidljiva turistima.'"
+                    [message]="'Odobrite rutu &quot;' + (routeData?.name ?? '') + '&quot;? Biće vidljiva turistima.'"
                     confirmLabel="Odobri"
                     [danger]="false"
                     (confirmed)="doApprove()"
@@ -129,7 +129,7 @@
 
 <app-confirm-dialog [visible]="showRejectDialog"
                     title="Odbij rutu"
-                    [message]="'Odbijte rutu &quot;' + (routeData?.name ?? '') + '&quot;? Bice arhivirana.'"
+                    [message]="'Odbijte rutu &quot;' + (routeData?.name ?? '') + '&quot;? Biće arhivirana.'"
                     confirmLabel="Odbij"
                     [danger]="true"
                     (confirmed)="doReject()"

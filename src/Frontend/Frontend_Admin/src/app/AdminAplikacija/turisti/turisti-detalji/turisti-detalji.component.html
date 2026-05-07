@@ -144,7 +144,8 @@
   <!-- ── Interests ──────────────────────────────────────────────────────── -->
   @if (parsedInterests.length > 0) {
   <div class="card">
-    <h3 class="section-title">Interesovanja</h3>
+    <h3 class="section-title">Interesovanja (profil)</h3>
+    <p class="section-note">Kategorije koje je korisnik naveo pri registraciji</p>
     <div class="interests">
       @for (interest of parsedInterests; track interest) {
       <span class="interest-chip">{{ interest }}</span>
@@ -152,6 +153,221 @@
     </div>
   </div>
   }
+
+  <!-- ── Activity / Recommender section ────────────────────────────────── -->
+  <div class="card activity-card">
+    <div class="activity-header">
+      <div>
+        <h3 class="section-title" style="margin-bottom:2px">Aktivnost i preporuka profil</h3>
+        <p class="section-note">Stvarno ponašanje korisnika — pregledi, lajkovi, sačuvano i recenzije</p>
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn" [class.tab-active]="activeTab === 'overview'" (click)="setTab('overview')">
+        🧠 Pregled
+      </button>
+      <button class="tab-btn" [class.tab-active]="activeTab === 'views'" (click)="setTab('views')">
+        👁 Pregledano
+        @if (tourist?.viewsCount) {<span class="tab-count">{{ tourist!.viewsCount }}</span>}
+      </button>
+      <button class="tab-btn" [class.tab-active]="activeTab === 'likes'" (click)="setTab('likes')">
+        ❤️ Lajkovano
+        @if (tourist?.likesCount) {<span class="tab-count">{{ tourist!.likesCount }}</span>}
+      </button>
+      <button class="tab-btn" [class.tab-active]="activeTab === 'saved'" (click)="setTab('saved')">
+        🔖 Sačuvano
+        @if (tourist?.savedCount) {<span class="tab-count">{{ tourist!.savedCount }}</span>}
+      </button>
+      <button class="tab-btn" [class.tab-active]="activeTab === 'reviews'" (click)="setTab('reviews')">
+        ⭐ Recenzije
+        @if (tourist?.reviewsCount) {<span class="tab-count">{{ tourist!.reviewsCount }}</span>}
+      </button>
+    </div>
+
+    @if (activityLoading) {
+    <div class="activity-state">Učitavanje aktivnosti...</div>
+    } @else {
+
+    <!-- ─── TAB: Overview / Recommender ─────────────────────────────────── -->
+    @if (activeTab === 'overview') {
+    <div class="overview-grid">
+
+      <!-- Engagement KPIs -->
+      <div class="overview-kpis">
+        <div class="kpi-card">
+          <div class="kpi-val">{{ tourist?.viewsCount | number }}</div>
+          <div class="kpi-lbl">Pregleda</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val">{{ tourist?.likesCount | number }}</div>
+          <div class="kpi-lbl">Lajkova</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val">{{ tourist?.savedCount | number }}</div>
+          <div class="kpi-lbl">Sačuvano</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-val">{{ tourist?.favoritesCount | number }}</div>
+          <div class="kpi-lbl">Favoriti</div>
+        </div>
+        <div class="kpi-card kpi-highlight">
+          <div class="kpi-val">{{ engagementRate }}%</div>
+          <div class="kpi-lbl">Stopa lajkova</div>
+        </div>
+        <div class="kpi-card kpi-highlight">
+          <div class="kpi-val">{{ saveRate }}%</div>
+          <div class="kpi-lbl">Stopa čuvanja</div>
+        </div>
+      </div>
+
+      <!-- Category preference bars -->
+      <div class="pref-section">
+        <h4 class="pref-title">Kategorijske preferencije</h4>
+        <p class="section-note" style="margin-bottom:12px">
+          Na osnovu stvarnih pregleda (ne prijavljenih interesovanja)
+        </p>
+        @if (viewPrefBars.length === 0) {
+        <div class="activity-state">Nema podataka o pregledima</div>
+        } @else {
+        <div class="pref-list">
+          @for (bar of viewPrefBars; track bar.postType) {
+          <div class="pref-row">
+            <span class="pref-icon">{{ bar.icon }}</span>
+            <span class="pref-label">{{ bar.label }}</span>
+            <div class="pref-bar-wrap">
+              <div class="pref-bar" [style.width.%]="bar.pct" [style.background]="bar.color"></div>
+            </div>
+            <span class="pref-count">{{ bar.count }}</span>
+          </div>
+          }
+        </div>
+        }
+      </div>
+
+      <!-- Top 3 summary -->
+      @if (topCategories.length > 0) {
+      <div class="top-cats">
+        <h4 class="pref-title">Najčešće kategorije</h4>
+        <div class="top-cat-list">
+          @for (cat of topCategories; track cat.label; let i = $index) {
+          <div class="top-cat-chip" [style.border-color]="cat.color">
+            <span class="top-cat-rank">#{{ i + 1 }}</span>
+            <span>{{ cat.icon }}</span>
+            <span class="top-cat-label">{{ cat.label }}</span>
+            <span class="top-cat-count" [style.color]="cat.color">{{ cat.count }}</span>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+    </div>
+    }
+
+    <!-- ─── TAB: Recent Views ─────────────────────────────────────────── -->
+    @if (activeTab === 'views') {
+    @if ((activity?.recentViews ?? []).length === 0) {
+    <div class="activity-state">Nema zabeleženih pregleda</div>
+    } @else {
+    <div class="activity-feed">
+      @for (item of activity!.recentViews; track item.postId + item.date) {
+      <div class="feed-row">
+        <span class="feed-icon" [style.background]="categoryColor(item.postType)">{{ categoryIcon(item.postType) }}</span>
+        <div class="feed-info">
+          <div class="feed-title">{{ item.title }}</div>
+          <div class="feed-meta">
+            <span>{{ categoryLabel(item.postType) }}</span>
+            @if (item.durationSec) { <span class="sep">·</span><span>{{ item.durationSec }}s</span> }
+          </div>
+        </div>
+        <span class="feed-date">{{ item.date | dateLocal }}</span>
+      </div>
+      }
+      @if (tourist!.viewsCount > 10) {
+      <div class="feed-more">Prikazano 10 od {{ tourist!.viewsCount | number }} pregleda</div>
+      }
+    </div>
+    }
+    }
+
+    <!-- ─── TAB: Recent Likes ─────────────────────────────────────────── -->
+    @if (activeTab === 'likes') {
+    @if ((activity?.recentLikes ?? []).length === 0) {
+    <div class="activity-state">Nema lajkovanih sadržaja</div>
+    } @else {
+    <div class="activity-feed">
+      @for (item of activity!.recentLikes; track item.postId) {
+      <div class="feed-row">
+        <span class="feed-icon" [style.background]="categoryColor(item.postType)">{{ categoryIcon(item.postType) }}</span>
+        <div class="feed-info">
+          <div class="feed-title">{{ item.title }}</div>
+          <div class="feed-meta">{{ categoryLabel(item.postType) }}</div>
+        </div>
+        <span class="feed-date">{{ item.date | dateLocal }}</span>
+      </div>
+      }
+      @if (tourist!.likesCount > 10) {
+      <div class="feed-more">Prikazano 10 od {{ tourist!.likesCount | number }} lajkova</div>
+      }
+    </div>
+    }
+    }
+
+    <!-- ─── TAB: Saved ────────────────────────────────────────────────── -->
+    @if (activeTab === 'saved') {
+    @if ((activity?.recentSaved ?? []).length === 0) {
+    <div class="activity-state">Nema sačuvanog sadržaja</div>
+    } @else {
+    <div class="activity-feed">
+      @for (item of activity!.recentSaved; track item.postId) {
+      <div class="feed-row">
+        <span class="feed-icon" [style.background]="categoryColor(item.postType)">{{ categoryIcon(item.postType) }}</span>
+        <div class="feed-info">
+          <div class="feed-title">{{ item.title }}</div>
+          <div class="feed-meta">{{ categoryLabel(item.postType) }}</div>
+        </div>
+        <span class="feed-date">{{ item.date | dateLocal }}</span>
+      </div>
+      }
+      @if (tourist!.savedCount > 10) {
+      <div class="feed-more">Prikazano 10 od {{ tourist!.savedCount | number }} sačuvanih</div>
+      }
+    </div>
+    }
+    }
+
+    <!-- ─── TAB: Reviews ──────────────────────────────────────────────── -->
+    @if (activeTab === 'reviews') {
+    @if ((activity?.recentReviews ?? []).length === 0) {
+    <div class="activity-state">Nema recenzija</div>
+    } @else {
+    <div class="review-feed">
+      @for (rev of activity!.recentReviews; track rev.reviewId) {
+      <div class="review-row">
+        <div class="review-top">
+          <span class="review-stars">{{ reviewStars(rev.rating) }}</span>
+          <span class="badge" [class]="reviewStatusClass(rev.status)">{{ reviewStatusLabel(rev.status) }}</span>
+          <span class="feed-date">{{ rev.reviewedAt | dateLocal }}</span>
+        </div>
+        @if (rev.postTitle) {
+        <div class="review-entity">📍 {{ rev.postTitle }}</div>
+        }
+        @if (rev.comment) {
+        <p class="review-comment">"{{ rev.comment }}"</p>
+        }
+      </div>
+      }
+      @if (tourist!.reviewsCount > 5) {
+      <div class="feed-more">Prikazano 5 od {{ tourist!.reviewsCount | number }} recenzija</div>
+      }
+    </div>
+    }
+    }
+
+    } <!-- end !activityLoading -->
+  </div>
 
 </div>
 }

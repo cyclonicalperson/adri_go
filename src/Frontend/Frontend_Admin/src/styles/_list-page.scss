@@ -596,3 +596,82 @@ tbody tr:hover td {
   background: #1e1b4b;
   color: #a5b4fc;
 }
+
+// ── Mobile ────────────────────────────────────────────────────────────────
+@media (max-width: 768px) {
+  .page-content {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  // Stats chips: 2 columns on phones
+  .stats-strip {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat-chip {
+    padding: 10px 12px;
+
+    .num { font-size: 20px; }
+    .lbl { font-size: 10px; }
+  }
+
+  // Filter tabs scroll horizontally instead of wrapping
+  .filter-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  // Toolbar: stack search full-width, selects side-by-side
+  .toolbar {
+    padding: 10px;
+    gap: 8px;
+
+    .search-wrap {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    .filter-select {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 12px;
+    }
+
+    // Hide spacer on mobile — no room for it
+    .spacer { display: none; }
+
+    // Summary pills: wrap under toolbar
+    .summary-pills {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  }
+
+  // Tables: allow horizontal scroll inside the panel
+  .panel {
+    overflow-x: auto;
+  }
+
+  // Tighten up table cells a bit
+  th, td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  // Pagination: stack info + buttons on narrow screens
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+}

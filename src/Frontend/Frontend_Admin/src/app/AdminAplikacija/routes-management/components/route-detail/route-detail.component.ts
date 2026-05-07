@@ -114,7 +114,7 @@ export class RouteDetailComponent implements OnInit {
         lat: waypoint.latitude,
         lng: waypoint.longitude,
         label: isStart ? 'Pocetak rute' : isEnd ? 'Kraj rute' : `Tacka ${index + 1}`,
-        category: this.routeData?.name,
+        category: 'sports_facility',  // gives the activity/running-person icon in all waypoint pins
         color: isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6',
       };
     });

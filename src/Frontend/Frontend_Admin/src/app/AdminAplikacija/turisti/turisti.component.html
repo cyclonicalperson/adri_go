@@ -81,7 +81,7 @@
       </thead>
       <tbody>
         @for (t of tourists; track t.id) {
-        <tr>
+        <tr (click)="goDetail(t)">
           <td>
             <div class="author-cell">
               <div class="author-av">{{ initials(t.name) }}</div>

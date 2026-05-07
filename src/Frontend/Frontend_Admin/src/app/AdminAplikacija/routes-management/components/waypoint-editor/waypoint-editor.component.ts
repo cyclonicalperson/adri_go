@@ -27,6 +27,8 @@ export class WaypointEditorComponent implements OnInit {
         : i === this.waypoints.length - 1
           ? 'Kraj'
           : `Tačka ${i + 1}`,
+      category: 'sports_facility',
+      color: i === 0 ? '#22c55e' : i === this.waypoints.length - 1 ? '#ef4444' : '#3b82f6',
     }));
   }
 

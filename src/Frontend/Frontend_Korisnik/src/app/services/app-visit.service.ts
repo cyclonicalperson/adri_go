@@ -4,26 +4,32 @@ import { catchError, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 /**
- * Bilježi jednu sesiju otvaranja aplikacije pri pokretanju.
- * sessionId se čuva u sessionStorage — novo otvaranje tab-a/browsera = nova sesija.
- * Backend prima POST /api/analytics/app-visit i deduplicira po session_id + datum.
+ * Bilježi jedinstvenu dnevnu posjetu platformi.
+ *
+ * Identifikator se čuva u **localStorage** (ne sessionStorage) — tako isti
+ * korisnik koji otvori više tabova ili ponovo otvori browser istog dana
+ * dobija isti ID i backend ga računa kao 1 posjetioca.
+ * Različiti uređaji ili različiti profili browsera → različiti ID → novi posjetilac.
+ *
+ * Backend prima POST /api/analytics/app-visit i deduplicira po (visitor_id + datum).
  */
 @Injectable({ providedIn: 'root' })
 export class AppVisitService {
   private readonly url = `${environment.apiUrl}/analytics/app-visit`;
-  private readonly sessionKey = 'adrigo_session_id';
+  /** localStorage ključ — preživljava zatvaranje taba/browsera */
+  private readonly visitorKey = 'adrigo_visitor_id';
 
   constructor(private http: HttpClient) {}
 
   /** Poziva se jednom pri ngOnInit root komponente. */
   recordVisit(): void {
-    let sessionId = sessionStorage.getItem(this.sessionKey);
-    if (!sessionId) {
-      sessionId = this.generateId();
-      sessionStorage.setItem(this.sessionKey, sessionId);
+    let visitorId = localStorage.getItem(this.visitorKey);
+    if (!visitorId) {
+      visitorId = this.generateId();
+      localStorage.setItem(this.visitorKey, visitorId);
     }
 
-    this.http.post(this.url, { sessionId }).pipe(
+    this.http.post(this.url, { sessionId: visitorId }).pipe(
       catchError(() => of(null)),
     ).subscribe();
   }

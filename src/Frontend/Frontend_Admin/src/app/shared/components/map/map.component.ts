@@ -83,11 +83,12 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   }
 
   ngAfterViewInit(): void {
+    const safe = () => { try { this.map?.invalidateSize(); } catch {} };
     requestAnimationFrame(() => {
-      this.map?.invalidateSize();
+      safe();
       requestAnimationFrame(() => {
-        this.map?.invalidateSize();
-        setTimeout(() => this.map?.invalidateSize(), 200);
+        safe();
+        setTimeout(safe, 200);
       });
     });
   }
@@ -227,6 +228,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     event:           'Događaj',
     attraction:      'Atrakcija',
     shop:            'Prodavnica',
+    route:           'Ruta',
     other:           'Ostalo',
   };
 
@@ -241,10 +243,12 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     event:           { bg: '#ec4899', icon: 'events' },
     attraction:      { bg: '#10b981', icon: 'beach' },
     shop:            { bg: '#f97316', icon: 'shop' },
+    route:           { bg: '#0ea5e9', icon: 'route' },
     other:           { bg: '#6b7280', icon: 'default' },
   };
 
   private static readonly SVG_ICONS: Record<string, string> = {
+    route:         '<path d="M21.71 11.29l-9-9c-.39-.39-1.02-.39-1.41 0l-9 9c-.39.39-.39 1.02 0 1.41l9 9c.39.39 1.02.39 1.41 0l9-9c.39-.38.39-1.01 0-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>',
     beach:         '<path d="M13.127 14.56l1.43-1.43 6.44 6.443L19.57 21zm4.293-5.73l2.86-2.86c-3.95-3.95-10.35-3.96-14.3-.02 3.93-1.3 8.31-.25 11.44 2.88zM5.95 5.98c-3.94 3.95-3.93 10.35.02 14.3l2.86-2.86C5.7 14.29 4.65 9.91 5.95 5.98zm.02-.02l-.01.01c-.38 3.01 1.17 6.88 4.7 10.41l5.39-5.39c-3.53-3.53-7.4-5.09-10.08-5.03z"/>',
     culture:       '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
     monument:      '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',

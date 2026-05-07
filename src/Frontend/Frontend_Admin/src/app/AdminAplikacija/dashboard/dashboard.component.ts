@@ -433,7 +433,6 @@ export class DashboardComponent implements OnInit {
         lat: m.latitude,
         lng: m.longitude,
         label: `${m.regionName} (${m.visitCount} poseta)`,
-        category: `${m.visitCount} poseta`,
       }));
   }
 
@@ -687,6 +686,11 @@ export class DashboardComponent implements OnInit {
   formatBarDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString('sr-RS', { day: 'numeric', month: 'short' });
+  }
+
+  formatBarLabel(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    return `${dateStr.slice(8, 10)}/${dateStr.slice(5, 7)}`;
   }
 
   heatColor(movement: TouristMovement): string {

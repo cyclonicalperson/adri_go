@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { AdminTouristService, TouristUser } from '@core/services/admin-tourist.service';
@@ -34,7 +34,7 @@ export class TuristiComponent implements OnInit {
   activateTarget: TouristUser | null = null;
   deleteTarget:   TouristUser | null = null;
 
-  constructor(private service: AdminTouristService) {}
+  constructor(private service: AdminTouristService, private router: Router) {}
 
   ngOnInit(): void {
     this.loadCounts();
@@ -131,6 +131,10 @@ export class TuristiComponent implements OnInit {
       },
       error: () => { this.deleteTarget = null; },
     });
+  }
+
+  goDetail(t: TouristUser): void {
+    void this.router.navigate(['/admin/turisti', t.id]);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

@@ -29,6 +29,40 @@ export interface TouristUserDetail extends TouristUser {
   favoritesCount: number;
 }
 
+// ── Activity / recommender profile ────────────────────────────────────────
+
+export interface ActivityPost {
+  postId: number;
+  title: string;
+  postType: string;
+  date: string;
+  durationSec?: number | null;
+}
+
+export interface ActivityReview {
+  reviewId: number;
+  postId: number | null;
+  postTitle: string | null;
+  rating: number;
+  comment: string | null;
+  status: string;
+  reviewedAt: string;
+}
+
+export interface CategoryPref {
+  postType: string;
+  count: number;
+}
+
+export interface TouristActivity {
+  recentViews:     ActivityPost[];
+  recentLikes:     ActivityPost[];
+  recentSaved:     ActivityPost[];
+  recentReviews:   ActivityReview[];
+  viewPreferences: CategoryPref[];
+  likePreferences: CategoryPref[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminTouristService {
   private readonly url = `${environment.apiUrl}/tourists`;
@@ -79,6 +113,12 @@ export class AdminTouristService {
       map(res => ({ data: undefined, success: res.success ?? true }))
     );
   }
+
+  getActivity(id: number): Observable<ApiResponse<TouristActivity>> {
+    return this.http.get<any>(`${this.url}/${id}/activity`).pipe(
+      map(res => ({ data: mapActivity(res.data ?? res), success: true }))
+    );
+  }
 }
 
 function mapTourist(t: any): TouristUser {
@@ -109,5 +149,34 @@ function mapTouristDetail(t: any): TouristUserDetail {
     likesCount:    t.likesCount ?? 0,
     savedCount:    t.savedCount ?? 0,
     favoritesCount: t.favoritesCount ?? 0,
+  };
+}
+
+function mapActivity(d: any): TouristActivity {
+  if (!d) return { recentViews: [], recentLikes: [], recentSaved: [], recentReviews: [], viewPreferences: [], likePreferences: [] };
+  return {
+    recentViews: (d.recentViews ?? []).map((v: any): ActivityPost => ({
+      postId: v.postId, title: v.title ?? '', postType: v.postType ?? 'other',
+      date: v.viewedAt ?? '', durationSec: v.durationSec ?? null,
+    })),
+    recentLikes: (d.recentLikes ?? []).map((l: any): ActivityPost => ({
+      postId: l.postId, title: l.title ?? '', postType: l.postType ?? 'other',
+      date: l.likedAt ?? '',
+    })),
+    recentSaved: (d.recentSaved ?? []).map((s: any): ActivityPost => ({
+      postId: s.postId, title: s.title ?? '', postType: s.postType ?? 'other',
+      date: s.savedAt ?? '',
+    })),
+    recentReviews: (d.recentReviews ?? []).map((r: any): ActivityReview => ({
+      reviewId: r.reviewId, postId: r.postId ?? null, postTitle: r.postTitle ?? null,
+      rating: r.rating ?? 0, comment: r.comment ?? null,
+      status: r.status ?? 'PENDING', reviewedAt: r.reviewedAt ?? '',
+    })),
+    viewPreferences: (d.viewPreferences ?? []).map((p: any): CategoryPref => ({
+      postType: p.postType ?? 'other', count: p.count ?? 0,
+    })),
+    likePreferences: (d.likePreferences ?? []).map((p: any): CategoryPref => ({
+      postType: p.postType ?? 'other', count: p.count ?? 0,
+    })),
   };
 }

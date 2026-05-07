@@ -132,6 +132,124 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { data = dto, success = true });
         }
 
+        // ── GET /api/tourists/{id}/activity ──────────────────────────────────
+        /// <summary>
+        /// Aktivnost turista: pregledi, lajkovi, sačuvano, recenzije i kategorijska preferencija.
+        /// Koristi se za "recommender profil" na stranici detalja turiste.
+        /// </summary>
+        [HttpGet("{id}/activity")]
+        public async Task<IActionResult> GetActivity(uint id)
+        {
+            var exists = await _db.Tourists.AsNoTracking().AnyAsync(t => t.Id == id);
+            if (!exists)
+                return NotFound(new { message = $"Turista sa ID={id} nije pronađen." });
+
+            // ── Recent views (last 10) ────────────────────────────────────────
+            var recentViews = await _db.PostViews
+                .AsNoTracking()
+                .Where(v => v.TouristId == id)
+                .OrderByDescending(v => v.CreatedAt)
+                .Take(10)
+                .Select(v => new
+                {
+                    postId      = v.PostId,
+                    title       = v.Post.Title,
+                    postType    = v.Post.PostType,
+                    viewedAt    = v.CreatedAt,
+                    durationSec = (int?)v.DurationSec,
+                })
+                .ToListAsync();
+
+            // ── Recent likes (last 10) ────────────────────────────────────────
+            var recentLikes = await _db.PostLikes
+                .AsNoTracking()
+                .Where(l => l.TouristId == id)
+                .OrderByDescending(l => l.CreatedAt)
+                .Take(10)
+                .Select(l => new
+                {
+                    postId   = l.PostId,
+                    title    = l.Post.Title,
+                    postType = l.Post.PostType,
+                    likedAt  = l.CreatedAt,
+                })
+                .ToListAsync();
+
+            // ── Recent saved posts (last 10) ──────────────────────────────────
+            var recentSaved = await _db.SavedPosts
+                .AsNoTracking()
+                .Where(s => s.TouristId == id)
+                .OrderByDescending(s => s.CreatedAt)
+                .Take(10)
+                .Select(s => new
+                {
+                    postId   = s.PostId,
+                    title    = s.Post.Title,
+                    postType = s.Post.PostType,
+                    savedAt  = s.CreatedAt,
+                })
+                .ToListAsync();
+
+            // ── Recent reviews (last 5) ───────────────────────────────────────
+            var recentReviews = await _db.Reviews
+                .AsNoTracking()
+                .Where(r => r.TouristId == id)
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(5)
+                .Select(r => new
+                {
+                    reviewId   = r.Id,
+                    postId     = r.PostId,
+                    postTitle  = r.Post != null ? r.Post.Title : null,
+                    rating     = (int)r.Rating,
+                    comment    = r.Comment,
+                    status     = r.Status,
+                    reviewedAt = r.CreatedAt,
+                })
+                .ToListAsync();
+
+            // ── Category preferences (view-based) — fetched flat, grouped client-side
+            // to avoid EF Core GroupBy translation issues.
+            var allViewTypes = await _db.PostViews
+                .AsNoTracking()
+                .Where(v => v.TouristId == id)
+                .Select(v => v.Post.PostType)
+                .ToListAsync();
+
+            var viewPrefs = allViewTypes
+                .GroupBy(pt => pt)
+                .Select(g => new { postType = g.Key, count = g.Count() })
+                .OrderByDescending(c => c.count)
+                .ToList();
+
+            // ── Category preferences (like-based) ────────────────────────────
+            var allLikeTypes = await _db.PostLikes
+                .AsNoTracking()
+                .Where(l => l.TouristId == id)
+                .Select(l => l.Post.PostType)
+                .ToListAsync();
+
+            var likePrefs = allLikeTypes
+                .GroupBy(pt => pt)
+                .Select(g => new { postType = g.Key, count = g.Count() })
+                .OrderByDescending(c => c.count)
+                .ToList();
+
+            return Ok(new
+            {
+                data = new
+                {
+                    recentViews,
+                    recentLikes,
+                    recentSaved,
+                    recentReviews,
+                    viewPreferences  = viewPrefs,
+                    likePreferences  = likePrefs,
+                },
+                success = true,
+            });
+        }
+
         // ── PATCH /api/tourists/{id}/suspend ──────────────────────────────────
         [HttpPatch("{id}/suspend")]
         [Authorize(Roles = "superadmin")]
