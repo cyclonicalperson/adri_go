@@ -66,6 +66,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   showRoutePanel = false;
   isRenderingRoute = false;
   isSavingTrip = false;
+  showClearRouteConfirm = false;
 
   searchQuery = '';
   searchResults: MapLocation[] = [];
@@ -752,6 +753,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  confirmClearRoute(): void {
+    this.syncPlannerStateFromServices();
+    if (this.plannerStops.length === 0) {
+      this.clearRoute();
+      return;
+    }
+    this.showClearRouteConfirm = true;
+    this.cdr.detectChanges();
+  }
+
+  onClearRouteConfirmed(): void {
+    this.showClearRouteConfirm = false;
+    this.clearRoute();
+  }
+
+  onClearRouteCancelled(): void {
+    this.showClearRouteConfirm = false;
+  }
+
   shareTrip(): void {
     if (this.plannerStops.length === 0) {
       return;
@@ -973,7 +993,23 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap'
     }).addTo(this.map);
 
+    this.persistMapCenter();
+    this.map.on('moveend', () => this.persistMapCenter());
+
     this.requestGeolocation();
+  }
+
+  private persistMapCenter(): void {
+    if (!this.map) {
+      return;
+    }
+
+    const center = this.map.getCenter();
+    localStorage.setItem('adriGo.mapCenter', JSON.stringify({
+      lat: center.lat,
+      lng: center.lng,
+      zoom: this.map.getZoom(),
+    }));
   }
 
   private requestGeolocation(): void {

@@ -1,27 +1,38 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { Location, LocationService } from '../services/location.service';
 
+type SearchContext = {
+  lat: number;
+  lng: number;
+};
+
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, SideMenuComponent],
+  imports: [CommonModule, FormsModule, SideMenuComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
-export class LocationListComponent implements OnInit {
+export class LocationListComponent implements OnInit, OnDestroy {
   readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   isMenuOpen = false;
+  searchQuery = '';
+  allLocations: Location[] = [];
   locations: Location[] = [];
   isLoading = false;
   errorMessage = '';
   feedbackMessage = '';
   private userPosition: UserPosition | null = null;
+  private searchRequestId = 0;
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly searchDebounceMs = 250;
 
   constructor(
     private router: Router,
@@ -36,11 +47,16 @@ export class LocationListComponent implements OnInit {
     this.loadUserPosition();
   }
 
+  ngOnDestroy(): void {
+    this.clearSearchDebounce();
+  }
+
   loadLocations(): void {
     this.isLoading = true;
     this.locationService.getLocations().subscribe({
       next: (res) => {
         const decoratedLocations = this.decorateLocations(res.data);
+        this.allLocations = decoratedLocations;
         this.locations = decoratedLocations;
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -112,6 +128,23 @@ export class LocationListComponent implements OnInit {
     return this.geolocationService.formatDistanceKm(distanceKm);
   }
 
+  onSearchInputChange(): void {
+    this.clearSearchDebounce();
+
+    if (!this.searchQuery.trim()) {
+      ++this.searchRequestId;
+      this.isLoading = false;
+      this.errorMessage = '';
+      this.locations = [...this.allLocations];
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.searchDebounceTimer = setTimeout(() => {
+      this.searchLocations();
+    }, this.searchDebounceMs);
+  }
+
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
     if (!loc || !loc.images) {
       return 'assets/placeholder.jpg';
@@ -153,6 +186,7 @@ export class LocationListComponent implements OnInit {
 
       this.userPosition = position;
       const decoratedLocations = this.decorateLocations(this.locations);
+      this.allLocations = decoratedLocations;
       this.locations = decoratedLocations;
       this.cdr.markForCheck();
     });
@@ -179,6 +213,43 @@ export class LocationListComponent implements OnInit {
       });
   }
 
+  searchLocations(): void {
+    this.clearSearchDebounce();
+    const query = this.searchQuery.trim();
+    const requestId = ++this.searchRequestId;
+    if (!query) {
+      this.isLoading = false;
+      this.errorMessage = '';
+      this.locations = [...this.allLocations];
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const context = this.getSearchContext();
+    this.isLoading = true;
+
+    this.locationService.searchLocations(query, 1, 20, context).subscribe({
+      next: (res) => {
+        if (requestId !== this.searchRequestId) {
+          return;
+        }
+
+        this.locations = this.decorateLocations(res.data);
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        if (requestId !== this.searchRequestId) {
+          return;
+        }
+
+        this.errorMessage = 'Greska pri pretrazi lokacija.';
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   private getLocationCoordinates(location: Partial<Location>): UserPosition | null {
     const lat = location.lat ?? location.latitude;
     const lng = location.lng ?? location.longitude;
@@ -188,5 +259,34 @@ export class LocationListComponent implements OnInit {
     }
 
     return { lat: Number(lat), lng: Number(lng) };
+  }
+
+  private getSearchContext(): SearchContext | undefined {
+    if (this.userPosition) {
+      return this.userPosition;
+    }
+
+    const rawMapCenter = localStorage.getItem('adriGo.mapCenter');
+    if (!rawMapCenter) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(rawMapCenter) as Partial<SearchContext>;
+      if (parsed.lat == null || parsed.lng == null) {
+        return undefined;
+      }
+
+      return { lat: Number(parsed.lat), lng: Number(parsed.lng) };
+    } catch {
+      return undefined;
+    }
+  }
+
+  private clearSearchDebounce(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
   }
 }

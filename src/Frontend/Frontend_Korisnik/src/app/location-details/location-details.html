@@ -17,8 +17,17 @@
 
     <!-- HERO -->
     <div class="hero-section"
-      [style.backgroundImage]="images.length ? 'url(' + images[0] + ')' : 'url(assets/Budva.jpg)'">
+      [style.backgroundImage]="images.length ? 'url(' + images[currentImageIndex] + ')' : 'url(assets/Budva.jpg)'">
       <div class="hero-gradient"></div>
+      <button *ngIf="images.length > 1" class="hero-nav-btn left" (click)="prevImage()" aria-label="Previous image">
+        <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </button>
+      <button *ngIf="images.length > 1" class="hero-nav-btn right" (click)="nextImage()" aria-label="Next image">
+        <svg viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </button>
+      <div *ngIf="images.length > 1" class="hero-image-counter">
+        {{ currentImageIndex + 1 }} / {{ images.length }}
+      </div>
       <button class="back-btn" (click)="goBack()">
         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
       </button>
@@ -129,7 +138,12 @@
       <!-- About -->
       <section class="about" *ngIf="location.description">
         <h3>About</h3>
-        <p>{{ location.description }}</p>
+        <p>
+          {{ showFullDescription ? location.description : descriptionPreview }}<span *ngIf="!showFullDescription && isDescriptionTruncated">...</span>
+        </p>
+        <button *ngIf="isDescriptionTruncated" class="read-more" (click)="toggleDescription()">
+          {{ showFullDescription ? 'View less' : 'View more...' }}
+        </button>
       </section>
 
       <!-- Info Grid -->

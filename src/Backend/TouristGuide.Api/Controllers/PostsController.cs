@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -95,6 +97,102 @@ namespace TouristGuide.Api.Controllers
                 return error;
 
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
+        }
+
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SearchPublic(
+            [FromQuery] string? q,
+            [FromQuery] decimal? lat,
+            [FromQuery] decimal? lng,
+            [FromQuery] string? type,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var search = q?.Trim();
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                var publicQuery = BuildFilteredPostsQuery(null, type, "published", forcePublishedOnly: true, out var publicError);
+                if (publicError is not null)
+                    return publicError;
+
+                return Ok(await BuildPagedPostsResponse(publicQuery!, page, pageSize));
+            }
+
+            var query = BuildFilteredPostsQuery(null, type, "published", forcePublishedOnly: true, out var error);
+            if (error is not null)
+                return error;
+
+            var searchTerms = SplitSearchTerms(search);
+            var regions = await _context.Regions
+                .AsNoTracking()
+                .Where(r => r.IsActive)
+                .ToListAsync();
+
+            var normalizedSearch = NormalizeSearchText(search);
+            var matchedRegions = regions
+                .Select(region => new
+                {
+                    Region = region,
+                    Tokens = SplitSearchTerms($"{region.Name} {region.Country} {region.Type}")
+                })
+                .Where(region => region.Tokens.Any(token => searchTerms.Contains(token))
+                    || NormalizeSearchText(region.Region.Name).Contains(normalizedSearch)
+                    || NormalizeSearchText(region.Region.Country).Contains(normalizedSearch))
+                .ToList();
+
+            var regionMatches = matchedRegions
+                .Select(region => region.Region.Id)
+                .ToList();
+
+            var regionTerms = matchedRegions
+                .SelectMany(region => region.Tokens)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var remainingTerms = searchTerms
+                .Where(term => !regionTerms.Contains(term))
+                .ToList();
+
+            var isRegionSearch = regionMatches.Count > 0;
+            if (isRegionSearch)
+            {
+                query = query!.Where(p => p.RegionId != null && regionMatches.Contains(p.RegionId.Value));
+
+                if (remainingTerms.Count > 0)
+                    query = ApplyPostSearchTerms(query, remainingTerms);
+            }
+            else
+            {
+                query = ApplyPostSearchTerms(query!, searchTerms);
+            }
+
+            if (!isRegionSearch && lat.HasValue && lng.HasValue)
+            {
+                const double radiusKm = 10;
+                var lngKmFactor = 111.32m * (decimal)Math.Cos(ToRadians((double)lat.Value));
+                var radiusSquared = (decimal)(radiusKm * radiusKm);
+
+                query = query
+                    .Where(p => p.Lat != null && p.Lng != null)
+                    .Where(p =>
+                        ((p.Lat!.Value - lat.Value) * 111.32m * (p.Lat.Value - lat.Value) * 111.32m) +
+                        ((p.Lng!.Value - lng.Value) * lngKmFactor * (p.Lng.Value - lng.Value) * lngKmFactor) <= radiusSquared);
+
+                query = query
+                    .OrderBy(p =>
+                        ((p.Lat!.Value - lat.Value) * 111.32m * (p.Lat.Value - lat.Value) * 111.32m) +
+                        ((p.Lng!.Value - lng.Value) * lngKmFactor * (p.Lng.Value - lng.Value) * lngKmFactor))
+                    .ThenByDescending(p => p.AvgRating ?? 0);
+
+                return Ok(await BuildPagedPostsResponse(query, page, pageSize, sortBy: "distance"));
+            }
+
+            return Ok(await BuildPagedPostsResponse(
+                query,
+                page,
+                pageSize,
+                isRegionSearch ? "rating" : "createdat",
+                "desc"));
         }
 
         [HttpGet("{id:int}")]
@@ -619,13 +717,14 @@ namespace TouristGuide.Api.Controllers
             string? sortBy = null, string? sortDir = null)
         {
             if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+            pageSize = NormalizePageSize(pageSize);
 
             var total = await query.CountAsync();
 
             // Sortiranje
             query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
             {
+                ("distance", _) => query,
                 ("title" or "name", "asc") => query.OrderBy(p => p.Title),
                 ("title" or "name", _) => query.OrderByDescending(p => p.Title),
                 ("viewcount", "asc") => query.OrderBy(p => p.ViewCount),
@@ -680,6 +779,124 @@ namespace TouristGuide.Api.Controllers
                 totalPages = (int)Math.Ceiling((double)total / pageSize),
                 data
             };
+        }
+
+        private async Task<object> BuildPostsResponseFromListAsync(List<Post> posts, int total, int page, int pageSize)
+        {
+            if (page < 1) page = 1;
+            pageSize = NormalizePageSize(pageSize);
+
+            var postIds = posts.Select(p => p.Id).ToList();
+
+            var likeCounts = await _context.PostLikes
+                .Where(l => postIds.Contains(l.PostId))
+                .GroupBy(l => l.PostId)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+
+            var saveCounts = await _context.SavedPosts
+                .Where(s => postIds.Contains(s.PostId))
+                .GroupBy(s => s.PostId)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+
+            var reviewCounts = await _context.Reviews
+                .Where(r => r.PostId != null && postIds.Contains(r.PostId.Value) && r.Status == "APPROVED")
+                .GroupBy(r => r.PostId!.Value)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+
+            var data = posts.Select(post => MapToDto(
+                post,
+                likeCountOverride: likeCounts.TryGetValue(post.Id, out var lc) ? lc : 0u,
+                saveCountOverride: saveCounts.TryGetValue(post.Id, out var sc) ? sc : 0u,
+                reviewCountOverride: reviewCounts.TryGetValue(post.Id, out var rc) ? rc : 0u
+            )).ToList();
+
+            return new
+            {
+                total,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling((double)total / pageSize),
+                data
+            };
+        }
+
+        private static int NormalizePageSize(int pageSize) =>
+            pageSize < 1 || pageSize > 100 ? 20 : pageSize;
+
+        private static double ToRadians(double value) => value * Math.PI / 180;
+
+        private static IQueryable<Post> ApplyPostSearchTerms(IQueryable<Post> query, IReadOnlyCollection<string> terms)
+        {
+            foreach (var term in terms)
+            {
+                var alternateTerm = GetAlternateSearchTerm(term);
+
+                query = alternateTerm is null
+                    ? query.Where(p =>
+                        p.Title.ToLower().Contains(term) ||
+                        (p.Description != null && p.Description.ToLower().Contains(term)) ||
+                        (p.Address != null && p.Address.ToLower().Contains(term)) ||
+                        p.PostType.ToLower().Contains(term) ||
+                        (p.Region != null && (
+                            p.Region.Name.ToLower().Contains(term) ||
+                            p.Region.Country.ToLower().Contains(term))))
+                    : query.Where(p =>
+                        p.Title.ToLower().Contains(term) ||
+                        p.Title.ToLower().Contains(alternateTerm) ||
+                        (p.Description != null && (p.Description.ToLower().Contains(term) || p.Description.ToLower().Contains(alternateTerm))) ||
+                        (p.Address != null && (p.Address.ToLower().Contains(term) || p.Address.ToLower().Contains(alternateTerm))) ||
+                        p.PostType.ToLower().Contains(term) ||
+                        p.PostType.ToLower().Contains(alternateTerm) ||
+                        (p.Region != null && (
+                            p.Region.Name.ToLower().Contains(term) ||
+                            p.Region.Name.ToLower().Contains(alternateTerm) ||
+                            p.Region.Country.ToLower().Contains(term) ||
+                            p.Region.Country.ToLower().Contains(alternateTerm))));
+            }
+
+            return query;
+        }
+
+        private static string? GetAlternateSearchTerm(string term)
+        {
+            if (term.Contains("dj", StringComparison.OrdinalIgnoreCase))
+                return term.Replace("dj", "đ", StringComparison.OrdinalIgnoreCase);
+
+            if (term.Contains('đ'))
+                return term.Replace("đ", "dj", StringComparison.OrdinalIgnoreCase);
+
+            return null;
+        }
+
+        private static List<string> SplitSearchTerms(string value) =>
+            NormalizeSearchText(value)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(term => term.Length > 1)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        private static string NormalizeSearchText(string value)
+        {
+            var normalized = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var character in normalized)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(character);
+                if (category == UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                builder.Append(char.IsLetterOrDigit(character) ? character : ' ');
+            }
+
+            return builder
+                .ToString()
+                .Normalize(NormalizationForm.FormC)
+                .Replace("đ", "dj")
+                .Replace("ð", "dj");
         }
 
         private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null) => new()

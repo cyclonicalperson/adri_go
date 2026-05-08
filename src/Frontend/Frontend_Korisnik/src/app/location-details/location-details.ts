@@ -21,12 +21,15 @@ export class LocationDetailsComponent implements OnInit {
   location: Location | null = null;
   reviews: Review[] = [];
   images: string[] = [];
+  currentImageIndex = 0;
   isLoading = true;
   errorMessage = '';
   likeMessage  = '';
   saveMessage  = '';
   showAllHours       = false;
   showReviewForm     = false;
+  showFullDescription = false;
+  descriptionTruncateLength = 120; //koliko teksta prikazati na aboutu
   distanceKm: number | null = null;
   newRating          = 5;
   newComment         = '';
@@ -82,6 +85,7 @@ export class LocationDetailsComponent implements OnInit {
       next: (loc) => {
         this.location = loc;
         this.images   = this.locationService.parseImages(loc.images);
+        this.currentImageIndex = 0;
 
         if (!this.authService.isLoggedIn) {
           // Guest: read like/save state from localStorage
@@ -308,6 +312,29 @@ export class LocationDetailsComponent implements OnInit {
 
   get isEvent(): boolean {
     return (this.location?.postType || '').toLowerCase() === 'event';
+  }
+
+  prevImage(): void {
+    if (!this.images.length) return;
+    this.currentImageIndex = (this.currentImageIndex - 1 + this.images.length) % this.images.length;
+  }
+
+  nextImage(): void {
+    if (!this.images.length) return;
+    this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
+  }
+
+  get isDescriptionTruncated(): boolean {
+    return !!this.location?.description && this.location.description.length > this.descriptionTruncateLength;
+  }
+
+  get descriptionPreview(): string {
+    if (!this.location?.description) return '';
+    return this.location.description.slice(0, this.descriptionTruncateLength);
+  }
+
+  toggleDescription(): void {
+    this.showFullDescription = !this.showFullDescription;
   }
 
   // ── REVIEWS ───────────────────────────────────────────────────────
