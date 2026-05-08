@@ -1,83 +1,155 @@
-<div class="nav-panel">
+<!-- ============================================================
+     NAVIGATION OVERLAY  —  Google Maps–style split UI
+     Mobile:  top instruction bar + bottom summary bar (map visible between)
+     Desktop: full left-sidebar panel
+     ============================================================ -->
 
-  <!-- Arrived state -->
-  <div *ngIf="arrived" class="nav-arrived">
-    <span class="nav-arrived-icon">🏁</span>
-    <div class="nav-arrived-text">
-      <strong>You have arrived!</strong>
-      <span>At your destination</span>
+<!-- ── ARRIVED ────────────────────────────────────────────── -->
+<ng-container *ngIf="arrived">
+  <div class="nav-arrived-card">
+    <div class="nav-arrived-inner">
+      <div class="nav-arrived-icon">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+      <div class="nav-arrived-text">
+        <strong>You have arrived</strong>
+        <span>At your destination</span>
+      </div>
+      <button class="nav-done-btn" (click)="exitNavigation.emit()">Done</button>
     </div>
-    <button class="nav-exit-btn" (click)="exitNavigation.emit()">Done</button>
+  </div>
+</ng-container>
+
+<!-- ── LOCATION DENIED ────────────────────────────────────── -->
+<ng-container *ngIf="locationDenied && !arrived">
+  <div class="nav-denied-bar">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+    </svg>
+    <span>Location denied — enable GPS to navigate.</span>
+    <button class="nav-exit-small" (click)="exitNavigation.emit()">Exit</button>
+  </div>
+</ng-container>
+
+<!-- ── ACTIVE NAVIGATION ───────────────────────────────────── -->
+<ng-container *ngIf="!arrived && !locationDenied">
+
+  <!-- TOP: current instruction -->
+  <div class="nav-top-bar">
+    <!-- Directional arrow -->
+    <div class="nav-arrow-box">
+      <svg
+        viewBox="0 0 24 24"
+        width="40" height="40"
+        fill="white"
+        [style.transform]="'rotate(' + maneuverRotation(currentStep) + 'deg)'"
+        style="transition: transform 0.3s ease">
+        <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
+      </svg>
+    </div>
+
+    <!-- Instruction text -->
+    <div class="nav-instruction-box">
+      <div class="nav-dist-label" *ngIf="distanceToNextM > 0 && userPosition">
+        {{ formatDistance(distanceToNextM) }}
+      </div>
+      <div class="nav-street-label">
+        {{ currentStep?.streetName || currentStep?.instruction || 'Follow the route' }}
+      </div>
+    </div>
+
+    <!-- Desktop-only exit button in header -->
+    <button class="nav-exit-header" (click)="exitNavigation.emit()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+      </svg>
+    </button>
   </div>
 
-  <!-- Location denied -->
-  <div *ngIf="locationDenied && !arrived" class="nav-denied">
-    <span>Location access denied — enable GPS and try again.</span>
-    <button class="nav-exit-btn" (click)="exitNavigation.emit()">Exit</button>
+  <!-- THEN: next instruction -->
+  <div class="nav-then-bar" *ngIf="nextStep && userPosition">
+    <svg
+      class="nav-then-arrow"
+      viewBox="0 0 24 24"
+      width="16" height="16"
+      fill="currentColor"
+      [style.transform]="'rotate(' + maneuverRotation(nextStep) + 'deg)'">
+      <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
+    </svg>
+    <span class="nav-then-label">Then {{ nextLabel(nextStep) }}
+      <ng-container *ngIf="nextStep.streetName"> onto <strong>{{ nextStep.streetName }}</strong></ng-container>
+    </span>
   </div>
 
-  <!-- Active navigation -->
-  <ng-container *ngIf="!arrived && !locationDenied">
+  <!-- GPS acquiring indicator (shown instead of "then" while waiting) -->
+  <div class="nav-acquiring" *ngIf="!userPosition">
+    <div class="nav-acquiring-spinner"></div>
+    <span>Acquiring GPS signal…</span>
+  </div>
 
-    <!-- Primary instruction -->
-    <div class="nav-primary">
-      <div class="nav-maneuver-icon">
-        {{ currentStep ? maneuverIcon(currentStep) : '⬆️' }}
+  <!-- DESKTOP-ONLY: scrollable step list -->
+  <div class="nav-steps-list nav-desktop-only" *ngIf="steps.length > 0">
+    <div
+      *ngFor="let step of steps; let i = index"
+      class="nav-step-row"
+      [class.nav-step-active]="i === currentStepIndex"
+      [class.nav-step-done]="i < currentStepIndex">
+      <div class="nav-step-arrow">
+        <svg
+          viewBox="0 0 24 24" width="14" height="14" fill="currentColor"
+          [style.transform]="'rotate(' + maneuverRotation(step) + 'deg)'">
+          <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
+        </svg>
       </div>
-      <div class="nav-instruction-block">
-        <div class="nav-distance-to-next" *ngIf="distanceToNextM > 0">
-          {{ formatDistance(distanceToNextM) }}
-        </div>
-        <div class="nav-instruction">
-          {{ currentStep?.instruction ?? 'Follow the route' }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Waiting for GPS (shown under instruction while we wait) -->
-    <div class="nav-waiting" *ngIf="!userPosition">
-      <div class="nav-spinner"></div>
-      <span>Acquiring GPS signal…</span>
-    </div>
-
-    <!-- Next step preview -->
-    <div class="nav-next-step" *ngIf="nextStep && userPosition">
-      <span class="nav-next-icon">{{ maneuverIcon(nextStep) }}</span>
-      <span class="nav-next-text">Then: {{ nextStep.instruction }}</span>
-    </div>
-
-    <!-- Route summary bar -->
-    <div class="nav-summary-bar">
-      <div class="nav-summary-item">
-        <span class="nav-summary-kicker">Remaining</span>
-        <strong>{{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : '–' }}</strong>
-      </div>
-      <div class="nav-summary-divider"></div>
-      <div class="nav-summary-item">
-        <span class="nav-summary-kicker">ETA</span>
-        <strong>{{ remainingMin > 0 ? formatDuration(remainingMin) : '–' }}</strong>
-      </div>
-      <div class="nav-summary-divider"></div>
-      <div class="nav-summary-item">
-        <span class="nav-summary-kicker">Mode</span>
-        <strong>{{ modeIcon }}</strong>
-      </div>
-      <button class="nav-exit-btn" (click)="exitNavigation.emit()">Exit</button>
-    </div>
-
-    <!-- Step list overview -->
-    <div class="nav-steps-overview" *ngIf="steps.length > 0">
-      <div
-        *ngFor="let step of steps; let i = index"
-        class="nav-step-row"
-        [class.nav-step-current]="i === currentStepIndex"
-        [class.nav-step-done]="i < currentStepIndex">
-        <span class="nav-step-icon">{{ maneuverIcon(step) }}</span>
-        <span class="nav-step-text">{{ step.instruction }}</span>
+      <div class="nav-step-info">
+        <span class="nav-step-text">{{ step.streetName || step.instruction }}</span>
         <span class="nav-step-dist">{{ formatDistance(step.distanceM) }}</span>
       </div>
     </div>
+  </div>
 
-  </ng-container>
+  <!-- DESKTOP-ONLY: summary inside panel -->
+  <div class="nav-panel-summary nav-desktop-only">
+    <div class="nav-panel-summary-item">
+      <span class="nav-sum-kicker">Remaining</span>
+      <strong>{{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : '–' }}</strong>
+    </div>
+    <div class="nav-sum-divider"></div>
+    <div class="nav-panel-summary-item">
+      <span class="nav-sum-kicker">ETA</span>
+      <strong>{{ etaString || '–' }}</strong>
+    </div>
+    <div class="nav-sum-divider"></div>
+    <div class="nav-panel-summary-item">
+      <span class="nav-sum-kicker">Mode</span>
+      <strong>{{ modeIcon }}</strong>
+    </div>
+    <button class="nav-exit-panel" (click)="exitNavigation.emit()">Exit</button>
+  </div>
 
-</div>
+  <!-- MOBILE-ONLY: speed badge (bottom-left of map) -->
+  <div class="nav-speed-badge nav-mobile-only" *ngIf="speedKmh !== null">
+    <span class="nav-speed-val">{{ speedKmh }}</span>
+    <span class="nav-speed-unit">km/h</span>
+  </div>
+
+  <!-- MOBILE-ONLY: bottom summary bar -->
+  <div class="nav-bottom-bar nav-mobile-only">
+    <button class="nav-exit-mobile" (click)="exitNavigation.emit()">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+      </svg>
+    </button>
+    <div class="nav-bottom-info">
+      <span class="nav-bottom-eta">{{ etaString }}</span>
+      <span class="nav-bottom-meta">
+        {{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : totalDistanceKm + ' km' }}
+        <ng-container *ngIf="remainingMin > 0"> · {{ formatDuration(remainingMin) }}</ng-container>
+      </span>
+    </div>
+    <div class="nav-bottom-mode">{{ modeIcon }}</div>
+  </div>
+
+</ng-container>

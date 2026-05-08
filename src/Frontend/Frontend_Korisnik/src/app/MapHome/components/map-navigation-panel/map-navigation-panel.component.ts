@@ -39,6 +39,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
   arrived = false;
   locationDenied = false;
   userPosition: [number, number] | null = null;
+  speedKmh: number | null = null;
 
   private watchId: number | null = null;
   private readonly ADVANCE_THRESHOLD_M = 30;
@@ -54,6 +55,48 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
 
   get modeIcon(): string {
     return this.travelMode === 'walking' ? '🚶' : this.travelMode === 'cycling' ? '🚴' : '🚗';
+  }
+
+  get etaString(): string {
+    if (this.remainingMin <= 0) return '';
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + this.remainingMin);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** CSS rotation (degrees) for the arrow SVG based on the current maneuver. */
+  maneuverRotation(step: NavigationStep | null): number {
+    if (!step) return 0;
+    const { maneuverType: t, maneuverModifier: m } = step;
+    if (t === 'arrive' || t === 'depart') return 0;
+    if (t === 'roundabout' || t === 'rotary') return 45;
+    if (!m || m === 'straight') return 0;
+    if (m === 'right')        return 90;
+    if (m === 'sharp right')  return 140;
+    if (m === 'slight right') return 45;
+    if (m === 'left')         return -90;
+    if (m === 'sharp left')   return -140;
+    if (m === 'slight left')  return -45;
+    if (m === 'uturn')        return 180;
+    return 0;
+  }
+
+  /** Short label for the "Then" strip. */
+  nextLabel(step: NavigationStep | null): string {
+    if (!step) return '';
+    const m = step.maneuverModifier;
+    const t = step.maneuverType;
+    if (t === 'arrive') return 'Arrive';
+    if (!m || m === 'straight') return 'Continue straight';
+    if (m === 'right')        return 'Turn right';
+    if (m === 'sharp right')  return 'Turn sharp right';
+    if (m === 'slight right') return 'Bear right';
+    if (m === 'left')         return 'Turn left';
+    if (m === 'sharp left')   return 'Turn sharp left';
+    if (m === 'slight left')  return 'Bear left';
+    if (m === 'uturn')        return 'U-turn';
+    if (t === 'roundabout' || t === 'rotary') return 'Enter roundabout';
+    return 'Continue';
   }
 
   constructor(private cdr: ChangeDetectorRef, private zone: NgZone) {}
@@ -106,6 +149,9 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         this.userPosition = [lat, lng];
+        this.speedKmh = pos.coords.speed != null
+          ? Math.round(pos.coords.speed * 3.6)
+          : null;
         this.positionUpdated.emit([lat, lng]);
         this.updateProgress(lat, lng);
         this.cdr.markForCheck();

@@ -631,7 +631,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    if (this.plannerStops.length === 1) {
+    // Build coordinate list — getRouteCoordinates() prepends the user's position
+    // when location sharing is on and we have a GPS fix.
+    const routeCoordinates = this.getRouteCoordinates();
+
+    if (routeCoordinates.length < 2) {
+      // Single stop, no user position → just fly to the stop
       const onlyStop = this.plannerStops[0];
       this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
       this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
@@ -639,11 +644,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const routeCoordinates = this.getRouteCoordinates();
-    if (routeCoordinates.length < 2) {
-      this.scenicSuggestions = [];
-      this.cdr.detectChanges();
-      return;
+    // Single stop WITH user position → fall through and route user → stop
+    if (this.plannerStops.length === 1) {
+      this.scenicSuggestions = this.buildNearbyStopSuggestions(this.plannerStops[0]);
     }
 
     this.isRenderingRoute = true;

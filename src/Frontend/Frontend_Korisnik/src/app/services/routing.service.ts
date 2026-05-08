@@ -9,6 +9,8 @@ export interface RouteSummary {
 
 export interface NavigationStep {
   instruction: string;
+  /** Raw street / road name from OSRM (empty string when unnamed). */
+  streetName: string;
   distanceM: number;
   durationSec: number;
   maneuverType: string;
@@ -206,6 +208,7 @@ export class RoutingService {
           .flatMap((leg: any) => leg.steps ?? [])
           .map((step: any) => ({
             instruction: this.buildInstruction(step),
+            streetName: step.name ?? '',
             distanceM: Math.round(step.distance ?? 0),
             durationSec: Math.round(step.duration ?? 0),
             maneuverType: step.maneuver?.type ?? 'continue',
@@ -313,27 +316,71 @@ export class RoutingService {
   }
 
   private normalizeForViewport(route: ComputedRoute, viewport: RouteViewportMode = 'desktop'): ComputedRoute {
+    // Use a generous cap — Leaflet handles large polylines efficiently.
+    // The RDP pass below already removes truly redundant collinear points.
+    const maxPoints = viewport === 'mobile' ? 1000 : 2000;
     return {
       ...route,
-      geometry: this.simplifyGeometry(
-        route.geometry,
-        viewport === 'mobile' ? 160 : 260,
-      ),
+      geometry: this.simplifyGeometry(route.geometry, maxPoints),
     };
   }
 
+  /**
+   * Ramer-Douglas-Peucker simplification.
+   * Preserves corners/turns (critical for street-following appearance) while
+   * pruning collinear points. Falls back to a final stride pass only if the
+   * RDP result still exceeds maxPoints (rare with street routes).
+   */
   private simplifyGeometry(geometry: [number, number][], maxPoints: number): [number, number][] {
-    if (geometry.length <= maxPoints) {
-      return [...geometry];
+    if (geometry.length <= maxPoints) return [...geometry];
+
+    // ~3 m tolerance in lat/lng degree units (1° ≈ 111 km)
+    const simplified = this.rdp(geometry, 0.000027);
+    if (simplified.length <= maxPoints) return simplified;
+
+    // Safety stride if still over limit
+    const step = Math.ceil(simplified.length / maxPoints);
+    const result = simplified.filter((_, i) => i === 0 || i === simplified.length - 1 || i % step === 0);
+    if (result[result.length - 1] !== simplified[simplified.length - 1]) {
+      result.push(simplified[simplified.length - 1]);
+    }
+    return result;
+  }
+
+  /** Recursive Ramer-Douglas-Peucker — iterative stack to avoid call-stack limits. */
+  private rdp(pts: [number, number][], eps: number): [number, number][] {
+    const keep = new Uint8Array(pts.length);
+    keep[0] = 1;
+    keep[pts.length - 1] = 1;
+
+    // Stack of [start, end] index pairs
+    const stack: [number, number][] = [[0, pts.length - 1]];
+    while (stack.length) {
+      const [start, end] = stack.pop()!;
+      if (end - start <= 1) continue;
+
+      let maxD = 0;
+      let maxI = start;
+      for (let i = start + 1; i < end; i++) {
+        const d = this.ptSegDist(pts[i], pts[start], pts[end]);
+        if (d > maxD) { maxD = d; maxI = i; }
+      }
+
+      if (maxD > eps) {
+        keep[maxI] = 1;
+        stack.push([start, maxI], [maxI, end]);
+      }
     }
 
-    const step = Math.ceil(geometry.length / maxPoints);
-    const reduced = geometry.filter((_, index) => index === 0 || index === geometry.length - 1 || index % step === 0);
-    if (reduced[reduced.length - 1] !== geometry[geometry.length - 1]) {
-      reduced.push(geometry[geometry.length - 1]);
-    }
+    return pts.filter((_, i) => keep[i]);
+  }
 
-    return reduced;
+  private ptSegDist(p: [number, number], a: [number, number], b: [number, number]): number {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
   }
 
   private resolveRoutingProfiles(travelMode: TravelMode): string[] {
