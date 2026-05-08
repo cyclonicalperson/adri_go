@@ -4,7 +4,8 @@
 // Mock interceptori se NE aktiviraju kada je production: true.
 export const environment = {
   production: true,
-  apiUrl: 'https://your-api-domain.com/api',
-  adminAppUrl: 'https://your-admin-domain.com',
-  touristAppUrl: 'https://your-tourist-domain.com',
+  useMocks: false,
+  apiUrl: 'http://softeng.pmf.kg.ac.rs:10182/api',
+  adminAppUrl: 'http://softeng.pmf.kg.ac.rs:10181',
+  touristAppUrl: 'http://softeng.pmf.kg.ac.rs:10183',
 };

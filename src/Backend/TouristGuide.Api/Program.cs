@@ -32,10 +32,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
     {
-        policy
-            .WithOrigins(
-                "http://localhost:4200",   // Admin Angular app
-                "http://localhost:4201"    // Turista Angular app
+            policy.WithOrigins(
+                "http://softeng.pmf.kg.ac.rs:10181",   // Admin Angular app
+                "http://softeng.pmf.kg.ac.rs:10183"    // Turista Angular app
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
