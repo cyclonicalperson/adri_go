@@ -1,0 +1,83 @@
+<div class="nav-panel">
+
+  <!-- Arrived state -->
+  <div *ngIf="arrived" class="nav-arrived">
+    <span class="nav-arrived-icon">🏁</span>
+    <div class="nav-arrived-text">
+      <strong>You have arrived!</strong>
+      <span>At your destination</span>
+    </div>
+    <button class="nav-exit-btn" (click)="exitNavigation.emit()">Done</button>
+  </div>
+
+  <!-- Location denied -->
+  <div *ngIf="locationDenied && !arrived" class="nav-denied">
+    <span>Location access denied — enable GPS and try again.</span>
+    <button class="nav-exit-btn" (click)="exitNavigation.emit()">Exit</button>
+  </div>
+
+  <!-- Active navigation -->
+  <ng-container *ngIf="!arrived && !locationDenied">
+
+    <!-- Primary instruction -->
+    <div class="nav-primary">
+      <div class="nav-maneuver-icon">
+        {{ currentStep ? maneuverIcon(currentStep) : '⬆️' }}
+      </div>
+      <div class="nav-instruction-block">
+        <div class="nav-distance-to-next" *ngIf="distanceToNextM > 0">
+          {{ formatDistance(distanceToNextM) }}
+        </div>
+        <div class="nav-instruction">
+          {{ currentStep?.instruction ?? 'Follow the route' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Waiting for GPS (shown under instruction while we wait) -->
+    <div class="nav-waiting" *ngIf="!userPosition">
+      <div class="nav-spinner"></div>
+      <span>Acquiring GPS signal…</span>
+    </div>
+
+    <!-- Next step preview -->
+    <div class="nav-next-step" *ngIf="nextStep && userPosition">
+      <span class="nav-next-icon">{{ maneuverIcon(nextStep) }}</span>
+      <span class="nav-next-text">Then: {{ nextStep.instruction }}</span>
+    </div>
+
+    <!-- Route summary bar -->
+    <div class="nav-summary-bar">
+      <div class="nav-summary-item">
+        <span class="nav-summary-kicker">Remaining</span>
+        <strong>{{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : '–' }}</strong>
+      </div>
+      <div class="nav-summary-divider"></div>
+      <div class="nav-summary-item">
+        <span class="nav-summary-kicker">ETA</span>
+        <strong>{{ remainingMin > 0 ? formatDuration(remainingMin) : '–' }}</strong>
+      </div>
+      <div class="nav-summary-divider"></div>
+      <div class="nav-summary-item">
+        <span class="nav-summary-kicker">Mode</span>
+        <strong>{{ modeIcon }}</strong>
+      </div>
+      <button class="nav-exit-btn" (click)="exitNavigation.emit()">Exit</button>
+    </div>
+
+    <!-- Step list overview -->
+    <div class="nav-steps-overview" *ngIf="steps.length > 0">
+      <div
+        *ngFor="let step of steps; let i = index"
+        class="nav-step-row"
+        [class.nav-step-current]="i === currentStepIndex"
+        [class.nav-step-done]="i < currentStepIndex">
+        <span class="nav-step-icon">{{ maneuverIcon(step) }}</span>
+        <span class="nav-step-text">{{ step.instruction }}</span>
+        <span class="nav-step-dist">{{ formatDistance(step.distanceM) }}</span>
+      </div>
+    </div>
+
+  </ng-container>
+
+</div>

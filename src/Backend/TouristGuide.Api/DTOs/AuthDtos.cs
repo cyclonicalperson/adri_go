@@ -188,4 +188,24 @@ public class EmailVerificationResultDto
         [MinLength(6)]
         public string NewPassword { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// Payload for Google / Apple social sign-in.
+    /// </summary>
+    public class SocialLoginDto
+    {
+        /// <summary>"google" or "apple"</summary>
+        [Required]
+        public string Provider { get; set; } = string.Empty;
+
+        /// <summary>The ID token (Google credential or Apple JWT).</summary>
+        [Required]
+        public string Credential { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional display name supplied by the client (Apple only sends the name
+        /// on the very first sign-in; the frontend should capture and forward it).
+        /// </summary>
+        public string? DisplayName { get; set; }
+    }
 }

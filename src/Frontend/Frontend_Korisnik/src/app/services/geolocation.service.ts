@@ -34,23 +34,30 @@ export class GeolocationService {
       return null;
     }
 
-    return new Promise<UserPosition | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        () => resolve(null),
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000,
-          ...options
-        }
-      );
-    });
+    // Try network-based first (fast, works on desktop Firefox/Chrome without GPS).
+    // If the caller explicitly overrides options, honour them.
+    const defaults: PositionOptions = {
+      enableHighAccuracy: false,
+      timeout: 20000,
+      maximumAge: 30000,
+    };
+    const merged: PositionOptions = { ...defaults, ...options };
+
+    const tryGet = (opts: PositionOptions) =>
+      new Promise<UserPosition | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          opts,
+        );
+      });
+
+    const result = await tryGet(merged);
+    if (result) return result;
+
+    // If the first attempt timed out / failed and we were already using low-accuracy,
+    // do a final retry with a shorter timeout (IP-only, always fast).
+    return tryGet({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
   }
 
   haversineKm(from: UserPosition, to: UserPosition): number {

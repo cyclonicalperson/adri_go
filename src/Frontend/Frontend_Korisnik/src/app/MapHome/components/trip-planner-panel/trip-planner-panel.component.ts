@@ -35,6 +35,8 @@ export class TripPlannerPanelComponent {
   @Output() tripSaved = new EventEmitter<void>();
   @Output() tripShared = new EventEmitter<void>();
   @Output() routeCleared = new EventEmitter<void>();
+  @Output() routeSaveRequested = new EventEmitter<void>();
+  @Output() navigationStarted = new EventEmitter<void>();
 
   formatDuration(minutes: number): string {
     if (minutes < 60) {
