@@ -25,6 +25,7 @@ import {
   RouteDetourSuggestion
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -1251,6 +1252,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   clearSearch(): void {
     this.searchQuery = '';
     this.searchResults = [];
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   getCategoryIcon(postType: string | undefined): string {

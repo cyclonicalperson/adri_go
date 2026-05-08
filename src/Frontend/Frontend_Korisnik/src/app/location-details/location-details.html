@@ -32,7 +32,7 @@
       <!-- Badges -->
       <div class="badges">
         <span class="badge category">
-          <span class="dot"></span>{{ location.postType }}
+          <span class="dot"></span>{{ formatPostType(location.postType) }}
         </span>
         <span class="badge open-badge" [class.open]="isCurrentlyOpen" [class.closed]="!isCurrentlyOpen" *ngIf="location.openingHours">
           {{ isCurrentlyOpen ? 'Open now' : 'Closed' }}

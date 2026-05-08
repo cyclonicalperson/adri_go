@@ -48,7 +48,7 @@ export class WaypointEditorComponent {
   onMapClick(ev: MapClickEvent): void {
     if (this.snapping) return;
     this.snapping = true;
-    const nearestUrl = `https://router.project-osrm.org/nearest/v1/foot/${ev.lng},${ev.lat}?number=1`;
+    const nearestUrl = `https://routing.openstreetmap.de/routed-foot/nearest/v1/foot/${ev.lng},${ev.lat}?number=1`;
 
     this.http.get<any>(nearestUrl).pipe(
       catchError(() => of(null)),
@@ -86,7 +86,7 @@ export class WaypointEditorComponent {
     }
 
     const coords = waypoints.map(w => `${w['longitude']},${w['latitude']}`).join(';');
-    const routeUrl = `https://router.project-osrm.org/route/v1/foot/${coords}?overview=full&geometries=geojson`;
+    const routeUrl = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coords}?overview=full&geometries=geojson`;
 
     this.http.get<any>(routeUrl).pipe(
       catchError(() => of(null)),

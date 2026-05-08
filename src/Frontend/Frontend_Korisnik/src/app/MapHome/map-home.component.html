@@ -106,7 +106,7 @@
             <div class="search-result-info">
               <div class="search-result-title">{{ result.title }}</div>
               <div class="search-result-meta">
-                {{ result.postType || result.category }}
+                {{ formatPostType(result.postType || result.category) }}
                 <span *ngIf="formatDistance(result.distanceKm)"> &bull; {{ formatDistance(result.distanceKm) }} away</span>
               </div>
             </div>

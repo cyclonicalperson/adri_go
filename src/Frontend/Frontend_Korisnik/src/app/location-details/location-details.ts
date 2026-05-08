@@ -8,6 +8,7 @@ import { UserService } from '../services/user.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-location-details',
@@ -312,6 +313,10 @@ export class LocationDetailsComponent implements OnInit {
       }
       return nowMins >= openMins && nowMins < closeMins;
     } catch { return false; }
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   get isEvent(): boolean {

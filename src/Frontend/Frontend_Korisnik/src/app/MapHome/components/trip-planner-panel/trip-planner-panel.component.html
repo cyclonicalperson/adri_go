@@ -54,7 +54,7 @@
       <div class="stop-info">
         <div class="stop-title">{{ stop.title }}</div>
         <div class="stop-meta">
-          <span>{{ stop.postType || 'Destination' }}</span>
+          <span>{{ formatPostType(stop.postType) || 'Destination' }}</span>
           <span *ngIf="stop.regionName">&middot; {{ stop.regionName }}</span>
         </div>
       </div>

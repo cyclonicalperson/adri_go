@@ -302,22 +302,21 @@ export class RoutingService {
       .join(';');
 
     // `radiuses` limits how far OSRM searches for a routable road to snap each
-    // waypoint to.  150 m is generous enough for city pins while preventing
-    // silent snapping to a distant forest track or footpath.
-    const radiuses = coordinates.map(() => '150').join(';');
+    // waypoint to. 500 m covers rural/mountain coordinates without snapping to
+    // completely wrong roads in cities.
+    const radiuses = coordinates.map(() => '500').join(';');
 
     const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
-    // Use the correct OSRM server for each mode.
-    // router.project-osrm.org only serves the `driving` profile.
-    // routing.openstreetmap.de hosts pedestrian and bike routers.
+    // routing.openstreetmap.de runs all three profiles and is more reliable than
+    // the deprecated router.project-osrm.org demo server.
     if (profile === 'foot') {
       return `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coordinatesString}${params}`;
     }
     if (profile === 'bike') {
       return `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${coordinatesString}${params}`;
     }
-    return `https://router.project-osrm.org/route/v1/driving/${coordinatesString}${params}`;
+    return `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordinatesString}${params}`;
   }
 
   private normalizeForViewport(route: ComputedRoute, viewport: RouteViewportMode = 'desktop'): ComputedRoute {
