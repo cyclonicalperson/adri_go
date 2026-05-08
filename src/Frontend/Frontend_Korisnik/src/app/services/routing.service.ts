@@ -7,11 +7,23 @@ export interface RouteSummary {
   stopCount: number;
 }
 
+export interface NavigationStep {
+  instruction: string;
+  /** Raw street / road name from OSRM (empty string when unnamed). */
+  streetName: string;
+  distanceM: number;
+  durationSec: number;
+  maneuverType: string;
+  maneuverModifier?: string;
+  position: [number, number]; // [lat, lng]
+}
+
 export interface ComputedRoute {
   geometry: [number, number][];
   distanceKm: number;
   durationMin: number;
   usedFallback: boolean;
+  steps?: NavigationStep[];
 }
 
 export type RouteViewportMode = 'mobile' | 'desktop';
@@ -169,15 +181,61 @@ export class RoutingService {
     ];
   }
 
+  async computeRouteForNavigation(
+    coordinates: [number, number][],
+    travelMode: TravelMode,
+  ): Promise<ComputedRoute> {
+    if (coordinates.length < 2) {
+      return { geometry: [...coordinates], distanceKm: 0, durationMin: 0, usedFallback: false, steps: [] };
+    }
+
+    for (const profile of this.resolveRoutingProfiles(travelMode)) {
+      try {
+        const response = await fetch(this.buildOsrmUrl(coordinates, profile, true));
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const route = data?.routes?.[0];
+        if (!route?.geometry?.coordinates) continue;
+
+        const geometry = route.geometry.coordinates.map(
+          ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
+        );
+        const distanceKm = Math.round(((route.distance ?? 0) / 1000) * 10) / 10;
+        const durationMin = Math.max(1, Math.round((route.duration ?? 0) / 60));
+
+        const steps: NavigationStep[] = (route.legs ?? [])
+          .flatMap((leg: any) => leg.steps ?? [])
+          .map((step: any) => ({
+            instruction: this.buildInstruction(step),
+            streetName: step.name ?? '',
+            distanceM: Math.round(step.distance ?? 0),
+            durationSec: Math.round(step.duration ?? 0),
+            maneuverType: step.maneuver?.type ?? 'continue',
+            maneuverModifier: step.maneuver?.modifier,
+            position: [
+              step.maneuver?.location?.[1] ?? 0,
+              step.maneuver?.location?.[0] ?? 0,
+            ] as [number, number],
+          }));
+
+        return { geometry, distanceKm, durationMin, usedFallback: false, steps };
+      } catch {
+        // try next profile
+      }
+    }
+
+    // Fallback without steps
+    const route = await this.computeRoute(coordinates, travelMode);
+    return { ...route, steps: [] };
+  }
+
   private async fetchLiveRoute(
     coordinates: [number, number][],
     travelMode: TravelMode,
   ): Promise<ComputedRoute> {
     let lastError: Error | null = null;
 
-    // The public OSRM demo only reliably serves the driving profile regardless of
-    // what profile is requested. Always fetch a driving route for accurate road
-    // geometry and distance, then compute duration using mode-appropriate speeds.
     for (const profile of this.resolveRoutingProfiles(travelMode)) {
       try {
         const response = await fetch(this.buildOsrmUrl(coordinates, profile));
@@ -194,15 +252,13 @@ export class RoutingService {
         }
 
         const geometry = route.geometry.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
+          ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
         );
 
         const distanceKm = Math.round(((route.distance ?? 0) / 1000) * 10) / 10;
-        // For driving, trust OSRM's traffic-aware duration.
-        // For walking/cycling, OSRM returns driving durations so compute from distance.
-        const durationMin = travelMode === 'driving'
-          ? Math.max(1, Math.round((route.duration ?? 0) / 60))
-          : Math.max(1, this.estimateFallbackDurationMin(distanceKm, travelMode));
+        // Trust OSRM's duration for all travel modes — the correct profile
+        // (foot / bike / driving) is already selected by resolveRoutingProfiles().
+        const durationMin = Math.max(1, Math.round((route.duration ?? 0) / 60));
 
         return { geometry, distanceKm, durationMin, usedFallback: false };
       } catch (error) {
@@ -213,46 +269,129 @@ export class RoutingService {
     throw lastError ?? new Error('No routing profiles succeeded.');
   }
 
-  private buildOsrmUrl(coordinates: [number, number][], profile: string): string {
+  private buildInstruction(step: any): string {
+    const type: string = step.maneuver?.type ?? '';
+    const modifier: string = step.maneuver?.modifier ?? '';
+    const name: string = step.name ?? '';
+    const street = name ? ` onto ${name}` : '';
+
+    switch (type) {
+      case 'depart': return `Head ${modifier}${street}`;
+      case 'arrive': return 'You have arrived at your destination';
+      case 'turn': {
+        const dir = modifier === 'straight' ? 'Continue straight' : `Turn ${modifier}`;
+        return `${dir}${street}`;
+      }
+      case 'merge': return `Merge ${modifier}${street}`;
+      case 'on ramp': return `Take the ramp ${modifier}${street}`;
+      case 'off ramp': return `Take the exit ${modifier}${street}`;
+      case 'fork': return `Keep ${modifier} at the fork${street}`;
+      case 'end of road': return `Turn ${modifier} at the end of road${street}`;
+      case 'continue': return `Continue straight${street}`;
+      case 'roundabout':
+      case 'rotary': return `Enter the roundabout${street}`;
+      case 'exit roundabout':
+      case 'exit rotary': return `Exit the roundabout${street}`;
+      default: return name ? `Continue on ${name}` : 'Continue';
+    }
+  }
+
+  private buildOsrmUrl(coordinates: [number, number][], profile: string, includeSteps = false): string {
     const coordinatesString = coordinates
       .map(([lat, lng]) => `${lng},${lat}`)
       .join(';');
 
-    return `https://router.project-osrm.org/route/v1/${profile}/${coordinatesString}?overview=full&geometries=geojson`;
+    // `radiuses` limits how far OSRM searches for a routable road to snap each
+    // waypoint to. 500 m covers rural/mountain coordinates without snapping to
+    // completely wrong roads in cities.
+    const radiuses = coordinates.map(() => '500').join(';');
+
+    const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
+
+    // routing.openstreetmap.de runs all three profiles and is more reliable than
+    // the deprecated router.project-osrm.org demo server.
+    if (profile === 'foot') {
+      return `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coordinatesString}${params}`;
+    }
+    if (profile === 'bike') {
+      return `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${coordinatesString}${params}`;
+    }
+    return `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordinatesString}${params}`;
   }
 
   private normalizeForViewport(route: ComputedRoute, viewport: RouteViewportMode = 'desktop'): ComputedRoute {
+    // Use a generous cap — Leaflet handles large polylines efficiently.
+    // The RDP pass below already removes truly redundant collinear points.
+    const maxPoints = viewport === 'mobile' ? 1000 : 2000;
     return {
       ...route,
-      geometry: this.simplifyGeometry(
-        route.geometry,
-        viewport === 'mobile' ? 160 : 260,
-      ),
+      geometry: this.simplifyGeometry(route.geometry, maxPoints),
     };
   }
 
+  /**
+   * Ramer-Douglas-Peucker simplification.
+   * Preserves corners/turns (critical for street-following appearance) while
+   * pruning collinear points. Falls back to a final stride pass only if the
+   * RDP result still exceeds maxPoints (rare with street routes).
+   */
   private simplifyGeometry(geometry: [number, number][], maxPoints: number): [number, number][] {
-    if (geometry.length <= maxPoints) {
-      return [...geometry];
+    if (geometry.length <= maxPoints) return [...geometry];
+
+    // ~3 m tolerance in lat/lng degree units (1° ≈ 111 km)
+    const simplified = this.rdp(geometry, 0.000027);
+    if (simplified.length <= maxPoints) return simplified;
+
+    // Safety stride if still over limit
+    const step = Math.ceil(simplified.length / maxPoints);
+    const result = simplified.filter((_, i) => i === 0 || i === simplified.length - 1 || i % step === 0);
+    if (result[result.length - 1] !== simplified[simplified.length - 1]) {
+      result.push(simplified[simplified.length - 1]);
+    }
+    return result;
+  }
+
+  /** Recursive Ramer-Douglas-Peucker — iterative stack to avoid call-stack limits. */
+  private rdp(pts: [number, number][], eps: number): [number, number][] {
+    const keep = new Uint8Array(pts.length);
+    keep[0] = 1;
+    keep[pts.length - 1] = 1;
+
+    // Stack of [start, end] index pairs
+    const stack: [number, number][] = [[0, pts.length - 1]];
+    while (stack.length) {
+      const [start, end] = stack.pop()!;
+      if (end - start <= 1) continue;
+
+      let maxD = 0;
+      let maxI = start;
+      for (let i = start + 1; i < end; i++) {
+        const d = this.ptSegDist(pts[i], pts[start], pts[end]);
+        if (d > maxD) { maxD = d; maxI = i; }
+      }
+
+      if (maxD > eps) {
+        keep[maxI] = 1;
+        stack.push([start, maxI], [maxI, end]);
+      }
     }
 
-    const step = Math.ceil(geometry.length / maxPoints);
-    const reduced = geometry.filter((_, index) => index === 0 || index === geometry.length - 1 || index % step === 0);
-    if (reduced[reduced.length - 1] !== geometry[geometry.length - 1]) {
-      reduced.push(geometry[geometry.length - 1]);
-    }
+    return pts.filter((_, i) => keep[i]);
+  }
 
-    return reduced;
+  private ptSegDist(p: [number, number], a: [number, number], b: [number, number]): number {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
   }
 
   private resolveRoutingProfiles(travelMode: TravelMode): string[] {
     switch (travelMode) {
-      case 'walking':
-        return ['walking', 'foot'];
-      case 'cycling':
-        return ['cycling', 'bike'];
-      default:
-        return ['driving'];
+      case 'walking':  return ['foot'];
+      case 'cycling':  return ['bike'];
+      default:         return ['driving'];
     }
   }
 

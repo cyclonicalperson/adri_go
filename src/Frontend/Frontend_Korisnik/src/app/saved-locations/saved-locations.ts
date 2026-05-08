@@ -6,6 +6,7 @@ import { AuthService } from '../services/auth.service';
 import { FilterStateService } from '../services/filter-state.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-saved-locations',
@@ -97,6 +98,10 @@ export class SavedLocationsComponent implements OnInit {
       }
       return nowMins >= openMins && nowMins < closeMins;
     } catch { return true; }
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

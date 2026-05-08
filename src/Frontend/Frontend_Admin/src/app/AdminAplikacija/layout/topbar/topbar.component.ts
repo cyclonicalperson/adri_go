@@ -167,6 +167,8 @@ export class TopbarComponent implements OnInit, OnDestroy {
     '/admin/map-admin': { title: 'Mapa', sub: 'Interaktivna mapa destinacija' },
     '/admin/profile': { title: 'Moj profil', sub: 'Podaci o nalogu' },
     '/admin/zahtevi': { title: 'Zahtevi za registraciju', sub: 'Pregled i odobravanje zahteva' },
+    '/admin/turisti': { title: 'Turisti', sub: 'Pregled korisničkih naloga turista' },
+    // /admin/turisti/:id matches via startsWith — shows same title as list
   };
 
   pageTitle$ = this.router.events.pipe(

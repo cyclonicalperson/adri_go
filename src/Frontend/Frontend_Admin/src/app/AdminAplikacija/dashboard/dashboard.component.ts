@@ -12,6 +12,7 @@ import {
 } from '@angular/cdk/drag-drop';
 
 import { AuthService } from '@core/auth/auth.service';
+import { SiteTranslateService } from '@core/services/site-translate.service';
 import {
   AnalyticsService,
   DailyVisit,
@@ -34,7 +35,8 @@ import {
 } from './dashboard-widget.model';
 import { HeatPoint, MapComponent, MapMarker } from '@shared/components/map/map.component';
 
-const STORAGE_KEY_PREFIX = 'adrigo_dashboard_v1_';
+// v2 — adds app_visits_chart to DEFAULT_LAYOUT_ADMIN; old v1 keys are ignored.
+const STORAGE_KEY_PREFIX = 'adrigo_dashboard_v2_';
 
 interface PendingRequest {
   id: number;
@@ -42,6 +44,7 @@ interface PendingRequest {
   iconBg: string;
   title: string;
   meta: string;
+  emailVerifiedAt: string | null;
 }
 
 interface ActivityEntry {
@@ -119,6 +122,7 @@ export class DashboardComponent implements OnInit {
 
   stats: DashboardStats | null = null;
   visits: DailyVisit[] = [];
+  appVisits: DailyVisit[] = [];
   popularObjects: DashboardPost[] = [];
   popularEvents: DashboardPost[] = [];
   movements: TouristMovement[] = [];
@@ -144,6 +148,7 @@ export class DashboardComponent implements OnInit {
     private postService: PostService,
     private reviewService: ReviewService,
     private userService: UserService,
+    private translateService: SiteTranslateService,
   ) {}
 
   ngOnInit(): void {
@@ -193,6 +198,7 @@ export class DashboardComponent implements OnInit {
       ? {
           stats: this.analytics.getDashboardStats().pipe(catchError(() => of({ data: null } as any))),
           visits: this.analytics.getDailyVisits(fmt(from), fmt(today)).pipe(catchError(() => of({ data: [] } as any))),
+          appVisits: this.analytics.getAppVisits(fmt(from), fmt(today)).pipe(catchError(() => of({ data: [] } as any))),
           objects: this.analytics.getPopularPosts(5).pipe(catchError(() => of({ data: [] } as any))),
           events: this.analytics.getPopularEvents(5).pipe(catchError(() => of({ data: [] } as any))),
           movements: this.analytics.getTouristMovements().pipe(catchError(() => of({ data: [] } as any))),
@@ -201,6 +207,7 @@ export class DashboardComponent implements OnInit {
       : {
           stats: of({ data: null } as any),
           visits: of({ data: [] } as any),
+          appVisits: of({ data: [] } as any),
           objects: of({ data: [] } as any),
           events: of({ data: [] } as any),
           movements: of({ data: [] } as any),
@@ -211,6 +218,7 @@ export class DashboardComponent implements OnInit {
       next: res => {
         this.stats = res.stats?.data ?? null;
         this.visits = res.visits?.data ?? [];
+        this.appVisits = res.appVisits?.data ?? [];
         this.popularObjects = (res.objects?.data ?? []).map((item: any) => this.mapDashboardPost(item));
         this.popularEvents = (res.events?.data ?? []).map((item: any) => this.mapDashboardPost(item));
         this.movements = res.movements?.data ?? [];
@@ -346,6 +354,7 @@ export class DashboardComponent implements OnInit {
           iconBg: request.isIndividual ? '#eff6ff' : '#f0fdf4',
           title: request.fullName,
           meta: request.organizationName ?? 'Fizičko lice',
+          emailVerifiedAt: request.emailVerifiedAt ?? null,
         }));
       });
   }
@@ -428,7 +437,6 @@ export class DashboardComponent implements OnInit {
         lat: m.latitude,
         lng: m.longitude,
         label: `${m.regionName} (${m.visitCount} poseta)`,
-        category: `${m.visitCount} poseta`,
       }));
   }
 
@@ -438,7 +446,9 @@ export class DashboardComponent implements OnInit {
       lat: post.lat!,
       lng: post.lng!,
       label: post.title,
-      category: CONTENT_TYPE_CONFIG[post.postType]?.label ?? post.postType,
+      // Pass the raw postType key so map.component can look up the correct SVG icon.
+      // (do NOT pass the translated label like "Smeštaj" — it won't match CATEGORY_COLORS)
+      category: post.postType,
       color: CONTENT_TYPE_CONFIG[post.postType]?.color ?? '#9ca3af',
     }));
   }
@@ -566,6 +576,7 @@ export class DashboardComponent implements OnInit {
       case 'activity_log':
         return this.canManageContent || this.canViewAnalytics;
       case 'visits_chart':
+      case 'app_visits_chart':
       case 'category_donut':
       case 'top_lokacije':
       case 'top_dogadjaji':
@@ -611,7 +622,36 @@ export class DashboardComponent implements OnInit {
     return Math.round((count / this.maxVisit30) * 100);
   }
 
+  // ── App Visits (Posete platformi) ─────────────────────────────────────────
+  get appVisits30(): { date: string; count: number }[] {
+    const map = new Map(this.appVisits.map(v => [v.date, v.count]));
+    const result: { date: string; count: number }[] = [];
+    for (let i = 29; i >= 0; i -= 1) {
+      const day = new Date();
+      day.setDate(day.getDate() - i);
+      const key = day.toISOString().split('T')[0];
+      result.push({ date: key, count: map.get(key) ?? 0 });
+    }
+    return result;
+  }
+
+  get totalAppVisits(): number {
+    return this.appVisits.reduce((sum, v) => sum + v.count, 0);
+  }
+
+  get maxAppVisit30(): number {
+    return Math.max(...this.appVisits30.map(v => v.count), 1);
+  }
+
+  appVisitBarHeight(count: number): number {
+    if (count === 0) return 2;
+    return Math.round((count / this.maxAppVisit30) * 100);
+  }
+
   approveRequest(request: PendingRequest): void {
+    if (!request.emailVerifiedAt) {
+      return;
+    }
     this.userService.approveRegistration(request.id).subscribe({
       next: () => {
         this.pendingRequests = this.pendingRequests.filter(item => item.id !== request.id);
@@ -621,6 +661,9 @@ export class DashboardComponent implements OnInit {
             pendingRegistrations: Math.max(0, (this.stats.pendingRegistrations ?? 1) - 1),
           };
         }
+      },
+      error: () => {
+        // silently ignore — user can go to Zahtevi page for details
       },
     });
   }
@@ -651,8 +694,18 @@ export class DashboardComponent implements OnInit {
   }
 
   formatBarDate(dateStr: string): string {
+    const localeMap: Record<string, string> = {
+      sr: 'sr-RS', en: 'en-GB', de: 'de-DE', fr: 'fr-FR',
+      it: 'it-IT', ru: 'ru-RU', es: 'es-ES', nl: 'nl-NL',
+    };
+    const locale = localeMap[this.translateService.currentLanguage] ?? 'sr-RS';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('sr-RS', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  }
+
+  formatBarLabel(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    return `${dateStr.slice(8, 10)}/${dateStr.slice(5, 7)}`;
   }
 
   heatColor(movement: TouristMovement): string {

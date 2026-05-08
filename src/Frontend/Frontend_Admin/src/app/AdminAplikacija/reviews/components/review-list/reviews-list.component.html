@@ -108,7 +108,7 @@
       </thead>
       <tbody>
         @for (r of reviews; track r.reviewId) {
-        <tr>
+        <tr (click)="openModeration(r)">
           <td>
             <div class="author-cell">
               <div class="author-av">{{ initials(r.touristName ?? r.user?.fullName) }}</div>

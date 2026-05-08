@@ -46,12 +46,16 @@
 <div class="lightbox-overlay" (click)="closeLightbox()">
   <div class="lightbox-inner" (click)="$event.stopPropagation()">
     <button class="lb-close" (click)="closeLightbox()">&#10005;</button>
+    @if (media.length > 1) {
     <button class="lb-nav lb-prev" (click)="prev()">&#8592;</button>
+    }
     <img class="lb-img"
          [src]="current!.url"
          [alt]="current!.caption ?? 'Slika'"
          (error)="onImgError($event)" />
+    @if (media.length > 1) {
     <button class="lb-nav lb-next" (click)="next()">&#8594;</button>
+    }
   </div>
 </div>
 }

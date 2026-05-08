@@ -80,6 +80,11 @@ export class AnalyticsDashboardComponent implements OnInit {
     return Math.max(8, Math.round((count / max) * 100));
   }
 
+  formatBarLabel(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    return `${dateStr.slice(8, 10)}/${dateStr.slice(5, 7)}`;
+  }
+
   barColor(i: number): string {
     return ['bar-green', 'bar-blue', 'bar-amber'][i % 3];
   }

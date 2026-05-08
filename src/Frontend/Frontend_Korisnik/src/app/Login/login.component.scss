@@ -195,31 +195,69 @@ input::placeholder { color: var(--gray-400); }
 }
 
 /* ── SOCIAL ──────────────────────────────────────────────────── */
-.social-buttons { display: flex; gap: 12px; margin-bottom: 22px; }
 
-.btn-outline {
-  flex: 1;
-  background: #fff;
-  border: 1.5px solid var(--gray-200);
-  color: var(--gray-700);
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 600;
+.google-btn-host {
+  margin-bottom: 22px;
+}
+
+/* Styled to match Google's brand guidelines while fitting our card */
+.btn-google-custom {
+  width: 100%;
+  padding: 11px 16px;
+  border: 1.5px solid #dadce0;
   border-radius: var(--radius-md);
+  background: #fff;
+  color: #3c4043;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Google Sans', Roboto, var(--font-sans);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.btn-google-custom:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(60,64,67,0.15);
+}
+.btn-google-custom:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.social-disabled { opacity: 0.6; pointer-events: none; }
+
+/* Social loading / error */
+.social-loading-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: border-color 0.2s, background 0.2s;
-  margin-bottom: 0;
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-bottom: 10px;
 }
-.btn-outline:hover { border-color: var(--gray-400); background: var(--gray-50); }
-.btn-outline svg { width: 18px; height: 18px; }
 
-/* Google colors */
-.btn-google svg path:first-child { fill: #4285F4; }
+.social-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--gray-300);
+  border-top-color: var(--green-500);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.social-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
 
 /* ── REGISTER LINK ───────────────────────────────────────────── */
 .register-text {

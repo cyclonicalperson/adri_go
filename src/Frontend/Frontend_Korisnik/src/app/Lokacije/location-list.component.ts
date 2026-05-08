@@ -5,6 +5,7 @@ import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { Location, LocationService } from '../services/location.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-location-list',
@@ -138,6 +139,10 @@ export class LocationListComponent implements OnInit {
     }
 
     return firstImg;
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   private showFeedback(msg: string): void {

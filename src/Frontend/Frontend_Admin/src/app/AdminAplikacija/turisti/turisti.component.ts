@@ -1,90 +1,180 @@
 import { Component, OnInit } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
-import { AnalyticsService, TouristMovement } from '@core/services/analytics.service';
+import { Router, RouterLink } from '@angular/router';
+import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
+import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+import { AdminTouristService, TouristUser } from '@core/services/admin-tourist.service';
+import { PageRequest } from '@core/models/api-response.model';
 
-interface Preference { label: string; pct: number; color: string; }
-interface ProfileStat { label: string; value: string; }
+type Tab = 'all' | 'active' | 'inactive' | 'unverified';
 
 @Component({
   selector: 'app-turisti',
   templateUrl: './turisti.component.html',
   styleUrl: './turisti.component.scss',
-  imports: [DecimalPipe],
+  imports: [RouterLink, DateLocalPipe, ConfirmDialogComponent],
 })
 export class TuristiComponent implements OnInit {
-  movements: TouristMovement[] = [];
-  loading = true;
-  timeRange: '24h' | '7d' | '30d' = '7d';
-  totalTourists = 0;
+  tourists: TouristUser[] = [];
+  total      = 0;
+  totalPages = 1;
+  loading    = true;
+  activeTab: Tab = 'all';
 
-  readonly preferences: Preference[] = [
-    { label: '🏨 Smeštaj', pct: 38, color: '#22c55e' },
-    { label: '🎭 Kultura', pct: 24, color: '#3b82f6' },
-    { label: '⚽ Sport', pct: 18, color: '#f59e0b' },
-    { label: '💆 Wellness', pct: 12, color: '#8b5cf6' },
-    { label: '🍴 Hrana', pct: 8, color: '#ef4444' },
-  ];
+  // Counts for stat chips
+  activeCount      = 0;
+  inactiveCount    = 0;
+  unverifiedCount  = 0;
 
-  readonly profileStats: ProfileStat[] = [
-    { label: 'Prosečna starost', value: '—' },
-    { label: 'Prosek dana u poseti', value: '—' },
-    { label: 'Omiljeni tip aktivnosti', value: '⚽ Sport' },
-  ];
+  req: PageRequest & { accountStatus?: string } = {
+    page: 1, pageSize: 15, sortBy: 'createdAt', sortDir: 'desc',
+  };
 
-  constructor(private analytics: AnalyticsService) { }
+  // Confirm dialog targets
+  suspendTarget:  TouristUser | null = null;
+  activateTarget: TouristUser | null = null;
+  deleteTarget:   TouristUser | null = null;
+
+  constructor(private service: AdminTouristService, private router: Router) {}
 
   ngOnInit(): void {
-    this.analytics.getTouristMovements().subscribe({
+    this.loadCounts();
+    this.load();
+  }
+
+  private loadCounts(): void {
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'active' }).subscribe(r => {
+      this.activeCount = r.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'inactive' }).subscribe(r => {
+      this.inactiveCount = r.total;
+    });
+    this.service.getAll({ page: 1, pageSize: 1, accountStatus: 'unverified' }).subscribe(r => {
+      this.unverifiedCount = r.total;
+    });
+  }
+
+  load(): void {
+    this.loading = true;
+    this.service.getAll(this.req).subscribe({
       next: res => {
-        this.movements = res.data;
-        this.totalTourists = res.data.reduce((s: number, m: TouristMovement) => s + m.visitCount, 0);
-        this.loading = false;
+        this.tourists   = res.data;
+        this.total      = res.total;
+        this.totalPages = res.totalPages;
+        this.loading    = false;
       },
       error: () => { this.loading = false; },
     });
   }
 
-  get activeTourists(): number { return this.totalTourists; }
-  get currentlyOnsite(): number { return Math.round(this.totalTourists * 0.15); }
-
-  setRange(range: '24h' | '7d' | '30d'): void {
-    this.timeRange = range;
-    // Re-fetch with range param when API supports it
+  setTab(tab: Tab): void {
+    this.activeTab = tab;
+    const statusMap: Record<Tab, string | undefined> = {
+      all:        undefined,
+      active:     'active',
+      inactive:   'inactive',
+      unverified: 'unverified',
+    };
+    this.req = { ...this.req, page: 1, accountStatus: statusMap[tab] };
+    this.load();
   }
 
-  get activeRangeLabel(): string {
-    return { '24h': 'poslednja 24h', '7d': 'poslednjih 7 dana', '30d': 'poslednjih 30 dana' }[this.timeRange];
+  onSearch(q: string): void {
+    this.req = { ...this.req, search: q || undefined, page: 1 };
+    this.load();
   }
 
-  get topMovements(): TouristMovement[] {
-    return [...this.movements].sort((a, b) => b.visitCount - a.visitCount).slice(0, 8);
+  onPage(p: number): void {
+    if (p >= 1 && p <= this.totalPages) {
+      this.req = { ...this.req, page: p };
+      this.load();
+    }
   }
 
-  shareWidth(count: number): number {
-    const max = Math.max(...this.movements.map(m => m.visitCount), 1);
-    return Math.round((count / max) * 100);
+  // ── Suspend / Activate ────────────────────────────────────────────────────
+  confirmToggle(t: TouristUser): void {
+    if (t.isActive) this.suspendTarget = t;
+    else            this.activateTarget = t;
   }
 
-  rankClass(i: number): string {
-    return ['gold', 'silver', 'bronze'][i] ?? '';
+  cancelSuspend():  void { this.suspendTarget  = null; }
+  cancelActivate(): void { this.activateTarget = null; }
+
+  doToggle(t: TouristUser): void {
+    this.suspendTarget  = null;
+    this.activateTarget = null;
+    const action$ = t.isActive
+      ? this.service.suspend(t.id)
+      : this.service.activate(t.id);
+
+    action$.subscribe({
+      next: res => {
+        const idx = this.tourists.findIndex(x => x.id === t.id);
+        if (idx !== -1 && res.data) this.tourists[idx] = res.data;
+        this.load();
+        this.loadCounts();
+      },
+      error: () => {},
+    });
   }
 
-  // Map pin helpers — simple normalized spread across map area
-  pinLeft(m: TouristMovement): number {
-    const lngs = this.movements.map(x => x.longitude);
-    const min = Math.min(...lngs), max = Math.max(...lngs);
-    return max === min ? 50 : Math.round(((m.longitude - min) / (max - min)) * 80 + 10);
+  // ── Delete ────────────────────────────────────────────────────────────────
+  confirmDelete(t: TouristUser): void { this.deleteTarget = t; }
+  cancelDelete():                void { this.deleteTarget = null; }
+
+  doDelete(): void {
+    if (!this.deleteTarget) return;
+    this.service.delete(this.deleteTarget.id).subscribe({
+      next: () => {
+        this.deleteTarget = null;
+        this.load();
+        this.loadCounts();
+      },
+      error: () => { this.deleteTarget = null; },
+    });
   }
 
-  pinTop(m: TouristMovement): number {
-    const lats = this.movements.map(x => x.latitude);
-    const min = Math.min(...lats), max = Math.max(...lats);
-    return max === min ? 50 : Math.round((1 - (m.latitude - min) / (max - min)) * 70 + 10);
+  goDetail(t: TouristUser): void {
+    void this.router.navigate(['/admin/turisti', t.id]);
   }
 
-  pinColor(m: TouristMovement): string {
-    const top = [...this.movements].sort((a, b) => b.visitCount - a.visitCount);
-    const rank = top.findIndex(x => x.regionId === m.regionId);
-    return rank === 0 ? '#22c55e' : rank < 3 ? '#f59e0b' : '#3b82f6';
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  initials(name: string): string {
+    return (name || '?')
+      .split(' ')
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  }
+
+  statusBadge(t: TouristUser): string {
+    if (!t.isActive)        return 'badge-red';
+    if (!t.isEmailVerified) return 'badge-amber';
+    return 'badge-green';
+  }
+
+  statusLabel(t: TouristUser): string {
+    if (!t.isActive)        return '⏸ Suspendovan';
+    if (!t.isEmailVerified) return '⚠ Nepotvrđen email';
+    return '✅ Aktivan';
+  }
+
+  languageFlag(code: string): string {
+    const flags: Record<string, string> = {
+      en: '🇬🇧', sr: '🇷🇸', de: '🇩🇪', it: '🇮🇹',
+      fr: '🇫🇷', ru: '🇷🇺', es: '🇪🇸', nl: '🇳🇱',
+    };
+    return flags[code] ?? '🌐';
+  }
+
+  get pageStart(): number { return (this.req.page - 1) * this.req.pageSize + 1; }
+  get pageEnd():   number { return Math.min(this.req.page * this.req.pageSize, this.total); }
+
+  get pageNumbers(): number[] {
+    const pages: number[] = [];
+    for (let i = Math.max(1, this.req.page - 2); i <= Math.min(this.totalPages, this.req.page + 2); i++) {
+      pages.push(i);
+    }
+    return pages;
   }
 }

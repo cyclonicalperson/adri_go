@@ -73,6 +73,19 @@ export class AuthService {
     );
   }
 
+  socialLogin(
+    provider: 'google' | 'apple',
+    credential: string,
+    displayName?: string,
+  ): Observable<TouristAuthResponse> {
+    return this.http
+      .post<any>(`${this.authApiUrl}/social-login`, { provider, credential, displayName })
+      .pipe(
+        map(res => this.mapAuthResponse(res)),
+        tap(res => this.saveAuthSession(res)),
+      );
+  }
+
   registerWithToken(
     name: string,
     email: string,

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Location } from '../../../services/location.service';
 import { LocationRecommendation } from '../../../services/recommendation.service';
+import { formatPostType } from '../../../utils/post-type.utils';
 
 export type RecommendationTab = 'personalized' | 'global';
 
@@ -20,6 +21,10 @@ export class MapRecommendationsPanelComponent {
 
   @Output() tabSelected = new EventEmitter<RecommendationTab>();
   @Output() locationSelected = new EventEmitter<Location>();
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
+  }
 
   onImgError(event: Event): void {
     const img = event.target as HTMLImageElement;

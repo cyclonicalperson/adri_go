@@ -22,6 +22,39 @@ namespace TouristGuide.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TouristGuide.Api.Models.AppVisit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("session_id");
+
+                    b.Property<DateTime>("VisitDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("visit_date");
+
+                    b.HasKey("Id")
+                        .HasName("PK_app_visit");
+
+                    b.HasIndex("SessionId", "VisitDate")
+                        .IsUnique()
+                        .HasDatabaseName("IX_app_visit_session_id_visit_date");
+
+                    b.ToTable("app_visit");
+                });
+
             modelBuilder.Entity("TouristGuide.Api.Models.AdminAuditLog", b =>
                 {
                     b.Property<long>("Id")

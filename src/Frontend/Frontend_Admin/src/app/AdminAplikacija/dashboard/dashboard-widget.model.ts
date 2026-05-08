@@ -5,6 +5,7 @@
 export type WidgetId =
   | 'kpi_stats'
   | 'visits_chart'
+  | 'app_visits_chart'
   | 'category_donut'
   | 'top_lokacije'
   | 'top_dogadjaji'
@@ -56,11 +57,19 @@ export const WIDGET_CATALOGUE: WidgetDef[] = [
   },
   {
     id: 'visits_chart',
-    label: 'Grafikon poseta',
-    description: 'Bar chart poseta platformi u poslednjih 30 dana.',
+    label: 'Pregledi destinacija',
+    description: 'Bar chart ukupnih pregleda stranica destinacija (svaki klik na lokaciju se broji). Prati koliko puta su turisti pregledali sadržaj platforme.',
     icon: '📈',
     defaultSpan: 2,
     adminOnly: false,
+  },
+  {
+    id: 'app_visits_chart',
+    label: 'Posete platformi',
+    description: 'Bar chart jedinstvenih sesija (otvaranja turističke aplikacije) u poslednjih 30 dana. Prati koliko različitih korisnika je otvorilo aplikaciju svaki dan — svaka sesija se broji jednom.',
+    icon: '📱',
+    defaultSpan: 2,
+    adminOnly: true,
   },
   {
     id: 'category_donut',
@@ -168,6 +177,7 @@ export const DEFAULT_LAYOUT_ADMIN: DashboardConfig = {
   slots: [
     { id: 'kpi_stats', span: 2 },
     { id: 'visits_chart', span: 2 },
+    { id: 'app_visits_chart', span: 2 },
     { id: 'pending_requests', span: 1 },
     { id: 'top_lokacije', span: 1 },
     { id: 'category_donut', span: 1 },

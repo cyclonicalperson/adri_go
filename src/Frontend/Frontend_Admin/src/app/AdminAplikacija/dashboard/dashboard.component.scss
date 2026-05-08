@@ -95,12 +95,27 @@
     border-color: $primary;
     color: $primary-dark;
     background: $primary-soft;
+
+    &:disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      pointer-events: none;
+      border-color: $gray-200;
+      background: $gray-100;
+      color: $gray-400;
+    }
   }
 
   &-reject {
     border-color: $gray-200;
     color: $gray-400;
     background: $white;
+
+    &:disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
   }
 }
 
@@ -1175,23 +1190,56 @@
 // ── Mobile ─────────────────────────────────────────────────────────────────
 @media (max-width: 768px) {
   .dash-root {
-    padding: 16px;
-    gap: 14px;
+    padding: 12px;
+    gap: 12px;
   }
 
   .widget-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: hidden;
   }
 
   .widget-slot,
   .widget-slot.span-2 {
     grid-column: span 1 !important;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .kpi-row {
     grid-template-columns: repeat(2, 1fr) !important;
     padding: 12px !important;
     gap: 8px !important;
+  }
+
+  .kpi-tile {
+    padding: 14px;
+  }
+
+  .kpi-val {
+    font-size: 22px;
+  }
+
+  // Panel header: allow title and legend to wrap to separate lines
+  .panel-header {
+    flex-wrap: wrap;
+
+    .chart-legend {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  }
+
+  // Chart area: ensure bars don't overflow
+  .chart-area {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  // Category bar chart: switch to narrower label column on mobile
+  .cat-row {
+    grid-template-columns: 110px 1fr auto;
+    gap: 6px;
   }
 
   .picker-drawer {
