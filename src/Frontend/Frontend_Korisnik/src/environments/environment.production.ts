@@ -1,6 +1,7 @@
+// src/environments/environment.production.ts
 export const environment = {
   production: true,
-  apiUrl: 'http://softeng.pmf.kg.ac.rs:10182/api',
-  touristAppUrl: 'http://softeng.pmf.kg.ac.rs:10183',
-  adminAppUrl: 'http://softeng.pmf.kg.ac.rs:10181',
+  apiUrl: 'https://softeng.pmf.kg.ac.rs:10185/api',
+  touristAppUrl: 'https://softeng.pmf.kg.ac.rs:10187',
+  adminAppUrl: 'https://softeng.pmf.kg.ac.rs:10188',
 };
