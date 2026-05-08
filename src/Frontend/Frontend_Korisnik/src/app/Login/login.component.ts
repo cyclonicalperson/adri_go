@@ -1,7 +1,6 @@
 import {
   Component,
   OnInit,
-  AfterViewInit,
   ChangeDetectorRef,
 } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -17,19 +16,18 @@ import { SocialAuthService } from '../services/social-auth.service';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
-export class LoginComponent implements OnInit, AfterViewInit {
+export class LoginComponent implements OnInit {
 
   loginForm!: FormGroup;
-  isLoading = false;
-  isSocialLoading = false;
-  googleReady = false;
-  errorMessage = '';
-  socialError = '';
-  showRegisteredBanner = false;
-  verificationPendingEmail = '';
-  resendMessage = '';
-  resendError = '';
-  isResendingVerification = false;
+  isLoading          = false;
+  isSocialLoading    = false;
+  errorMessage       = '';
+  socialError        = '';
+  showRegisteredBanner       = false;
+  verificationPendingEmail   = '';
+  resendMessage      = '';
+  resendError        = '';
+  isResendingVerification    = false;
 
   constructor(
     private fb: FormBuilder,
@@ -43,7 +41,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     this.loginForm = this.fb.group({
       emailOrPhone: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required],
+      password:     ['', Validators.required],
     });
 
     this.route.queryParams.subscribe(params => {
@@ -55,21 +53,21 @@ export class LoginComponent implements OnInit, AfterViewInit {
     });
   }
 
-  ngAfterViewInit(): void {
-    // Initialise the Google GSI SDK. Once ready, enable the sign-in button.
-    // The credential callback fires when the user completes Google sign-in.
-    this.socialAuth.initGoogleSignIn(
-      credential => this.handleSocialLogin('google', credential),
-      () => { this.googleReady = true; this.cdr.detectChanges(); },
-    );
-  }
+  // ─── Google sign-in ───────────────────────────────────────────────────────
 
   onGoogleLogin(): void {
-    if (!this.googleReady) {
-      this.socialError = 'Google sign-in is still loading — please try again in a moment.';
-      return;
-    }
-    this.socialAuth.promptGoogle();
+    this.socialError = '';
+    this.isSocialLoading = true;
+    this.cdr.detectChanges();
+
+    this.socialAuth.triggerGooglePopup(
+      credential => this.handleSocialLogin('google', credential),
+      message    => {
+        this.isSocialLoading = false;
+        this.socialError     = message;
+        this.cdr.detectChanges();
+      },
+    );
   }
 
   // ─── Email / password ─────────────────────────────────────────────────────
@@ -77,10 +75,10 @@ export class LoginComponent implements OnInit, AfterViewInit {
   onLogin(): void {
     if (this.loginForm.invalid) return;
 
-    this.isLoading = true;
+    this.isLoading    = true;
     this.errorMessage = '';
     this.resendMessage = '';
-    this.resendError = '';
+    this.resendError  = '';
     this.verificationPendingEmail = '';
 
     const { emailOrPhone, password } = this.loginForm.value;
@@ -111,7 +109,7 @@ export class LoginComponent implements OnInit, AfterViewInit {
 
     this.isResendingVerification = true;
     this.resendMessage = '';
-    this.resendError = '';
+    this.resendError   = '';
 
     this.authService.resendVerification(this.verificationPendingEmail).subscribe({
       next: res => {
@@ -127,16 +125,16 @@ export class LoginComponent implements OnInit, AfterViewInit {
     });
   }
 
-  // ─── Social login ─────────────────────────────────────────────────────────
+  // ─── Social login (shared) ────────────────────────────────────────────────
 
-  /** Called after Google (via SDK callback) or Apple returns a credential. */
+  /** Called after Google returns a credential ID token. */
   private handleSocialLogin(
     provider: 'google' | 'apple',
     credential: string,
     displayName?: string,
   ): void {
     this.isSocialLoading = true;
-    this.socialError = '';
+    this.socialError     = '';
     this.cdr.detectChanges();
 
     this.authService.socialLogin(provider, credential, displayName).subscribe({

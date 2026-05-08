@@ -350,7 +350,7 @@
               <div class="req-meta">{{ req.meta }}</div>
             </div>
             <div class="req-actions">
-              <button class="btn btn-xs btn-approve" (click)="approveRequest(req); $event.stopPropagation()">✓</button>
+              <button class="btn btn-xs btn-approve" [disabled]="!req.emailVerifiedAt" [title]="req.emailVerifiedAt ? 'Odobri' : 'Email nije verifikovan'" (click)="approveRequest(req); $event.stopPropagation()">✓</button>
               <button class="btn btn-xs btn-reject" (click)="rejectRequest(req); $event.stopPropagation()">✕</button>
             </div>
           </div>

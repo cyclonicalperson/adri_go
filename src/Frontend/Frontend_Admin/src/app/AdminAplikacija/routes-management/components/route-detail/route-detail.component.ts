@@ -148,7 +148,7 @@ export class RouteDetailComponent implements OnInit {
       case 'published':
         return 'Ruta je javno dostupna turistima.';
       case 'draft':
-        return 'Ruta ceka pregled i vidljiva je samo adminima.';
+        return 'Ruta je sacuvana kao nacrt i vidljiva je samo adminima.';
       case 'archived':
         return 'Ruta je arhivirana i vise nije javno prikazana.';
       default:

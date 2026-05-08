@@ -851,12 +851,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async startNavigation(): Promise<void> {
-    if (this.plannerStops.length < 2) {
-      this.plannerMessage = 'Add at least 2 stops to start navigation.';
-      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 2400);
+    // getRouteCoordinates() prepends the user's live position when available,
+    // so 1 stop + GPS location = valid 2-point route.
+    const coordinates = this.getRouteCoordinates();
+    if (coordinates.length < 2) {
+      this.plannerMessage = this.plannerStops.length === 0
+        ? 'Add at least one stop to navigate.'
+        : 'Enable location sharing to navigate from your current position, or add a second stop.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
       return;
     }
-    const coordinates: [number, number][] = this.plannerStops.map(s => [s.lat, s.lng]);
     try {
       const result = await this.routingService.computeRouteForNavigation(coordinates, this.travelMode);
       this.navigationSteps = result.steps ?? [];

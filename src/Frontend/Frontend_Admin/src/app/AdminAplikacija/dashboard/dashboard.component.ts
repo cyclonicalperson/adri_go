@@ -12,6 +12,7 @@ import {
 } from '@angular/cdk/drag-drop';
 
 import { AuthService } from '@core/auth/auth.service';
+import { SiteTranslateService } from '@core/services/site-translate.service';
 import {
   AnalyticsService,
   DailyVisit,
@@ -43,6 +44,7 @@ interface PendingRequest {
   iconBg: string;
   title: string;
   meta: string;
+  emailVerifiedAt: string | null;
 }
 
 interface ActivityEntry {
@@ -146,6 +148,7 @@ export class DashboardComponent implements OnInit {
     private postService: PostService,
     private reviewService: ReviewService,
     private userService: UserService,
+    private translateService: SiteTranslateService,
   ) {}
 
   ngOnInit(): void {
@@ -351,6 +354,7 @@ export class DashboardComponent implements OnInit {
           iconBg: request.isIndividual ? '#eff6ff' : '#f0fdf4',
           title: request.fullName,
           meta: request.organizationName ?? 'Fizičko lice',
+          emailVerifiedAt: request.emailVerifiedAt ?? null,
         }));
       });
   }
@@ -645,6 +649,9 @@ export class DashboardComponent implements OnInit {
   }
 
   approveRequest(request: PendingRequest): void {
+    if (!request.emailVerifiedAt) {
+      return;
+    }
     this.userService.approveRegistration(request.id).subscribe({
       next: () => {
         this.pendingRequests = this.pendingRequests.filter(item => item.id !== request.id);
@@ -654,6 +661,9 @@ export class DashboardComponent implements OnInit {
             pendingRegistrations: Math.max(0, (this.stats.pendingRegistrations ?? 1) - 1),
           };
         }
+      },
+      error: () => {
+        // silently ignore — user can go to Zahtevi page for details
       },
     });
   }
@@ -684,8 +694,13 @@ export class DashboardComponent implements OnInit {
   }
 
   formatBarDate(dateStr: string): string {
+    const localeMap: Record<string, string> = {
+      sr: 'sr-RS', en: 'en-GB', de: 'de-DE', fr: 'fr-FR',
+      it: 'it-IT', ru: 'ru-RU', es: 'es-ES', nl: 'nl-NL',
+    };
+    const locale = localeMap[this.translateService.currentLanguage] ?? 'sr-RS';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('sr-RS', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   }
 
   formatBarLabel(dateStr: string | undefined): string {

@@ -95,12 +95,27 @@
     border-color: $primary;
     color: $primary-dark;
     background: $primary-soft;
+
+    &:disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      pointer-events: none;
+      border-color: $gray-200;
+      background: $gray-100;
+      color: $gray-400;
+    }
   }
 
   &-reject {
     border-color: $gray-200;
     color: $gray-400;
     background: $white;
+
+    &:disabled {
+      opacity: .38;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
   }
 }
 

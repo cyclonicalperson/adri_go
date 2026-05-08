@@ -83,6 +83,23 @@ export class ObjectDetailComponent implements OnInit {
     return map[cat] ?? 'other';
   }
 
+  get categoryLabel(): string {
+    const map: Record<string, string> = {
+      HOTEL: 'Smeštaj',
+      APARTMENT: 'Smeštaj',
+      RESTAURANT: 'Restoran',
+      CAFE: 'Restoran',
+      CLUB: 'Klub',
+      SHOP: 'Prodavnica',
+      CULTURAL: 'Kulturni objekat',
+      MONUMENT: 'Spomenik',
+      SPORT: 'Sportski objekat',
+      NATURE: 'Atrakcija',
+      OTHER: 'Ostalo',
+    };
+    return map[this.object?.category ?? ''] ?? (this.object?.category ?? '');
+  }
+
   get categoryBadge(): BadgeVariant {
     const map: Record<string, BadgeVariant> = {
       HOTEL: 'info', APARTMENT: 'info', RESTAURANT: 'success',

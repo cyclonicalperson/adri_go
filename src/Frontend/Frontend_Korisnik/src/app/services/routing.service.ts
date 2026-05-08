@@ -301,7 +301,12 @@ export class RoutingService {
       .map(([lat, lng]) => `${lng},${lat}`)
       .join(';');
 
-    const params = `?overview=full&geometries=geojson${includeSteps ? '&steps=true' : ''}`;
+    // `radiuses` limits how far OSRM searches for a routable road to snap each
+    // waypoint to.  150 m is generous enough for city pins while preventing
+    // silent snapping to a distant forest track or footpath.
+    const radiuses = coordinates.map(() => '150').join(';');
+
+    const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
     // Use the correct OSRM server for each mode.
     // router.project-osrm.org only serves the `driving` profile.
