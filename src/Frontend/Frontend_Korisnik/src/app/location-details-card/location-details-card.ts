@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { UserService, CalendarMutationResult } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-location-details-card',
@@ -43,7 +44,7 @@ export class LocationDetailsCardComponent {
   }
 
   get displayCategory(): string {
-    return this.locationData?.postType || this.locationData?.category || 'General';
+    return formatPostType(this.locationData?.postType || this.locationData?.category);
   }
 
   get displayRating(): number | null {

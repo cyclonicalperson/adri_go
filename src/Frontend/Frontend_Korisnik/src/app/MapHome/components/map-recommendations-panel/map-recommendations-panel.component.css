@@ -18,7 +18,7 @@
   gap: 12px;
   margin-bottom: 14px;
   position: sticky;
-  top: 0;
+  top: 8px !important;
   z-index: 10;
   background: rgba(255, 255, 255, 0.98);
   margin-left: -16px;

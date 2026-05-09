@@ -36,7 +36,7 @@ builder.Services.AddCors(options =>
                 "http://softeng.pmf.kg.ac.rs:10181",    // Admin HTTP
                 "http://softeng.pmf.kg.ac.rs:10183",    // Turista HTTP
                 "https://softeng.pmf.kg.ac.rs:10188",   // Admin HTTPS
-                "https://softeng.pmf.kg.ac.rs:10187"    // Turista HTTPS
+                "https://softeng.pmf.kg.ac.rs:10187",    // Turista HTTPS
                 "http://localhost:4200",                // Admin Angular app (lokalni razvoj)
                 "http://localhost:4201"                 // Turista Angular app (lokalni razvoj)
             )

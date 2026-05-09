@@ -30,15 +30,7 @@
 
 .header-left { display: flex; align-items: center; gap: 8px; }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
+.logo-icon { display: flex; align-items: center; }
 .logo-icon .logo-img { width: 72px; height: auto; display: block; }
 
 .logo-text {
@@ -823,7 +815,7 @@ app-location-details-card {
     overflow-y: auto;
     max-height: none;
     transition: none;
-    padding: 8px 16px 16px;
+    padding: 8px 16px 16px !important;
     background: transparent;
     border-radius: 0;
     box-shadow: none;
@@ -839,6 +831,10 @@ app-location-details-card {
   .top-ui-layer > :last-child { padding: 0; }
 
   .sheet-header { display: none; }
+
+  .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
+
+  app-map-recommendations-panel .recommended-header { top: 8px !important; }
 
   /* ── Map fills right side ──────────────────────────────── */
   .map-container {
