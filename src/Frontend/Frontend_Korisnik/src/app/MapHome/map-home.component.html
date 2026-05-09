@@ -1,11 +1,9 @@
-<div class="map-wrapper">
+﻿<div class="map-wrapper">
 
   <div class="app-header">
     <div class="header-left">
       <span class="logo-icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
+        <img src="assets/logo.jpeg" alt="AdriGo" class="logo-img">
       </span>
       <span class="logo-text">AdriGo</span>
     </div>
@@ -193,7 +191,7 @@
 
   </div>
 
-  <!-- ── LOCATE-ME FAB ────────────────────────────────────────── -->
+  <!-- â”€â”€ LOCATE-ME FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
           [class.locate-hidden]="sheetExpanded"
@@ -228,7 +226,7 @@
   <!-- Clear route confirmation dialog -->
   <div class="modal-overlay" *ngIf="showClearRouteConfirm" (click)="cancelClearRoute()">
     <div class="modal-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-icon">🗑️</div>
+      <div class="modal-icon">ðŸ—‘ï¸</div>
       <h3>Clear route?</h3>
       <p>This will remove all {{ plannerStops.length }} stop{{ plannerStops.length !== 1 ? 's' : '' }} from your current route.</p>
       <div class="modal-actions">
@@ -278,7 +276,7 @@
 
   </div>
 
-  <!-- ── SAVED ROUTES OVERLAY ─────────────────────────────────── -->
+  <!-- â”€â”€ SAVED ROUTES OVERLAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div class="saved-routes-overlay" [class.overlay-open]="showSavedRoutes" (click)="showSavedRoutes = false">
     <div class="saved-routes-sheet" (click)="$event.stopPropagation()">
       <div class="saved-routes-sheet-header">
@@ -343,3 +341,4 @@
   </div>
 
 </div>
+

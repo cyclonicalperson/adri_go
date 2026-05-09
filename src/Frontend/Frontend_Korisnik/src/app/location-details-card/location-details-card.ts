@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { UserService } from '../services/user.service';
+import { UserService, CalendarMutationResult } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
@@ -78,14 +78,19 @@ export class LocationDetailsCardComponent {
     event.stopPropagation();
     if (!this.locationData?.id) return;
 
-    if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
-      return;
-    }
-
-    this.userService.addToCalendar(this.locationData.id).subscribe({
+    this.userService.addLocationToCalendar({
+      id: this.locationData.id,
+      title: this.locationData.title || '',
+      postType: this.locationData.postType || this.locationData.category || '',
+      address: this.locationData.address || this.locationData.regionName || '',
+      regionName: this.locationData.regionName,
+      images: this.locationData.images,
+      imageUrl: this.locationData.imageUrl,
+    }).subscribe({
       next: (res) => {
-        this.calendarMessage = res?.alreadyAdded ? '📅 Already in calendar' : '📅 Added to calendar!';
+        this.calendarMessage = res.alreadyAdded
+          ? '📅 Already in calendar'
+          : (res.localOnly ? '📅 Saved locally!' : '📅 Added to calendar!');
         this.cdr.detectChanges();
         setTimeout(() => { this.calendarMessage = ''; this.cdr.detectChanges(); }, 3000);
       },

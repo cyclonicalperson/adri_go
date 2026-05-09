@@ -147,6 +147,36 @@
         <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
         Logout
       </button>
+      <button class="delete-account-link" *ngIf="authService.isLoggedIn" (click)="openDeleteAccount()">
+        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        Delete Account
+      </button>
+    </div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div *ngIf="showDeleteModal"
+         style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <h2 style="font-size:18px;font-weight:800;margin:0 0 8px;color:#0f172a;">Delete Account</h2>
+        <p style="font-size:13px;color:#64748b;margin:0 0 20px;line-height:1.6;">
+          This action is <strong>permanent and cannot be undone</strong>. All your saved locations, calendar events, and reviews will be deleted.
+        </p>
+        <div *ngIf="deleteError"
+             style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;">
+          {{ deleteError }}
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button (click)="closeDeleteAccount()"
+                  style="flex:1;padding:13px;background:#f1f5f9;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#475569;">
+            Cancel
+          </button>
+          <button (click)="confirmDeleteAccount()" [disabled]="isDeletingAccount"
+                  style="flex:1;padding:13px;background:#ef4444;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;"
+                  [style.opacity]="isDeletingAccount ? '0.6' : '1'">
+            {{ isDeletingAccount ? 'Deleting...' : 'Yes, delete' }}
+          </button>
+        </div>
+      </div>
     </div>
 
   </div>

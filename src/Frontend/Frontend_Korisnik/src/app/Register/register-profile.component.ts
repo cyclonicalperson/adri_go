@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
 
 @Component({
   selector: 'app-register-profile',
@@ -43,19 +44,32 @@ export class RegisterProfileComponent implements OnInit {
     private router: Router,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
-    private translateService: SiteTranslateService
+    private translateService: SiteTranslateService,
+    private preferences: TouristPreferencesService
   ) {}
 
   ngOnInit(): void {
+    const currentLocationSharing = this.preferences.snapshot.locationSharing;
     this.profileForm = this.fb.group({
       fullName: ['', Validators.required],
       emailOrPhone: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       language: ['en'],
       selectedInterests: this.fb.array([], [this.minimumSelectionValidator(2)]),
-      locationPermit: [false],
+      locationPermit: [currentLocationSharing],
       termsAccepted: [false, Validators.requiredTrue]
     });
+  }
+
+  toggleLocationPermit(): void {
+    const current = this.profileForm.get('locationPermit')?.value;
+    this.profileForm.patchValue({ locationPermit: !current });
+    this.preferences.update({ locationSharing: !current });
+  }
+
+  onLocationPermitChange(): void {
+    const value = this.profileForm.get('locationPermit')?.value;
+    this.preferences.update({ locationSharing: value });
   }
 
   get selectedInterestsArray(): FormArray {

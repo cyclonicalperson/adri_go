@@ -666,15 +666,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           stopCount: this.plannerStops.length,
         };
         this.routeDestTitle = this.getRouteTitle();
-        this.scenicSuggestions = this.scenicMode
-          ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
-              contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
-                ? this.preferences.snapshot.contentPreferences
-                : (this.userProfile?.interests ?? []),
-              userPosition: this.userPosition,
-              limit: 4,
-            })
-          : [];
+        // suggestDetours requires 2+ stops; for single-stop, keep the nearby suggestions set earlier
+        if (this.plannerStops.length >= 2) {
+          this.scenicSuggestions = this.scenicMode
+            ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
+                contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
+                  ? this.preferences.snapshot.contentPreferences
+                  : (this.userProfile?.interests ?? []),
+                userPosition: this.userPosition,
+                limit: 4,
+              })
+            : [];
+        }
 
         if (route.usedFallback) {
           this.plannerMessage = 'Live routing is unavailable right now. We are showing a scenic stop sequence instead.';

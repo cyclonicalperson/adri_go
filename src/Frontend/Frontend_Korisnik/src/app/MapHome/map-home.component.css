@@ -33,13 +33,13 @@
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: var(--green-500);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
-.logo-icon svg { width: 18px; height: 18px; fill: #fff; }
+.logo-icon .logo-img { width: 72px; height: auto; display: block; }
 
 .logo-text {
   font-family: var(--font-display);
