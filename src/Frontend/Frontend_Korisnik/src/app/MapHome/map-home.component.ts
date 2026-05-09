@@ -1004,6 +1004,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // Pretraga u listi koristi ovaj centar ako ziva geolokacija nije dostupna.
     const center = this.map.getCenter();
     localStorage.setItem('adriGo.mapCenter', JSON.stringify({
       lat: center.lat,
@@ -1184,6 +1185,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleListView(): void {
+    this.persistMapCenter();
     this.activeTab = 'list';
     this.router.navigate(['/location-list']);
   }

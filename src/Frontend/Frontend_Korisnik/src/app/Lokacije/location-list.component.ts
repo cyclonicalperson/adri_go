@@ -32,7 +32,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   private userPosition: UserPosition | null = null;
   private searchRequestId = 0;
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly searchDebounceMs = 250;
+  private readonly searchDebounceMs = 200;
 
   constructor(
     private router: Router,
@@ -131,6 +131,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   onSearchInputChange(): void {
     this.clearSearchDebounce();
 
+    // Prazan unos odmah vraca punu listu i ignorise stare odgovore pretrage.
     if (!this.searchQuery.trim()) {
       ++this.searchRequestId;
       this.isLoading = false;
@@ -230,6 +231,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     this.locationService.searchLocations(query, 1, 20, context).subscribe({
       next: (res) => {
+        // Ignorisemo starije odgovore ako korisnik nastavi da kuca ili obrise unos.
         if (requestId !== this.searchRequestId) {
           return;
         }
@@ -266,6 +268,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       return this.userPosition;
     }
 
+    // Ako nema zive lokacije, trazimo oko zadnjeg dela mape koji je korisnik gledao.
     const rawMapCenter = localStorage.getItem('adriGo.mapCenter');
     if (!rawMapCenter) {
       return undefined;

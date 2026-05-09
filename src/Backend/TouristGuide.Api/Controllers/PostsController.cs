@@ -123,6 +123,8 @@ namespace TouristGuide.Api.Controllers
             if (error is not null)
                 return error;
 
+            // Razdvajamo unos da bi npr. "kotor tvrdjava" koristio "kotor" kao region,
+            // a ostatak pretrage trazio samo unutar tog regiona.
             var searchTerms = SplitSearchTerms(search);
             var regions = await _context.Regions
                 .AsNoTracking()
@@ -130,6 +132,8 @@ namespace TouristGuide.Api.Controllers
                 .ToListAsync();
 
             var normalizedSearch = NormalizeSearchText(search);
+            // Region trazimo pre objava, da drzava/region/grad ne moraju da postoje
+            // u naslovu ili opisu same objave.
             var matchedRegions = regions
                 .Select(region => new
                 {
@@ -158,6 +162,7 @@ namespace TouristGuide.Api.Controllers
             {
                 query = query!.Where(p => p.RegionId != null && regionMatches.Contains(p.RegionId.Value));
 
+                // Unutar pogodjenog regiona trazimo samo deo upita koji nije region.
                 if (remainingTerms.Count > 0)
                     query = ApplyPostSearchTerms(query, remainingTerms);
             }
@@ -168,6 +173,8 @@ namespace TouristGuide.Api.Controllers
 
             if (!isRegionSearch && lat.HasValue && lng.HasValue)
             {
+                // Za obicnu tekstualnu pretragu zadrzavamo rezultate blizu korisnika/centra mape.
+                // Koristimo aproksimaciju za mali radius koju SQL moze da filtrira i sortira.
                 const double radiusKm = 10;
                 var lngKmFactor = 111.32m * (decimal)Math.Cos(ToRadians((double)lat.Value));
                 var radiusSquared = (decimal)(radiusKm * radiusKm);
@@ -781,48 +788,6 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
-        private async Task<object> BuildPostsResponseFromListAsync(List<Post> posts, int total, int page, int pageSize)
-        {
-            if (page < 1) page = 1;
-            pageSize = NormalizePageSize(pageSize);
-
-            var postIds = posts.Select(p => p.Id).ToList();
-
-            var likeCounts = await _context.PostLikes
-                .Where(l => postIds.Contains(l.PostId))
-                .GroupBy(l => l.PostId)
-                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
-                .ToDictionaryAsync(x => x.PostId, x => x.Count);
-
-            var saveCounts = await _context.SavedPosts
-                .Where(s => postIds.Contains(s.PostId))
-                .GroupBy(s => s.PostId)
-                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
-                .ToDictionaryAsync(x => x.PostId, x => x.Count);
-
-            var reviewCounts = await _context.Reviews
-                .Where(r => r.PostId != null && postIds.Contains(r.PostId.Value) && r.Status == "APPROVED")
-                .GroupBy(r => r.PostId!.Value)
-                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
-                .ToDictionaryAsync(x => x.PostId, x => x.Count);
-
-            var data = posts.Select(post => MapToDto(
-                post,
-                likeCountOverride: likeCounts.TryGetValue(post.Id, out var lc) ? lc : 0u,
-                saveCountOverride: saveCounts.TryGetValue(post.Id, out var sc) ? sc : 0u,
-                reviewCountOverride: reviewCounts.TryGetValue(post.Id, out var rc) ? rc : 0u
-            )).ToList();
-
-            return new
-            {
-                total,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)total / pageSize),
-                data
-            };
-        }
-
         private static int NormalizePageSize(int pageSize) =>
             pageSize < 1 || pageSize > 100 ? 20 : pageSize;
 
@@ -832,6 +797,8 @@ namespace TouristGuide.Api.Controllers
         {
             foreach (var term in terms)
             {
+                // Svaki preostali termin je AND uslov, dok su polja objave OR uslovi.
+                // Tako pretraga unutar regiona ostaje precizna.
                 var alternateTerm = GetAlternateSearchTerm(term);
 
                 query = alternateTerm is null
@@ -862,6 +829,7 @@ namespace TouristGuide.Api.Controllers
 
         private static string? GetAlternateSearchTerm(string term)
         {
+            // Podrzavamo jednostavne varijante pisanja bez izlaska iz EF query-ja.
             if (term.Contains("dj", StringComparison.OrdinalIgnoreCase))
                 return term.Replace("dj", "đ", StringComparison.OrdinalIgnoreCase);
 
@@ -880,6 +848,7 @@ namespace TouristGuide.Api.Controllers
 
         private static string NormalizeSearchText(string value)
         {
+            // Normalizujemo unos korisnika i nazive regiona u uporedive termine.
             var normalized = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
             var builder = new StringBuilder(normalized.Length);
 
