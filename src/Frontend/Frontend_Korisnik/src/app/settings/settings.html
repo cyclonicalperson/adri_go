@@ -230,7 +230,7 @@
         (click)="setLanguage(lang.code)">
         <strong>{{ lang.label }}</strong>
         <span class="sheet-pill" [class.active]="translate.currentLanguage === lang.code">
-          {{ translate.currentLanguage === lang.code ? '✓' : lang.shortLabel }}
+          {{ lang.shortLabel }}
         </span>
       </button>
     </div>

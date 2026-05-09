@@ -81,7 +81,7 @@
 
       @if (!isIndividualSelected) {
       <div class="field">
-        <label class="label" for="orgName">Naziv organizacije / preduzeca</label>
+        <label class="label" for="orgName">Naziv organizacije / preduzeća</label>
         <input id="orgName" class="input"
                [class.invalid]="orgName.invalid && orgName.touched"
                type="text"
@@ -102,7 +102,7 @@
                  placeholder="min. 8 karaktera"
                  formControlName="password" />
           <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
-            {{ showPassword ? 'Sakrij' : 'Prikazi' }}
+            {{ showPassword ? 'Sakrij' : 'Prikaži' }}
           </button>
         </div>
         @if (password.invalid && password.touched) {
@@ -137,7 +137,7 @@
                  style="display:none"
                  (change)="onFileSelected($event)" />
           <span class="doc-upload-icon">&#x1F4CE;</span>
-          <span class="doc-upload-label">Kliknite da prilozite dokument</span>
+          <span class="doc-upload-label">Kliknite da priložite dokument</span>
           <span class="doc-upload-sub">JPG, PNG ili PDF &middot; max 5MB</span>
         </label>
         } @else {
@@ -157,8 +157,8 @@
       </div>
 
       <div class="terms">
-        Slanjem zahteva potvrdujete da su podaci tacni i prihvatate nase
-        <a href="#" class="link">uslove koriscenja</a> i
+        Slanjem zahteva potvrđujete da su podaci tačni i prihvatate naše
+        <a href="#" class="link">uslove korišćenja</a> i
         <a href="#" class="link">politiku privatnosti</a>.
       </div>
 
@@ -166,14 +166,14 @@
         @if (loading()) {
         <span class="spinner"></span>
         } @else {
-        Posalji zahtev &rarr;
+        Pošalji zahtev &rarr;
         }
       </button>
     </form>
     }
 
     <div class="footer-link">
-      Vec imate nalog?
+      Već imate nalog?
       <a routerLink="/login" class="link">Prijavite se</a>
     </div>
 

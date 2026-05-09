@@ -10,7 +10,7 @@
     <div class="detour-copy">
       <div class="detour-title">{{ suggestion.location.title }}</div>
       <div class="detour-meta">
-        <span>{{ suggestion.location.postType }}</span>
+        <span>{{ formatPostType(suggestion.location.postType) }}</span>
         <span>&middot; {{ suggestion.distanceToRouteKm | number:'1.1-1' }} km off route</span>
         <span>&middot; ~{{ suggestion.estimatedExtraMinutes }} min</span>
       </div>

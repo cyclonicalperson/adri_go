@@ -1,0 +1,408 @@
+/* ============================================================
+   MAP NAVIGATION PANEL  —  Google Maps–style overlay
+   Mobile : top instruction bar + bottom summary bar
+   Desktop: left sidebar (fixed 380 px wide)
+   ============================================================ */
+
+/* Mobile: host is invisible — all children use position:fixed */
+:host {
+  display: contents;
+  pointer-events: none;
+}
+
+/* ── Visibility helpers ────────────────────────────────────── */
+.nav-mobile-only  { display: flex; }
+.nav-desktop-only { display: none; }
+
+/* ── ARRIVED card (centred overlay) ─────────────────────────  */
+/* Re-enable interaction for all direct overlays */
+.nav-arrived-card,
+.nav-denied-bar,
+.nav-top-bar,
+.nav-then-bar,
+.nav-acquiring,
+.nav-speed-badge,
+.nav-bottom-bar { pointer-events: auto; }
+
+.nav-arrived-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3100;
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 24px 22px;
+  width: min(340px, 90vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.nav-arrived-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.nav-arrived-icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: #f0fdf4;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: #16a34a;
+}
+.nav-arrived-text {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.nav-arrived-text strong { font-size: 17px; font-weight: 800; color: #0f172a; }
+.nav-arrived-text span   { font-size: 13px; color: #64748b; }
+.nav-done-btn {
+  background: #22c55e; color: #fff;
+  border: none; border-radius: 12px;
+  padding: 10px 18px; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; flex-shrink: 0;
+}
+.nav-done-btn:hover { opacity: 0.9; }
+
+/* ── DENIED bar ──────────────────────────────────────────────  */
+.nav-denied-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 3100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 20px;
+  background: #78350f;
+  color: #fef3c7;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.nav-denied-bar svg { fill: #fde68a; flex-shrink: 0; }
+.nav-denied-bar span { flex: 1; }
+.nav-exit-small {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: none; border-radius: 8px;
+  padding: 6px 14px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+
+/* ──────────────────────────────────────────────────────────── */
+/* TOP INSTRUCTION BAR                                          */
+/* ──────────────────────────────────────────────────────────── */
+.nav-top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 3050;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px 16px 16px;
+  background: #1e3a2f;           /* dark navigation green */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  min-height: 80px;
+}
+
+/* Arrow box */
+.nav-arrow-box {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Instruction text */
+.nav-instruction-box { flex: 1; min-width: 0; }
+
+.nav-dist-label {
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
+.nav-street-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.82);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Desktop-only close button in header (hidden on mobile) */
+.nav-exit-header { display: none; }
+
+/* ──────────────────────────────────────────────────────────── */
+/* THEN BAR                                                     */
+/* ──────────────────────────────────────────────────────────── */
+.nav-then-bar {
+  position: fixed;
+  top: 80px; left: 0; right: 0;
+  z-index: 3040;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #15302a;           /* slightly darker than top bar */
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  font-family: var(--font-sans);
+}
+.nav-then-bar strong { color: #fff; }
+.nav-then-arrow { fill: rgba(255,255,255,0.7); flex-shrink: 0; }
+.nav-then-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* GPS acquiring strip */
+.nav-acquiring {
+  position: fixed;
+  top: 80px; left: 0; right: 0;
+  z-index: 3040;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #15302a;
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  font-family: var(--font-sans);
+}
+.nav-acquiring-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #4ade80;
+  border-radius: 50%;
+  animation: nav-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes nav-spin { to { transform: rotate(360deg); } }
+
+/* ──────────────────────────────────────────────────────────── */
+/* SPEED BADGE  (bottom-left of map, mobile only)              */
+/* ──────────────────────────────────────────────────────────── */
+.nav-speed-badge {
+  position: fixed;
+  left: 14px;
+  bottom: calc(68px + 12px);   /* just above the bottom summary bar */
+  z-index: 3040;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 58px; height: 58px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+  gap: 0;
+}
+.nav-speed-val  { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; }
+.nav-speed-unit { font-size: 10px; font-weight: 600; color: #64748b; }
+
+/* ──────────────────────────────────────────────────────────── */
+/* BOTTOM SUMMARY BAR  (mobile only)                           */
+/* ──────────────────────────────────────────────────────────── */
+.nav-bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 3050;
+  align-items: center;
+  gap: 0;
+  background: #fff;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0));
+  min-height: 68px;
+  font-family: var(--font-sans);
+}
+
+.nav-exit-mobile {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.nav-exit-mobile:hover { background: #e2e8f0; }
+.nav-exit-mobile svg { fill: currentColor; }
+
+.nav-bottom-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.nav-bottom-eta {
+  font-size: 22px;
+  font-weight: 800;
+  color: #22c55e;               /* green ETA like Google Maps */
+  line-height: 1;
+}
+.nav-bottom-meta {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.nav-bottom-mode {
+  width: 44px;
+  text-align: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+/* ──────────────────────────────────────────────────────────── */
+/* DESKTOP  ≥900 px  — sidebar panel                           */
+/* ──────────────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+  .nav-mobile-only  { display: none !important; }
+  .nav-desktop-only { display: flex; }
+
+  /* Reset fixed overlays — on desktop everything lives in the sidebar slot */
+  .nav-top-bar,
+  .nav-then-bar,
+  .nav-acquiring,
+  .nav-denied-bar {
+    position: static;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* Desktop top bar: compact header inside sidebar */
+  .nav-top-bar {
+    min-height: auto;
+    padding: 18px 16px;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .nav-dist-label  { font-size: 28px; }
+  .nav-street-label { font-size: 15px; }
+
+  /* Show the close × in the header on desktop */
+  .nav-exit-header {
+    display: flex;
+    align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    flex-shrink: 0;
+    transition: background 0.12s;
+  }
+  .nav-exit-header:hover { background: rgba(255,255,255,0.22); }
+  .nav-exit-header svg { fill: currentColor; }
+
+  /* Sidebar shell wrapping all nav elements */
+  :host {
+    position: fixed;
+    top: 64px; left: 0;
+    width: 380px;
+    height: calc(100dvh - 64px - 68px);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #1e3a2f;
+  }
+
+  /* "Then" strip stays as is — just static inside sidebar */
+  .nav-then-bar, .nav-acquiring {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* Step list */
+  .nav-steps-list {
+    flex: 1;
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 0;
+    background: #fff;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .nav-step-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f8fafc;
+    font-size: 13px;
+    color: #475569;
+    cursor: default;
+  }
+  .nav-step-arrow {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .nav-step-arrow svg { fill: #475569; }
+  .nav-step-info { flex: 1; display: flex; align-items: center; justify-content: space-between; min-width: 0; }
+  .nav-step-text { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .nav-step-dist { font-size: 12px; font-weight: 600; color: #94a3b8; flex-shrink: 0; margin-left: 8px; }
+
+  .nav-step-active {
+    background: #f0fdf4;
+    border-left: 3px solid #22c55e;
+    padding-left: 13px;
+  }
+  .nav-step-active .nav-step-text { color: #15803d; font-weight: 700; }
+  .nav-step-active .nav-step-arrow { background: #dcfce7; }
+  .nav-step-active .nav-step-arrow svg { fill: #15803d; }
+
+  .nav-step-done { opacity: 0.38; }
+  .nav-step-done .nav-step-text { text-decoration: line-through; }
+
+  /* Summary strip at bottom of sidebar */
+  .nav-panel-summary {
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #f1f5f9;
+    flex-shrink: 0;
+  }
+  .nav-panel-summary-item {
+    display: flex; flex-direction: column; align-items: center;
+    flex: 1; gap: 2px;
+  }
+  .nav-sum-kicker { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .nav-panel-summary-item strong { font-size: 15px; font-weight: 800; color: #0f172a; }
+  .nav-sum-divider { width: 1px; height: 28px; background: #e2e8f0; margin: 0 4px; }
+  .nav-exit-panel {
+    background: #fef2f2; color: #dc2626;
+    border: 1.5px solid #fecaca;
+    border-radius: 10px; padding: 7px 14px;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.12s;
+    margin-left: 10px; flex-shrink: 0;
+  }
+  .nav-exit-panel:hover { background: #fee2e2; }
+
+  /* Arrived card: inside sidebar, not centred */
+  .nav-arrived-card {
+    position: static;
+    transform: none;
+    border-radius: 0;
+    padding: 24px 16px;
+    width: 100%;
+    box-shadow: none;
+    background: #1e3a2f;
+  }
+  .nav-arrived-icon { background: rgba(255,255,255,0.12); color: #4ade80; }
+  .nav-arrived-text strong { color: #fff; }
+  .nav-arrived-text span   { color: rgba(255,255,255,0.6); }
+}

@@ -40,7 +40,7 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // Obavezno za SignalR WebSocket
+            .AllowCredentials();
     });
 });
 
@@ -142,6 +142,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     ));
 
 var app = builder.Build();
+
 // ────────────────────────────────────────────────────────────
 // 6. MIGRACIJE + SEED
 // ────────────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ if (Directory.Exists(app.Environment.WebRootPath))
 {
     app.UseStaticFiles();
 }
+
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();

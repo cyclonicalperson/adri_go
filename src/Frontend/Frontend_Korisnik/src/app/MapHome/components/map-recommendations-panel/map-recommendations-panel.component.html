@@ -25,7 +25,7 @@
       <div class="rec-info">
         <div class="rec-title">{{ recommendation.location.title }}</div>
         <div class="rec-meta">
-          <span class="rec-category">{{ recommendation.location.postType }}</span>
+          <span class="rec-category">{{ formatPostType(recommendation.location.postType) }}</span>
           <span class="rec-dot" *ngIf="recommendation.location.regionName">&middot;</span>
           <span class="rec-distance" *ngIf="recommendation.location.regionName">{{ recommendation.location.regionName }}</span>
         </div>

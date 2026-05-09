@@ -1,5 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, Output, EventEmitter, OnChanges, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { Post } from '@core/models/post.model';
+import { SiteTranslateService } from '@core/services/site-translate.service';
 
 interface CalendarDay {
   date: Date;
@@ -26,14 +28,39 @@ const CATEGORY_COLORS: Record<string, { bg: string; border: string; label: strin
   templateUrl: './event-calendar.component.html',
   styleUrl: './event-calendar.component.scss',
 })
-export class EventCalendarComponent implements OnChanges {
+export class EventCalendarComponent implements OnChanges, OnInit, OnDestroy {
   @Input() events: Post[] = [];
   @Output() editEvent = new EventEmitter<Post>();
 
   currentDate = new Date();
   weeks: CalendarDay[][] = [];
 
-  readonly dayNames = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
+  private langSub?: Subscription;
+
+  constructor(
+    private translateService: SiteTranslateService,
+    private cdr: ChangeDetectorRef,
+  ) {}
+
+  ngOnInit(): void {
+    this.langSub = this.translateService.language$.subscribe(() => {
+      this.buildCalendar();
+      this.cdr.markForCheck();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.langSub?.unsubscribe();
+  }
+
+  get dayNames(): string[] {
+    const locale = this.getLocale();
+    // 2023-01-02 is a Monday — iterate Mon–Sun
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(2023, 0, 2 + i);
+      return new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(d);
+    });
+  }
 
   readonly categoryLegend = Object.entries(CATEGORY_COLORS)
     .filter(([k]) => k !== 'OTHER')
@@ -44,7 +71,15 @@ export class EventCalendarComponent implements OnChanges {
   }
 
   get monthLabel(): string {
-    return this.currentDate.toLocaleDateString('sr-RS', { month: 'long', year: 'numeric' });
+    return this.currentDate.toLocaleDateString(this.getLocale(), { month: 'long', year: 'numeric' });
+  }
+
+  private getLocale(): string {
+    const map: Record<string, string> = {
+      sr: 'sr-RS', en: 'en-GB', de: 'de-DE', fr: 'fr-FR',
+      it: 'it-IT', ru: 'ru-RU', es: 'es-ES', nl: 'nl-NL',
+    };
+    return map[this.translateService.currentLanguage] ?? 'sr-RS';
   }
 
   prevMonth(): void {
@@ -102,7 +137,7 @@ export class EventCalendarComponent implements OnChanges {
   formatDateRange(e: Post): string {
     const start = this.eventStartDate(e);
     const end = this.eventEndDate(e);
-    const fmt = (d: Date) => d.toLocaleDateString('sr-RS', { day: '2-digit', month: '2-digit' });
+    const fmt = (d: Date) => d.toLocaleDateString(this.getLocale(), { day: '2-digit', month: '2-digit' });
     return start.toDateString() === end.toDateString()
       ? fmt(start)
       : `${fmt(start)} – ${fmt(end)}`;

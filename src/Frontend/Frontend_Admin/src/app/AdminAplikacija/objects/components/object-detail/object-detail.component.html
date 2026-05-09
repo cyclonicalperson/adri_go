@@ -18,7 +18,7 @@
     <div class="card info-card">
       <div class="info-header">
         <h2 class="obj-name">{{ object.name }}</h2>
-        <app-badge [variant]="categoryBadge">{{ object.category }}</app-badge>
+        <app-badge [variant]="categoryBadge">{{ categoryLabel }}</app-badge>
       </div>
 
       @if (object.averageRating) {

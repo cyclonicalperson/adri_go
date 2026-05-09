@@ -45,7 +45,7 @@
 
           <span class="badge" [ngClass]="item.category.toLowerCase()">
             <span class="dot"></span>
-            {{item.category | uppercase}}
+            {{ formatPostType(item.category) }}
           </span>
 
           <!-- Like button -->

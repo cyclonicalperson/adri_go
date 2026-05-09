@@ -6,9 +6,9 @@
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'pending'" (click)="setStatus('pending')">
       <div class="num" style="color:#d97706">{{ pendingCount }}</div>
-      <div class="lbl">Na cekanju</div>
+      <div class="lbl">Na čekanju</div>
       @if (pendingCount > 0) {
-      <div class="trend warn">Cekaju pregled</div>
+      <div class="trend warn">Čekaju pregled</div>
       }
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatus === 'approved'" (click)="setStatus('approved')">
@@ -26,7 +26,7 @@
       Svi zahtevi
     </button>
     <button class="ftab" [class.active]="activeStatus === 'pending'" (click)="setStatus('pending')">
-      Na cekanju ({{ pendingCount }})
+      Na čekanju ({{ pendingCount }})
     </button>
     <button class="ftab" [class.active]="activeStatus === 'approved'" (click)="setStatus('approved')">
       Odobreni
@@ -41,14 +41,14 @@
       <span class="search-icon">🔍</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretrazi po imenu, emailu ili organizaciji..."
+             placeholder="Pretražite po imenu, emailu ili organizaciji..."
              [value]="searchQuery"
              (input)="onSearch($any($event.target).value)" />
     </div>
 
     <select class="filter-select" [value]="activeStatus" (change)="setStatus($any($event.target).value)">
       <option value="">Svi statusi</option>
-      <option value="pending">Na cekanju</option>
+      <option value="pending">Na čekanju</option>
       <option value="approved">Odobreno</option>
       <option value="rejected">Odbijeno</option>
     </select>
@@ -62,7 +62,7 @@
   </div>
 
   @if (loading) {
-  <div class="state-msg">Ucitavanje...</div>
+  <div class="state-msg">Učitavanje...</div>
   } @else if (requests.length === 0) {
   <div class="state-msg">Nema zahteva za prikaz.</div>
   } @else {
@@ -127,7 +127,7 @@
             <div class="primary-text">{{ r.reviewedAt | dateLocal:'datetime' }}</div>
             <div class="secondary-text">{{ reviewedByLabel(r) }}</div>
             } @else {
-            <span class="secondary-text">Jos nije obradjeno</span>
+            <span class="secondary-text">Još nije obrađeno</span>
             }
           </td>
           <td>
@@ -213,7 +213,7 @@
         </div>
 
         <div class="doc-block">
-          <div class="doc-block-title">Prilozena dokumentacija</div>
+          <div class="doc-block-title">Priložena dokumentacija</div>
           @if (hasDocument(selected)) {
           <a class="doc-btn" [href]="documentUrl(selected)" target="_blank" rel="noopener">
             📎 Otvori dokument
@@ -235,7 +235,7 @@
       </div>
       @if (!selected.emailVerifiedAt) {
       <div class="doc-none" style="padding: 0 24px 24px;">
-        Zahtev ne moze biti odobren dok korisnik ne potvrdi email adresu iz verifikacionog mejla.
+        Zahtev ne može biti odobren dok korisnik ne potvrdi email adresu iz verifikacionog mejla.
       </div>
       }
       }
@@ -256,7 +256,7 @@
                 placeholder="npr. Nepotpuna dokumentacija..."
                 rows="4"></textarea>
       <div class="reject-actions">
-        <button class="btn-cancel-sm" (click)="cancelReject()">Otkazi</button>
+        <button class="btn-cancel-sm" (click)="cancelReject()">Otkaži</button>
         <button class="btn-reject-confirm"
                 [disabled]="!rejectReason.trim() || processing"
                 (click)="submitReject()">

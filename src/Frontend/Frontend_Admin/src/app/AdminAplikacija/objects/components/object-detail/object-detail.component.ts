@@ -63,8 +63,41 @@ export class ObjectDetailComponent implements OnInit {
       lat: this.object.latitude,
       lng: this.object.longitude,
       label: this.object.name,
-      category: this.object.category,
+      category: this.objCategoryToPostType(this.object.category),
     }];
+  }
+
+  private objCategoryToPostType(cat: string): string {
+    const map: Record<string, string> = {
+      HOTEL:      'accommodation',
+      APARTMENT:  'accommodation',
+      RESTAURANT: 'restaurant',
+      CAFE:       'restaurant',
+      CLUB:       'club',
+      SHOP:       'shop',
+      CULTURAL:   'cultural_site',
+      MONUMENT:   'monument',
+      SPORT:      'sports_facility',
+      NATURE:     'attraction',
+    };
+    return map[cat] ?? 'other';
+  }
+
+  get categoryLabel(): string {
+    const map: Record<string, string> = {
+      HOTEL: 'Smeštaj',
+      APARTMENT: 'Smeštaj',
+      RESTAURANT: 'Restoran',
+      CAFE: 'Restoran',
+      CLUB: 'Klub',
+      SHOP: 'Prodavnica',
+      CULTURAL: 'Kulturni objekat',
+      MONUMENT: 'Spomenik',
+      SPORT: 'Sportski objekat',
+      NATURE: 'Atrakcija',
+      OTHER: 'Ostalo',
+    };
+    return map[this.object?.category ?? ''] ?? (this.object?.category ?? '');
   }
 
   get categoryBadge(): BadgeVariant {

@@ -8,6 +8,7 @@ import { UserService } from '../services/user.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-location-details',
@@ -54,9 +55,17 @@ export class LocationDetailsComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/location-list']); return; }
 
-    // One view per page navigation — no guard needed because all duplicate
-    // calls elsewhere in this file have been removed.
-    this.locationService.registerView(id).subscribe({ error: () => {} });
+    // One view per page navigation — update the displayed count from the response
+    // so the user sees the correct post-visit tally (not the pre-visit snapshot).
+    this.locationService.registerView(id).subscribe({
+      next: (res) => {
+        if (res.viewCount !== undefined && this.location) {
+          this.location = { ...this.location, viewCount: res.viewCount };
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {},
+    });
 
     // Request user geolocation for distance display
     if (this.preferences.snapshot.locationSharing && navigator.geolocation) {
@@ -304,6 +313,10 @@ export class LocationDetailsComponent implements OnInit {
       }
       return nowMins >= openMins && nowMins < closeMins;
     } catch { return false; }
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   get isEvent(): boolean {

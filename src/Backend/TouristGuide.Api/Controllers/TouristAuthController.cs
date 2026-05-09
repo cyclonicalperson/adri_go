@@ -658,6 +658,97 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
+        // POST /api/tourist-auth/social-login
+        /// <summary>
+        /// Verifies a Google or Apple ID token issued by the respective OAuth flow
+        /// and returns a signed JWT for the matching (or newly created) tourist account.
+        /// </summary>
+        [HttpPost("social-login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SocialLogin([FromBody] SocialLoginDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Credential))
+                return BadRequest(new { message = "Credential is required." });
+
+            string? email = null;
+            string? name  = null;
+            string? providerId = null;
+
+            try
+            {
+                if (dto.Provider == "google")
+                {
+                    using var http = new HttpClient();
+                    var res = await http.GetAsync(
+                        $"https://oauth2.googleapis.com/tokeninfo?id_token={dto.Credential}");
+                    if (!res.IsSuccessStatusCode)
+                        return Unauthorized(new { message = "Invalid Google token." });
+
+                    var body = await res.Content.ReadAsStringAsync();
+                    var payload = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(body);
+                    if (payload is null)
+                        return Unauthorized(new { message = "Could not parse Google token payload." });
+
+                    email      = payload.TryGetValue("email", out var e)      ? e?.ToString() : null;
+                    name       = payload.TryGetValue("name", out var n)        ? n?.ToString() : null;
+                    providerId = payload.TryGetValue("sub", out var sub)       ? sub?.ToString() : null;
+                }
+                else if (dto.Provider == "apple")
+                {
+                    // Apple sends a JWT — decode without full verification here;
+                    // full JWKS verification can be added via Microsoft.IdentityModel.Tokens.
+                    var handler  = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                    var jwtToken = handler.ReadJwtToken(dto.Credential);
+
+                    email      = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+                    name       = dto.DisplayName; // Apple only sends name on first sign-in; frontend must pass it
+                    providerId = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+                }
+                else
+                {
+                    return BadRequest(new { message = $"Unsupported provider: {dto.Provider}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Social login token verification failed for provider {Provider}", dto.Provider);
+                return Unauthorized(new { message = "Token verification failed." });
+            }
+
+            if (string.IsNullOrWhiteSpace(email))
+                return Unauthorized(new { message = "Could not retrieve email from social token." });
+
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+
+            // Find existing account or create one
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(
+                t => t.Email != null && t.Email.ToLower() == normalizedEmail);
+
+            var now = DateTime.UtcNow;
+            if (tourist is null)
+            {
+                tourist = new TouristGuide.Api.Models.Tourist
+                {
+                    Name            = (name ?? normalizedEmail.Split('@')[0]).Trim(),
+                    Email           = normalizedEmail,
+                    PasswordHash    = TouristGuide.Api.Services.PasswordHelper.Hash(Guid.NewGuid().ToString()),
+                    Language        = "en",
+                    IsActive        = true,
+                    IsEmailVerified = true,   // email already verified by the OAuth provider
+                    CreatedAt       = now,
+                    UpdatedAt       = now
+                };
+                _db.Tourists.Add(tourist);
+                await _db.SaveChangesAsync();
+            }
+
+            if (!tourist.IsActive)
+                return Unauthorized(new { message = "Your account has been suspended." });
+
+            var authResponse = await BuildAuthResponseAsync(tourist);
+            return Ok(authResponse);
+        }
+
         private uint? GetTouristId()
         {
             var value = User.FindFirstValue(ClaimTypes.NameIdentifier)

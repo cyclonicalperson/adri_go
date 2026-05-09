@@ -48,6 +48,9 @@ namespace TouristGuide.Api.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<MailingList> MailingList { get; set; }
 
+        // Analitika
+        public DbSet<AppVisit> AppVisits { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

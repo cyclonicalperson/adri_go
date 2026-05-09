@@ -40,7 +40,7 @@
 
   <div class="map-layout">
     @if (loading) {
-    <div class="loading">Ucitavanje mape...</div>
+    <div class="loading">Učitavanje mape...</div>
     } @else {
     <app-map [markers]="markers"
              [paths]="routePaths"
@@ -59,7 +59,7 @@
         <button class="btn-close" (click)="clearSelection()">&#10005;</button>
       </div>
       @if (selectedMarker.category) {
-      <app-badge variant="info">{{ selectedMarker.category }}</app-badge>
+      <app-badge variant="info">{{ typeLabel(selectedMarker.category) }}</app-badge>
       }
       <div class="info-coords">
         {{ selectedMarker.lat.toFixed(5) }}&deg;N,

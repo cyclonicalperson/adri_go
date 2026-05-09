@@ -114,7 +114,7 @@ export class RouteDetailComponent implements OnInit {
         lat: waypoint.latitude,
         lng: waypoint.longitude,
         label: isStart ? 'Pocetak rute' : isEnd ? 'Kraj rute' : `Tacka ${index + 1}`,
-        category: this.routeData?.name,
+        category: 'sports_facility',  // gives the activity/running-person icon in all waypoint pins
         color: isStart ? '#22c55e' : isEnd ? '#ef4444' : '#3b82f6',
       };
     });
@@ -148,7 +148,7 @@ export class RouteDetailComponent implements OnInit {
       case 'published':
         return 'Ruta je javno dostupna turistima.';
       case 'draft':
-        return 'Ruta ceka pregled i vidljiva je samo adminima.';
+        return 'Ruta je sacuvana kao nacrt i vidljiva je samo adminima.';
       case 'archived':
         return 'Ruta je arhivirana i vise nije javno prikazana.';
       default:

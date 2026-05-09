@@ -3,7 +3,8 @@
 // ── Desktop layout ────────────────────────────────────────────────────────
 .layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;      // constrain to viewport — forces .content to scroll, keeps topbar always visible
+  overflow: hidden;
   background: $gray-50;
 
   &.sidebar-collapsed app-sidebar {
@@ -17,21 +18,24 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  min-height: 0;      // allow flex children to shrink below content size
 }
 
 .content {
   flex: 1;
   overflow-y: auto;
   background: $gray-50;
+  min-height: 0;
 }
 
 // ── Mobile backdrop ────────────────────────────────────────────────────────
+// z-index 1001 — above Leaflet popup pane (700) and controls (800)
 .mobile-backdrop {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  z-index: 99;
+  z-index: 1001;
 }
 
 // ── Mobile breakpoint ─────────────────────────────────────────────────────
@@ -39,15 +43,19 @@
 
   .layout {
     flex-direction: column;
+    // height: 100vh and overflow: hidden are inherited from desktop —
+    // they work correctly here too since the fixed topbar + sidebar are
+    // positioned relative to the viewport, not the layout box.
   }
 
   // Sidebar becomes a slide-in drawer on mobile
+  // z-index 1002 — above Leaflet (max 1000) and the backdrop (1001)
   app-sidebar {
     position: fixed !important;
     top: 0;
     left: 0;
     height: 100vh;
-    z-index: 100;
+    z-index: 1002;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: 4px 0 24px rgba(0,0,0,.12);
@@ -63,9 +71,11 @@
 
   .main {
     width: 100%;
+    min-height: 0;
   }
 
   .content {
-    padding-bottom: 24px;
+    padding-top: 56px;    // offset for the fixed topbar (56px height on mobile)
+    padding-bottom: 16px;
   }
 }
