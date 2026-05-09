@@ -33,12 +33,14 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontends", policy =>
     {
             policy.WithOrigins(
-                "http://softeng.pmf.kg.ac.rs:10181",   // Admin Angular app
-                "http://softeng.pmf.kg.ac.rs:10183"    // Turista Angular app
+                "http://softeng.pmf.kg.ac.rs:10181",    // Admin HTTP
+                "http://softeng.pmf.kg.ac.rs:10183",    // Turista HTTP
+                "https://softeng.pmf.kg.ac.rs:10188",   // Admin HTTPS
+                "https://softeng.pmf.kg.ac.rs:10187"    // Turista HTTPS
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // Obavezno za SignalR WebSocket
+            .AllowCredentials();
     });
 });
 
@@ -140,10 +142,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     ));
 
 var app = builder.Build();
+
 // ────────────────────────────────────────────────────────────
 // 6. MIGRACIJE + SEED
-// MigrateAsync kreira tabele i primjenjuje sve migracije.
-// Seeder puni početnim podacima ako su tabele prazne.
 // ────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
@@ -165,9 +166,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ── Lokalne slike (verifikacioni dokumenti i sl.) ─────────────────────
-// Backend čuva fajlove u ContentRootPath/images/ a ne u wwwroot,
-// pa moramo eksplicitno registrovati taj folder za statički sadržaj.
 var imagesPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "images");
 Directory.CreateDirectory(imagesPhysicalPath);
 app.UseStaticFiles(new StaticFileOptions
@@ -180,6 +178,7 @@ if (Directory.Exists(app.Environment.WebRootPath))
 {
     app.UseStaticFiles();
 }
+
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();
