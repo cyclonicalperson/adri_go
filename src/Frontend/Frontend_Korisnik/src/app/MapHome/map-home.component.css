@@ -815,7 +815,7 @@ app-location-details-card {
     overflow-y: auto;
     max-height: none;
     transition: none;
-    padding: 8px 16px 16px !important;
+    padding: 0 16px 16px !important;
     background: transparent;
     border-radius: 0;
     box-shadow: none;
@@ -833,8 +833,6 @@ app-location-details-card {
   .sheet-header { display: none; }
 
   .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
-
-  app-map-recommendations-panel .recommended-header { top: 8px !important; }
 
   /* ── Map fills right side ──────────────────────────────── */
   .map-container {
