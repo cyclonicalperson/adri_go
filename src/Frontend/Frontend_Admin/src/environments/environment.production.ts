@@ -5,7 +5,7 @@
 export const environment = {
   production: true,
   useMocks: false,
-  apiUrl: 'http://softeng.pmf.kg.ac.rs:10182/api',
-  adminAppUrl: 'http://softeng.pmf.kg.ac.rs:10181',
-  touristAppUrl: 'http://softeng.pmf.kg.ac.rs:10183',
+  apiUrl: 'https://softeng.pmf.kg.ac.rs:10185/api',
+  adminAppUrl: 'https://softeng.pmf.kg.ac.rs:10188',
+  touristAppUrl: 'https://softeng.pmf.kg.ac.rs:10187',
 };
