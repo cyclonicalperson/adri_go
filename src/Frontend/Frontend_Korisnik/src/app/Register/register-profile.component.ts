@@ -84,7 +84,8 @@ export class RegisterProfileComponent implements OnInit {
   }
 
   onLanguageChange(lang: string): void {
-    if (lang === 'en' || lang === 'sr') {
+    const supported: SiteLanguageCode[] = ['en', 'sr', 'de', 'fr', 'it', 'es', 'ru', 'nl'];
+    if (supported.includes(lang as SiteLanguageCode)) {
       void this.translateService.setLanguage(lang as SiteLanguageCode);
     }
   }
