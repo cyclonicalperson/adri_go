@@ -103,6 +103,7 @@ builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<NotificationService>();
 
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
