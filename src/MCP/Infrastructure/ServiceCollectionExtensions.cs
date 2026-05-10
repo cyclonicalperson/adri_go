@@ -130,6 +130,14 @@ internal static class ServiceCollectionExtensions
                     "What activities / amenities are available?":
                       → tourism_search_tags (category: aktivnost | amenity)
 
+                    "Hotel with pool / restaurant with parking / location with WiFi":
+                      → tourism_search_tags (category: amenity) to discover available amenity tag names
+                      → tourism_search_posts (tags: [tag name from previous step])
+
+                    "Adventure activities / wellness / outdoor things to do":
+                      → tourism_search_activities (category: ADVENTURE | WELLNESS | SPORT | DINING | NIGHTLIFE | SIGHTSEEING | CULTURE)
+                      → tourism_search_posts (tags: [activity name from previous step])
+
                     "What do visitors say about X?":
                       → tourism_search_posts (find ID) → tourism_get_reviews
 
