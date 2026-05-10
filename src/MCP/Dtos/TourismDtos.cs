@@ -96,7 +96,8 @@ internal sealed record PostDetail(
     uint LikeCount,
     decimal? Lat,
     decimal? Lng,
-    IReadOnlyList<string> Tags);
+    IReadOnlyList<string> Tags,
+    IReadOnlyList<string> Images);
 
 // ── Rute ──────────────────────────────────────────────────────────────────────
 

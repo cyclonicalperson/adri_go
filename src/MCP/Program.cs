@@ -9,6 +9,9 @@ var app = builder.Build();
 
 app.UseCors(McpCorsOptions.PolicyName);
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapAppEndpoints();
 
 app.Run();
