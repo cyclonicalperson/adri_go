@@ -152,8 +152,22 @@ internal sealed class TourismQueryService : ITourismQueryService
                 x.Lng >= minLng && x.Lng <= maxLng);
         }
 
-        var allResults = await query.ToListAsync(cancellationToken);
+        // Brojanje za paginaciju — SQL COUNT bez učitavanja entiteta
+        var total = await query.CountAsync(cancellationToken);
 
+        List<PostEntity> allResults;
+        try
+        {
+            allResults = await query.ToListAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "tourism_search_posts: database query failed");
+            throw new InvalidOperationException(
+                "Failed to search locations. Please try again or narrow your search criteria.", ex);
+        }
+
+        // Precizno GPS filtriranje u memoriji (bbox je već odradio grubo filtriranje u SQL-u)
         if (request.UserLatitude.HasValue && request.UserLongitude.HasValue && request.RadiusKm.HasValue)
         {
             allResults = allResults.Where(x =>
@@ -180,25 +194,37 @@ internal sealed class TourismQueryService : ITourismQueryService
                 x.Description, x.Address, x.ExternalUrl, null,
                 x.OpeningHours,
                 x.AvgRating.HasValue ? (double?)x.AvgRating.Value : null,
-                x.ReviewCount, 
+                x.ReviewCount,
                 x.Lat, x.Lng, dist,
                 x.PostTags.Select(pt => pt.Tag.Name).ToList());
         });
 
-        mapped = request.SortBy switch
+        // newest sort mora biti na entitetima (PublishedAt nije u PostSummary DTO-u)
+        if (request.SortBy == "newest")
         {
-            "rating" => mapped.OrderByDescending(x => x.Rating ?? 0),
-            "distance" => mapped.OrderBy(x => x.DistanceKm ?? double.MaxValue),
-            "title" => mapped.OrderBy(x => x.Title),
-            _ when request.UserLatitude.HasValue => mapped.OrderBy(x => x.DistanceKm ?? double.MaxValue),
-            _ => mapped.OrderByDescending(x => x.Rating ?? 0)
-        };
+            allResults = allResults
+                .OrderByDescending(x => x.PublishedAt ?? DateTime.MinValue)
+                .ToList();
+        }
 
-        var sorted = mapped.ToList();
-        var total = sorted.Count;
+        var sorted = (request.SortBy switch
+        {
+            "rating"   => mapped.OrderByDescending(x => x.Rating ?? 0),
+            "distance" => mapped.OrderBy(x => x.DistanceKm ?? double.MaxValue),
+            "title"    => mapped.OrderBy(x => x.Title),
+            "newest"   => mapped, // vec sortirano na allResults
+            _ when request.UserLatitude.HasValue => mapped.OrderBy(x => x.DistanceKm ?? double.MaxValue),
+            _          => mapped.OrderByDescending(x => x.Rating ?? 0)
+        }).ToList();
+
+        // total se bazira na GPS-filtriranom skupu, ne na SQL COUNT-u
+        var filteredTotal = request.UserLatitude.HasValue && request.RadiusKm.HasValue
+            ? sorted.Count
+            : total;
+
         var page = sorted.Skip(request.Offset).Take(request.Limit).ToList();
 
-        return new PagedResult<PostSummary>(page, total, request.Offset + page.Count < total);
+        return new PagedResult<PostSummary>(page, filteredTotal, request.Offset + page.Count < filteredTotal);
     }
 
     public async Task<PostDetail?> GetPostDetailAsync(
@@ -213,9 +239,7 @@ internal sealed class TourismQueryService : ITourismQueryService
         if (post is null)
         {
             _logger.LogWarning("tourism_get_post_detail: post {PostId} not found", request.PostId);
-            throw new KeyNotFoundException(
-                $"Location with ID {request.PostId} was not found or is not published. " +
-                "Use tourism_search_posts to find valid IDs first.");
+            return null;
         }
 
         string? regionName = null;
@@ -239,7 +263,8 @@ internal sealed class TourismQueryService : ITourismQueryService
             post.AvgRating.HasValue ? (double?)post.AvgRating.Value : null,
             (uint)reviewCount, (uint)viewCount, (uint)likeCount,
             post.Lat, post.Lng,
-            post.PostTags.Select(pt => pt.Tag.Name).ToList());
+            post.PostTags.Select(pt => pt.Tag.Name).ToList(),
+            ParseJsonStringArray(post.Images));
     }
 
     // ── Rute ──────────────────────────────────────────────────────────────────
@@ -349,9 +374,10 @@ internal sealed class TourismQueryService : ITourismQueryService
             .AnyAsync(x => x.Id == request.PostId && x.Status == "published", cancellationToken);
 
         if (!postExists)
-            throw new KeyNotFoundException(
-                $"Location with ID {request.PostId} was not found. " +
-                "Use tourism_search_posts to find valid post IDs first.");
+        {
+            _logger.LogWarning("tourism_get_reviews: post {PostId} not found", request.PostId);
+            return new PagedResult<ReviewSummary>([], 0, false);
+        }
 
         var query = _db.Reviews.AsNoTracking()
             .Include(x => x.Tourist)
@@ -575,9 +601,20 @@ internal sealed class TourismQueryService : ITourismQueryService
         _logger.LogInformation("tourism_get_nearby: lat={Lat} lng={Lng} radius={Radius}",
             request.Latitude, request.Longitude, request.RadiusKm);
 
+        // Bbox pre-filter u SQL-u — isti pattern kao SearchPostsAsync
+        var deltaLat = (decimal)(request.RadiusKm / 111.0);
+        var deltaLng = (decimal)(request.RadiusKm / (111.0 * Math.Cos(request.Latitude * Math.PI / 180.0)));
+        var minLat = (decimal)request.Latitude - deltaLat;
+        var maxLat = (decimal)request.Latitude + deltaLat;
+        var minLng = (decimal)request.Longitude - deltaLng;
+        var maxLng = (decimal)request.Longitude + deltaLng;
+
         var query = _db.Posts.AsNoTracking()
             .Include(x => x.PostTags).ThenInclude(pt => pt.Tag)
-            .Where(x => x.Status == "published" && x.Lat != null && x.Lng != null);
+            .Where(x => x.Status == "published"
+                && x.Lat != null && x.Lng != null
+                && x.Lat >= minLat && x.Lat <= maxLat
+                && x.Lng >= minLng && x.Lng <= maxLng);
 
         if (request.PostTypes is { Count: > 0 })
             query = query.Where(x => request.PostTypes.Contains(x.PostType));
@@ -618,9 +655,10 @@ internal sealed class TourismQueryService : ITourismQueryService
             .FirstOrDefaultAsync(x => x.Id == request.PostId && x.Status == "published", cancellationToken);
 
         if (source is null)
-            throw new KeyNotFoundException(
-                $"Location with ID {request.PostId} was not found. " +
-                "Use tourism_search_posts to find valid IDs first.");
+        {
+            _logger.LogWarning("tourism_get_similar_posts: post {PostId} not found", request.PostId);
+            return [];
+        }
 
         var sourceTagIds = source.PostTags.Select(pt => pt.TagId).ToHashSet();
 
@@ -659,6 +697,24 @@ internal sealed class TourismQueryService : ITourismQueryService
         // Prikazujemo prvo slovo + *** + @domen
         // Npr. john.doe@gmail.com → j***@gmail.com
         return email[0] + "***" + email[atIndex..];
+    }
+
+    /// <summary>
+    /// Parsira JSON niz stringova (npr. Images kolona: ["url1","url2"]).
+    /// Vraća prazan niz ako je json null, prazan ili nevalidan.
+    /// </summary>
+    private static IReadOnlyList<string> ParseJsonStringArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            var result = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
+            return result?.Where(x => !string.IsNullOrWhiteSpace(x)).ToList() ?? [];
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     private static double CalculateDistanceKm(double lat1, double lon1, double lat2, double lon2)
@@ -703,17 +759,24 @@ internal sealed class TourismQueryService : ITourismQueryService
             .Select(x =>
             {
                 var details = ParseEventDetails(x.Details);
+                if (details is null)
+                    _logger.LogWarning("tourism_search_events: post {PostId} has unparseable Details JSON", x.Id);
                 return (post: x, details);
             })
             .Where(t =>
             {
-                if (request.StartFrom.HasValue &&
-                    (t.details?.StartAt == null || t.details.StartAt < request.StartFrom.Value))
-                    return false;
+                // Datumski filteri se primjenjuju samo ako Details ima StartAt
+                if (request.StartFrom.HasValue)
+                {
+                    if (t.details?.StartAt == null || t.details.StartAt < request.StartFrom.Value)
+                        return false;
+                }
 
-                if (request.StartTo.HasValue &&
-                    (t.details?.StartAt == null || t.details.StartAt > request.StartTo.Value))
-                    return false;
+                if (request.StartTo.HasValue)
+                {
+                    if (t.details?.StartAt == null || t.details.StartAt > request.StartTo.Value)
+                        return false;
+                }
 
                 if (!string.IsNullOrWhiteSpace(request.Category) &&
                     !string.Equals(t.details?.Category, request.Category, StringComparison.OrdinalIgnoreCase))
@@ -767,18 +830,35 @@ internal sealed class TourismQueryService : ITourismQueryService
         if (string.IsNullOrWhiteSpace(json)) return null;
         try
         {
-            return System.Text.Json.JsonSerializer.Deserialize<EventDetailsJson>(json,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var result = System.Text.Json.JsonSerializer.Deserialize<EventDetailsJson>(json, options);
+            if (result is null) return null;
+
+            // Normalize DateTime kinds: seed upisuje bez 'Z' (Unspecified kind)
+            // Pretvaramo sve u UTC da bi poređenja s request filtrima bili ispravni
+            if (result.StartAt.HasValue && result.StartAt.Value.Kind == DateTimeKind.Unspecified)
+                result.StartAt = DateTime.SpecifyKind(result.StartAt.Value, DateTimeKind.Utc);
+
+            if (result.EndAt.HasValue && result.EndAt.Value.Kind == DateTimeKind.Unspecified)
+                result.EndAt = DateTime.SpecifyKind(result.EndAt.Value, DateTimeKind.Utc);
+
+            return result;
         }
-        catch { return null; }
+        catch
+        {
+            return null;
+        }
     }
 
     private sealed class EventDetailsJson
     {
-    public DateTime? StartAt { get; set; }
-    public DateTime? EndAt { get; set; }
-    public string? TicketUrl { get; set; }
-    public string Category { get; set; } = "OTHER";
+        public DateTime? StartAt { get; set; }
+        public DateTime? EndAt { get; set; }
+        public string? TicketUrl { get; set; }
+        public string Category { get; set; } = "OTHER";
     }
 
     // ── Personalizovane preporuke ──────────────────────────────────────────────
@@ -1110,9 +1190,10 @@ internal sealed class TourismQueryService : ITourismQueryService
             .AnyAsync(x => x.Id == request.RouteId && x.Status == "published", cancellationToken);
 
         if (!routeExists)
-            throw new KeyNotFoundException(
-                $"Route with ID {request.RouteId} was not found. " +
-                "Use tourism_search_routes to find valid route IDs first.");
+        {
+            _logger.LogWarning("tourism_get_route_reviews: route {RouteId} not found", request.RouteId);
+            return new PagedResult<ReviewSummary>([], 0, false);
+        }
 
         var query = _db.Reviews.AsNoTracking()
             .Include(x => x.Tourist)
@@ -1204,7 +1285,7 @@ internal sealed class TourismQueryService : ITourismQueryService
         var cutoff = DateTime.UtcNow.AddDays(-Math.Abs(request.DaysBack));
 
         var postQuery = _db.Posts.AsNoTracking()
-            .Where(x => x.Status == "published" && x.PublishedAt >= cutoff);
+            .Where(x => x.Status == "published" && x.PublishedAt != null && x.PublishedAt >= cutoff);
 
         if (request.RegionId.HasValue)
             postQuery = postQuery.Where(x => x.RegionId == request.RegionId.Value);
@@ -1264,13 +1345,19 @@ internal sealed class TourismQueryService : ITourismQueryService
         }
 
         var grouped = await query
-            .GroupBy(x => x.ViewedAt.Date)
-            .Select(g => new { Date = g.Key, Count = g.Count() })
-            .OrderBy(x => x.Date)
+            .GroupBy(x => x.ViewedAt.Date.Year * 10000 + x.ViewedAt.Date.Month * 100 + x.ViewedAt.Date.Day)
+            .Select(g => new { DateKey = g.Key, Count = g.Count() })
+            .OrderBy(x => x.DateKey)
             .ToListAsync(cancellationToken);
 
         return grouped
-            .Select(x => new VisitTrendPoint(x.Date.ToString("yyyy-MM-dd"), x.Count))
+            .Select(x =>
+            {
+                var year  = x.DateKey / 10000;
+                var month = (x.DateKey % 10000) / 100;
+                var day   = x.DateKey % 100;
+                return new VisitTrendPoint($"{year:D4}-{month:D2}-{day:D2}", x.Count);
+            })
             .ToList();
     }
 
@@ -1283,7 +1370,7 @@ internal sealed class TourismQueryService : ITourismQueryService
 
         var query = _db.SavedPosts.AsNoTracking()
             .Include(x => x.Post)
-            .AsQueryable();
+            .Where(x => x.Post != null && x.Post.Status == "published");
 
         if (request.TouristId.HasValue)
             query = query.Where(x => x.TouristId == request.TouristId.Value);
@@ -1297,7 +1384,6 @@ internal sealed class TourismQueryService : ITourismQueryService
             .ToListAsync(cancellationToken);
 
         var summaries = items
-            .Where(x => x.Post != null)
             .Select(x => new SavedPostSummary(
                 x.Id, x.PostId, x.TouristId,
                 x.Post!.Title, x.Post.PostType, x.Post.RegionId,
@@ -1369,10 +1455,15 @@ internal sealed class TourismQueryService : ITourismQueryService
                 (x.Description != null && EF.Functions.ILike(x.Description, $"%{s}%")));
         }
 
-        // Kategorija je enkodovana u Color koloni kao prefix (npr. "SPORT|#hex|status")
+        // Kategorija aktivnosti je u Category koloni (ne u Color) — filtriramo direktno
         if (!string.IsNullOrWhiteSpace(request.Category))
         {
+            // AI šalje SPORT, ADVENTURE itd. — mapiramo na Category = "aktivnost"
+            // i filtriramo po Color prefiksu samo za subkategorije
             var cat = request.Category.Trim().ToUpper();
+
+            // Ako korisnik traži po subkategoriji aktivnosti (SPORT, ADVENTURE, WELLNESS...)
+            // Category je uvijek "aktivnost", a subkategorija je enkodovana u Color
             query = query.Where(x => x.Color != null && x.Color.ToUpper().StartsWith(cat + "|"));
         }
 

@@ -13,6 +13,7 @@ internal sealed class PostEntity
     public string? ExternalUrl { get; set; }
     public string? OpeningHours { get; set; }
     public string? Details { get; set; }
+    public string? Images { get; set; }
     public string Status { get; set; } = "draft";
     public decimal? AvgRating { get; set; }
     public uint ReviewCount { get; set; }

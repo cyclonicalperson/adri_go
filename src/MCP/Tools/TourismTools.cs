@@ -36,7 +36,7 @@ namespace Mcp.Tools;
         }
 
         [McpServerTool(Name = "tourism_search_posts", Title = "Search Locations", ReadOnly = true, Idempotent = true)]
-        [Description("Search published locations and points of interest. Post types: accommodation, restaurant, club, cultural_site, monument, sports_facility, event, attraction, shop, other.")]
+        [Description("Search published locations and points of interest. Post types: accommodation, restaurant, club, cultural_site, monument, sports_facility, event, attraction, shop, other. Sort options: rating (default), distance (requires coordinates), title, newest.")]
         public static Task<PagedResult<PostSummary>> SearchPosts(
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
@@ -51,7 +51,7 @@ namespace Mcp.Tools;
             [Description("User latitude for proximity sorting and radius filtering.")] double? userLatitude = null,
             [Description("User longitude for proximity sorting and radius filtering.")] double? userLongitude = null,
             [Description("Only return results within this many km from the user location.")] double? radiusKm = null,
-            [Description("Sort order: rating, distance, title.")] string? sortBy = null,
+            [Description("Sort order: rating (default), distance (requires userLatitude/userLongitude), title, newest.")] string? sortBy = null,
             [Description("Maximum number of results (default 10).")] int? limit = null,
             [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
         {
@@ -63,7 +63,7 @@ namespace Mcp.Tools;
         }
 
         [McpServerTool(Name = "tourism_get_post_detail", Title = "Get Location Detail", ReadOnly = true, Idempotent = true)]
-        [Description("Get full details for a specific location by ID: description, opening hours, rating, view count, likes, review count, all tags, and external booking URL.")]
+        [Description("Get full details for a specific location by ID: description, opening hours, rating, view count, likes, review count, all tags, external booking URL, and image URLs.")]
         public static Task<PostDetail?> GetPostDetail(
             [Description("The ID of the location to retrieve.")] uint postId,
             ITourismQueryService tourismService,
@@ -126,7 +126,7 @@ namespace Mcp.Tools;
         }
 
         [McpServerTool(Name = "tourism_search_tags", Title = "Search Tags and Activities", ReadOnly = true, Idempotent = true)]
-        [Description("Search available tags and activity categories. Categories: aktivnost, amenity, stil, cijena, tip, oznaka.")]
+        [Description("Search available tags by category. Categories in database: aktivnost (activities), amenity, stil (style/vibe), cijena (price), tip (type), oznaka (label). Use tourism_search_activities for activity-specific filtering by difficulty and capacity.")]
         public static Task<IReadOnlyList<TagSummary>> SearchTags(
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
@@ -171,20 +171,6 @@ namespace Mcp.Tools;
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_post_analytics", Title = "Get Location Analytics", ReadOnly = true, Idempotent = true)]
-        [Description("Get engagement analytics for one or more locations: total views, unique views, likes, shares, and review count.")]
-        public static Task<IReadOnlyList<PostAnalyticsSummary>> GetPostAnalytics(
-            ITourismQueryService tourismService,
-            CancellationToken cancellationToken,
-            [Description("Optional specific post ID to get analytics for.")] uint? postId = null,
-            [Description("Optional region ID to get analytics for all posts in a region.")] uint? regionId = null,
-            [Description("Maximum number of results (default 10).")] int? limit = null)
-        {
-            return tourismService.GetPostAnalyticsAsync(
-                new GetPostAnalyticsRequest(postId, regionId, limit ?? 10),
-                cancellationToken);
-        }
-
         [McpServerTool(Name = "tourism_get_top_content", Title = "Get Top / Most Popular Locations", ReadOnly = true, Idempotent = true)]
         [Description("Get the most popular locations ranked by a specific metric. SortBy values: views, likes, shares, rating, review_count.")]
         public static Task<IReadOnlyList<PostAnalyticsSummary>> GetTopContent(
@@ -200,34 +186,8 @@ namespace Mcp.Tools;
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_tourist_stats", Title = "Get Tourist Statistics", ReadOnly = true, Idempotent = true)]
-        [Description("Get aggregate statistics about registered tourists: total count, active users, email verification rate, new registrations in last 30 days.")]
-        public static Task<TouristStats> GetTouristStats(
-            ITourismQueryService tourismService,
-            CancellationToken cancellationToken)
-        {
-            return tourismService.GetTouristStatsAsync(new GetTouristStatsRequest(), cancellationToken);
-        }
-
-        [McpServerTool(Name = "tourism_search_tourists", Title = "Search Tourists", ReadOnly = true, Idempotent = true)]
-        [Description("Search registered tourists by name, email, or language.")]
-        public static Task<PagedResult<TouristSummary>> SearchTourists(
-            ITourismQueryService tourismService,
-            CancellationToken cancellationToken,
-            [Description("Optional free-text search on name or email.")] string? query = null,
-            [Description("Optional filter for active/inactive tourists.")] bool? isActive = null,
-            [Description("Optional filter for email-verified tourists.")] bool? isEmailVerified = null,
-            [Description("Optional language filter, e.g. 'en', 'sr', 'de'.")] string? language = null,
-            [Description("Maximum number of results (default 20).")] int? limit = null,
-            [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
-        {
-            return tourismService.SearchTouristsAsync(
-                new SearchTouristsRequest(query, isActive, isEmailVerified, language, limit ?? 20, offset ?? 0),
-                cancellationToken);
-        }
-
         [McpServerTool(Name = "tourism_search_events", Title = "Search Events", ReadOnly = true, Idempotent = true)]
-        [Description("Search published events (concerts, sports, theatre, festivals, tours...). Categories: CONCERT, SPORT, THEATER, FESTIVAL, OTHER.")]
+        [Description("Search published events (concerts, festivals, sports, theatre, tours...). Returns all upcoming and past events when no date filter is applied. Categories: CONCERT, SPORT, THEATER, FESTIVAL, OTHER. Date filters are optional — omit them to see all events.")]
         public static Task<PagedResult<EventSummary>> SearchEvents(
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
@@ -280,17 +240,6 @@ namespace Mcp.Tools;
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_region_analytics", Title = "Get Region Analytics", ReadOnly = true, Idempotent = true)]
-        [Description("Get detailed analytics for a specific region: total posts, routes, views, likes, shares, average rating.")]
-        public static Task<RegionAnalyticsSummary?> GetRegionAnalytics(
-            [Description("The ID of the region to get analytics for.")] uint regionId,
-            ITourismQueryService tourismService,
-            CancellationToken cancellationToken)
-        {
-            return tourismService.GetRegionAnalyticsAsync(
-                new GetRegionAnalyticsRequest(regionId), cancellationToken);
-        }
-
         [McpServerTool(Name = "tourism_get_new_content", Title = "Get Recently Published Content", ReadOnly = true, Idempotent = true)]
         [Description("Get recently published locations and routes, ordered by publish date.")]
         public static Task<IReadOnlyList<NewContentItem>> GetNewContent(
@@ -306,7 +255,7 @@ namespace Mcp.Tools;
         }
 
         [McpServerTool(Name = "tourism_search_activities", Title = "Search Activities", ReadOnly = true, Idempotent = true)]
-        [Description("Search activities and things to do. Categories: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER.")]
+        [Description("Search activities and things to do (tags with category=aktivnost). Use 'category' to filter by subcategory encoded in color field: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER. Omit category to get all activities.")]
         public static Task<IReadOnlyList<TagSummary>> SearchActivities(
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
@@ -336,72 +285,55 @@ namespace Mcp.Tools;
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_saved_posts", Title = "Get Saved Locations", ReadOnly = true, Idempotent = true)]
-        [Description("Get locations that tourists have bookmarked/saved.")]
-        public static Task<PagedResult<SavedPostSummary>> GetSavedPosts(
+        [McpServerTool(Name = "tourism_get_my_saved", Title = "Get My Saved Locations", ReadOnly = true, Idempotent = true)]
+        [Description("Get the locations bookmarked/saved by the currently logged-in tourist. Requires authentication.")]
+        public static Task<PagedResult<SavedPostSummary>> GetMySaved(
+            ICurrentTouristContext currentTourist,
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
-            [Description("Optional tourist ID to get a specific tourist's saved locations.")] uint? touristId = null,
             [Description("Maximum number of results (default 20).")] int? limit = null,
             [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
         {
+            if (!currentTourist.IsAuthenticated)
+                return Task.FromResult(new PagedResult<SavedPostSummary>([], 0, false));
+
             return tourismService.GetSavedPostsAsync(
-                new GetSavedPostsRequest(touristId, limit ?? 20, offset ?? 0),
+                new GetSavedPostsRequest(currentTourist.TouristId, limit ?? 20, offset ?? 0),
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_tourist_planner", Title = "Get Tourist Visit Planner", ReadOnly = true, Idempotent = true)]
-        [Description("Get visit planners for a specific tourist — multi-day itineraries with locations and routes organized by day.")]
-        public static Task<IReadOnlyList<PlannerSummary>> GetTouristPlanner(
-            [Description("The ID of the tourist whose planners to retrieve.")] uint touristId,
+        [McpServerTool(Name = "tourism_get_my_planner", Title = "Get My Visit Planner", ReadOnly = true, Idempotent = true)]
+        [Description("Get the visit planners of the currently logged-in tourist — multi-day itineraries with locations and routes organized by day. Requires authentication.")]
+        public static Task<IReadOnlyList<PlannerSummary>> GetMyPlanner(
+            ICurrentTouristContext currentTourist,
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
             [Description("If true, returns only publicly shared planners (default false).")] bool? onlyPublic = null)
         {
+            if (!currentTourist.IsAuthenticated)
+                return Task.FromResult<IReadOnlyList<PlannerSummary>>([]);
+
             return tourismService.GetTouristPlannersAsync(
-                new GetTouristPlannerRequest(touristId, onlyPublic ?? false),
+                new GetTouristPlannerRequest(currentTourist.TouristId!.Value, onlyPublic ?? false),
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_tourist_favorites", Title = "Get Tourist Favorites", ReadOnly = true, Idempotent = true)]
-        [Description("Get locations and routes that a tourist has marked as favorites. entityType: 'post', 'route', or omit for both.")]
-        public static Task<PagedResult<TouristFavoriteSummary>> GetTouristFavorites(
+        [McpServerTool(Name = "tourism_get_my_favorites", Title = "Get My Favorite Locations and Routes", ReadOnly = true, Idempotent = true)]
+        [Description("Get the locations and routes marked as favorites by the currently logged-in tourist. entityType: 'post', 'route', or omit for both. Requires authentication.")]
+        public static Task<PagedResult<TouristFavoriteSummary>> GetMyFavorites(
+            ICurrentTouristContext currentTourist,
             ITourismQueryService tourismService,
             CancellationToken cancellationToken,
-            [Description("Optional tourist ID to filter by a specific tourist.")] uint? touristId = null,
             [Description("Optional entity type filter: 'post' for locations only, 'route' for routes only.")] string? entityType = null,
             [Description("Maximum number of results (default 20).")] int? limit = null,
             [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
         {
+            if (!currentTourist.IsAuthenticated)
+                return Task.FromResult(new PagedResult<TouristFavoriteSummary>([], 0, false));
+
             return tourismService.GetTouristFavoritesAsync(
-                new GetTouristFavoritesRequest(touristId, entityType, limit ?? 20, offset ?? 0),
+                new GetTouristFavoritesRequest(currentTourist.TouristId, entityType, limit ?? 20, offset ?? 0),
                 cancellationToken);
         }
 
-        [McpServerTool(Name = "tourism_get_external_click_stats", Title = "Get External Link Click Stats", ReadOnly = true, Idempotent = true)]
-        [Description("Get statistics on how many times tourists clicked external booking or info links for each location.")]
-        public static Task<IReadOnlyList<ExternalClickSummary>> GetExternalClickStats(
-            ITourismQueryService tourismService,
-            CancellationToken cancellationToken,
-            [Description("Optional specific post ID to get click stats for one location.")] uint? postId = null,
-            [Description("Optional region ID to scope results to a specific destination.")] uint? regionId = null,
-            [Description("Maximum number of results (default 20).")] int? limit = null)
-        {
-            return tourismService.GetExternalClickStatsAsync(
-                new GetExternalClickStatsRequest(postId, regionId, limit ?? 20),
-                cancellationToken);
-        }
-
-        [McpServerTool(Name = "tourism_get_direction_stats", Title = "Get Navigation Request Stats", ReadOnly = true, Idempotent = true)]
-        [Description("Get statistics on how many times tourists requested navigation directions to each location.")]
-        public static Task<IReadOnlyList<DirectionRequestSummary>> GetDirectionStats(
-            ITourismQueryService tourismService,
-            CancellationToken cancellationToken,
-            [Description("Optional region ID to scope results to a specific destination.")] uint? regionId = null,
-            [Description("Maximum number of results (default 20).")] int? limit = null)
-        {
-            return tourismService.GetDirectionStatsAsync(
-                new GetDirectionStatsRequest(regionId, limit ?? 20),
-                cancellationToken);
-        }
     }
