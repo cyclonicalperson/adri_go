@@ -1,16 +1,18 @@
 <div class="page">
   <div class="card">
     <div class="brand">
-      <div class="logo-mark">🌿</div>
+      <div class="logo-mark">&#x1F33F;</div>
       <span class="logo-text">AdriGo</span>
     </div>
 
     <h1 class="title">Kreiraj nalog</h1>
-    <p class="subtitle">Pošaljite zahtev za admin nalog. Podržana je registracija za organizaciju i za fizičko lice.</p>
+    <p class="subtitle">
+      Po&scaron;aljite zahtev za admin nalog. Podr&#382;ana je registracija za organizaciju i za fizi&#269;ko lice.
+    </p>
 
     @if (successMsg) {
     <div class="alert-success">
-      📧 {{ successMsg }}
+      &#x1F4E7; {{ successMsg }}
     </div>
     }
 
@@ -25,12 +27,12 @@
         <div class="account-type">
           <label class="type-option" [class.active]="accountType.value === 'organization'">
             <input type="radio" formControlName="accountType" value="organization" />
-            <span class="type-title">🏢 Organizacija</span>
+            <span class="type-title">&#x1F3E2; Organizacija</span>
             <span class="type-sub">Firma, hotel, agencija, ustanova</span>
           </label>
           <label class="type-option" [class.active]="accountType.value === 'individual'">
             <input type="radio" formControlName="accountType" value="individual" />
-            <span class="type-title">👤 Fizičko lice</span>
+            <span class="type-title">&#x1F464; Fizi&#269;ko lice</span>
             <span class="type-sub">Samostalni admin nalog bez organizacije</span>
           </label>
         </div>
@@ -54,7 +56,7 @@
           <input id="lastName" class="input"
                  [class.invalid]="lastName.invalid && lastName.touched"
                  type="text"
-                 placeholder="Petrović"
+                 placeholder="Petrovic"
                  formControlName="lastName" />
           @if (lastName.invalid && lastName.touched) {
           <span class="hint error">Prezime je obavezno.</span>
@@ -134,9 +136,9 @@
                  accept=".jpg,.jpeg,.png,.pdf"
                  style="display:none"
                  (change)="onFileSelected($event)" />
-          <span class="doc-upload-icon">📎</span>
+          <span class="doc-upload-icon">&#x1F4CE;</span>
           <span class="doc-upload-label">Kliknite da priložite dokument</span>
-          <span class="doc-upload-sub">JPG, PNG ili PDF · max 5MB</span>
+          <span class="doc-upload-sub">JPG, PNG ili PDF &middot; max 5MB</span>
         </label>
         } @else {
         <div class="doc-preview">
@@ -145,7 +147,7 @@
             <div class="doc-preview-name">{{ selectedFile.name }}</div>
             <div class="doc-preview-size">{{ fileSizeLabel }}</div>
           </div>
-          <button type="button" class="doc-remove" (click)="removeFile()">✕</button>
+          <button type="button" class="doc-remove" (click)="removeFile()">&times;</button>
         </div>
         }
 
@@ -164,7 +166,7 @@
         @if (loading()) {
         <span class="spinner"></span>
         } @else {
-        Pošalji zahtev →
+        Pošalji zahtev &rarr;
         }
       </button>
     </form>
@@ -173,6 +175,13 @@
     <div class="footer-link">
       Već imate nalog?
       <a routerLink="/login" class="link">Prijavite se</a>
+    </div>
+
+    <div class="switch-app">
+      Tra&#382;ite turisti&#269;ki nalog?
+      <button type="button" class="link-btn" (click)="goToTouristApp()">
+        Otvorite turisti&#269;ku aplikaciju
+      </button>
     </div>
   </div>
 </div>

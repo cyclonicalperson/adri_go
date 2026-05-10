@@ -22,7 +22,7 @@
     <span>You're browsing as a guest. Saves are stored locally. <strong><a (click)="router.navigate(['/login'])" class="guest-banner-link">Log in</a></strong> to sync across devices.</span>
   </div>
 
-  <div class="scroll-content">
+  <div class="scroll-content" [class.empty-scroll]="isEmptyStateVisible">
 
     <div class="loader-box" *ngIf="isLoading">
       <div class="spinner"></div>
@@ -45,7 +45,7 @@
 
           <span class="badge" [ngClass]="item.category.toLowerCase()">
             <span class="dot"></span>
-            {{item.category | uppercase}}
+            {{ formatPostType(item.category) }}
           </span>
 
           <!-- Like button -->

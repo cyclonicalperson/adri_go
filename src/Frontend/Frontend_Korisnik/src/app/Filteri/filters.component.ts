@@ -38,6 +38,8 @@ export class FiltersComponent implements OnInit {
 
   minRating: number = 0;
   openNow: boolean = false;
+  showOnlySaved: boolean = false;
+  savedPostIds: number[] = [];
   fromDate: string = '';
   toDate: string = '';
 
@@ -49,8 +51,10 @@ export class FiltersComponent implements OnInit {
   ngOnInit(): void {
     // Restore previously saved state
     const state = this.filterState.get();
-    this.minRating = state.minRating;
-    this.openNow   = state.openNow;
+    this.minRating      = state.minRating;
+    this.openNow        = state.openNow;
+    this.showOnlySaved  = state.showOnlySaved ?? false;
+    this.savedPostIds   = state.savedPostIds ?? [];
     // Find the nearest step to the stored radius value
     const storedRadius = state.radius ?? 0;
     const nearest = this.radiusSteps.reduce((prev, cur) =>
@@ -73,11 +77,13 @@ export class FiltersComponent implements OnInit {
 
   clearAll() {
     this.categories.forEach(c => c.selected = false);
-    this.radiusIndex = 0;
-    this.minRating = 0;
-    this.openNow   = false;
-    this.fromDate  = '';
-    this.toDate    = '';
+    this.radiusIndex   = 0;
+    this.minRating     = 0;
+    this.openNow       = false;
+    this.showOnlySaved = false;
+    this.savedPostIds  = [];
+    this.fromDate      = '';
+    this.toDate        = '';
     this.filterState.clear();
   }
 
@@ -92,7 +98,9 @@ export class FiltersComponent implements OnInit {
       minRating:        this.minRating,
       openNow:          this.openNow,
       radius:           this.radius,
-      activeCategories: selected
+      activeCategories: selected,
+      showOnlySaved:    this.showOnlySaved,
+      savedPostIds:     this.savedPostIds
     };
 
     this.filterState.set(state);

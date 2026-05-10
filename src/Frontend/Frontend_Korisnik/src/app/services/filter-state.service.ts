@@ -5,6 +5,8 @@ export interface FilterState {
   openNow: boolean;
   radius: number;
   activeCategories: string[]; // DB keys; empty = all active
+  showOnlySaved?: boolean;    // show only saved post IDs
+  savedPostIds?: number[];    // IDs of saved posts (populated by Saved → Show on Map)
 }
 
 @Injectable({ providedIn: 'root' })
@@ -13,7 +15,7 @@ export class FilterStateService {
   private readonly STORAGE_KEY = 'adrigo_filter_state';
 
   getDefault(): FilterState {
-    return { minRating: 0, openNow: false, radius: 0, activeCategories: [] };
+    return { minRating: 0, openNow: false, radius: 0, activeCategories: [], showOnlySaved: false, savedPostIds: [] };
   }
 
   get(): FilterState {
@@ -34,6 +36,6 @@ export class FilterStateService {
   /** Returns true if any non-default filter is active */
   isActive(): boolean {
     const s = this.get();
-    return s.minRating > 0 || s.openNow || s.activeCategories.length > 0;
+    return s.minRating > 0 || s.openNow || s.activeCategories.length > 0 || !!s.showOnlySaved;
   }
 }

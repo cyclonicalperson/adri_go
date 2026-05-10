@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 
-export type SiteLanguageCode = 'sr' | 'en';
+export type SiteLanguageCode = 'sr' | 'en' | 'de' | 'it' | 'fr' | 'ru' | 'es' | 'nl';
 
 export interface SiteLanguageOption {
   code: SiteLanguageCode;
@@ -24,8 +24,14 @@ interface AttributeEntry {
 @Injectable({ providedIn: 'root' })
 export class SiteTranslateService implements OnDestroy {
   readonly languages: SiteLanguageOption[] = [
-    { code: 'sr', label: 'Srpski', shortLabel: 'SR' },
-    { code: 'en', label: 'English', shortLabel: 'EN' },
+    { code: 'sr', label: 'Srpski',    shortLabel: 'SR' },
+    { code: 'en', label: 'English',   shortLabel: 'EN' },
+    { code: 'de', label: 'Deutsch',   shortLabel: 'DE' },
+    { code: 'it', label: 'Italiano',  shortLabel: 'IT' },
+    { code: 'fr', label: 'Français',  shortLabel: 'FR' },
+    { code: 'ru', label: 'Русский',   shortLabel: 'RU' },
+    { code: 'es', label: 'Español',   shortLabel: 'ES' },
+    { code: 'nl', label: 'Nederlands', shortLabel: 'NL' },
   ];
 
   readonly language$ = new BehaviorSubject<SiteLanguageCode>(this.loadStoredLanguage());
@@ -110,7 +116,7 @@ export class SiteTranslateService implements OnDestroy {
         childList: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['placeholder', 'title', 'aria-label'],
+        attributeFilter: ['placeholder', 'title', 'aria-label', 'data-tooltip'],
       });
     });
   }
@@ -164,7 +170,7 @@ export class SiteTranslateService implements OnDestroy {
   }
 
   private translateElementAttributes(element: Element): void {
-    const attributes = ['placeholder', 'title', 'aria-label'];
+    const attributes = ['placeholder', 'title', 'aria-label', 'data-tooltip'];
     let entries = this.attributeEntries.get(element);
     if (!entries) {
       entries = new Map<string, AttributeEntry>();

@@ -1,0 +1,41 @@
+<div class="recommended-panel">
+  <div class="recommended-header">
+    <div>
+      <span class="recommended-title">Recommended</span>
+      <span class="recommended-subtitle">
+        {{ activeRecommendationTab === 'personalized' ? 'Personalized for your interests and travel history' : 'Best rated and strongest traveler signals' }}
+      </span>
+    </div>
+    <div class="recommendation-tabs" *ngIf="hasPersonalizedRecommendations">
+      <button type="button" [class.active]="activeRecommendationTab === 'personalized'" (click)="tabSelected.emit('personalized')">For you</button>
+      <button type="button" [class.active]="activeRecommendationTab === 'global'" (click)="tabSelected.emit('global')">Global</button>
+    </div>
+  </div>
+
+  <div class="recommended-list" *ngIf="recommendationCards.length > 0">
+    <div
+      *ngFor="let recommendation of recommendationCards; let i = index; trackBy: trackByRecommendation"
+      class="recommended-card"
+      (click)="locationSelected.emit(recommendation.location)">
+      <div class="rec-image">
+        <img [src]="resolveImage(recommendation.location)" [alt]="recommendation.location.title" (error)="onImgError($event)">
+        <div class="rec-rank">#{{ i + 1 }}</div>
+        <div class="rec-status">{{ recommendation.badge }}</div>
+      </div>
+      <div class="rec-info">
+        <div class="rec-title">{{ recommendation.location.title }}</div>
+        <div class="rec-meta">
+          <span class="rec-category">{{ formatPostType(recommendation.location.postType) }}</span>
+          <span class="rec-dot" *ngIf="recommendation.location.regionName">&middot;</span>
+          <span class="rec-distance" *ngIf="recommendation.location.regionName">{{ recommendation.location.regionName }}</span>
+        </div>
+        <p class="rec-reason">{{ recommendation.reason }}</p>
+        <div class="rec-rating" *ngIf="recommendation.location.avgRating">
+          <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          <span>{{ recommendation.location.avgRating | number:'1.1-1' }}</span>
+          <span class="rec-reviews" *ngIf="recommendation.location.reviewCount">({{ recommendation.location.reviewCount | number }} reviews)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

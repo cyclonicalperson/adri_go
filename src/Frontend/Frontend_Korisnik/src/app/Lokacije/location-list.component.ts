@@ -5,6 +5,7 @@ import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { Location, LocationService } from '../services/location.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-location-list',
@@ -46,7 +47,7 @@ export class LocationListComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => {
-        this.errorMessage = 'Error loading locations.';
+        this.errorMessage = 'Greska pri ucitavanju lokacija.';
         this.isLoading = false;
         this.cdr.markForCheck();
       }
@@ -140,6 +141,10 @@ export class LocationListComponent implements OnInit {
     return firstImg;
   }
 
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
+  }
+
   private showFeedback(msg: string): void {
     this.feedbackMessage = msg;
     setTimeout(() => (this.feedbackMessage = ''), 2500);
@@ -173,8 +178,8 @@ export class LocationListComponent implements OnInit {
         return { ...location, distanceKm };
       })
       .sort((left, right) => {
-        const leftDistance = left.distanceKm ?? Number.POSITIVE_INFINITY;
-        const rightDistance = right.distanceKm ?? Number.POSITIVE_INFINITY;
+        const leftDistance = (left as any).distanceKm ?? Number.POSITIVE_INFINITY;
+        const rightDistance = (right as any).distanceKm ?? Number.POSITIVE_INFINITY;
         return leftDistance - rightDistance;
       });
   }

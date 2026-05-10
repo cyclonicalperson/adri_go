@@ -5,6 +5,10 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LocationService, Location, Review } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
 import { UserService } from '../services/user.service';
+import { RoutePlannerService } from '../services/route-planner.service';
+import { TouristAnalyticsService } from '../services/tourist-analytics.service';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-location-details',
@@ -33,6 +37,7 @@ export class LocationDetailsComponent implements OnInit {
 
   calendarMessage = '';
   showAuthModal = false;
+  hasReviewed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -40,6 +45,9 @@ export class LocationDetailsComponent implements OnInit {
     private locationService: LocationService,
     public authService: AuthService,
     private userService: UserService,
+    private routePlanner: RoutePlannerService,
+    private analytics: TouristAnalyticsService,
+    private preferences: TouristPreferencesService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -47,8 +55,20 @@ export class LocationDetailsComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/location-list']); return; }
 
+    // One view per page navigation — update the displayed count from the response
+    // so the user sees the correct post-visit tally (not the pre-visit snapshot).
+    this.locationService.registerView(id).subscribe({
+      next: (res) => {
+        if (res.viewCount !== undefined && this.location) {
+          this.location = { ...this.location, viewCount: res.viewCount };
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {},
+    });
+
     // Request user geolocation for distance display
-    if (navigator.geolocation) {
+    if (this.preferences.snapshot.locationSharing && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const userLat = pos.coords.latitude;
@@ -118,18 +138,16 @@ export class LocationDetailsComponent implements OnInit {
         if (this.location && res.total !== undefined) {
           this.location.reviewCount = res.total;
         }
+        // Check if current tourist has already reviewed this location
+        const touristId = this.authService.touristId;
+        if (touristId) {
+          this.hasReviewed = this.reviews.some(r => r.touristId === touristId);
+        }
         this.cdr.markForCheck();
       },
       error: (err) => console.error('getReviews error:', err)
     });
 
-    // Register view only for logged-in users
-    const touristId = this.authService.touristId;
-    if (touristId) {
-      this.locationService.registerView(id, touristId).subscribe({
-        error: (err) => console.warn('registerView:', err.status)
-      });
-    }
   }
 
   openAuthModal(): void  { this.showAuthModal = true; }
@@ -297,6 +315,10 @@ export class LocationDetailsComponent implements OnInit {
     } catch { return false; }
   }
 
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
+  }
+
   get isEvent(): boolean {
     return (this.location?.postType || '').toLowerCase() === 'event';
   }
@@ -311,16 +333,23 @@ export class LocationDetailsComponent implements OnInit {
     this.locationService.addReview(this.location.id, touristId, this.newRating, this.newComment).subscribe({
       next: (review) => {
         this.reviews.unshift(review);
-        this.reviewSuccess = 'Review submitted!';
-        this.newRating  = 5;
-        this.newComment = '';
+        this.reviewSuccess  = 'Review submitted!';
+        this.hasReviewed    = true;
+        this.newRating      = 5;
+        this.newComment     = '';
         this.isSubmittingReview = false;
         this.showReviewForm = false;
         if (this.location) this.location.reviewCount++;
         this.cdr.markForCheck();
       },
       error: (err) => {
-        this.reviewError = err?.error?.message || 'Error submitting review.';
+        if (err.status === 409) {
+          this.reviewError = 'You have already reviewed this location.';
+          this.hasReviewed = true;
+          this.showReviewForm = false;
+        } else {
+          this.reviewError = err?.error?.message || 'Error submitting review.';
+        }
         this.isSubmittingReview = false;
         this.cdr.markForCheck();
       }
@@ -337,16 +366,44 @@ export class LocationDetailsComponent implements OnInit {
   goBack(): void { window.history.back(); }
 
   getDirections(): void {
-    const lat = this.location?.lat ?? (this.location as any)?.latitude;
-    const lng = this.location?.lng ?? (this.location as any)?.longitude;
-    if (lat != null && lng != null) {
-      this.router.navigate(['/map-home'], {
-        queryParams: {
-          directTo: `${lat},${lng}`,
-          destTitle: this.location?.title || ''
-        }
-      });
+    if (!this.location) {
+      return;
     }
+
+    this.routePlanner.replaceStops([this.location], { plannerMode: true });
+    this.analytics.track('planner_started', {
+      source: 'location-details',
+      postId: this.location.id,
+      postType: this.location.postType,
+      regionName: this.location.regionName,
+    });
+
+    this.router.navigate(['/map-home'], {
+      queryParams: {
+        planner: '1',
+      }
+    });
+  }
+
+  addToRoutePlanner(): void {
+    if (!this.location) {
+      return;
+    }
+
+    this.routePlanner.addStop(this.location);
+    this.routePlanner.setPlannerMode(true);
+    this.analytics.track('planner_stop_added', {
+      source: 'location-details',
+      postId: this.location.id,
+      postType: this.location.postType,
+      regionName: this.location.regionName,
+    });
+
+    this.router.navigate(['/map-home'], {
+      queryParams: {
+        planner: '1',
+      }
+    });
   }
 
   shareLocation(): void {
@@ -369,15 +426,10 @@ export class LocationDetailsComponent implements OnInit {
   addToCalendar(): void {
     if (!this.location) return;
 
-    if (!this.authService.isLoggedIn) {
-      this.showAuthModal = true;
-      return;
-    }
-
-    this.userService.addToCalendar(this.location.id).subscribe({
+    this.userService.addLocationToCalendar(this.location).subscribe({
       next: (res) => {
-        this.calendarMessage = res?.alreadyAdded
-          ? '📅 Already in your calendar'
+        this.calendarMessage = res.message
+          ? (res.localOnly ? '📅 ' + res.message : (res.alreadyAdded ? '📅 Already in your calendar' : '📅 Added to your calendar!'))
           : '📅 Added to your calendar!';
         setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3500);
         this.cdr.markForCheck();

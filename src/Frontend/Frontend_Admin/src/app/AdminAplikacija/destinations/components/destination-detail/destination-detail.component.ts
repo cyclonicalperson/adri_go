@@ -57,8 +57,19 @@ export class DestinationDetailComponent implements OnInit {
       lat: this.destination.latitude,
       lng: this.destination.longitude,
       label: this.destination.name,
-      category: this.destination.type,
+      category: this.destTypeToPostType(this.destination.type),
     }];
+  }
+
+  private destTypeToPostType(type: string): string {
+    const map: Record<string, string> = {
+      CITY:          'cultural_site',
+      MOUNTAIN:      'attraction',
+      LAKE:          'attraction',
+      NATIONAL_PARK: 'attraction',
+      BEACH:         'attraction',
+    };
+    return map[type] ?? 'other';
   }
 
   get typeBadge(): BadgeVariant {

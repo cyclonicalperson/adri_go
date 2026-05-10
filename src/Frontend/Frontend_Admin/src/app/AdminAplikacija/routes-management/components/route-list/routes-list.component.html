@@ -10,9 +10,9 @@
     </div>
     <div class="stat-chip clickable" [class.active-chip]="req.status === 'draft'" (click)="onStatusChange('draft')">
       <div class="num" style="color:#d97706">{{ summary.pending }}</div>
-      <div class="lbl">Na cekanju</div>
+      <div class="lbl">Na čekanju</div>
       @if (summary.pending > 0) {
-      <div class="trend warn">&#9888; Trazi pregled</div>
+      <div class="trend warn">&#9888; Traži pregled</div>
       }
     </div>
     <div class="stat-chip clickable" [class.active-chip]="req.status === 'archived'" (click)="onStatusChange('archived')">
@@ -24,7 +24,7 @@
   <div class="filter-tabs">
     <button class="ftab" [class.active]="!req.status" (click)="onStatusChange('')">&#128203; Svi statusi</button>
     <button class="ftab" [class.active]="req.status === 'published'" (click)="onStatusChange('published')">&#9989; Objavljene</button>
-    <button class="ftab" [class.active]="req.status === 'draft'" (click)="onStatusChange('draft')">&#9203; Na cekanju ({{ summary.pending }})</button>
+    <button class="ftab" [class.active]="req.status === 'draft'" (click)="onStatusChange('draft')">&#9203; Na čekanju ({{ summary.pending }})</button>
     <button class="ftab" [class.active]="req.status === 'archived'" (click)="onStatusChange('archived')">&#128230; Arhivirane</button>
   </div>
 
@@ -33,38 +33,29 @@
       <span class="search-icon">&#128269;</span>
       <input class="search-input"
              type="text"
-             placeholder="Pretrazi rute po nazivu ili opisu..."
+             placeholder="Pretražite rute po nazivu ili opisu..."
              [value]="req.search ?? ''"
              (input)="onSearch($any($event.target).value)" />
     </div>
 
-    <div class="select-wrap">
-      <span class="select-icon">&#128205;</span>
-      <select class="filter-select filter-select-icon" (change)="onDestinationChange($any($event.target).value)">
-        <option value="">Sve destinacije</option>
-        @for (d of destinations; track d.regionId) {
-        <option [value]="d.regionId" [selected]="req.regionId === d.regionId">{{ d.name }}</option>
-        }
-      </select>
-    </div>
+    <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
+      <option value="">Sve destinacije</option>
+      @for (d of destinations; track d.regionId) {
+      <option [value]="d.regionId" [selected]="req.regionId === d.regionId">{{ d.name }}</option>
+      }
+    </select>
 
-    <div class="select-wrap">
-      <span class="select-icon">&#127919;</span>
-      <select class="filter-select filter-select-icon" (change)="onDifficultyChange($any($event.target).value)">
-        @for (opt of difficultyOptions; track opt.value) {
-        <option [value]="opt.value" [selected]="req.difficulty === (opt.value || undefined)">{{ opt.label }}</option>
-        }
-      </select>
-    </div>
+    <select class="filter-select" (change)="onDifficultyChange($any($event.target).value)">
+      @for (opt of difficultyOptions; track opt.value) {
+      <option [value]="opt.value" [selected]="req.difficulty === (opt.value || undefined)">{{ opt.label }}</option>
+      }
+    </select>
 
-    <div class="select-wrap">
-      <span class="select-icon">&#8645;</span>
-      <select class="filter-select filter-select-icon" (change)="onSortChange($any($event.target).value)">
-        @for (opt of sortOptions; track opt.value) {
-        <option [value]="opt.value" [selected]="activeSortValue === opt.value">{{ opt.label }}</option>
-        }
-      </select>
-    </div>
+    <select class="filter-select" (change)="onSortChange($any($event.target).value)">
+      @for (opt of sortOptions; track opt.value) {
+      <option [value]="opt.value" [selected]="activeSortValue === opt.value">{{ opt.label }}</option>
+      }
+    </select>
 
     <div class="spacer"></div>
 
@@ -76,7 +67,7 @@
   </div>
 
   @if (loading) {
-  <div class="state-msg">Ucitavanje...</div>
+  <div class="state-msg">Učitavanje...</div>
   } @else if (routes.length === 0) {
   <div class="state-msg">Nema rezultata.</div>
   } @else {
@@ -84,7 +75,7 @@
     <div class="panel-header">
       <div>
         <div class="panel-title">Sve rute</div>
-        <div class="panel-sub">{{ total }} rezultata | stranica {{ req.page }} od {{ totalPages }}</div>
+        <div class="panel-sub">{{ total }} rezultata · stranica {{ req.page }} od {{ totalPages }}</div>
       </div>
     </div>
 
@@ -114,7 +105,7 @@
                 <div class="item-tags">
                   <span class="tag tag-green">{{ waypointCount(r) }} waypoint-a</span>
                   @if ((r.saveCount ?? 0) > 0) {
-                  <span class="tag">{{ r.saveCount ?? 0 }} sacuvanih</span>
+                  <span class="tag">{{ r.saveCount ?? 0 }} sačuvanih</span>
                   }
                 </div>
               </div>
@@ -148,7 +139,7 @@
             <div class="actions">
               <button class="btn-icon" title="Detalji" (click)="goDetails(r)">&#128065;&#65039;</button>
               <button class="btn-icon" title="Izmeni" (click)="goEdit(r)">&#9998;&#65039;</button>
-              <button class="btn-icon danger" title="Obrisi" (click)="confirmDelete(r)">&#128465;&#65039;</button>
+              <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(r)">&#128465;&#65039;</button>
             </div>
           </td>
         </tr>
@@ -171,9 +162,9 @@
 </div>
 
 <app-confirm-dialog [visible]="!!deleteTarget"
-                    title="Obrisi rutu"
-                    [message]="'Da li ste sigurni da zelite da obrisete rutu &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
-                    confirmLabel="Obrisi"
+                    title="Obriši rutu"
+                    [message]="'Da li ste sigurni da želite da obrišete rutu &quot;' + (deleteTarget?.name ?? '') + '&quot;?'"
+                    confirmLabel="Obriši"
                     [danger]="true"
                     (confirmed)="doDelete()"
                     (cancelled)="cancelDelete()" />

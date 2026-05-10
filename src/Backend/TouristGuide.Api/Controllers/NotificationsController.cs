@@ -119,6 +119,23 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { success = true });
         }
 
+        // ── DELETE /api/notifications ─────────────────────────────────────────
+        [HttpDelete]
+        public async Task<IActionResult> DeleteAll()
+        {
+            var adminId = GetAdminId();
+            if (adminId is null) return Unauthorized();
+
+            var all = await _db.AdminNotifications
+                .Where(n => n.AdminUserId == adminId.Value)
+                .ToListAsync();
+
+            _db.AdminNotifications.RemoveRange(all);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { success = true, deleted = all.Count });
+        }
+
         private uint? GetAdminId()
         {
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { UserService } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 @Component({
   selector: 'app-location-details-card',
@@ -15,6 +16,7 @@ export class LocationDetailsCardComponent {
   @Input() locationData: any;
   @Output() onClose = new EventEmitter<void>();
   @Output() onViewDetails = new EventEmitter<void>();
+  @Output() onAddToRoute = new EventEmitter<void>();
 
   defaultImage = 'assets/plaza.jpg';
   calendarMessage = '';
@@ -25,11 +27,10 @@ export class LocationDetailsCardComponent {
     private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
-
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
   get displayImage(): string {
-    if (this.locationData?.imageUrl) return this.locationData.imageUrl;
+    if (this.locationData?.imageUrl) {
+      return resolveBackendAssetUrl(this.locationData.imageUrl, this.defaultImage);
+    }
     const images = this.locationData?.images;
     if (!images) return this.defaultImage;
     let firstImg = '';
@@ -38,12 +39,7 @@ export class LocationDetailsCardComponent {
     } else if (Array.isArray(images) && images.length > 0) {
       firstImg = images[0];
     }
-    if (!firstImg) return this.defaultImage;
-    if (!firstImg.startsWith('http')) {
-      const clean = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
-      return `${this.IMAGE_BASE_URL}${clean}`;
-    }
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, this.defaultImage);
   }
 
   get displayCategory(): string {
@@ -71,6 +67,11 @@ export class LocationDetailsCardComponent {
       this.router.navigate(['/location-details', 1]);
     }
     this.onViewDetails.emit();
+  }
+
+  onAddToRouteClick(event: Event): void {
+    event.stopPropagation();
+    this.onAddToRoute.emit();
   }
 
   addToCalendar(event: Event): void {

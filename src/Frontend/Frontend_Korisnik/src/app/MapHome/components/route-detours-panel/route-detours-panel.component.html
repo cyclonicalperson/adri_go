@@ -1,0 +1,23 @@
+<div class="detours-panel" *ngIf="scenicSuggestions.length > 0">
+  <div class="panel-heading">
+    <div>
+      <span class="panel-kicker">Detour ideas</span>
+      <h3>Make the route intentionally more interesting</h3>
+    </div>
+  </div>
+
+  <div class="detour-card" *ngFor="let suggestion of scenicSuggestions">
+    <div class="detour-copy">
+      <div class="detour-title">{{ suggestion.location.title }}</div>
+      <div class="detour-meta">
+        <span>{{ formatPostType(suggestion.location.postType) }}</span>
+        <span>&middot; {{ suggestion.distanceToRouteKm | number:'1.1-1' }} km off route</span>
+        <span>&middot; ~{{ suggestion.estimatedExtraMinutes }} min</span>
+      </div>
+      <p>{{ suggestion.reason }}</p>
+    </div>
+    <button type="button" class="detour-add-btn" (click)="detourAdded.emit(suggestion)">
+      Add detour
+    </button>
+  </div>
+</div>

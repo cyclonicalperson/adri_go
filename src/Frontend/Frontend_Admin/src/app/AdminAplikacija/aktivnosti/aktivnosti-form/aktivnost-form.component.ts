@@ -1,13 +1,11 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '@env/environment';
+import { ActivityService } from '@core/services/activity.service';
+import { PostService } from '@core/services/post.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 interface SimpleObject { objectId: number; name: string; }
-// Lokacija (post) koji se prikazuje u dropdownu aktivnosti
-interface SimplePost { id: number; title: string; postType: string; }
 
 @Component({
   selector: 'app-aktivnost-form',
@@ -26,22 +24,23 @@ export class AktivnostFormComponent implements OnInit {
   objects: SimpleObject[] = [];
 
   readonly categoryOptions = [
-    { value: 'SPORT', label: '🏊 Sport' },
-    { value: 'ADVENTURE', label: '⛰️ Priroda / Avantura' },
-    { value: 'WELLNESS', label: '💆 Wellness' },
-    { value: 'SHOPPING', label: '🛍️ Shopping' },
-    { value: 'DINING', label: '🍽️ Ishrana / Kulinarstvo' },
-    { value: 'NIGHTLIFE', label: '🎶 Klupsko / Noćni život' },
-    { value: 'BUSINESS', label: '💼 Poslovno' },
-    { value: 'CULTURE', label: '🎭 Kultura' },
-    { value: 'OTHER', label: '➕ Ostalo' },
+    { value: 'SPORT', label: 'Sport' },
+    { value: 'ADVENTURE', label: 'Priroda / Avantura' },
+    { value: 'WELLNESS', label: 'Wellness' },
+    { value: 'SHOPPING', label: 'Shopping' },
+    { value: 'DINING', label: 'Ishrana / Kulinarstvo' },
+    { value: 'NIGHTLIFE', label: 'Klupsko / Nocni zivot' },
+    { value: 'BUSINESS', label: 'Poslovno' },
+    { value: 'CULTURE', label: 'Kultura' },
+    { value: 'OTHER', label: 'Ostalo' },
   ];
 
   constructor(
     private fb: FormBuilder,
+    private activityService: ActivityService,
+    private postService: PostService,
     private route: ActivatedRoute,
     private router: Router,
-    private http: HttpClient,
   ) { }
 
   ngOnInit(): void {
@@ -59,49 +58,54 @@ export class AktivnostFormComponent implements OnInit {
       status: ['pending'],
     });
 
-    // Učitavamo sve ne-event postove kao listu lokacija za dropdown
-    this.http.get<{ data: SimplePost[] }>(`${environment.apiUrl}/posts?pageSize=100`)
+    this.postService.getAll({ page: 1, pageSize: 100, excludeType: 'event' })
       .subscribe(res => {
-        // Filtriramo evente i mapiramo u SimpleObject format
-        this.objects = (res.data ?? [])
-          .filter((p: SimplePost) => p.postType !== 'event')
-          .map((p: SimplePost) => ({ objectId: p.id, name: p.title }));
+        this.objects = (res.data ?? []).map(post => ({
+          objectId: post.postId,
+          name: post.title,
+        }));
       });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
-      this.http.get<{ data: any }>(`${environment.apiUrl}/activities/${this.id}`)
-        .subscribe(res => {
-          const a = res.data;
-          this.form.patchValue({
-            name: a.name, category: a.category, description: a.description ?? '',
-            duration: a.duration, difficulty: a.difficulty, maxCapacity: a.maxCapacity,
-            tags: Array.isArray(a.tags) ? a.tags.join(', ') : (a.tags ?? ''),
-            objectId: a.postId ?? a.objectId ?? null,
-            latitude: a.latitude ?? a.lat ?? null,
-            longitude: a.longitude ?? a.lng ?? null,
-            status: (a.status ?? 'pending').toLowerCase(),
-          });
-          const lat = a.latitude ?? a.lat;
-          const lng = a.longitude ?? a.lng;
-          if (lat && lng) {
-            setTimeout(() => this.mapComp?.setPickedLocation(lat, lng), 300);
-          }
+      this.activityService.getById(this.id!).subscribe(res => {
+        const activity = res.data;
+        this.form.patchValue({
+          name: activity.name,
+          category: activity.category,
+          description: activity.description ?? '',
+          duration: activity.duration ?? '',
+          difficulty: activity.difficulty ?? '',
+          maxCapacity: activity.maxCapacity ?? null,
+          tags: activity.tags ?? '',
+          objectId: activity.postId ?? null,
+          latitude: activity.lat ?? null,
+          longitude: activity.lng ?? null,
+          status: (activity.status ?? 'pending').toLowerCase(),
         });
+
+        if (activity.lat && activity.lng) {
+          setTimeout(() => this.mapComp?.setPickedLocation(activity.lat!, activity.lng!), 300);
+        }
+      });
     }
   }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     this.saving = true;
     this.error = null;
 
     const raw = this.form.value;
     const objectId = raw.objectId;
 
-    const payload: any = {
+    const payload = {
       name: raw.name,
       category: raw.category,
       status: (raw.status ?? 'pending').toLowerCase(),
@@ -112,21 +116,20 @@ export class AktivnostFormComponent implements OnInit {
       tags: raw.tags ?? '',
       latitude: raw.latitude,
       longitude: raw.longitude,
-      // Vezivanje za lokaciju: null znači standalone (odvezi), broj = veži
       postId: objectId ?? null,
       clearPost: objectId === null || objectId === undefined,
     };
 
-    const url = this.isEdit
-      ? `${environment.apiUrl}/activities/${this.id}`
-      : `${environment.apiUrl}/activities`;
-    const req$ = this.isEdit
-      ? this.http.put(url, payload)
-      : this.http.post(url, payload);
+    const request$ = this.isEdit
+      ? this.activityService.update(this.id!, payload)
+      : this.activityService.create(payload);
 
-    req$.subscribe({
+    request$.subscribe({
       next: () => this.router.navigate(['/admin/aktivnosti']),
-      error: (err: any) => { this.error = err.error?.message ?? 'Greška pri čuvanju.'; this.saving = false; },
+      error: (err: any) => {
+        this.error = err.error?.message ?? 'Greska pri cuvanju.';
+        this.saving = false;
+      },
     });
   }
 

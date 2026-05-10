@@ -528,6 +528,11 @@ namespace TouristGuide.Api.Services
                     Images = """["https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817118/cetinje1_hzgdks.jpg"]""",
                     Details = """{"entrance_fee":0,"dress_code":true}""",
                     Status = "published",
+                    ViewCount = 198,
+                    LikeCount = 41,
+                    SaveCount = 18,
+                    ReviewCount = 1,
+                    AvgRating = 5.0m,
                     PublishedAt = new DateTime(2024, 5, 1, 10, 0, 0, DateTimeKind.Utc)
                 },
                 // ── ATRAKCIJE / MONUMENTI ────────────────────────────────────
@@ -558,9 +563,12 @@ namespace TouristGuide.Api.Services
                     Lat = 43.1450m,
                     Lng = 19.0890m,
                     Address = "NP Durmitor",
-                    Images = """["/images/posts/djavaros1.jpg"]""",
+                    Images = """["https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817710/durmitor_gmcxfb.webp","https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817119/trail1_f1ayim.jpg"]""",
                     Details = """{"entrance_fee":0,"guided_tours":true}""",
                     Status = "published",
+                    ViewCount = 156,
+                    LikeCount = 34,
+                    SaveCount = 12,
                     PublishedAt = new DateTime(2024, 5, 20, 9, 0, 0, DateTimeKind.Utc)
                 },
                 new Post
@@ -576,6 +584,9 @@ namespace TouristGuide.Api.Services
                     Images = """["https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817119/tvrdjava1_zzqdzb.jpg"]""",
                     Details = """{"entrance_fee":8,"currency":"EUR","altitude_m":280}""",
                     Status = "published",
+                    ViewCount = 267,
+                    LikeCount = 58,
+                    SaveCount = 24,
                     PublishedAt = new DateTime(2024, 6, 10, 10, 0, 0, DateTimeKind.Utc)
                 },
                 // ── SPORTSKI OBJEKTI ─────────────────────────────────────────
@@ -613,6 +624,9 @@ namespace TouristGuide.Api.Services
                     OpeningHours = """{"mon":"08:00-18:00","tue":"08:00-18:00","wed":"08:00-18:00","thu":"08:00-18:00","fri":"08:00-18:00","sat":"07:00-19:00","sun":"07:00-19:00"}""",
                     Details = """{"price_from":35,"currency":"EUR","duration_h":4,"min_age":12}""",
                     Status = "published",
+                    ViewCount = 178,
+                    LikeCount = 43,
+                    SaveCount = 21,
                     PublishedAt = new DateTime(2024, 4, 1, 9, 0, 0, DateTimeKind.Utc)
                 },
                 // ── KLUBOVI ──────────────────────────────────────────────────
@@ -647,6 +661,9 @@ namespace TouristGuide.Api.Services
                     Images = """["https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817119/tophill1_x2z0cv.jpg"]""",
                     Details = """{"capacity":5000,"entry_fee":15,"currency":"EUR"}""",
                     Status = "published",
+                    ViewCount = 245,
+                    LikeCount = 54,
+                    SaveCount = 19,
                     PublishedAt = new DateTime(2024, 5, 15, 12, 0, 0, DateTimeKind.Utc)
                 },
                 // ── PRODAVNICA ───────────────────────────────────────────────
@@ -702,6 +719,9 @@ namespace TouristGuide.Api.Services
                     Images = """["https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817116/jazz1_lbqoyz.jpg"]""",
                     Details = """{"category":"CONCERT","startAt":"2025-08-15T21:00:00","endAt":"2025-08-15T23:30:00","ticketUrl":"https://budvajazz.me","price":20,"currency":"EUR","capacity":300}""",
                     Status = "published",
+                    ViewCount = 187,
+                    LikeCount = 42,
+                    SaveCount = 31,
                     PublishedAt = new DateTime(2024, 6, 1, 10, 0, 0, DateTimeKind.Utc)
                 },
                 new Post
@@ -717,6 +737,9 @@ namespace TouristGuide.Api.Services
                     Images = """["https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817119/trail1_f1ayim.jpg"]""",
                     Details = """{"category":"SPORT","startAt":"2025-09-06T06:00:00","endAt":"2025-09-07T20:00:00","price":30,"currency":"EUR"}""",
                     Status = "published",
+                    ViewCount = 214,
+                    LikeCount = 39,
+                    SaveCount = 27,
                     PublishedAt = new DateTime(2024, 5, 1, 10, 0, 0, DateTimeKind.Utc)
                 },
                 new Post

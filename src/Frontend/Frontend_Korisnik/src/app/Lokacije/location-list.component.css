@@ -252,6 +252,8 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
+  text-transform: capitalize;
 }
 .cat-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green-500); }
 
@@ -322,8 +324,8 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.info-item-sm { display: flex; align-items: center; gap: 5px; }
-.info-item-sm svg { width: 13px; height: 13px; fill: currentColor; flex-shrink: 0; }
+.info-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.info-item svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
 
 .reviews-count { font-size: 11px; color: var(--gray-400); }
 

@@ -240,10 +240,61 @@
 
 .notif-panel-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
   padding: 14px 16px;
   border-bottom: 1px solid $gray-200;
+}
+
+.notif-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notif-panel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: $danger;
+  color: $white;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 10px;
+}
+
+.notif-panel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notif-filter-btn {
+  font-size: 12px;
+  font-weight: 700;
+  color: $gray-500;
+  background: $gray-100;
+  border: 1px solid $gray-200;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all .15s;
+  font-family: $font-sans;
+
+  &:hover {
+    background: $gray-200;
+    color: $gray-700;
+  }
+
+  &.active {
+    background: $surface-green;
+    border-color: $primary;
+    color: $primary-dark;
+  }
 }
 
 .notif-panel-title {
@@ -407,6 +458,29 @@
   margin-left: 4px;
 }
 
+.notif-read-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: $primary;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+  padding: 0;
+  line-height: 1;
+
+  &:hover {
+    background: $surface-green;
+    color: $primary-dark;
+  }
+}
+
 .notif-delete-btn {
   width: 22px;
   height: 22px;
@@ -430,10 +504,21 @@
 }
 
 .notif-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 16px;
   border-top: 1px solid #f3f4f6;
   background: #fafafa;
   border-radius: 0 0 14px 14px;
+}
+
+.notif-count-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
 .notif-clear-all {
@@ -460,6 +545,12 @@
   .topbar {
     padding: 0 16px;
     height: 56px;
+    // Fixed so it's always visible regardless of page content or scroll position
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;  // above page overlays (modals ~100), below sidebar (1002)
   }
 
   .header-title {

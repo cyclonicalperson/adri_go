@@ -1,7 +1,7 @@
 <div class="page">
   <div class="card">
     <div class="brand">
-      <div class="logo-mark">🌿</div>
+      <div class="logo-mark">&#x1F33F;</div>
       <span class="logo-text">AdriGo</span>
     </div>
 
@@ -9,7 +9,7 @@
       @if (loading()) {
       <span class="spinner"></span>
       } @else if (success()) {
-      ✓
+      &#10003;
       } @else {
       !
       }
@@ -18,8 +18,10 @@
     <h1 class="title">
       @if (loading()) {
       Verifikacija u toku
+      } @else if (success() && alreadyVerified()) {
+      Email je već potvrđen
       } @else if (success()) {
-      Email potvrdjen
+      Email potvrđen
       } @else if (expired()) {
       Link je istekao
       } @else {
@@ -37,6 +39,13 @@
       <a routerLink="/register" class="btn-primary">Nazad na registraciju</a>
       <a routerLink="/login" class="btn-secondary">Admin prijava</a>
       }
+    </div>
+
+    <div class="switch-app">
+      Želite da nastavite kao turista?
+      <button type="button" class="switch-app__link" (click)="goToTouristApp()">
+        Otvorite turističku aplikaciju
+      </button>
     </div>
   </div>
 </div>

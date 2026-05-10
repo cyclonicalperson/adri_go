@@ -52,8 +52,8 @@
           </div>
           <div class="chart-labels">
             @if (visits.length >= 2) {
-            <span>{{ visits[0]?.date?.slice(5) }}</span>
-            <span>{{ visits[visits.length - 1]?.date?.slice(5) }}</span>
+            <span>{{ formatBarLabel(visits[0]?.date) }}</span>
+            <span>{{ formatBarLabel(visits[visits.length - 1]?.date) }}</span>
             }
           </div>
         </div>

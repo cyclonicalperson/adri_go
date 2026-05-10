@@ -1,0 +1,360 @@
+:host {
+  display: block;
+}
+
+.planner-panel {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+  pointer-events: auto;
+}
+
+.planner-panel.builder-mode {
+  border: 1px solid #bbf7d0;
+  box-shadow: 0 14px 36px rgba(34, 197, 94, 0.12);
+}
+
+.planner-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.planner-header h3 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.planner-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--green-600);
+}
+
+.planner-toggle {
+  border: none;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.planner-toggle.active {
+  background: var(--green-500);
+  color: #fff;
+}
+
+.planner-subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--gray-500);
+}
+
+.planner-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.travel-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--gray-100);
+  padding: 4px;
+  border-radius: 999px;
+  gap: 4px;
+}
+
+.travel-mode-switch button,
+.planner-actions button,
+.scenic-toggle {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.travel-mode-switch button {
+  background: transparent;
+  color: var(--gray-500);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.travel-mode-switch button.active {
+  background: #fff;
+  color: var(--gray-900);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.scenic-toggle {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.scenic-toggle.active {
+  background: #dbeafe;
+}
+
+.planner-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.summary-card {
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.summary-kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-400);
+  margin-bottom: 6px;
+}
+
+.summary-card strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.planner-message {
+  margin-top: 14px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.planner-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+}
+
+.planner-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #dcfce7;
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: trip-planner-spin 0.8s linear infinite;
+}
+
+@keyframes trip-planner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.planner-stop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.planner-stop-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid var(--gray-100);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.stop-order {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--gray-900);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.stop-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stop-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stop-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--gray-400);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  text-transform: capitalize;
+}
+
+.stop-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.stop-actions button {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: none;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.stop-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.stop-actions button.danger,
+.planner-actions button.danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ── PLANNER ACTIONS ─────────────────────────────────────────── */
+.planner-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Shared base for all action buttons */
+.planner-actions button,
+.action-navigate,
+.action-secondary,
+.action-tertiary,
+.action-clear {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  transition: opacity 0.15s, background 0.15s;
+}
+.planner-actions button:disabled,
+.action-tertiary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Navigate — hero green button */
+.action-navigate {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--green-500, #22c55e);
+  color: #fff;
+  font-size: 15px;
+  /* Use filter:drop-shadow so it doesn't clip within the flex container */
+  filter: drop-shadow(0 4px 8px rgba(34, 197, 94, 0.4));
+  margin-bottom: 2px; /* breathing room so the shadow isn't flush with the row below */
+}
+.action-navigate:hover { opacity: 0.9; }
+.action-navigate svg { flex-shrink: 0; }
+
+/* Row wrapper for secondary / tertiary pairs */
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Secondary buttons (Optimize + Save) */
+.action-secondary {
+  padding: 11px 10px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  border: 1px solid #bbf7d0;
+}
+.action-secondary:hover { background: #dcfce7; }
+
+/* Save gets a slightly stronger accent */
+.action-save {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.action-save:hover { background: #bbf7d0; }
+
+/* Tertiary buttons (Calendar + Share) */
+.action-tertiary {
+  padding: 10px 8px;
+  background: #f8fafc;
+  color: var(--gray-600, #475569);
+  font-size: 13px;
+  border: 1px solid var(--gray-200, #e2e8f0);
+}
+.action-tertiary:hover:not(:disabled) { background: #f1f5f9; }
+
+/* Clear route — subtle danger */
+.action-clear {
+  width: 100%;
+  padding: 9px 0;
+  background: #fff1f2;
+  color: #ef4444;
+  font-size: 13px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.action-clear:hover { background: #fee2e2; }

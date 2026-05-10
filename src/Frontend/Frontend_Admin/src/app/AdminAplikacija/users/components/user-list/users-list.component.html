@@ -96,7 +96,7 @@
       </thead>
       <tbody>
         @for (u of users; track u.userId) {
-        <tr>
+        <tr (click)="goEdit(u)">
           <td>
             <div class="author-cell">
               <div class="author-av">{{ initials(u.fullName) }}</div>

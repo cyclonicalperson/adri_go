@@ -9,7 +9,6 @@
 
   <div class="scroll-content">
 
-    <!-- ACCOUNT & SECURITY -->
     <div class="settings-group">
       <p class="group-label">Account &amp; Security</p>
       <div class="group-items">
@@ -18,20 +17,22 @@
           <div class="row-text"><span class="label">Edit Profile</span></div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="setting-row">
+        <button class="setting-row" (click)="openChangePassword()">
           <span class="row-icon icon-password"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
           <div class="row-text"><span class="label">Change Password</span></div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="setting-row">
+        <button class="setting-row" (click)="openSheet('accounts')">
           <span class="row-icon icon-connected"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
-          <div class="row-text"><span class="label">Connected Accounts</span></div>
+          <div class="row-text">
+            <span class="label">Connected Accounts</span>
+            <span class="value">{{ connectedAccountsSummary }}</span>
+          </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
       </div>
     </div>
 
-    <!-- LANGUAGE & CONTENT -->
     <div class="settings-group">
       <p class="group-label">Language &amp; Content</p>
       <div class="group-items">
@@ -39,19 +40,21 @@
           <span class="row-icon icon-language"><svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96z"/></svg></span>
           <div class="row-text">
             <span class="label">App Language</span>
-            <span class="value" data-no-translate="true">{{ currentLanguageLabel }} · <span style="text-decoration:underline;">{{ switchToLanguageLabel }}</span></span>
+            <span class="value" data-no-translate="true">{{ currentLanguageLabel }}</span>
           </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="setting-row">
+        <button class="setting-row" (click)="openSheet('content')">
           <span class="row-icon icon-content"><svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg></span>
-          <div class="row-text"><span class="label">Content Preferences</span></div>
+          <div class="row-text">
+            <span class="label">Content Preferences</span>
+            <span class="value">{{ contentPreferencesSummary }}</span>
+          </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
       </div>
     </div>
 
-    <!-- PRIVACY & TRACKING -->
     <div class="settings-group">
       <p class="group-label">Privacy &amp; Tracking</p>
       <div class="group-items">
@@ -63,18 +66,16 @@
         <div class="setting-row no-hover">
           <span class="row-icon icon-analytics"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></span>
           <div class="row-text"><span class="label">Anonymous Analytics</span><span class="desc">Help us improve by sharing usage data.</span></div>
-          <label class="switch"><input type="checkbox" [(ngModel)]="settings.anonymousAnalytics"><span class="slider round"></span></label>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.anonymousAnalytics" (change)="onAnalyticsToggle()"><span class="slider round"></span></label>
         </div>
         <div class="setting-row no-hover">
           <span class="row-icon icon-recommend"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></span>
           <div class="row-text"><span class="label">Personalized Recommendations</span><span class="desc">Get tailored suggestions for attractions.</span></div>
-          <!-- uses personalizedRecs — the actual property name -->
-          <label class="switch"><input type="checkbox" [(ngModel)]="settings.personalizedRecs"><span class="slider round"></span></label>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.personalizedRecs" (change)="onPersonalizedRecommendationsToggle()"><span class="slider round"></span></label>
         </div>
       </div>
     </div>
 
-    <!-- NOTIFICATIONS -->
     <div class="settings-group">
       <p class="group-label">Notifications</p>
       <div class="group-items">
@@ -86,33 +87,30 @@
         <div class="setting-row no-hover">
           <span class="row-icon icon-email"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
           <div class="row-text"><span class="label">Email Notifications</span><span class="desc">Summary of your trips and receipts.</span></div>
-          <label class="switch"><input type="checkbox" [(ngModel)]="settings.emailNotifications"><span class="slider round"></span></label>
+          <label class="switch"><input type="checkbox" [(ngModel)]="settings.emailNotifications" (change)="onEmailNotificationsToggle()"><span class="slider round"></span></label>
         </div>
       </div>
     </div>
 
-    <!-- INTEGRATIONS -->
     <div class="settings-group">
       <p class="group-label">Integrations &amp; Bookings</p>
       <div class="group-items">
-        <button class="setting-row">
+        <button class="setting-row" (click)="openSheet('booking')">
           <span class="row-icon icon-booking"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
-          <div class="row-text"><span class="label">Connected Booking Services</span></div>
+          <div class="row-text">
+            <span class="label">Connected Booking Services</span>
+            <span class="value">{{ bookingServicesSummary }}</span>
+          </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="setting-row">
-          <span class="row-icon icon-payment"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></span>
-          <div class="row-text"><span class="label">Payment Methods</span></div>
-          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
-        </button>
+
       </div>
     </div>
 
-    <!-- ABOUT -->
     <div class="settings-group">
       <p class="group-label">About &amp; Support</p>
       <div class="group-items">
-        <button class="setting-row" (click)="goToHelp()">
+        <button class="setting-row" (click)="openSheet('support')">
           <span class="row-icon icon-help"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg></span>
           <div class="row-text"><span class="label">Help &amp; Support Center</span></div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
@@ -135,7 +133,6 @@
       </div>
     </div>
 
-    <!-- FOOTER ACTIONS -->
     <div class="footer-actions">
       <div *ngIf="savedMessage" class="saved-toast">{{ savedMessage }}</div>
       <button class="save-btn" (click)="saveChanges()">Save Changes</button>
@@ -145,5 +142,130 @@
       </button>
     </div>
 
+  </div>
+</div>
+
+<div class="settings-sheet-overlay" *ngIf="activeSheet" (click)="closeSheet()">
+  <div class="settings-sheet" (click)="$event.stopPropagation()">
+    <div class="sheet-header">
+      <div>
+        <span class="sheet-kicker">
+          {{ activeSheet === 'accounts' ? 'Accounts' : activeSheet === 'content' ? 'Content' : activeSheet === 'booking' ? 'Booking' : activeSheet === 'language' ? 'Language' : 'Support' }}
+        </span>
+        <h2>
+          {{ activeSheet === 'accounts' ? 'Connected Accounts' : activeSheet === 'content' ? 'Content Preferences' : activeSheet === 'booking' ? 'Connected Booking Services' : activeSheet === 'language' ? 'App Language' : 'Help & Support Center' }}
+        </h2>
+      </div>
+      <button class="sheet-close" (click)="closeSheet()">✕</button>
+    </div>
+
+    <div class="sheet-body" *ngIf="activeSheet === 'accounts'">
+      <p class="sheet-copy">Choose which sign-in providers AdriGo should prioritize for this device.</p>
+      <button class="sheet-option" *ngFor="let option of accountOptions" (click)="toggleConnectedAccount(option.id)">
+        <div>
+          <strong>{{ option.label }}</strong>
+          <span>{{ option.desc }}</span>
+        </div>
+        <span class="sheet-pill" [class.active]="settings.connectedAccounts[option.id]">
+          {{ settings.connectedAccounts[option.id] ? 'Enabled' : 'Disabled' }}
+        </span>
+      </button>
+    </div>
+
+    <div class="sheet-body" *ngIf="activeSheet === 'content'">
+      <p class="sheet-copy">These interests shape the recommender, scenic detours and discovery order across the app.</p>
+      <div class="chip-grid">
+        <button
+          *ngFor="let option of contentOptions"
+          class="pref-chip"
+          [class.active]="isContentPreferenceSelected(option.id)"
+          (click)="toggleContentPreference(option.id)">
+          <span>{{ option.icon }}</span> {{ option.label }}
+        </button>
+      </div>
+    </div>
+
+    <div class="sheet-body" *ngIf="activeSheet === 'booking'">
+      <p class="sheet-copy">Pick the booking ecosystems AdriGo should prefer when surfacing trip-related links.</p>
+      <button class="sheet-option" *ngFor="let option of bookingOptions" (click)="toggleBookingService(option.id)">
+        <strong>{{ option.label }}</strong>
+        <span class="sheet-pill" [class.active]="isBookingServiceEnabled(option.id)">
+          {{ isBookingServiceEnabled(option.id) ? 'Enabled' : 'Hidden' }}
+        </span>
+      </button>
+    </div>
+
+    <div class="sheet-body" *ngIf="activeSheet === 'support'">
+      <p class="sheet-copy">Jump to help, contact support directly or clear your recommendation history.</p>
+      <div class="support-actions">
+        <button class="support-action" (click)="goToHelp()">Open Help Center</button>
+        <button class="support-action" (click)="openSupportEmail()">Email Support</button>
+        <button class="support-action danger" (click)="resetPersonalization()">Reset Personalization</button>
+      </div>
+    </div>
+
+    <div class="sheet-body" *ngIf="activeSheet === 'language'" data-no-translate="true">
+      <p class="sheet-copy">Interface language</p>
+      <button
+        class="sheet-option lang-option-row"
+        *ngFor="let lang of languages"
+        [class.active]="translate.currentLanguage === lang.code"
+        (click)="setLanguage(lang.code)">
+        <strong>{{ lang.label }}</strong>
+        <span class="sheet-pill" [class.active]="translate.currentLanguage === lang.code">
+          {{ lang.shortLabel }}
+        </span>
+      </button>
+    </div>
+
+    <div class="sheet-footer" *ngIf="activeSheet !== 'support' && activeSheet !== 'language'">
+      <button class="sheet-secondary" (click)="closeSheet()">Cancel</button>
+      <button class="sheet-primary" (click)="saveSheet()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showPasswordModal"
+     style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:#0f172a;">Change Password</h2>
+    <p style="font-size:13px;color:#94a3b8;margin:0 0 20px;">Enter your current password and choose a new one.</p>
+
+    <div *ngIf="passwordError"
+         style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;">
+      {{ passwordError }}
+    </div>
+    <div *ngIf="passwordSuccess"
+         style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;">
+      {{ passwordSuccess }}
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Current Password</label>
+      <input type="password" [(ngModel)]="changePasswordForm.currentPassword" placeholder="••••••••"
+             style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">New Password</label>
+      <input type="password" [(ngModel)]="changePasswordForm.newPassword" placeholder="Min. 6 characters"
+             style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+    </div>
+    <div style="margin-bottom:24px;">
+      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Confirm New Password</label>
+      <input type="password" [(ngModel)]="changePasswordForm.confirmPassword" placeholder="••••••••"
+             style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+    </div>
+
+    <div style="display:flex;gap:10px;">
+      <button (click)="closePasswordModal()"
+              style="flex:1;padding:13px;background:#f1f5f9;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:#475569;">
+        Cancel
+      </button>
+      <button (click)="submitChangePassword()" [disabled]="isSavingPassword"
+              style="flex:1;padding:13px;background:#22c55e;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;opacity:1;"
+              [style.opacity]="isSavingPassword ? '0.6' : '1'">
+        {{ isSavingPassword ? 'Saving...' : 'Save Password' }}
+      </button>
+    </div>
   </div>
 </div>

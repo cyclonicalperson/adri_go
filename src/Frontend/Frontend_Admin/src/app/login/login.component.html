@@ -2,7 +2,7 @@
   <div class="card">
 
     <div class="brand">
-      <div class="logo-mark">🌿</div>
+      <div class="logo-mark">&#x1F33F;</div>
       <span class="logo-text">AdriGo</span>
     </div>
 
@@ -49,7 +49,7 @@
         @if (loading()) {
         <span class="spinner"></span>
         } @else {
-        Prijavi se →
+        Prijavi se &rarr;
         }
       </button>
 
@@ -59,6 +59,13 @@
       Nemate nalog?
       <button type="button" class="link-btn" (click)="goToRegister()">
         Kreirajte nalog
+      </button>
+    </p>
+
+    <p class="secondary-prompt">
+      Želite turistički nalog?
+      <button type="button" class="link-btn" (click)="goToTouristApp()">
+        Otvorite turističku aplikaciju
       </button>
     </p>
 

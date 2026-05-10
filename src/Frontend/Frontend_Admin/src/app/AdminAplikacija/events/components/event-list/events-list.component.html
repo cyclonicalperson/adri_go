@@ -122,7 +122,7 @@
       </thead>
       <tbody>
         @for (e of events; track e.postId) {
-        <tr>
+        <tr (click)="openDetail(e)">
           <td>
             <div class="item-cell">
               <div class="item-thumb">{{ categoryIcon(eventCategory(e)) }}</div>
@@ -155,8 +155,19 @@
           <td style="font-size:12px;color:#374151;font-weight:600">
             {{ eventEnd(e).toLocaleDateString('sr-RS') }}
           </td>
-          <td style="font-size:12px;color:#6b7280">
-            {{ e.region?.name ?? '—' }}
+          <td>
+            @if (e.region?.name) {
+            <div style="font-weight:600;font-size:13px">{{ e.region!.name }}</div>
+            } @else if (e.address) {
+            <div style="font-weight:600;font-size:13px">{{ e.address }}</div>
+            } @else {
+            <div style="color:#9ca3af;font-size:12px">—</div>
+            }
+            @if (e.lat && e.lng) {
+            <div style="font-size:11px;color:#6b7280">
+              {{ e.lat.toFixed(4) }}° N, {{ e.lng.toFixed(4) }}° E
+            </div>
+            }
           </td>
           <td style="font-size:12px;font-weight:600">{{ e.adminName ?? '—' }}</td>
           <td (click)="$event.stopPropagation()">

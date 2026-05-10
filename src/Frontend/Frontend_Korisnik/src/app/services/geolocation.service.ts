@@ -12,10 +12,13 @@ interface StoredUserSettings {
 @Injectable({ providedIn: 'root' })
 export class GeolocationService {
   private readonly SETTINGS_KEY = 'user_settings';
-  private lastKnownPosition: UserPosition | null = null;
 
   isSupported(): boolean {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
+  }
+
+  isSecureContext(): boolean {
+    return typeof window !== 'undefined' && window.isSecureContext;
   }
 
   isLocationSharingEnabled(): boolean {
@@ -31,34 +34,44 @@ export class GeolocationService {
   }
 
   async requestCurrentPosition(options?: PositionOptions): Promise<UserPosition | null> {
-    if (!this.isSupported() || !this.isLocationSharingEnabled()) {
+    if (!this.isSupported()) {
+      console.warn('Geolocation nije podržan u ovom browseru.');
       return null;
     }
 
-    return new Promise<UserPosition | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userPosition = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
+    if (!this.isSecureContext()) {
+      console.warn('Geolocation zahteva HTTPS. Lokacija nije dostupna na HTTP.');
+      return null;
+    }
 
-          this.lastKnownPosition = userPosition;
-          resolve(userPosition);
-        },
-        () => resolve(null),
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000,
-          ...options
-        }
-      );
-    });
-  }
+    if (!this.isLocationSharingEnabled()) {
+      return null;
+    }
 
-  getLastKnownPosition(): UserPosition | null {
-    return this.lastKnownPosition;
+    // Try network-based first (fast, works on desktop Firefox/Chrome without GPS).
+    // If the caller explicitly overrides options, honour them.
+    const defaults: PositionOptions = {
+      enableHighAccuracy: false,
+      timeout: 20000,
+      maximumAge: 30000,
+    };
+    const merged: PositionOptions = { ...defaults, ...options };
+
+    const tryGet = (opts: PositionOptions) =>
+      new Promise<UserPosition | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          opts,
+        );
+      });
+
+    const result = await tryGet(merged);
+    if (result) return result;
+
+    // If the first attempt timed out / failed and we were already using low-accuracy,
+    // do a final retry with a shorter timeout (IP-only, always fast).
+    return tryGet({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
   }
 
   haversineKm(from: UserPosition, to: UserPosition): number {

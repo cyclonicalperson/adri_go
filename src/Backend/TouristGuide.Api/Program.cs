@@ -9,6 +9,7 @@ using System.IO;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
+using TouristGuide.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "DataProtectionKeys");
@@ -31,14 +32,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
     {
-        policy
-            .WithOrigins(
-                "http://localhost:4200",   // Admin Angular app
-                "http://localhost:4201"    // Turista Angular app
+            policy.WithOrigins(
+                "http://softeng.pmf.kg.ac.rs:10181",    // Admin Angular app HTTP
+                "http://softeng.pmf.kg.ac.rs:10183",    // Turista Angular app HTTP
+                "https://softeng.pmf.kg.ac.rs:10188",   // Admin Angular app HTTPS
+                "https://softeng.pmf.kg.ac.rs:10187"    // Turista Angular app HTTPS
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // Obavezno za SignalR WebSocket
+            .AllowCredentials();
     });
 });
 
@@ -91,6 +93,7 @@ builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 
@@ -139,10 +142,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     ));
 
 var app = builder.Build();
+
 // ────────────────────────────────────────────────────────────
 // 6. MIGRACIJE + SEED
-// MigrateAsync kreira tabele i primjenjuje sve migracije.
-// Seeder puni početnim podacima ako su tabele prazne.
 // ────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
@@ -164,9 +166,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ── Lokalne slike (verifikacioni dokumenti i sl.) ─────────────────────
-// Backend čuva fajlove u ContentRootPath/images/ a ne u wwwroot,
-// pa moramo eksplicitno registrovati taj folder za statički sadržaj.
 var imagesPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "images");
 Directory.CreateDirectory(imagesPhysicalPath);
 app.UseStaticFiles(new StaticFileOptions
@@ -179,6 +178,7 @@ if (Directory.Exists(app.Environment.WebRootPath))
 {
     app.UseStaticFiles();
 }
+
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();

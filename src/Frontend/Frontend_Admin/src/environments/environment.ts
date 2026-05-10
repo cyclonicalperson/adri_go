@@ -5,4 +5,6 @@ export const environment = {
   production: false,
   useMocks: false,
   apiUrl: 'http://localhost:5125/api',
+  adminAppUrl: 'http://localhost:4200',
+  touristAppUrl: 'http://localhost:4201',
 };

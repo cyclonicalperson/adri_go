@@ -96,6 +96,23 @@
       </div>
     </section>
 
+    <!-- SAVED ONLY (visible when savedPostIds are stored) -->
+    <section *ngIf="savedPostIds.length > 0">
+      <div class="section-header">
+        <h2>Saved Locations</h2>
+      </div>
+      <div class="toggle-card">
+        <div class="toggle-text">
+          <h3>Show Only Saved</h3>
+          <p>Display only your {{ savedPostIds.length }} saved destinations</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" [(ngModel)]="showOnlySaved">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </section>
+
   </div>
 
   <div class="footer">

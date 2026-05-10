@@ -1,18 +1,21 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { environment } from '@env/environment';
 import { RegionService } from '@core/services/region.service';
 import { Region } from '@core/models/region.model';
-import { ObjectService } from '@core/services/object.service';
-import { TouristObject } from '@core/models/object.model';
+import { PostService } from '@core/services/post.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
+import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
+
+interface EventObjectOption {
+  objectId: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-event-form',
   standalone: true,
-  imports: [ReactiveFormsModule, MapComponent],
+  imports: [ReactiveFormsModule, MapComponent, PostImagePickerComponent],
   templateUrl: './event-form.component.html',
   styleUrl: './event-form.component.scss',
 })
@@ -24,15 +27,15 @@ export class EventFormComponent implements OnInit {
   error: string | null = null;
 
   destinations: Region[] = [];
-  objects: TouristObject[] = [];
+  objects: EventObjectOption[] = [];
 
   readonly categoryOptions = [
     { value: 'CONCERT', label: 'Koncert' },
     { value: 'FESTIVAL', label: 'Festival' },
-    { value: 'SPORT', label: 'Sport / Takmičenje' },
-    { value: 'EXHIBITION', label: 'Izložba' },
+    { value: 'SPORT', label: 'Sport / Takmicenje' },
+    { value: 'EXHIBITION', label: 'Izlozba' },
     { value: 'TOUR', label: 'Tura' },
-    { value: 'THEATER', label: 'Pozorište' },
+    { value: 'THEATER', label: 'Pozoriste' },
     { value: 'CONFERENCE', label: 'Konferencija' },
     { value: 'OTHER', label: 'Ostalo' },
   ];
@@ -40,10 +43,9 @@ export class EventFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private destService: RegionService,
-    private objectService: ObjectService,
+    private postService: PostService,
     private route: ActivatedRoute,
     private router: Router,
-    private http: HttpClient,
   ) { }
 
   ngOnInit(): void {
@@ -68,62 +70,59 @@ export class EventFormComponent implements OnInit {
       lat: [null],
       lng: [null],
       status: ['draft'],
+      images: [[] as string[]],
     });
 
-    // Učitaj regije za dropdown
     this.destService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.destinations = res.data;
     });
 
-    // Učitaj sve ne-event postove direktno — izbjegava category filter bug u ObjectService
-    this.http.get<{ data: any[] }>(`${environment.apiUrl}/posts?page=1&pageSize=200`).subscribe(res => {
-      this.objects = (res.data ?? [])
-        .filter((p: any) => p.postType !== 'event')
-        .map((p: any) => ({ objectId: p.id ?? p.postId, name: p.title } as any));
+    this.postService.getAll({ page: 1, pageSize: 200, excludeType: 'event' }).subscribe(res => {
+      this.objects = (res.data ?? []).map(post => ({ objectId: post.postId, name: post.title }));
     });
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
-      // Direktan HTTP poziv na /posts/{id} — backend vraća PostDto
-      this.http.get<any>(`${environment.apiUrl}/posts/${this.id}`).subscribe({
-        next: post => {
-          // PostDto ima: title, postType, description, lat, lng, regionId,
-          // details (JSON string): { eventStart, eventEnd, category, ticketUrl }
-          let det: any = {};
-          if (post.details) {
-            try { det = typeof post.details === 'string' ? JSON.parse(post.details) : post.details; }
-            catch { det = {}; }
-          }
-
-          // Formatiramo datetime-local input (YYYY-MM-DDTHH:MM)
-          const fmtDt = (s: string | undefined) => {
-            if (!s) return '';
-            return new Date(s).toISOString().slice(0, 16);
+      this.postService.getById(this.id!).subscribe({
+        next: res => {
+          const post = res.data;
+          const details = post.details ?? {};
+          const formatDateTime = (value?: string | null) => {
+            if (!value) return '';
+            return new Date(value).toISOString().slice(0, 16);
           };
 
           this.form.patchValue({
             title: post.title ?? '',
-            // Backend serijalizuje camelCase: startAt/endAt (ne eventStart/eventEnd)
-            category: det.category ?? 'OTHER',
+            category: details['category'] ?? 'OTHER',
             description: post.description ?? '',
             regionId: post.regionId ?? null,
-            objectId: det.objectId ?? det.relatedObjectId ?? null,
-            startAt: fmtDt(det.startAt ?? det.eventStart),
-            endAt: fmtDt(det.endAt ?? det.eventEnd),
-            ticketUrl: det.ticketUrl ?? post.externalUrl ?? '',
+            objectId: details['objectId'] ?? details['relatedObjectId'] ?? null,
+            startAt: formatDateTime((details['startAt'] as string | null | undefined) ?? (details['eventStart'] as string | null | undefined)),
+            endAt: formatDateTime((details['endAt'] as string | null | undefined) ?? (details['eventEnd'] as string | null | undefined)),
+            ticketUrl: details['ticketUrl'] ?? post.externalUrl ?? '',
             externalUrl: post.externalUrl ?? '',
             lat: post.lat ?? null,
             lng: post.lng ?? null,
             status: post.status ?? 'draft',
+            images: post.images ?? [],
           });
         },
         error: () => {
-          this.error = 'Greška pri učitavanju dogadjaja.';
+          this.error = 'Greska pri ucitavanju dogadjaja.';
         },
       });
     }
+  }
+
+  get formImages(): string[] {
+    return this.form.get('images')?.value ?? [];
+  }
+
+  onImagesChange(urls: string[]): void {
+    this.form.patchValue({ images: urls });
   }
 
   onMapClick(ev: MapClickEvent): void {
@@ -136,43 +135,45 @@ export class EventFormComponent implements OnInit {
   f(name: string) { return this.form.get(name)!; }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     this.saving = true;
     this.error = null;
 
     const raw = this.form.value;
-
-    // Backend /api/posts PUT/POST prihvata PostType, Details itd.
-    const details = JSON.stringify({
+    const details = {
       category: raw.category,
       startAt: raw.startAt ? new Date(raw.startAt).toISOString() : null,
       endAt: raw.endAt ? new Date(raw.endAt).toISOString() : null,
       ticketUrl: raw.ticketUrl || null,
       objectId: raw.objectId || null,
-    });
+    };
 
-    const body: any = {
+    const body = {
       title: raw.title,
-      postType: 'event',
+      postType: 'event' as const,
       description: raw.description,
       regionId: raw.regionId || null,
-      objectId: raw.objectId || null,
       lat: raw.lat || null,
       lng: raw.lng || null,
       externalUrl: raw.ticketUrl || raw.externalUrl || null,
-      externalUrlLabel: raw.ticketUrl ? 'Kupi kartu' : null,
+      externalUrlLabel: raw.ticketUrl ? 'Kupi kartu' : undefined,
+      images: (raw.images as string[]) ?? [],
       details,
       status: raw.status || 'draft',
     };
 
-    const req$ = this.isEdit
-      ? this.http.put<any>(`${environment.apiUrl}/posts/${this.id}`, body)
-      : this.http.post<any>(`${environment.apiUrl}/posts`, body);
+    const request$ = this.isEdit
+      ? this.postService.update(this.id!, body)
+      : this.postService.create(body);
 
-    req$.subscribe({
+    request$.subscribe({
       next: () => this.router.navigate(['/admin/events']),
       error: (err: any) => {
-        this.error = err?.error?.message ?? err?.message ?? 'Greška pri čuvanju.';
+        this.error = err?.error?.message ?? err?.message ?? 'Greska pri cuvanju.';
         this.saving = false;
       },
     });

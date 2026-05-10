@@ -3,6 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
+import { FilterStateService } from '../services/filter-state.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
   selector: 'app-saved-locations',
@@ -30,22 +34,23 @@ export class SavedLocationsComponent implements OnInit {
     { id: 'shop',            label: 'Shopping' },
   ];
 
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
   savedItems: any[] = [];
 
   constructor(
     public router: Router,
     private locationService: LocationService,
     private authService: AuthService,
+    private filterStateService: FilterStateService,
+    private preferences: TouristPreferencesService,
     private cdr: ChangeDetectorRef
   ) {}
 
   userPosition: [number, number] | null = null;
 
   ngOnInit() {
-    // Request geolocation so we can show distance
-    this.requestGeolocation();
+    if (this.preferences.snapshot.locationSharing) {
+      this.requestGeolocation();
+    }
 
     if (this.authService.isLoggedIn) {
       this.loadSavedLocations();
@@ -93,6 +98,10 @@ export class SavedLocationsComponent implements OnInit {
       }
       return nowMins >= openMins && nowMins < closeMins;
     } catch { return true; }
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -160,11 +169,10 @@ export class SavedLocationsComponent implements OnInit {
 
   private mapToItem(post: Location): any {
     const imagesArr = this.locationService.parseImages(post.images);
-    let firstImage = imagesArr.length > 0 ? imagesArr[0] : this.defaultImage;
-    if (firstImage !== this.defaultImage && !firstImage.startsWith('http')) {
-      const cleanPath = firstImage.startsWith('/') ? firstImage.substring(1) : firstImage;
-      firstImage = `${this.IMAGE_BASE_URL}${cleanPath}`;
-    }
+    const firstImage = resolveBackendAssetUrl(
+      imagesArr.length > 0 ? imagesArr[0] : null,
+      this.defaultImage,
+    );
     const lat = (post as any).lat ?? (post as any).latitude;
     const lng = (post as any).lng ?? (post as any).longitude;
     const distance = (this.userPosition && lat && lng)
@@ -197,13 +205,27 @@ export class SavedLocationsComponent implements OnInit {
     );
   }
 
+  get isEmptyStateVisible(): boolean {
+    return !this.isLoading && this.filteredItems.length === 0;
+  }
+
   setFilter(filter: string) { this.activeFilter = filter; }
 
   goBack() { window.history.back(); }
 
   viewDetails(id: number) { this.router.navigate(['/location-details', id]); }
 
-  showOnMap() { this.router.navigate(['/map-home']); }
+  showOnMap() {
+    // Save current saved IDs to filter state so map can show only these
+    const ids = this.savedItems.map(item => item.id as number);
+    const currentState = this.filterStateService.get();
+    this.filterStateService.set({
+      ...currentState,
+      showOnlySaved: true,
+      savedPostIds: ids
+    });
+    this.router.navigate(['/map-home']);
+  }
 
   removeSaved(id: number, event: Event) {
     event.stopPropagation();

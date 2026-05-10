@@ -4,6 +4,8 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './Login/login.component';
 import { ChooseRoleComponent } from './ChooseRole/choose-role.component';
 import { RegisterProfileComponent } from './Register/register-profile.component';
+import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './reset-password/reset-password.component';
 
 // 2. Importi za Glavne ekrane
 import { MapHomeComponent } from './MapHome/map-home.component';
@@ -28,6 +30,9 @@ import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { TermsComponent } from './terms/terms.component';
 import { PrivacyPolicyComponent } from './privacy-policy/privacy-policy.component';
 
+// 6. OAuth callback (Google sign-in popup redirect target)
+import { AuthCallbackComponent } from './auth-callback/auth-callback.component';
+
 export const routes: Routes = [
   // POČETNA RUTA
   { path: '', redirectTo: '/map-home', pathMatch: 'full' },
@@ -37,6 +42,8 @@ export const routes: Routes = [
   { path: 'choose-role', component: ChooseRoleComponent },
   { path: 'register', component: RegisterProfileComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
 
   // MAPA I LISTA
   { path: 'map-home', component: MapHomeComponent },
@@ -61,6 +68,9 @@ export const routes: Routes = [
   // LEGALNI DOKUMENTI (read-only, bez user controls)
   { path: 'terms', component: TermsComponent },
   { path: 'privacy-policy', component: PrivacyPolicyComponent },
+
+  // OAUTH CALLBACK — Google popup redirect target (must be before wildcard)
+  { path: 'auth/callback', component: AuthCallbackComponent },
 
   // WILDCARD — mora biti poslednja
   { path: '**', redirectTo: '/map-home' }

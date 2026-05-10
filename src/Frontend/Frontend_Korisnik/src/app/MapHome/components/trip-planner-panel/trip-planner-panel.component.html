@@ -1,0 +1,106 @@
+<div class="planner-panel" [class.builder-mode]="plannerMode">
+  <div class="planner-header">
+    <div>
+      <span class="planner-label">Trip planner</span>
+      <h3>Build a route from real destination pins</h3>
+    </div>
+    <button type="button" class="planner-toggle" [class.active]="plannerMode" (click)="plannerModeToggled.emit()">
+      {{ plannerMode ? 'Builder on' : 'Tap pins' }}
+    </button>
+  </div>
+
+  <p class="planner-subtitle" *ngIf="plannerStops.length === 0">
+    Activate the builder and tap destinations on the map to add them as ordered stops.
+  </p>
+
+  <div class="planner-controls">
+    <div class="travel-mode-switch">
+      <button type="button" [class.active]="travelMode === 'driving'" (click)="travelModeSelected.emit('driving')">Drive</button>
+      <button type="button" [class.active]="travelMode === 'walking'" (click)="travelModeSelected.emit('walking')">Walk</button>
+      <button type="button" [class.active]="travelMode === 'cycling'" (click)="travelModeSelected.emit('cycling')">Cycle</button>
+    </div>
+    <button type="button" class="scenic-toggle" [class.active]="scenicMode" (click)="scenicModeToggled.emit()">
+      Scenic detours {{ scenicMode ? 'On' : 'Off' }}
+    </button>
+  </div>
+
+  <div class="planner-summary-grid" *ngIf="plannerStops.length > 0">
+    <div class="summary-card">
+      <span class="summary-kicker">Stops</span>
+      <strong>{{ routeSummary.stopCount }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-kicker">Distance</span>
+      <strong>{{ routeSummary.distanceKm > 0 ? (routeSummary.distanceKm | number:'1.1-1') + ' km' : 'Ready' }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-kicker">ETA</span>
+      <strong>{{ routeSummary.durationMin > 0 ? formatDuration(routeSummary.durationMin) : 'Calculating' }}</strong>
+    </div>
+  </div>
+
+  <div class="planner-message" *ngIf="plannerMessage">
+    {{ plannerMessage }}
+  </div>
+
+  <div class="planner-loading" *ngIf="isRenderingRoute">
+    <div class="planner-spinner"></div>
+    Updating your route...
+  </div>
+
+  <div class="planner-stop-list" *ngIf="plannerStops.length > 0">
+    <div class="planner-stop-card" *ngFor="let stop of plannerStops; let i = index; trackBy: trackByStopId">
+      <button type="button" class="stop-order" (click)="stopFocused.emit(stop)">{{ i + 1 }}</button>
+      <div class="stop-info">
+        <div class="stop-title">{{ stop.title }}</div>
+        <div class="stop-meta">
+          <span>{{ formatPostType(stop.postType) || 'Destination' }}</span>
+          <span *ngIf="stop.regionName">&middot; {{ stop.regionName }}</span>
+        </div>
+      </div>
+      <div class="stop-actions">
+        <button type="button" (click)="stopMoved.emit({ index: i, direction: 'up' })" [disabled]="i === 0">&#8593;</button>
+        <button type="button" (click)="stopMoved.emit({ index: i, direction: 'down' })" [disabled]="i === plannerStops.length - 1">&#8595;</button>
+        <button type="button" class="danger" (click)="stopRemoved.emit(stop.id)">&#10005;</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="planner-actions" *ngIf="plannerStops.length > 0">
+    <!-- Primary: Navigate — full-width hero button -->
+    <button type="button" class="action-navigate" (click)="navigationStarted.emit()">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 3.41 1.97 6.36 4.86 7.72L12 22l2.14-5.28C17.03 15.36 19 12.41 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      Start Navigation
+    </button>
+
+    <!-- Secondary row: Optimize + Save -->
+    <div class="action-row">
+      <button type="button" class="action-secondary" (click)="plannerOptimized.emit()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        Optimize
+      </button>
+      <button type="button" class="action-secondary action-save" (click)="routeSaveRequested.emit()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+        Save Route
+      </button>
+    </div>
+
+    <!-- Tertiary row: Calendar + Share -->
+    <div class="action-row">
+      <button type="button" class="action-tertiary" (click)="tripSaved.emit()" [disabled]="isSavingTrip">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+        {{ isSavingTrip ? 'Saving…' : 'Calendar' }}
+      </button>
+      <button type="button" class="action-tertiary" (click)="tripShared.emit()">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+        Share
+      </button>
+    </div>
+
+    <!-- Danger: Clear route -->
+    <button type="button" class="action-clear" (click)="routeCleared.emit()">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      Clear route
+    </button>
+  </div>
+</div>

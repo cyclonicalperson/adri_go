@@ -40,6 +40,28 @@ namespace TouristGuide.Api.Services
             await SendEmailAsync(toEmail, subject, body);
         }
 
+        /// <summary>
+        /// Salje email za resetovanje lozinke turisti.
+        /// </summary>
+        public async Task SendPasswordResetEmailAsync(string toEmail, string toName, string resetToken)
+        {
+            var resetLink = BuildFrontendUrl(
+                configKey: "Email:TouristBaseUrl",
+                fallbackBaseUrl: "http://localhost:4201",
+                pathAndQuery: $"/reset-password?token={Uri.EscapeDataString(resetToken)}");
+
+            var subject = "Resetovanje lozinke - TouristGuide";
+            var body = BuildEmailTemplate(
+                title: $"Resetovanje lozinke, {HtmlEncode(toName)}",
+                intro: "Primili smo zahtev za resetovanje lozinke za vas nalog.",
+                bodyHtml: "<p>Kliknite na dugme ispod da kreirate novu lozinku. Link je vazeci 1 sat.</p><p style='color:#666;font-size:13px;'>Ako niste vi pokrenuli ovu akciju, mozete zanemariti ovaj email.</p>",
+                actionLabel: "Resetuj lozinku",
+                actionUrl: resetLink,
+                footerNote: "Link je vazeci 1 sat. Ako niste zatrazili resetovanje lozinke, vas nalog je bezbedan i ne morate preduzimati nikakve akcije.");
+
+            await SendEmailAsync(toEmail, subject, body);
+        }
+
         public async Task SendAdminRegistrationVerificationEmailAsync(string toEmail, string toName, string verificationToken)
         {
             var verificationLink = BuildFrontendUrl(

@@ -163,12 +163,20 @@ namespace TouristGuide.Api.Controllers
             var allRegionIds = likedRegions.Select(x => x.regionId)
                 .Union(savedRegions.Select(x => x.regionId))
                 .Union(viewedRegions.Select(x => x.regionId))
+                .Where(rid => rid.HasValue)
+                .Select(rid => rid!.Value)
                 .Distinct();
 
             // Koristimo dictionary za brzo lookup po regionId
-            var likedRegionDict = likedRegions.ToDictionary(x => x.regionId, x => x);
-            var savedRegionDict = savedRegions.ToDictionary(x => x.regionId, x => x);
-            var viewedRegionDict = viewedRegions.ToDictionary(x => x.regionId, x => x);
+            var likedRegionDict = likedRegions
+                .Where(x => x.regionId.HasValue)
+                .ToDictionary(x => x.regionId!.Value, x => x);
+            var savedRegionDict = savedRegions
+                .Where(x => x.regionId.HasValue)
+                .ToDictionary(x => x.regionId!.Value, x => x);
+            var viewedRegionDict = viewedRegions
+                .Where(x => x.regionId.HasValue)
+                .ToDictionary(x => x.regionId!.Value, x => x);
 
             var regionPreferences = allRegionIds
                 .Select(rid =>

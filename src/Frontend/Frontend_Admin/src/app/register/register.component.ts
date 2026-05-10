@@ -8,8 +8,8 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { finalize, timeout } from 'rxjs';
+import { PublicAuthService } from '@core/auth/public-auth.service';
 import { environment } from '@env/environment';
 
 function passwordMatch(group: AbstractControl): ValidationErrors | null {
@@ -32,13 +32,14 @@ export class RegisterComponent {
   error = signal<string | null>(null);
   showPassword = false;
   successMsg: string | null = null;
-
   selectedFile: File | null = null;
   fileError: string | null = null;
+  submittedEmail = '';
+  readonly touristAppUrl = environment.touristAppUrl;
 
   constructor(
     private fb: FormBuilder,
-    private http: HttpClient,
+    private publicAuth: PublicAuthService,
   ) {
     this.form = this.fb.group(
       {
@@ -78,6 +79,22 @@ export class RegisterComponent {
       : 'Dokaz o registraciji firme ili organizacije (JPG, PNG ili PDF, max 5MB).';
   }
 
+  get fileIconEmoji(): string {
+    if (!this.selectedFile) return '\u{1F4CE}';
+    if (this.selectedFile.type === 'application/pdf') return '\u{1F4C4}';
+    return '\u{1F5BC}\u{FE0F}';
+  }
+
+  get fileSizeLabel(): string {
+    if (!this.selectedFile) return '';
+    const kb = this.selectedFile.size / 1024;
+    return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
+  }
+
+  goToTouristApp(): void {
+    window.location.assign(this.touristAppUrl);
+  }
+
   private updateOrganizationValidators(type: AccountType): void {
     if (type === 'organization') {
       this.orgName.setValidators([Validators.required]);
@@ -85,6 +102,7 @@ export class RegisterComponent {
       this.orgName.clearValidators();
       this.orgName.setValue('', { emitEvent: false });
     }
+
     this.orgName.updateValueAndValidity({ emitEvent: false });
   }
 
@@ -123,18 +141,6 @@ export class RegisterComponent {
     this.fileError = null;
   }
 
-  get fileIconEmoji(): string {
-    if (!this.selectedFile) return '📎';
-    if (this.selectedFile.type === 'application/pdf') return '📄';
-    return '🖼️';
-  }
-
-  get fileSizeLabel(): string {
-    if (!this.selectedFile) return '';
-    const kb = this.selectedFile.size / 1024;
-    return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
-  }
-
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -157,19 +163,24 @@ export class RegisterComponent {
     formData.append('fullName', `${this.firstName.value} ${this.lastName.value}`.trim());
     formData.append('email', submittedEmail);
     formData.append('password', this.password.value);
+
     if (!this.isIndividualSelected) {
       formData.append('orgName', this.orgName.value);
     }
+
     formData.append('document', this.selectedFile, this.selectedFile.name);
 
-    this.http.post(`${environment.apiUrl}/auth/register`, formData).pipe(
+    this.publicAuth.submitAdminRegistration(formData).pipe(
       timeout(20000),
       finalize(() => {
         this.loading.set(false);
       }),
     ).subscribe({
-      next: () => {
-        this.successMsg = `Zahtev za admin nalog je uspesno poslat za ${submittedEmail}. Proverite inbox i kliknite na verifikacioni link kako bi superadmin mogao da pregleda registraciju.`;
+      next: response => {
+        this.submittedEmail = response.email || submittedEmail;
+        this.successMsg = response.message
+          || `Zahtev za admin nalog je uspesno poslat za ${this.submittedEmail}. Proverite inbox i potvrdite email adresu.`;
+
         this.form.reset({
           accountType: 'organization',
           firstName: '',

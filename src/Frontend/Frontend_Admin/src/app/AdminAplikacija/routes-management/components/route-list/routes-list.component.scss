@@ -1,6 +1,16 @@
 @use 'variables' as *;
 @use 'list-page' as *;
 
+// Ensure single-row filter tabs never clip on medium screens
+.filter-tabs {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 2px;   // room for scrollbar on Windows
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;  // hide scrollbar on Firefox
+  &::-webkit-scrollbar { display: none; }
+}
+
 .route-thumb {
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
   color: #1d4ed8;
@@ -18,25 +28,6 @@
   color: $gray-500;
 }
 
-.select-wrap {
-  position: relative;
-  min-width: 160px;
-}
-
-.select-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  color: $gray-400;
-  pointer-events: none;
-}
-
-.filter-select-icon {
-  min-width: 160px;
-  padding-left: 34px;
-}
 
 td.num {
   text-align: left;
