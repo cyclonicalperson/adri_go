@@ -106,6 +106,5 @@ namespace TouristGuide.Api.Models
         public ICollection<ContentShare> Shares { get; set; } = new List<ContentShare>();
         public ICollection<TouristFavorite> Favorites { get; set; } = new List<TouristFavorite>();
         public ICollection<PlannerItem> PlannerItems { get; set; } = new List<PlannerItem>();
-        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }
 }

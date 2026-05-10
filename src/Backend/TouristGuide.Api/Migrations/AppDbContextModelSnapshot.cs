@@ -1275,63 +1275,6 @@ namespace TouristGuide.Api.Migrations
                     b.ToTable("terms_acceptance");
                 });
 
-            modelBuilder.Entity("TouristGuide.Api.Models.Ticket", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("IssuedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("issued_at");
-
-                    b.Property<long>("PostId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("post_id");
-
-                    b.Property<decimal>("PricePaid")
-                        .HasColumnType("numeric")
-                        .HasColumnName("price_paid");
-
-                    b.Property<string>("QrCode")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("qr_code");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("status");
-
-                    b.Property<string>("TicketCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("ticket_code");
-
-                    b.Property<long?>("TouristId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("tourist_id");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("used_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PostId");
-
-                    b.HasIndex("TicketCode")
-                        .IsUnique();
-
-                    b.HasIndex("TouristId");
-
-                    b.ToTable("ticket");
-                });
-
             modelBuilder.Entity("TouristGuide.Api.Models.Tourist", b =>
                 {
                     b.Property<long>("Id")
@@ -1903,24 +1846,6 @@ namespace TouristGuide.Api.Migrations
                     b.Navigation("RegistrationRequest");
                 });
 
-            modelBuilder.Entity("TouristGuide.Api.Models.Ticket", b =>
-                {
-                    b.HasOne("TouristGuide.Api.Models.Post", "Post")
-                        .WithMany("Tickets")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TouristGuide.Api.Models.Tourist", "Tourist")
-                        .WithMany("Tickets")
-                        .HasForeignKey("TouristId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Post");
-
-                    b.Navigation("Tourist");
-                });
-
             modelBuilder.Entity("TouristGuide.Api.Models.TouristFavorite", b =>
                 {
                     b.HasOne("TouristGuide.Api.Models.Post", "Post")
@@ -2016,8 +1941,6 @@ namespace TouristGuide.Api.Migrations
 
                     b.Navigation("Shares");
 
-                    b.Navigation("Tickets");
-
                     b.Navigation("Translations");
 
                     b.Navigation("Views");
@@ -2069,8 +1992,6 @@ namespace TouristGuide.Api.Migrations
                     b.Navigation("SavedPosts");
 
                     b.Navigation("Shares");
-
-                    b.Navigation("Tickets");
 
                     b.Navigation("Views");
                 });

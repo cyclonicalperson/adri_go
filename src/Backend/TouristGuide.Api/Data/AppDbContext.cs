@@ -40,10 +40,9 @@ namespace TouristGuide.Api.Data
         public DbSet<ContentShare> ContentShares { get; set; }
         public DbSet<TouristFavorite> TouristFavorites { get; set; }
 
-        // Planer i karte
+        // Planer
         public DbSet<VisitPlanner> VisitPlanners { get; set; }
         public DbSet<PlannerItem> PlannerItems { get; set; }
-        public DbSet<Ticket> Tickets { get; set; }
 
         // Komunikacija
         public DbSet<Notification> Notifications { get; set; }
@@ -93,11 +92,6 @@ namespace TouristGuide.Api.Data
             // Tag — jedinstven naziv
             modelBuilder.Entity<Tag>()
                 .HasIndex(x => x.Name)
-                .IsUnique();
-
-            // Ticket — jedinstven ticket_code
-            modelBuilder.Entity<Ticket>()
-                .HasIndex(x => x.TicketCode)
                 .IsUnique();
 
             // ════════════════════════════════════════════════════════════════
@@ -436,22 +430,6 @@ namespace TouristGuide.Api.Data
                 .HasOne(i => i.Route)
                 .WithMany(r => r.PlannerItems)
                 .HasForeignKey(i => i.RouteId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // ════════════════════════════════════════════════════════════════
-            //  Ticket relacije
-            // ════════════════════════════════════════════════════════════════
-
-            modelBuilder.Entity<Ticket>()
-                .HasOne(t => t.Post)
-                .WithMany(p => p.Tickets)
-                .HasForeignKey(t => t.PostId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<Ticket>()
-                .HasOne(t => t.Tourist)
-                .WithMany(tu => tu.Tickets)
-                .HasForeignKey(t => t.TouristId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             // ════════════════════════════════════════════════════════════════
