@@ -47,7 +47,7 @@ namespace TouristGuide.Api.Controllers
                 var totalRoutes = await _db.Routes.CountAsync(r => r.Status == "published");
                 var pendingRegs = await _db.AdminRegistrationRequests.CountAsync(r => r.Status == "pending");
                 var pendingReviews = await _db.Reviews.CountAsync(r => r.Status == "PENDING");
-                var ticketsIssued = await _db.Tickets.CountAsync();
+                var ticketsIssued = 0; // Tickets DbSet nije implementiran
                 var adminId = GetCurrentAdminId();
                 var unreadNotifs = adminId.HasValue
                     ? await _db.AdminNotifications.CountAsync(n => n.AdminUserId == adminId.Value && !n.IsRead)
