@@ -134,6 +134,7 @@
             <ng-container *ngIf="routeSummary.durationMin > 0"> &middot; {{ formatDuration(routeSummary.durationMin) }}</ng-container>
           </span>
         </div>
+        <button *ngIf="showRoutePanel" class="sheet-clear-btn" (click)="confirmClearRoute(); $event.stopPropagation()">Clear</button>
         <svg class="sheet-chevron" [class.sheet-chevron-open]="sheetExpanded" viewBox="0 0 24 24">
           <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
         </svg>
@@ -338,6 +339,18 @@
       <div class="auth-modal-actions">
         <button class="btn-cancel" (click)="showAuthPopup = false">Cancel</button>
         <button class="btn-login" (click)="goToLogin()">Login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Route Confirmation Modal -->
+  <div class="auth-modal-overlay" *ngIf="showClearRouteConfirm">
+    <div class="auth-modal">
+      <h3>Clear Route</h3>
+      <p>Are you sure you want to clear the route?</p>
+      <div class="auth-modal-actions">
+        <button class="btn-cancel" (click)="onClearRouteCancelled()">Cancel</button>
+        <button class="btn-login" (click)="onClearRouteConfirmed()">Clear</button>
       </div>
     </div>
   </div>

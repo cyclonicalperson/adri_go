@@ -70,6 +70,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   showRoutePanel = false;
   isRenderingRoute = false;
   isSavingTrip = false;
+  showClearRouteConfirm = false;
 
   searchQuery = '';
   searchResults: MapLocation[] = [];
@@ -1110,7 +1111,24 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap'
     }).addTo(this.map);
 
+    this.persistMapCenter();
+    this.map.on('moveend', () => this.persistMapCenter());
+
     this.requestGeolocation();
+  }
+
+  private persistMapCenter(): void {
+    if (!this.map) {
+      return;
+    }
+
+    // Pretraga u listi koristi ovaj centar ako ziva geolokacija nije dostupna.
+    const center = this.map.getCenter();
+    localStorage.setItem('adriGo.mapCenter', JSON.stringify({
+      lat: center.lat,
+      lng: center.lng,
+      zoom: this.map.getZoom(),
+    }));
   }
 
   private requestGeolocation(): void {
@@ -1308,6 +1326,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleListView(): void {
+    this.persistMapCenter();
     this.activeTab = 'list';
     this.router.navigate(['/location-list']);
   }
