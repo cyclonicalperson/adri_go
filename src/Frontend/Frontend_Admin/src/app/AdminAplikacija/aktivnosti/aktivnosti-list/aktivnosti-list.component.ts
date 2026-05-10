@@ -252,7 +252,7 @@ export class AktivnostiListComponent implements OnInit {
       lat: this.mapActivity.lat,
       lng: this.mapActivity.lng,
       label: this.mapActivity.name,
-      category: this.categoryLabel(this.mapActivity),
+      category: 'sports_facility',
     }];
   }
 

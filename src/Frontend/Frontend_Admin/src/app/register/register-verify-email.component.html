@@ -19,9 +19,9 @@
       @if (loading()) {
       Verifikacija u toku
       } @else if (success() && alreadyVerified()) {
-      Email je vec potvrdjen
+      Email je već potvrđen
       } @else if (success()) {
-      Email potvrdjen
+      Email potvrđen
       } @else if (expired()) {
       Link je istekao
       } @else {
@@ -42,9 +42,9 @@
     </div>
 
     <div class="switch-app">
-      Zelite da nastavite kao turista?
+      Želite da nastavite kao turista?
       <button type="button" class="switch-app__link" (click)="goToTouristApp()">
-        Otvorite turisticku aplikaciju
+        Otvorite turističku aplikaciju
       </button>
     </div>
   </div>

@@ -30,6 +30,9 @@ import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { TermsComponent } from './terms/terms.component';
 import { PrivacyPolicyComponent } from './privacy-policy/privacy-policy.component';
 
+// 6. OAuth callback (Google sign-in popup redirect target)
+import { AuthCallbackComponent } from './auth-callback/auth-callback.component';
+
 export const routes: Routes = [
   // POČETNA RUTA
   { path: '', redirectTo: '/map-home', pathMatch: 'full' },
@@ -65,6 +68,9 @@ export const routes: Routes = [
   // LEGALNI DOKUMENTI (read-only, bez user controls)
   { path: 'terms', component: TermsComponent },
   { path: 'privacy-policy', component: PrivacyPolicyComponent },
+
+  // OAUTH CALLBACK — Google popup redirect target (must be before wildcard)
+  { path: 'auth/callback', component: AuthCallbackComponent },
 
   // WILDCARD — mora biti poslednja
   { path: '**', redirectTo: '/map-home' }

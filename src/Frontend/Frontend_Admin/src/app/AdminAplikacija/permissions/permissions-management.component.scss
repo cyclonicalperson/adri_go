@@ -363,14 +363,6 @@
   margin-top: 3px;
 }
 
-.empty-hint {
-  padding: 24px;
-  text-align: center;
-  color: $gray-400;
-  font-size: 13px;
-  font-weight: 600;
-}
-
 // ── Bulk action buttons ────────────────────────────────────────────────────
 .perm-bulk-actions {
   display: flex;
@@ -456,4 +448,41 @@
   text-align: center;
   font-size: 13px;
   color: #9ca3af;
+}
+
+// ── Mobile ─────────────────────────────────────────────────────────────────
+@media (max-width: 768px) {
+  .page-content {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  // 3-column grid (260px 1fr 260px) can't fit on mobile — stack vertically
+  .perm-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  // Panels: remove fixed height so they show all content without internal scroll
+  .perm-panel {
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
+  // Body: let page scroll rather than scrolling within each panel
+  .perm-panel-body {
+    overflow-y: visible;
+    max-height: none;
+    flex: none;
+  }
+
+  .perm-panel-header {
+    position: relative;
+  }
+
+  // Tighter permission rows
+  .perm-toggle-row {
+    padding: 8px 10px;
+  }
 }

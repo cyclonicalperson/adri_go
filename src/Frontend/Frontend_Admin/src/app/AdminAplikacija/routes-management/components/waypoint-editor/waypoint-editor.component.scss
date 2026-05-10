@@ -27,6 +27,18 @@
   font-weight: 700;
 }
 
+.snapping {
+  color: $gray-400;
+  font-style: italic;
+  font-size: 11px;
+  animation: pulse .9s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: .5; }
+  to   { opacity: 1; }
+}
+
 .actions {
   display: flex;
   gap: 8px;

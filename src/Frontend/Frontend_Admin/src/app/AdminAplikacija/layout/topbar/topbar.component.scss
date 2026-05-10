@@ -545,6 +545,12 @@
   .topbar {
     padding: 0 16px;
     height: 56px;
+    // Fixed so it's always visible regardless of page content or scroll position
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;  // above page overlays (modals ~100), below sidebar (1002)
   }
 
   .header-title {

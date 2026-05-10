@@ -108,7 +108,7 @@
       </thead>
       <tbody>
         @for (a of activities; track a.activityId) {
-        <tr>
+        <tr (click)="openDetail(a)">
           <td>
             <div class="item-cell">
               <div class="item-thumb">{{ categoryIcon(a) }}</div>

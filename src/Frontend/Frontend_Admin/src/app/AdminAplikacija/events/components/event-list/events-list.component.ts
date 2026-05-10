@@ -281,7 +281,7 @@ export class EventsListComponent implements OnInit {
       lat: this.mapEvent.lat,
       lng: this.mapEvent.lng,
       label: this.mapEvent.title,
-      category: this.categoryLabel(this.eventCategory(this.mapEvent)),
+      category: 'event',
     }];
   }
 

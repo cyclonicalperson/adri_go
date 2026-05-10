@@ -116,7 +116,7 @@ export class SiteTranslateService implements OnDestroy {
         childList: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['placeholder', 'title', 'aria-label'],
+        attributeFilter: ['placeholder', 'title', 'aria-label', 'data-tooltip'],
       });
     });
   }
@@ -170,7 +170,7 @@ export class SiteTranslateService implements OnDestroy {
   }
 
   private translateElementAttributes(element: Element): void {
-    const attributes = ['placeholder', 'title', 'aria-label'];
+    const attributes = ['placeholder', 'title', 'aria-label', 'data-tooltip'];
     let entries = this.attributeEntries.get(element);
     if (!entries) {
       entries = new Map<string, AttributeEntry>();

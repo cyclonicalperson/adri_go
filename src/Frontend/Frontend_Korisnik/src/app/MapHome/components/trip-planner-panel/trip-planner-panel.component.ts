@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { PlannerStop } from '../../../services/route-planner.service';
 import { RouteSummary } from '../../../services/routing.service';
 import { TravelMode } from '../../../services/tourist-preferences.service';
+import { formatPostType } from '../../../utils/post-type.utils';
 
 @Component({
   selector: 'app-trip-planner-panel',
@@ -35,6 +36,12 @@ export class TripPlannerPanelComponent {
   @Output() tripSaved = new EventEmitter<void>();
   @Output() tripShared = new EventEmitter<void>();
   @Output() routeCleared = new EventEmitter<void>();
+  @Output() routeSaveRequested = new EventEmitter<void>();
+  @Output() navigationStarted = new EventEmitter<void>();
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
+  }
 
   formatDuration(minutes: number): string {
     if (minutes < 60) {

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
+using TouristGuide.Api.Models;
 using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
@@ -46,7 +47,7 @@ namespace TouristGuide.Api.Controllers
                 var totalRoutes = await _db.Routes.CountAsync(r => r.Status == "published");
                 var pendingRegs = await _db.AdminRegistrationRequests.CountAsync(r => r.Status == "pending");
                 var pendingReviews = await _db.Reviews.CountAsync(r => r.Status == "PENDING");
-                var ticketsIssued = await _db.Tickets.CountAsync();
+                var ticketsIssued = 0; // Tickets DbSet nije implementiran
                 var adminId = GetCurrentAdminId();
                 var unreadNotifs = adminId.HasValue
                     ? await _db.AdminNotifications.CountAsync(n => n.AdminUserId == adminId.Value && !n.IsRead)
@@ -274,7 +275,7 @@ namespace TouristGuide.Api.Controllers
         // ── GET /api/analytics/movements ─────────────────────────────────────
         /// <summary>Posjete po regijama za turistička kretanja na mapi.</summary>
         [HttpGet("movements")]
-        public async Task<IActionResult> GetTouristMovements()
+        public async Task<IActionResult> GetTouristMovements([FromQuery] string? range)
         {
             if (!await _permissionService.CanViewAnalyticsAsync())
                 return Forbid();
@@ -284,9 +285,35 @@ namespace TouristGuide.Api.Controllers
             if (!isSuperAdmin && adminId is null)
                 return Unauthorized();
 
+            DateTime? fromDate = null;
+            if (!string.IsNullOrWhiteSpace(range))
+            {
+                fromDate = range.Trim().ToLowerInvariant() switch
+                {
+                    "24h" => DateTime.UtcNow.AddHours(-24),
+                    "7d"  => DateTime.UtcNow.AddDays(-7),
+                    "30d" => DateTime.UtcNow.AddDays(-30),
+                    _ => null
+                };
+
+                if (fromDate is null)
+                {
+                    return BadRequest(new
+                    {
+                        message = "Invalid range. Allowed values are: 24h, 7d, 30d.",
+                        success = false
+                    });
+                }
+            }
+
             var query = _db.PostViews
                 .Where(v => v.Post != null && v.Post.Region != null)
                 .AsQueryable();
+
+            if (fromDate.HasValue)
+            {
+                query = query.Where(v => v.CreatedAt >= fromDate.Value);
+            }
 
             if (adminId.HasValue)
             {
@@ -321,6 +348,92 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { data = movements, success = true });
         }
 
+        // ── POST /api/analytics/app-visit ────────────────────────────────────
+        /// <summary>
+        /// Bilježi jednu sesiju otvaranja turističke aplikacije.
+        /// Endpoint je anoniman — poziva se pri pokretanju app-a bez autentikacije.
+        /// Ista sesija (session_id) broji se jednom po UTC danu (upsert — ignore duplicate).
+        /// </summary>
+        [HttpPost("app-visit")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RecordAppVisit([FromBody] AppVisitRequest body)
+        {
+            if (string.IsNullOrWhiteSpace(body?.SessionId) || body.SessionId.Length > 64)
+                return BadRequest(new { message = "Neispravan sessionId." });
+
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+                var visitDate = DateTime.SpecifyKind(today, DateTimeKind.Utc);
+
+                // Ignore duplicate (ista sesija, isti dan)
+                var exists = await _db.AppVisits.AnyAsync(v =>
+                    v.SessionId == body.SessionId && v.VisitDate == visitDate);
+
+                if (!exists)
+                {
+                    _db.AppVisits.Add(new AppVisit
+                    {
+                        SessionId = body.SessionId,
+                        VisitDate = visitDate,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                    await _db.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Gracefully handle missing table (e.g. migration pending) — don't surface 500 to the client
+                Console.Error.WriteLine($"[app-visit] Failed to record visit: {ex.Message}");
+            }
+
+            return Ok(new { success = true });
+        }
+
+        // ── GET /api/analytics/app-visits ────────────────────────────────────
+        /// <summary>
+        /// Dnevni broj jedinstvenih sesija (unique otvaranja aplikacije) za zadati period.
+        /// Format odgovora identičan sa /api/analytics/visits radi lakšeg ponovnog korišćenja.
+        /// </summary>
+        [HttpGet("app-visits")]
+        public async Task<IActionResult> GetAppVisits(
+            [FromQuery] string? from,
+            [FromQuery] string? to)
+        {
+            if (!await _permissionService.CanViewAnalyticsAsync())
+                return Forbid();
+
+            var fromDate = DateTime.TryParse(from, out var fd)
+                ? DateTime.SpecifyKind(fd.Date, DateTimeKind.Utc)
+                : DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(-30), DateTimeKind.Utc);
+
+            var toDate = DateTime.TryParse(to, out var td)
+                ? DateTime.SpecifyKind(td.Date.AddDays(1), DateTimeKind.Utc)
+                : DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc);
+
+            try
+            {
+                var rawDates = await _db.AppVisits
+                    .Where(v => v.VisitDate >= fromDate && v.VisitDate < toDate)
+                    .Select(v => v.VisitDate)
+                    .ToListAsync();
+
+                var result = rawDates
+                    .GroupBy(dt => dt.Date)
+                    .Select(g => new { date = g.Key.ToString("yyyy-MM-dd"), count = g.Count() })
+                    .OrderBy(x => x.date)
+                    .ToList();
+
+                return Ok(new { data = result, success = true });
+            }
+            catch (Exception ex)
+            {
+                // Gracefully handle missing table (migration not yet applied) — return empty data
+                Console.Error.WriteLine($"[app-visits] Query failed: {ex.Message}");
+                return Ok(new { data = Array.Empty<object>(), success = true });
+            }
+        }
+
         // ── Helpers ────────────────────────────────────────────────────────────
         private bool IsSuperAdmin() =>
             string.Equals(User.FindFirstValue(ClaimTypes.Role), "superadmin", StringComparison.OrdinalIgnoreCase);
@@ -331,5 +444,11 @@ namespace TouristGuide.Api.Controllers
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
         }
+    }
+
+    /// <summary>Tijelo zahtjeva za bilježenje sesije.</summary>
+    public class AppVisitRequest
+    {
+        public string? SessionId { get; set; }
     }
 }

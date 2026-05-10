@@ -15,7 +15,6 @@ export interface TouristAppPreferences {
     apple: boolean;
   };
   bookingServices: string[];
-  paymentMethods: string[];
   preferredTravelMode: TravelMode;
 }
 
@@ -31,7 +30,6 @@ const DEFAULT_PREFERENCES: TouristAppPreferences = {
     apple: false,
   },
   bookingServices: ['booking', 'tripadvisor'],
-  paymentMethods: ['card'],
   preferredTravelMode: 'driving',
 };
 
@@ -80,10 +78,6 @@ export class TouristPreferencesService {
     return this.update({ bookingServices: this.uniqueStrings(values) });
   }
 
-  setPaymentMethods(values: string[]): TouristAppPreferences {
-    return this.update({ paymentMethods: this.uniqueStrings(values) });
-  }
-
   reset(): TouristAppPreferences {
     const next = this.normalize(DEFAULT_PREFERENCES);
     this.persist(next);
@@ -126,7 +120,6 @@ export class TouristPreferencesService {
         apple: !!input.connectedAccounts?.apple,
       },
       bookingServices: this.uniqueStrings(input.bookingServices ?? DEFAULT_PREFERENCES.bookingServices),
-      paymentMethods: this.uniqueStrings(input.paymentMethods ?? DEFAULT_PREFERENCES.paymentMethods),
       preferredTravelMode: preferredTravelMode === 'walking' || preferredTravelMode === 'cycling'
         ? preferredTravelMode
         : 'driving',

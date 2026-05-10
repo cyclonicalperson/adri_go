@@ -7,7 +7,7 @@
     </div>
 
     <h1 class="title">Prijava</h1>
-    <p class="subtitle">Unesite vase kredencijale za pristup admin panelu</p>
+    <p class="subtitle">Unesite vaše kredencijale za pristup admin panelu</p>
 
     @if (error()) {
     <div class="alert-error">{{ error() }}</div>
@@ -37,7 +37,7 @@
                  placeholder="••••••••"
                  formControlName="password" autocomplete="current-password" />
           <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
-            {{ showPassword ? 'Sakrij' : 'Prikazi' }}
+            {{ showPassword ? 'Sakrij' : 'Prikaži' }}
           </button>
         </div>
         @if (password.invalid && password.touched) {
@@ -63,9 +63,9 @@
     </p>
 
     <p class="secondary-prompt">
-      Zelite turisticki nalog?
+      Želite turistički nalog?
       <button type="button" class="link-btn" (click)="goToTouristApp()">
-        Otvorite turisticku aplikaciju
+        Otvorite turističku aplikaciju
       </button>
     </p>
 

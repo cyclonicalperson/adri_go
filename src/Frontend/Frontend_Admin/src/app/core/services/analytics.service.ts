@@ -95,4 +95,10 @@ export class AnalyticsService {
   getTouristMovements(): Observable<ApiResponse<TouristMovement[]>> {
     return this.http.get<ApiResponse<TouristMovement[]>>(`${this.url}/movements`);
   }
+
+  /** Dnevni broj jedinstvenih sesija (otvaranja turističke aplikacije) */
+  getAppVisits(from: string, to: string): Observable<ApiResponse<DailyVisit[]>> {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<ApiResponse<DailyVisit[]>>(`${this.url}/app-visits`, { params });
+  }
 }

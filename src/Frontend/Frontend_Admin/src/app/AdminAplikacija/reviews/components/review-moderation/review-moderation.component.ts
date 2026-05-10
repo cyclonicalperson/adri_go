@@ -16,6 +16,15 @@ export class ReviewModerationComponent {
   @Output() statusUpdated = new EventEmitter<{ review: Review; status: ReviewStatus }>();
   @Output() closed = new EventEmitter<void>();
 
+  entityTypeLabel(type?: string): string {
+    const map: Record<string, string> = {
+      OBJECT: 'Lokacija',
+      EVENT: 'Dogadjaj',
+      ROUTE: 'Ruta',
+    };
+    return type ? (map[type] ?? type) : '';
+  }
+
   approve(): void {
     this.statusUpdated.emit({ review: this.review, status: 'APPROVED' });
   }

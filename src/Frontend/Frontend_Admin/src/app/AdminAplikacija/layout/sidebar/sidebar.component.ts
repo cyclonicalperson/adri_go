@@ -72,6 +72,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   get adminItems(): NavItem[] {
     return [
       { label: 'Admini', route: '/admin/users', icon: '\u{1F465}' },
+      { label: 'Turisti', route: '/admin/turisti', icon: '\u{1F9CD}' },
       { label: 'Zahtevi', route: '/admin/zahtevi', icon: '\u{1F4CB}', badge: this.requestsBadge },
       { label: 'Dozvole', route: '/admin/permissions', icon: '\u{1F510}' },
     ];

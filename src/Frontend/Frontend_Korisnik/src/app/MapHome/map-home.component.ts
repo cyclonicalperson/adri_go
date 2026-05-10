@@ -6,6 +6,7 @@ import { catchError, forkJoin, of } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
+import { MapNavigationPanelComponent } from './components/map-navigation-panel/map-navigation-panel.component';
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-planner-panel.component';
@@ -15,7 +16,7 @@ import { FilterStateService } from '../services/filter-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { UserService, CalendarItem, UserProfile, ServerPreferences } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
-import { ComputedRoute, RoutingService, RouteSummary } from '../services/routing.service';
+import { ComputedRoute, NavigationStep, RoutingService, RouteSummary } from '../services/routing.service';
 import { TravelMode, TouristPreferencesService } from '../services/tourist-preferences.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import {
@@ -23,6 +24,8 @@ import {
   RecommendationService,
   RouteDetourSuggestion
 } from '../services/recommendation.service';
+import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
+import { formatPostType } from '../utils/post-type.utils';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -41,6 +44,7 @@ type MapLocation = Location & {
     TripPlannerPanelComponent,
     RouteDetoursPanelComponent,
     MapRecommendationsPanelComponent,
+    MapNavigationPanelComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -90,6 +94,22 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   savedLocationsContext: Location[] = [];
   calendarItemsContext: CalendarItem[] = [];
   private serverPreferenceTypes: string[] = [];
+
+  // ─── Navigation state ────────────────────────────────────────────────────
+  isNavigating = false;
+  navigationSteps: NavigationStep[] = [];
+  navigationRouteGeometry: [number, number][] = [];
+
+  // ─── Clear route confirmation ────────────────────────────────────────────
+  showClearRouteConfirm = false;
+
+  // ─── Saved routes ────────────────────────────────────────────────────────
+  savedRoutes: SavedRoute[] = [];
+  showSavedRoutes = false;
+  saveRouteMessage = '';
+
+  // ─── Locate-me FAB ───────────────────────────────────────────────────────
+  isLocating = false;
 
   categories = [
     { key: 'attraction', label: 'Attractions', icon: '🏖️', active: true },
@@ -175,11 +195,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private preferences: TouristPreferencesService,
     private analytics: TouristAnalyticsService,
     private recommendationService: RecommendationService,
+    private savedRoutesService: SavedRoutesService,
   ) {}
 
   ngOnInit(): void {
     this.applyFilterState();
     this.syncPlannerStateFromServices();
+    this.savedRoutes = this.savedRoutesService.getAll();
   }
 
   ngAfterViewInit(): void {
@@ -482,11 +504,26 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
     this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex);
+    // Auto-optimize the route whenever a recommendation is added so the user
+    // doesn't have to press "Optimize order" manually.
+    this.optimizeRouteSilently();
     this.analytics.track('planner_detour_applied', {
       postId: suggestion.location.id,
       postType: suggestion.location.postType,
       distanceToRouteKm: suggestion.distanceToRouteKm,
     });
+  }
+
+  private optimizeRouteSilently(): void {
+    if (this.plannerStops.length < 2) return;
+    const optimized = this.recommendationService.optimizeStopOrder(this.plannerStops, this.userPosition);
+    this.routePlanner.replaceStops(optimized, {
+      plannerMode: true,
+      scenicMode: this.scenicMode,
+      travelMode: this.travelMode,
+    });
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
   }
 
   private hydratePlannerFromStorage(): void {
@@ -596,7 +633,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    if (this.plannerStops.length === 1) {
+    // Build coordinate list — getRouteCoordinates() prepends the user's position
+    // when location sharing is on and we have a GPS fix.
+    const routeCoordinates = this.getRouteCoordinates();
+
+    if (routeCoordinates.length < 2) {
+      // Single stop, no user position → just fly to the stop
       const onlyStop = this.plannerStops[0];
       this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
       this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
@@ -604,11 +646,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const routeCoordinates = this.getRouteCoordinates();
-    if (routeCoordinates.length < 2) {
-      this.scenicSuggestions = [];
-      this.cdr.detectChanges();
-      return;
+    // Single stop WITH user position → fall through and route user → stop
+    if (this.plannerStops.length === 1) {
+      this.scenicSuggestions = this.buildNearbyStopSuggestions(this.plannerStops[0]);
     }
 
     this.isRenderingRoute = true;
@@ -737,6 +777,21 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       : `${this.plannerStops.length}-stop route`;
   }
 
+  requestClearRoute(): void {
+    this.showClearRouteConfirm = true;
+    this.cdr.detectChanges();
+  }
+
+  confirmClearRoute(): void {
+    this.showClearRouteConfirm = false;
+    this.clearRoute();
+  }
+
+  cancelClearRoute(): void {
+    this.showClearRouteConfirm = false;
+    this.cdr.detectChanges();
+  }
+
   clearRoute(): void {
     this.plannerRenderToken++;
     this.routePlanner.clear();
@@ -748,28 +803,91 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.showRoutePanel = false;
     this.routeDestTitle = '';
     this.plannerMessage = '';
+    this.isNavigating = false;
+    this.navigationSteps = [];
     this.clearRouteVisuals();
     this.router.navigate([], { queryParams: {}, replaceUrl: true });
     this.cdr.detectChanges();
   }
 
-  confirmClearRoute(): void {
-    this.syncPlannerStateFromServices();
-    if (this.plannerStops.length === 0) {
-      this.clearRoute();
-      return;
-    }
-    this.showClearRouteConfirm = true;
+  saveCurrentRoute(): void {
+    if (this.plannerStops.length === 0) return;
+    const title = this.routeDestTitle || this.getRouteTitle();
+    const saved = this.savedRoutesService.save(
+      this.plannerStops,
+      this.travelMode,
+      this.scenicMode,
+      title,
+      this.routeSummary,
+    );
+    this.savedRoutes = this.savedRoutesService.getAll();
+    this.saveRouteMessage = `Route "${saved.title}" saved!`;
+    setTimeout(() => {
+      this.saveRouteMessage = '';
+      this.cdr.detectChanges();
+    }, 2500);
     this.cdr.detectChanges();
   }
 
-  onClearRouteConfirmed(): void {
-    this.showClearRouteConfirm = false;
-    this.clearRoute();
+  loadSavedRoute(route: SavedRoute): void {
+    this.showSavedRoutes = false;
+    this.routePlanner.replaceStops(route.stops, {
+      plannerMode: true,
+      scenicMode: route.scenicMode,
+      travelMode: route.travelMode,
+    });
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+    this.plannerMessage = `Route "${route.title}" loaded.`;
+    setTimeout(() => {
+      this.plannerMessage = '';
+      this.cdr.detectChanges();
+    }, 2400);
+    this.cdr.detectChanges();
   }
 
-  onClearRouteCancelled(): void {
-    this.showClearRouteConfirm = false;
+  deleteSavedRoute(id: string): void {
+    this.savedRoutesService.delete(id);
+    this.savedRoutes = this.savedRoutesService.getAll();
+    this.cdr.detectChanges();
+  }
+
+  async startNavigation(): Promise<void> {
+    // getRouteCoordinates() prepends the user's live position when available,
+    // so 1 stop + GPS location = valid 2-point route.
+    const coordinates = this.getRouteCoordinates();
+    if (coordinates.length < 2) {
+      this.plannerMessage = this.plannerStops.length === 0
+        ? 'Add at least one stop to navigate.'
+        : 'Enable location sharing to navigate from your current position, or add a second stop.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
+      return;
+    }
+    try {
+      const result = await this.routingService.computeRouteForNavigation(coordinates, this.travelMode);
+      this.navigationSteps = result.steps ?? [];
+      this.navigationRouteGeometry = result.geometry;
+      this.isNavigating = true;
+      this.sheetExpanded = false;
+      this.cdr.detectChanges();
+    } catch {
+      this.plannerMessage = 'Could not fetch navigation data. Check your connection.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 2400);
+    }
+  }
+
+  stopNavigation(): void {
+    this.isNavigating = false;
+    this.navigationSteps = [];
+    this.cdr.detectChanges();
+  }
+
+  onNavigationPositionUpdated(position: [number, number]): void {
+    // Keep the user dot on the map in sync with GPS during navigation (no extra fly — setView below handles it)
+    this.showUserLocation({ lat: position[0], lng: position[1] }, false);
+    if (this.map) {
+      this.map.setView(position, Math.max(this.map.getZoom(), 16), { animate: true });
+    }
   }
 
   shareTrip(): void {
@@ -1015,11 +1133,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private requestGeolocation(): void {
     void this.geolocationService.requestCurrentPosition().then((position) => {
-      if (!position) {
-        return;
-      }
-
-      this.showUserLocation(position);
+      if (!position) return;
+      // Silent init: place the marker but don't auto-fly.
+      // The user can tap the locate button to fly to their position.
+      this.showUserLocation(position, false);
       this.updateDistancesAndRecommendations();
       this.applyMarkerFilter();
       this.refreshRecommendations();
@@ -1028,7 +1145,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private showUserLocation(position: UserPosition): void {
+  /** Public: called by the locate-me FAB. Flies to the user's position. */
+  locateMe(): void {
+    if (this.isLocating) return;
+    this.isLocating = true;
+    this.cdr.detectChanges();
+
+    void this.geolocationService.requestCurrentPosition({ maximumAge: 0 }).then((position) => {
+      this.isLocating = false;
+      if (position) {
+        this.showUserLocation(position, true);
+        this.updateDistancesAndRecommendations();
+        this.applyMarkerFilter();
+        this.refreshRecommendations();
+      }
+      this.cdr.detectChanges();
+    });
+  }
+
+  private showUserLocation(position: UserPosition, fly: boolean): void {
     const userIcon = L.divIcon({
       html: `<div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25);"></div>`,
       className: '',
@@ -1045,7 +1180,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .addTo(this.map!);
 
     this.userPosition = [position.lat, position.lng];
-    this.map!.flyTo([position.lat, position.lng], 13, { animate: true, duration: 1.5 });
+    if (fly) {
+      this.map!.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
+    }
   }
 
   private addMarkers(): void {
@@ -1133,6 +1270,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   clearSearch(): void {
     this.searchQuery = '';
     this.searchResults = [];
+  }
+
+  formatPostType(type?: string | null): string {
+    return formatPostType(type);
   }
 
   getCategoryIcon(postType: string | undefined): string {

@@ -266,25 +266,95 @@
   color: #dc2626;
 }
 
+/* ── PLANNER ACTIONS ─────────────────────────────────────────── */
 .planner-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 16px;
 }
 
-.planner-actions button {
+/* Shared base for all action buttons */
+.planner-actions button,
+.action-navigate,
+.action-secondary,
+.action-tertiary,
+.action-clear {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border-radius: 14px;
-  padding: 12px 14px;
-  background: #f8fafc;
-  color: var(--gray-700);
-  font-size: 13px;
-  font-weight: 800;
-  text-align: center;
-  word-break: break-word;
+  transition: opacity 0.15s, background 0.15s;
 }
-
-.planner-actions button:disabled {
-  opacity: 0.6;
+.planner-actions button:disabled,
+.action-tertiary:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* Navigate — hero green button */
+.action-navigate {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--green-500, #22c55e);
+  color: #fff;
+  font-size: 15px;
+  /* Use filter:drop-shadow so it doesn't clip within the flex container */
+  filter: drop-shadow(0 4px 8px rgba(34, 197, 94, 0.4));
+  margin-bottom: 2px; /* breathing room so the shadow isn't flush with the row below */
+}
+.action-navigate:hover { opacity: 0.9; }
+.action-navigate svg { flex-shrink: 0; }
+
+/* Row wrapper for secondary / tertiary pairs */
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Secondary buttons (Optimize + Save) */
+.action-secondary {
+  padding: 11px 10px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  border: 1px solid #bbf7d0;
+}
+.action-secondary:hover { background: #dcfce7; }
+
+/* Save gets a slightly stronger accent */
+.action-save {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+.action-save:hover { background: #bbf7d0; }
+
+/* Tertiary buttons (Calendar + Share) */
+.action-tertiary {
+  padding: 10px 8px;
+  background: #f8fafc;
+  color: var(--gray-600, #475569);
+  font-size: 13px;
+  border: 1px solid var(--gray-200, #e2e8f0);
+}
+.action-tertiary:hover:not(:disabled) { background: #f1f5f9; }
+
+/* Clear route — subtle danger */
+.action-clear {
+  width: 100%;
+  padding: 9px 0;
+  background: #fff1f2;
+  color: #ef4444;
+  font-size: 13px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.action-clear:hover { background: #fee2e2; }

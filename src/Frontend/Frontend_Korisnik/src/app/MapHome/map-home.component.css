@@ -882,49 +882,333 @@ app-location-details-card {
     left: calc(380px + ((100vw - 380px) / 2));
   }
 }
-
 /* ============================================================
-   CLEAR ROUTE CONFIRMATION MODAL
+   CLEAR ROUTE CONFIRMATION DIALOG
    ============================================================ */
-
-.auth-modal-overlay {
+.modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background: rgba(0,0,0,0.5);
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
-  backdrop-filter: blur(2px);
-}
-
-.auth-modal {
-  background: white;
   padding: 24px;
-  border-radius: 16px;
-  width: 85%;
+}
+.modal-dialog {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 24px 20px;
   max-width: 320px;
+  width: 100%;
   text-align: center;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.modal-icon { font-size: 36px; margin-bottom: 10px; }
+.modal-dialog h3 { font-size: 18px; font-weight: 700; color: #1e293b; margin: 0 0 8px; }
+.modal-dialog p  { font-size: 14px; color: #64748b; margin: 0 0 20px; line-height: 1.5; }
+.modal-actions   { display: flex; gap: 10px; }
+.modal-btn-cancel,
+.modal-btn-confirm { flex: 1; padding: 11px 0; border-radius: 12px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
+.modal-btn-cancel  { background: #f1f5f9; color: #475569; }
+.modal-btn-confirm { background: #ef4444; color: #fff; }
+.modal-btn-cancel:hover  { background: #e2e8f0; }
+.modal-btn-confirm:hover { background: #dc2626; }
+
+/* ============================================================
+   SAVED ROUTES TOGGLE BUTTON (inside bottom sheet)
+   ============================================================ */
+.saved-routes-toggle-row { padding: 6px 14px 10px; }
+.saved-routes-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 0;
+  background: var(--green-500, #22c55e);
+  border: none;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  font-family: var(--font-sans);
+  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.3);
+}
+.saved-routes-toggle-btn:hover { opacity: 0.9; }
+.saved-routes-toggle-btn svg { fill: #fff; }
+
+/* ============================================================
+   SAVED ROUTES — full-screen slide-up overlay
+   ============================================================ */
+.saved-routes-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0);
+  pointer-events: none;
+  transition: background 0.25s ease;
+}
+.saved-routes-overlay.overlay-open {
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
-.auth-modal h3 { margin-top: 0; color: var(--gray-900); font-size: 1.2rem; font-family: var(--font-display); }
-.auth-modal p { color: var(--gray-500); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.4; }
-
-.auth-modal-actions { display: flex; gap: 12px; justify-content: center; }
-
-.btn-cancel {
-  background: var(--gray-100); color: var(--gray-600);
-  border: none; padding: 10px 16px; border-radius: var(--radius-md);
-  font-weight: 600; cursor: pointer; flex: 1;
-  transition: background 0.15s;
+.saved-routes-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.btn-cancel:hover { background: var(--gray-200); }
-.btn-login {
-  background: var(--red-500, #ef4444); color: white;
-  border: none; padding: 10px 16px; border-radius: var(--radius-md);
-  font-weight: 600; cursor: pointer; flex: 1;
-  transition: background 0.15s;
+.overlay-open .saved-routes-sheet {
+  transform: translateY(0);
 }
-.btn-login:hover { background: var(--red-600, #dc2626); }
+
+.saved-routes-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.saved-routes-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1e293b;
+}
+.saved-routes-title svg { fill: var(--green-500, #22c55e); }
+
+.saved-routes-close {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: background 0.12s;
+}
+.saved-routes-close:hover { background: #e2e8f0; }
+.saved-routes-close svg { fill: currentColor; }
+
+.saved-routes-body {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.saved-routes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: #94a3b8;
+  text-align: center;
+}
+.saved-routes-empty svg { fill: #cbd5e1; }
+.saved-routes-empty p { font-size: 15px; font-weight: 700; color: #64748b; margin: 0; }
+.saved-routes-empty span { font-size: 13px; line-height: 1.5; }
+
+/* Route card */
+.saved-route-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1.5px solid #f1f5f9;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  background: #fff;
+}
+.saved-route-card:hover { background: #f8fafc; border-color: #e2e8f0; }
+
+.saved-route-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.saved-route-card-icon svg { fill: #16a34a; }
+
+.saved-route-card-info { flex: 1; min-width: 0; }
+
+.saved-route-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-route-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 3px;
+}
+
+.route-mode-badge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  margin-left: 2px;
+}
+
+.saved-route-card-delete {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #cbd5e1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.saved-route-card-delete:hover { color: #ef4444; background: #fef2f2; }
+.saved-route-card-delete svg { fill: currentColor; }
+
+/* Desktop: constrain the sheet to a narrower width centred or left-aligned */
+@media (min-width: 900px) {
+  .saved-routes-sheet {
+    left: 0;
+    right: auto;
+    width: 400px;
+    border-radius: 0 24px 0 0;
+    max-height: calc(100dvh - 64px);
+    bottom: 0;
+  }
+}
+
+/* ============================================================
+   SAVE ROUTE TOAST  (pill notification)
+   ============================================================ */
+.save-route-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Fixed position so it floats above the sheet on mobile */
+  position: fixed;
+  bottom: calc(68px + 14px); /* above footer */
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 10px 18px;
+  background: #166534;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(22, 101, 52, 0.35);
+  z-index: 2500;
+  pointer-events: none;
+}
+.save-route-toast svg { fill: #fff; flex-shrink: 0; }
+
+@media (min-width: 900px) {
+  .save-route-toast {
+    left: calc(380px + 50%);
+    transform: translateX(-50%);
+    bottom: 24px;
+  }
+}
+
+/* ============================================================
+   LOCATE-ME FAB (bottom-right of map)
+   ============================================================ */
+.locate-btn {
+  position: fixed;
+  right: 16px;
+
+  /* Mobile: must clear the footer (68px) + collapsed sheet header (60px) + gap (14px) */
+  bottom: calc(68px + 60px + 14px);
+
+  z-index: 500;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #3b82f6;
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s, transform 0.2s;
+}
+.locate-btn:hover:not(.locate-loading) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22); transform: scale(1.06); }
+.locate-btn:active:not(.locate-loading) { transform: scale(0.96); }
+.locate-btn.locate-loading { color: var(--gray-400, #94a3b8); cursor: not-allowed; }
+.locate-btn svg { flex-shrink: 0; }
+
+/* Hide gracefully when the bottom sheet is expanded on mobile */
+.locate-btn.locate-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.75);
+}
+
+.locate-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: locate-spin 0.75s linear infinite;
+}
+@keyframes locate-spin { to { transform: rotate(360deg); } }
+
+@media (min-width: 900px) {
+  .locate-btn {
+    /* Desktop: footer lives only in the sidebar (left 380px).
+       The map area has no footer, so pin directly to the viewport bottom. */
+    right: 24px;
+    bottom: 24px;
+  }
+  /* Always visible on desktop — no sheet to conflict with */
+  .locate-btn.locate-hidden {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+}
 

@@ -151,8 +151,8 @@ export class MapAdminComponent implements OnInit {
           id: p.id,
           lat: p.lat,
           lng: p.lng,
-          label: p.title,
-          category: this.typeLabel(p.postType) + (p.regionName ? ` - ${p.regionName}` : ''),
+          label: p.title + (p.regionName ? ` (${p.regionName})` : ''),
+          category: p.postType,
           color: this.typeColorMap[p.postType] ?? '#6b7280',
         });
       }
@@ -167,8 +167,8 @@ export class MapAdminComponent implements OnInit {
           id: 100000 + r.routeId,
           lat: wp.lat,
           lng: wp.lng,
-          label: r.name,
-          category: 'Ruta' + (r.regionName ? ` - ${r.regionName}` : ''),
+          label: r.name + (r.regionName ? ` (${r.regionName})` : ''),
+          category: 'route',
           color: '#0ea5e9',
         });
       }
