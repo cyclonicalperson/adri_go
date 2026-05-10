@@ -275,7 +275,7 @@ namespace TouristGuide.Api.Controllers
         // ── GET /api/analytics/movements ─────────────────────────────────────
         /// <summary>Posjete po regijama za turistička kretanja na mapi.</summary>
         [HttpGet("movements")]
-        public async Task<IActionResult> GetTouristMovements()
+        public async Task<IActionResult> GetTouristMovements([FromQuery] string? range)
         {
             if (!await _permissionService.CanViewAnalyticsAsync())
                 return Forbid();
@@ -285,9 +285,35 @@ namespace TouristGuide.Api.Controllers
             if (!isSuperAdmin && adminId is null)
                 return Unauthorized();
 
+            DateTime? fromDate = null;
+            if (!string.IsNullOrWhiteSpace(range))
+            {
+                fromDate = range.Trim().ToLowerInvariant() switch
+                {
+                    "24h" => DateTime.UtcNow.AddHours(-24),
+                    "7d"  => DateTime.UtcNow.AddDays(-7),
+                    "30d" => DateTime.UtcNow.AddDays(-30),
+                    _ => null
+                };
+
+                if (fromDate is null)
+                {
+                    return BadRequest(new
+                    {
+                        message = "Invalid range. Allowed values are: 24h, 7d, 30d.",
+                        success = false
+                    });
+                }
+            }
+
             var query = _db.PostViews
                 .Where(v => v.Post != null && v.Post.Region != null)
                 .AsQueryable();
+
+            if (fromDate.HasValue)
+            {
+                query = query.Where(v => v.CreatedAt >= fromDate.Value);
+            }
 
             if (adminId.HasValue)
             {
