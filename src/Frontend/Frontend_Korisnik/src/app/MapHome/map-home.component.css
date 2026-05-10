@@ -91,12 +91,29 @@
   width: 100%;
   height: 100dvh;
   z-index: 1;
+  overflow: hidden;
 }
 
+/*
+ * #map is intentionally oversized (142% x 142%, offset -21% to stay centred).
+ * sqrt(2)*100% ~= 141.4%, so at any rotation up to 45deg all four corners
+ * that swing into view already have tiles. Leaflet sees this larger element
+ * as its viewport and pre-fetches tiles for the whole area.
+ * .map-container clips the excess so nothing bleeds outside the screen.
+ */
 #map {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: -21%;
+  left: -21%;
+  width: 142%;
+  height: 142%;
   background: #e8efe8;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.leaflet-map-pane {
+  will-change: transform;
 }
 
 .leaflet-control-attribution { display: none !important; }
@@ -1181,6 +1198,18 @@ app-location-details-card {
 .locate-btn:active:not(.locate-loading) { transform: scale(0.96); }
 .locate-btn.locate-loading { color: var(--gray-400, #94a3b8); cursor: not-allowed; }
 .locate-btn svg { flex-shrink: 0; }
+
+/* Refollow state during navigation when user has panned away */
+.locate-btn.locate-refollow {
+  background: #22c55e;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.45);
+  animation: refollow-pulse 1.5s ease-in-out infinite;
+}
+@keyframes refollow-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(34, 197, 94, 0.45); }
+  50% { box-shadow: 0 4px 28px rgba(34, 197, 94, 0.75); }
+}
 
 /* Hide gracefully when the bottom sheet is expanded on mobile */
 .locate-btn.locate-hidden {
