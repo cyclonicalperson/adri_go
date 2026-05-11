@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -95,6 +97,109 @@ namespace TouristGuide.Api.Controllers
                 return error;
 
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize));
+        }
+
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SearchPublic(
+            [FromQuery] string? q,
+            [FromQuery] decimal? lat,
+            [FromQuery] decimal? lng,
+            [FromQuery] string? type,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var search = q?.Trim();
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                var publicQuery = BuildFilteredPostsQuery(null, type, "published", forcePublishedOnly: true, out var publicError);
+                if (publicError is not null)
+                    return publicError;
+
+                return Ok(await BuildPagedPostsResponse(publicQuery!, page, pageSize));
+            }
+
+            var query = BuildFilteredPostsQuery(null, type, "published", forcePublishedOnly: true, out var error);
+            if (error is not null)
+                return error;
+
+            // Razdvajamo unos da bi npr. "kotor tvrdjava" koristio "kotor" kao region,
+            // a ostatak pretrage trazio samo unutar tog regiona.
+            var searchTerms = SplitSearchTerms(search);
+            var regions = await _context.Regions
+                .AsNoTracking()
+                .Where(r => r.IsActive)
+                .ToListAsync();
+
+            var normalizedSearch = NormalizeSearchText(search);
+            // Region trazimo pre objava, da drzava/region/grad ne moraju da postoje
+            // u naslovu ili opisu same objave.
+            var matchedRegions = regions
+                .Select(region => new
+                {
+                    Region = region,
+                    Tokens = SplitSearchTerms($"{region.Name} {region.Country} {region.Type}")
+                })
+                .Where(region => region.Tokens.Any(token => searchTerms.Contains(token))
+                    || NormalizeSearchText(region.Region.Name).Contains(normalizedSearch)
+                    || NormalizeSearchText(region.Region.Country).Contains(normalizedSearch))
+                .ToList();
+
+            var regionMatches = matchedRegions
+                .Select(region => region.Region.Id)
+                .ToList();
+
+            var regionTerms = matchedRegions
+                .SelectMany(region => region.Tokens)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var remainingTerms = searchTerms
+                .Where(term => !regionTerms.Contains(term))
+                .ToList();
+
+            var isRegionSearch = regionMatches.Count > 0;
+            if (isRegionSearch)
+            {
+                query = query!.Where(p => p.RegionId != null && regionMatches.Contains(p.RegionId.Value));
+
+                // Unutar pogodjenog regiona trazimo samo deo upita koji nije region.
+                if (remainingTerms.Count > 0)
+                    query = ApplyPostSearchTerms(query, remainingTerms);
+            }
+            else
+            {
+                query = ApplyPostSearchTerms(query!, searchTerms);
+            }
+
+            if (!isRegionSearch && lat.HasValue && lng.HasValue)
+            {
+                // Za obicnu tekstualnu pretragu zadrzavamo rezultate blizu korisnika/centra mape.
+                // Koristimo aproksimaciju za mali radius koju SQL moze da filtrira i sortira.
+                const double radiusKm = 10;
+                var lngKmFactor = 111.32m * (decimal)Math.Cos(ToRadians((double)lat.Value));
+                var radiusSquared = (decimal)(radiusKm * radiusKm);
+
+                query = query
+                    .Where(p => p.Lat != null && p.Lng != null)
+                    .Where(p =>
+                        ((p.Lat!.Value - lat.Value) * 111.32m * (p.Lat.Value - lat.Value) * 111.32m) +
+                        ((p.Lng!.Value - lng.Value) * lngKmFactor * (p.Lng.Value - lng.Value) * lngKmFactor) <= radiusSquared);
+
+                query = query
+                    .OrderBy(p =>
+                        ((p.Lat!.Value - lat.Value) * 111.32m * (p.Lat.Value - lat.Value) * 111.32m) +
+                        ((p.Lng!.Value - lng.Value) * lngKmFactor * (p.Lng.Value - lng.Value) * lngKmFactor))
+                    .ThenByDescending(p => p.AvgRating ?? 0);
+
+                return Ok(await BuildPagedPostsResponse(query, page, pageSize, sortBy: "distance"));
+            }
+
+            return Ok(await BuildPagedPostsResponse(
+                query,
+                page,
+                pageSize,
+                isRegionSearch ? "rating" : "createdat",
+                "desc"));
         }
 
         [HttpGet("{id:int}")]
@@ -622,13 +727,14 @@ namespace TouristGuide.Api.Controllers
             string? sortBy = null, string? sortDir = null)
         {
             if (page < 1) page = 1;
-            if (pageSize < 1 || pageSize > 100) pageSize = 20;
+            pageSize = NormalizePageSize(pageSize);
 
             var total = await query.CountAsync();
 
             // Sortiranje
             query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
             {
+                ("distance", _) => query,
                 ("title" or "name", "asc") => query.OrderBy(p => p.Title),
                 ("title" or "name", _) => query.OrderByDescending(p => p.Title),
                 ("viewcount", "asc") => query.OrderBy(p => p.ViewCount),
@@ -686,7 +792,87 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
-        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null, decimal? avgRatingOverride = null) => new()
+        private static int NormalizePageSize(int pageSize) =>
+            pageSize < 1 || pageSize > 100 ? 20 : pageSize;
+
+        private static double ToRadians(double value) => value * Math.PI / 180;
+
+        private static IQueryable<Post> ApplyPostSearchTerms(IQueryable<Post> query, IReadOnlyCollection<string> terms)
+        {
+            foreach (var term in terms)
+            {
+                // Svaki preostali termin je AND uslov, dok su polja objave OR uslovi.
+                // Tako pretraga unutar regiona ostaje precizna.
+                var alternateTerm = GetAlternateSearchTerm(term);
+
+                query = alternateTerm is null
+                    ? query.Where(p =>
+                        p.Title.ToLower().Contains(term) ||
+                        (p.Description != null && p.Description.ToLower().Contains(term)) ||
+                        (p.Address != null && p.Address.ToLower().Contains(term)) ||
+                        p.PostType.ToLower().Contains(term) ||
+                        (p.Region != null && (
+                            p.Region.Name.ToLower().Contains(term) ||
+                            p.Region.Country.ToLower().Contains(term))))
+                    : query.Where(p =>
+                        p.Title.ToLower().Contains(term) ||
+                        p.Title.ToLower().Contains(alternateTerm) ||
+                        (p.Description != null && (p.Description.ToLower().Contains(term) || p.Description.ToLower().Contains(alternateTerm))) ||
+                        (p.Address != null && (p.Address.ToLower().Contains(term) || p.Address.ToLower().Contains(alternateTerm))) ||
+                        p.PostType.ToLower().Contains(term) ||
+                        p.PostType.ToLower().Contains(alternateTerm) ||
+                        (p.Region != null && (
+                            p.Region.Name.ToLower().Contains(term) ||
+                            p.Region.Name.ToLower().Contains(alternateTerm) ||
+                            p.Region.Country.ToLower().Contains(term) ||
+                            p.Region.Country.ToLower().Contains(alternateTerm))));
+            }
+
+            return query;
+        }
+
+        private static string? GetAlternateSearchTerm(string term)
+        {
+            // Podrzavamo jednostavne varijante pisanja bez izlaska iz EF query-ja.
+            if (term.Contains("dj", StringComparison.OrdinalIgnoreCase))
+                return term.Replace("dj", "đ", StringComparison.OrdinalIgnoreCase);
+
+            if (term.Contains('đ'))
+                return term.Replace("đ", "dj", StringComparison.OrdinalIgnoreCase);
+
+            return null;
+        }
+
+        private static List<string> SplitSearchTerms(string value) =>
+            NormalizeSearchText(value)
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(term => term.Length > 1)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+        private static string NormalizeSearchText(string value)
+        {
+            // Normalizujemo unos korisnika i nazive regiona u uporedive termine.
+            var normalized = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var character in normalized)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(character);
+                if (category == UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                builder.Append(char.IsLetterOrDigit(character) ? character : ' ');
+            }
+
+            return builder
+                .ToString()
+                .Normalize(NormalizationForm.FormC)
+                .Replace("đ", "dj")
+                .Replace("ð", "dj");
+        }
+
+        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null) => new()
         {
             Id = post.Id,
             AdminId = post.AdminId,

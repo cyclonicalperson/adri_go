@@ -103,14 +103,7 @@
           </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-        <button class="setting-row" (click)="openSheet('payment')">
-          <span class="row-icon icon-payment"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></span>
-          <div class="row-text">
-            <span class="label">Payment Methods</span>
-            <span class="value">{{ paymentMethodsSummary }}</span>
-          </div>
-          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
-        </button>
+
       </div>
     </div>
 
@@ -187,10 +180,10 @@
     <div class="sheet-header">
       <div>
         <span class="sheet-kicker">
-          {{ activeSheet === 'accounts' ? 'Accounts' : activeSheet === 'content' ? 'Content' : activeSheet === 'booking' ? 'Booking' : activeSheet === 'payment' ? 'Payments' : activeSheet === 'language' ? 'Language' : 'Support' }}
+          {{ activeSheet === 'accounts' ? 'Accounts' : activeSheet === 'content' ? 'Content' : activeSheet === 'booking' ? 'Booking' : activeSheet === 'language' ? 'Language' : 'Support' }}
         </span>
         <h2>
-          {{ activeSheet === 'accounts' ? 'Connected Accounts' : activeSheet === 'content' ? 'Content Preferences' : activeSheet === 'booking' ? 'Connected Booking Services' : activeSheet === 'payment' ? 'Payment Methods' : activeSheet === 'language' ? 'App Language' : 'Help & Support Center' }}
+          {{ activeSheet === 'accounts' ? 'Connected Accounts' : activeSheet === 'content' ? 'Content Preferences' : activeSheet === 'booking' ? 'Connected Booking Services' : activeSheet === 'language' ? 'App Language' : 'Help & Support Center' }}
         </h2>
       </div>
       <button class="sheet-close" (click)="closeSheet()">✕</button>
@@ -228,16 +221,6 @@
         <strong>{{ option.label }}</strong>
         <span class="sheet-pill" [class.active]="isBookingServiceEnabled(option.id)">
           {{ isBookingServiceEnabled(option.id) ? 'Enabled' : 'Hidden' }}
-        </span>
-      </button>
-    </div>
-
-    <div class="sheet-body" *ngIf="activeSheet === 'payment'">
-      <p class="sheet-copy">Choose the payment methods AdriGo should remember for future booking flows.</p>
-      <button class="sheet-option" *ngFor="let option of paymentOptions" (click)="togglePaymentMethod(option.id)">
-        <strong>{{ option.label }}</strong>
-        <span class="sheet-pill" [class.active]="isPaymentMethodEnabled(option.id)">
-          {{ isPaymentMethodEnabled(option.id) ? 'Preferred' : 'Off' }}
         </span>
       </button>
     </div>

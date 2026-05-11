@@ -219,6 +219,7 @@ input:checked + .slider:before { transform: translateX(21px); }
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
+/* ── DESKTOP ADAPTACIJA ─────────────────────────────────────── */
 .settings-sheet-overlay {
   position: fixed;
   inset: 0;
@@ -415,12 +416,98 @@ input:checked + .slider:before { transform: translateX(21px); }
 
 /* ── DESKTOP ─────────────────────────────────────────────────── */
 @media (min-width: 900px) {
+  /* Pozadina iza settings kartice */
+  body {
+    background-color: var(--gray-200); /* Tamnija pozadina da bi settings kartica iskočila */
+  }
+
   .settings-container {
-    max-width: 700px;
-    margin: 0 auto;
+    max-width: 760px; /* Malo širi kontejner za bolji balans */
+    margin: 40px auto; /* Više prostora od vrha i dna ekrana (40px) */
     background: var(--gray-50);
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
-    min-height: 100vh;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.15); /* Dublja senka za "floating" efekat */
+    min-height: auto; /* Da se ne rasteže na ceo ekran ako ima malo sadržaja */
+    border-radius: var(--radius-xl, 24px); /* Jako zaobljene ivice */
+    overflow: hidden; /* Da header ne "curi" van zaobljenih ivica */
+    padding-bottom: 40px;
+  }
+
+  /* Prilagođavanje headera na desktopu */
+  .header {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--gray-100);
+    position: relative; /* Na desktopu često ne želimo da bude sticky ako je kartica kratka */
+  }
+
+  .header h1 {
+    font-size: 22px; /* Veći naslov */
+  }
+
+  /* Više prostora između sekcija na desktopu */
+  .scroll-content {
+    padding: 32px 40px;
+  }
+
+  .settings-group {
+    margin-bottom: 36px; /* Znatno veći razmak između grupa */
+  }
+
+  .group-label {
+    margin: 0 0 12px 10px;
+    font-size: 12px;
+    letter-spacing: 1.2px;
+  }
+
+  /* Setting redovi na desktopu */
+  .setting-row {
+    padding: 20px 24px; /* Veći unutrašnji razmaci */
+    gap: 18px;
+  }
+
+  .row-icon {
+    width: 42px; /* Veće ikonice */
+    height: 42px;
+  }
+
+  .row-text .label {
+    font-size: 16px; /* Čitljiviji font */
+  }
+
+  /* Footer akcije unutar kartice */
+  .footer-actions {
+    margin-top: 20px;
+    padding: 0 40px;
+  }
+
+  /* Dugmad na desktopu */
+  .save-btn {
+    padding: 18px;
+    font-size: 16px;
+    transition: all 0.2s ease;
+  }
+  
+  .save-btn:hover {
+    transform: translateY(-2px); /* Mali hover efekat podizanja */
+    opacity: 1;
+    box-shadow: 0 8px 20px rgba(34,197,94,0.3);
+  }
+
+  .logout-link {
+    margin-top: 10px;
+    border-radius: var(--radius-md);
+  }
+  
+  .logout-link:hover {
+    background: #fef2f2; /* Suptilna crvena pozadina na hover */
+    opacity: 1;
+  }
+}
+
+/* Dodatni efekat za ultra-wide ekrane */
+@media (min-width: 1400px) {
+  .settings-container {
+    max-width: 850px;
+    margin: 60px auto;
   }
   .header        { padding: 16px 28px; }
   .scroll-content { padding: 20px 28px; }

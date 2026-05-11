@@ -17,6 +17,10 @@ export class GeolocationService {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
   }
 
+  isSecureContext(): boolean {
+    return typeof window !== 'undefined' && window.isSecureContext;
+  }
+
   isLocationSharingEnabled(): boolean {
     try {
       const raw = localStorage.getItem(this.SETTINGS_KEY);
@@ -30,7 +34,17 @@ export class GeolocationService {
   }
 
   async requestCurrentPosition(options?: PositionOptions): Promise<UserPosition | null> {
-    if (!this.isSupported() || !this.isLocationSharingEnabled()) {
+    if (!this.isSupported()) {
+      console.warn('Geolocation nije podržan u ovom browseru.');
+      return null;
+    }
+
+    if (!this.isSecureContext()) {
+      console.warn('Geolocation zahteva HTTPS. Lokacija nije dostupna na HTTP.');
+      return null;
+    }
+
+    if (!this.isLocationSharingEnabled()) {
       return null;
     }
 

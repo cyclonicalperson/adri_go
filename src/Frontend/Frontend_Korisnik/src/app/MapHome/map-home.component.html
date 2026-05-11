@@ -76,30 +76,24 @@
           </button>
         </div>
 
-        <div class="category-chips-row">
-          <button
-            class="cat-chip"
-            [class.cat-chip-all]="true"
-            [class.active]="allCategoriesActive"
-            (click)="toggleAllCategories()">
-            All
-          </button>
-          <button
-            *ngFor="let cat of categories"
-            class="cat-chip"
-            [class.active]="cat.active"
-            (click)="toggleCategory(cat)">
-            <span>{{ cat.icon }}</span> {{ cat.label }}
-          </button>
-        </div>
-
+        <!-- ── Search results dropdown ── -->
         <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
           <div
             *ngFor="let result of searchResults"
             class="search-result-item"
             (click)="selectSearchResult(result)">
-            <div class="search-result-icon">
-              <span>{{ getCategoryIcon(result.postType || result.category) }}</span>
+            <!-- Thumbnail: naslovna slika umesto emoji ikone -->
+            <div class="search-result-thumb">
+              <img
+                [src]="getFirstImage(result)"
+                [alt]="result.title"
+                class="search-result-img"
+                (error)="$any($event.target).src='assets/placeholder.jpg'">
+              <!-- Mala kategorija-boja traka na dnu slike -->
+              <span
+                class="search-result-cat-dot"
+                [style.background]="getCategoryColor(result.postType || result.category || '')">
+              </span>
             </div>
             <div class="search-result-info">
               <div class="search-result-title">{{ result.title }}</div>
@@ -119,6 +113,23 @@
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
           No results for "{{ searchQuery }}"
         </div>
+      </div>
+      <!-- ── Category chip row ── -->
+      <div class="category-chips-row">
+        <button
+          class="cat-chip cat-chip-all"
+          [class.active]="allCategoriesActive"
+          (click)="toggleAllCategories()">
+          All
+        </button>
+        <button
+          *ngFor="let cat of categories"
+          class="cat-chip"
+          [class.active]="cat.active"
+          [style.--cat-color]="getCategoryColor(cat.key)"
+          (click)="toggleCategory(cat)">
+          {{ cat.label }}
+        </button>
       </div>
     </div>
 
@@ -191,14 +202,18 @@
 
   </div>
 
-  <!-- â”€â”€ LOCATE-ME FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- ── LOCATE-ME FAB ──────────────────────────────────────────────────── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
           [class.locate-hidden]="sheetExpanded"
-          (click)="locateMe()"
+          [class.locate-refollow]="isNavigating && !navFollowMode"
+          (click)="locateMeOrRefollow()"
           aria-label="Show my location">
     <div class="locate-spinner" *ngIf="isLocating"></div>
-    <svg *ngIf="!isLocating" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+    <svg *ngIf="!isLocating && isNavigating && !navFollowMode" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+      <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+    </svg>
+    <svg *ngIf="!isLocating && !(isNavigating && !navFollowMode)" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
       <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
     </svg>
   </button>
@@ -220,6 +235,9 @@
     [totalDistanceKm]="routeSummary.distanceKm"
     [totalDurationMin]="routeSummary.durationMin"
     (positionUpdated)="onNavigationPositionUpdated($event)"
+    (mapRotationUpdated)="onNavigationMapRotation($event)"
+    (routeTrailUpdated)="onNavigationRouteTrailUpdated($event)"
+    (routeRecalculated)="onNavigationRouteRecalculated($event)"
     (exitNavigation)="stopNavigation()">
   </app-map-navigation-panel>
 
@@ -278,7 +296,7 @@
 
   </div>
 
-  <!-- â”€â”€ SAVED ROUTES OVERLAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <!-- ── SAVED ROUTES OVERLAY ──────────────────────────────────────────── -->
   <div class="saved-routes-overlay" [class.overlay-open]="showSavedRoutes" (click)="showSavedRoutes = false">
     <div class="saved-routes-sheet" (click)="$event.stopPropagation()">
       <div class="saved-routes-sheet-header">

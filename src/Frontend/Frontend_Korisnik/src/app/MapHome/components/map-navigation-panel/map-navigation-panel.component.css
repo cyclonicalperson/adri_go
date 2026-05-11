@@ -158,7 +158,8 @@
 .nav-then-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* GPS acquiring strip */
-.nav-acquiring {
+.nav-acquiring,
+.nav-rerouting {
   position: fixed;
   top: 80px; left: 0; right: 0;
   z-index: 3040;
@@ -170,6 +171,10 @@
   font-size: 13px;
   color: rgba(255,255,255,0.65);
   font-family: var(--font-sans);
+}
+.nav-rerouting {
+  background: #1a2f4a;  /* different tint so it’s visually distinct */
+  color: rgba(255,255,255,0.8);
 }
 .nav-acquiring-spinner {
   width: 14px; height: 14px;
@@ -315,7 +320,7 @@
   }
 
   /* "Then" strip stays as is — just static inside sidebar */
-  .nav-then-bar, .nav-acquiring {
+  .nav-then-bar, .nav-acquiring, .nav-rerouting {
     padding: 10px 16px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }

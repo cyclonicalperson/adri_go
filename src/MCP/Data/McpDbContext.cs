@@ -55,6 +55,7 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.ExternalUrl).HasColumnName("external_url");
             e.Property(x => x.OpeningHours).HasColumnName("opening_hours");
             e.Property(x => x.Details).HasColumnName("details");
+            e.Property(x => x.Images).HasColumnName("images");
             e.Property(x => x.Status).HasColumnName("status");
             e.Property(x => x.AvgRating).HasColumnName("avg_rating");
             e.Property(x => x.ReviewCount).HasColumnName("review_count");

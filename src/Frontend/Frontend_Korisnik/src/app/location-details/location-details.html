@@ -17,8 +17,17 @@
 
     <!-- HERO -->
     <div class="hero-section"
-      [style.backgroundImage]="images.length ? 'url(' + images[0] + ')' : 'url(assets/Budva.jpg)'">
+      [style.backgroundImage]="images.length ? 'url(' + images[currentImageIndex] + ')' : 'url(assets/Budva.jpg)'">
       <div class="hero-gradient"></div>
+      <button *ngIf="images.length > 1" class="hero-nav-btn left" (click)="prevImage()" aria-label="Previous image">
+        <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </button>
+      <button *ngIf="images.length > 1" class="hero-nav-btn right" (click)="nextImage()" aria-label="Next image">
+        <svg viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </button>
+      <div *ngIf="images.length > 1" class="hero-image-counter">
+        {{ currentImageIndex + 1 }} / {{ images.length }}
+      </div>
       <button class="back-btn" (click)="goBack()">
         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
       </button>
@@ -129,7 +138,12 @@
       <!-- About -->
       <section class="about" *ngIf="location.description">
         <h3>About</h3>
-        <p>{{ location.description }}</p>
+        <p>
+          {{ showFullDescription ? location.description : descriptionPreview }}<span *ngIf="!showFullDescription && isDescriptionTruncated">...</span>
+        </p>
+        <button *ngIf="isDescriptionTruncated" class="read-more" (click)="toggleDescription()">
+          {{ showFullDescription ? 'View less' : 'View more...' }}
+        </button>
       </section>
 
       <!-- Info Grid -->
@@ -150,15 +164,6 @@
           </div>
         </div>
 
-        <div class="info-item">
-          <span class="item-icon pass-bg">
-            <svg viewBox="0 0 24 24"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>
-          </span>
-          <div class="info-text">
-            <label>ENTRY</label>
-            <strong>Free</strong>
-          </div>
-        </div>
       </div>
 
       <!-- Full hours schedule (expandable) -->

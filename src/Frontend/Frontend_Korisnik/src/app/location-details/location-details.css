@@ -72,6 +72,41 @@
 }
 .share-btn:hover { transform: scale(1.05); }
 .share-btn svg { width: 20px; height: 20px; fill: var(--gray-700); }
+.hero-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.92);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  z-index: 3;
+  backdrop-filter: blur(4px);
+  transition: transform 0.2s;
+}
+.hero-nav-btn:hover { transform: translateY(-50%) scale(1.05); }
+.hero-nav-btn.left { left: 16px; }
+.hero-nav-btn.right { right: 16px; }
+.hero-nav-btn svg { width: 20px; height: 20px; fill: var(--gray-700); }
+.hero-image-counter {
+  position: absolute;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: rgba(15,23,42,0.7);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  z-index: 3;
+}
 
 /* ── CONTENT CARD ────────────────────────────────────────────── */
 .content-card {
@@ -182,6 +217,13 @@
 .about { margin-bottom: 24px; }
 .about h3 { margin: 0 0 10px; font-size: 17px; font-weight: 800; color: var(--gray-900); }
 .about p  { font-size: 14px; color: var(--gray-600); line-height: 1.65; margin: 0; }
+.about p.collapsed {
+  display: -webkit-box;
+  /*webkit-line-clamp: 4;*/
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .read-more { color: var(--green-600); font-weight: 700; cursor: pointer; background: none; border: none; font-size: 14px; padding: 0; margin-top: 6px; display: inline-block; font-family: inherit; }
 
 /* ── INFO GRID ───────────────────────────────────────────────── */
@@ -465,3 +507,79 @@
 }
 .auth-modal-login:hover  { opacity: 0.92; }
 .auth-modal-login:active { transform: scale(0.97); }
+/* ── DESKTOP FLOATING WINDOW ─────────────────────────── */
+@media (min-width: 900px) {
+
+  /* Overlay — zamenjuje mobilni bottom-sheet */
+  .bottom-sheet-overlay {
+    position: fixed !important;
+    inset: 0;
+    z-index: 9999;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    box-sizing: border-box;
+
+    /* Pozadina: tamna + blur */
+    background: rgba(15, 23, 42, 0.55) !important;
+    backdrop-filter: blur(10px) saturate(1.4);
+    -webkit-backdrop-filter: blur(10px) saturate(1.4);
+
+    animation: overlayIn 0.2s ease;
+  }
+
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Floating card prozor */
+  .location-details {
+    
+    width: 100%;
+    max-width: 460px !important;
+    max-height: calc(100dvh - 96px);
+    overflow-y: auto;
+    margin: 0 !important;
+
+    /* Izgled: velika zaobljenost + višeslojna senka */
+    border-radius: 28px !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.07),   /* svetli obrub */
+      0 8px 32px rgba(0,0,0,0.4),           /* meka ambijentalna */
+      0 32px 64px -12px rgba(0,0,0,0.5),    /* duboka senka */
+      0 1px 0 rgba(255,255,255,0.1) inset  /* gornji sjaj */
+      !important;
+
+    /* Animacija iskakanja */
+    animation: popInWindow 0.45s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  @keyframes popInWindow {
+    from {
+      opacity: 0;
+      transform: scale(0.90) translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* Hero slika unutar prozora */
+  .image-container {
+    height: 200px !important;
+    margin: 0 !important;
+    border-radius: 28px 28px 0 0;
+    overflow: hidden;
+  }
+
+  /* Scrollbar unutar prozora */
+  .location-details::-webkit-scrollbar { width: 5px; }
+  .location-details::-webkit-scrollbar-track { background: transparent; }
+  .location-details::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
+  }
+}

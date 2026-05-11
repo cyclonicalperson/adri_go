@@ -8,7 +8,7 @@ import { TouristAppPreferences, TouristPreferencesService } from '../services/to
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 
-type SettingsSheet = 'accounts' | 'content' | 'booking' | 'payment' | 'support' | 'language' | null;
+type SettingsSheet = 'accounts' | 'content' | 'booking' | 'support' | 'language' | null;
 
 @Component({
   selector: 'app-settings',
@@ -44,12 +44,6 @@ export class SettingsComponent implements OnInit {
     { id: 'airbnb', label: 'Airbnb' },
     { id: 'tripadvisor', label: 'Tripadvisor' },
     { id: 'getyourguide', label: 'GetYourGuide' },
-  ];
-
-  paymentOptions = [
-    { id: 'card', label: 'Card' },
-    { id: 'paypal', label: 'PayPal' },
-    { id: 'cash', label: 'Pay on arrival' },
   ];
 
   showPasswordModal = false;
@@ -120,13 +114,6 @@ export class SettingsComponent implements OnInit {
       .filter(option => this.settings.bookingServices.includes(option.id))
       .map(option => option.label);
     return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
-  }
-
-  get paymentMethodsSummary(): string {
-    const enabled = this.paymentOptions
-      .filter(option => this.settings.paymentMethods.includes(option.id))
-      .map(option => option.label);
-    return enabled.length > 0 ? enabled.join(', ') : 'No saved preferences';
   }
 
   get contentPreferencesSummary(): string {
@@ -279,17 +266,6 @@ export class SettingsComponent implements OnInit {
     };
   }
 
-  isPaymentMethodEnabled(id: string): boolean {
-    return this.settings.paymentMethods.includes(id);
-  }
-
-  togglePaymentMethod(id: string): void {
-    this.settings = {
-      ...this.settings,
-      paymentMethods: this.toggleArrayValue(this.settings.paymentMethods, id),
-    };
-  }
-
   saveSheet(): void {
     if (this.activeSheet === 'content' && this.authService.isLoggedIn) {
       this.userService.updateProfile({
@@ -315,10 +291,8 @@ export class SettingsComponent implements OnInit {
     const label = this.activeSheet === 'accounts'
       ? 'Connected account preferences updated'
       : this.activeSheet === 'booking'
-        ? 'Booking service preferences updated'
-        : this.activeSheet === 'payment'
-          ? 'Payment preferences updated'
-          : 'Settings saved';
+      ? 'Booking service preferences updated'
+      : 'Settings saved';
 
     this.saveChanges(label);
     this.closeSheet();

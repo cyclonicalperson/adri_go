@@ -81,7 +81,6 @@ namespace TouristGuide.Api.Models
         public ICollection<DirectionRequest> DirectionRequests { get; set; } = new List<DirectionRequest>();
         public ICollection<ContentShare> Shares { get; set; } = new List<ContentShare>();
         public ICollection<VisitPlanner> Planners { get; set; } = new List<VisitPlanner>();
-        public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
         public ICollection<MailingList> MailingListEntries { get; set; } = new List<MailingList>();
     }

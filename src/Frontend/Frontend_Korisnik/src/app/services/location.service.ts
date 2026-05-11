@@ -90,6 +90,27 @@ export class LocationService {
     );
   }
 
+  searchLocations(
+    query: string,
+    page = 1,
+    pageSize = 20,
+    context?: { lat?: number | null; lng?: number | null; type?: string }
+  ): Observable<LocationsResponse> {
+    let params = new HttpParams()
+      .set('q', query)
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+
+    if (context?.type) params = params.set('type', context.type);
+    if (context?.lat != null && context?.lng != null) {
+      params = params
+        .set('lat', context.lat.toString())
+        .set('lng', context.lng.toString());
+    }
+
+    return this.http.get<LocationsResponse>(`${this.apiUrl}/posts/search`, { params });
+  }
+
   getLocationById(id: number): Observable<Location> {
     return this.http.get<Location>(`${this.apiUrl}/posts/${id}`).pipe(
       map(loc => this.normalize(loc))
