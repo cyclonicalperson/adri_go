@@ -66,6 +66,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
+  private walkingDotMarkers: L.Marker[] = [];
   routeDestTitle = '';
   showRoutePanel = false;
   isRenderingRoute = false;
@@ -115,7 +116,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Interpolated marker element for smooth movement — avoid remove/add on every tick */
   private navUserMarkerEl: HTMLElement | null = null;
 
-  // ─── Clear route confirmation ────────────────────────────────────────────
   showClearRouteConfirm = false;
 
   // ─── Saved routes ────────────────────────────────────────────────────────
@@ -233,17 +233,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Restore patched Leaflet draggable if it was modified
+    const draggable = (this as any)._patchedDraggable;
+    const original = (this as any)._originalOnMove;
+    if (draggable && original) {
+      draggable._onMove = original;
+    }
     this.map?.remove();
     this.clearNavRefollowTimer();
-    // Remove rotation-aware drag handlers
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const h = (this as any)._dragFixHandlers;
-    if (h) {
-      h.container.removeEventListener('pointerdown',   h.onPointerDown);
-      h.container.removeEventListener('pointermove',   h.onPointerMove);
-      h.container.removeEventListener('pointerup',     h.onPointerUp);
-      h.container.removeEventListener('pointercancel', h.onPointerUp);
-    }
   }
 
   loadLocations(): void {
@@ -759,6 +756,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map?.removeLayer(this.routePolyline);
       this.routePolyline = null;
     }
+    this.walkingDotMarkers.forEach(m => this.map?.removeLayer(m));
+    this.walkingDotMarkers = [];
     this.routeStopMarkers.forEach(marker => this.map?.removeLayer(marker));
     this.routeStopMarkers = [];
   }
@@ -1026,16 +1025,23 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   onNavigationRouteTrailUpdated(remaining: [number, number][]): void {
     if (!this.map) return;
 
+    // Remove previous nav walking dots if any
+    this.walkingDotMarkers.forEach(m => this.map?.removeLayer(m));
+    this.walkingDotMarkers = [];
+
     if (remaining.length >= 2) {
-      if (this.navRemainingPolyline) {
-        // Update existing polyline in-place — much smoother than remove+add
-        this.navRemainingPolyline.setLatLngs(remaining);
+      if (this.travelMode === 'walking') {
+        this.drawWalkingDots(remaining, true);
       } else {
-        this.navRemainingPolyline = L.polyline(remaining, {
-          color: '#22c55e',
-          weight: 6,
-          opacity: 0.9,
-        }).addTo(this.map);
+        if (this.navRemainingPolyline) {
+          this.navRemainingPolyline.setLatLngs(remaining);
+        } else {
+          this.navRemainingPolyline = L.polyline(remaining, {
+            color: '#22c55e',
+            weight: 6,
+            opacity: 0.9,
+          }).addTo(this.map);
+        }
       }
     } else if (this.navRemainingPolyline) {
       this.map.removeLayer(this.navRemainingPolyline);
@@ -1127,18 +1133,93 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private drawPlannerPolyline(route: ComputedRoute): void {
-    if (!this.map || route.geometry.length < 2) {
-      return;
+    if (!this.map || route.geometry.length < 2) return;
+
+    if (this.travelMode === 'walking') {
+      this.drawWalkingDots(route.geometry, false);
+    } else {
+      this.routePolyline = L.polyline(route.geometry, {
+        color: route.usedFallback ? '#94a3b8' : '#22c55e',
+        weight: 5,
+        opacity: route.usedFallback ? 0.78 : 0.88,
+        dashArray: route.usedFallback ? '10 8' : undefined,
+      }).addTo(this.map);
     }
 
-    this.routePolyline = L.polyline(route.geometry, {
-      color: route.usedFallback ? '#94a3b8' : '#22c55e',
-      weight: 5,
-      opacity: route.usedFallback ? 0.78 : 0.88,
-      dashArray: route.usedFallback ? '10 8' : undefined,
-    }).addTo(this.map);
+    const bounds = L.latLngBounds(route.geometry);
+    this.map.fitBounds(bounds, { padding: [60, 60] });
+  }
 
-    this.map.fitBounds(this.routePolyline.getBounds(), { padding: [60, 60] });
+  /**
+   * Draws evenly-spaced filled circles along a polyline geometry,
+   * mimicking the Google Maps walking-route style.
+   *
+   * @param geometry  Array of [lat, lng] points.
+   * @param isNav     True when called for the navigation remaining-route overlay.
+   *                  Uses a slightly different color to distinguish it.
+   */
+  private drawWalkingDots(
+    geometry: [number, number][],
+    isNav: boolean,
+  ): void {
+    if (!this.map || geometry.length < 2) return;
+
+    // Dot spacing in meters. At zoom ~15 this gives a dot every ~8px.
+    const SPACING_M = 12;
+    const color = '#22c55e';
+    const dotSize = isNav ? 7 : 8;
+
+    // Walk the geometry accumulating distance; place a dot every SPACING_M metres.
+    let accumulated = 0;
+    let prevLat = geometry[0][0];
+    let prevLng = geometry[0][1];
+
+    const place = (lat: number, lng: number) => {
+      const icon = L.divIcon({
+        html: `<div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"></div>`,
+        className: '',
+        iconSize: [dotSize, dotSize],
+        iconAnchor: [dotSize / 2, dotSize / 2],
+      });
+      const m = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: 100 });
+      m.addTo(this.map!);
+      this.walkingDotMarkers.push(m);
+    };
+
+    // Always place a dot at the very start
+    place(prevLat, prevLng);
+
+    for (let i = 1; i < geometry.length; i++) {
+      const lat = geometry[i][0];
+      const lng = geometry[i][1];
+
+      const segLen = this.haversineM(prevLat, prevLng, lat, lng);
+      accumulated += segLen;
+
+      while (accumulated >= SPACING_M) {
+        // Interpolate the exact position of the dot along this segment
+        const overshoot = accumulated - SPACING_M;
+        const t = 1 - overshoot / segLen;
+        const dLat = lat - prevLat;
+        const dLng = lng - prevLng;
+        place(prevLat + dLat * t, prevLng + dLng * t);
+        accumulated -= SPACING_M;
+      }
+
+      prevLat = lat;
+      prevLng = lng;
+    }
+  }
+
+  /** Simple haversine distance in metres between two lat/lng points. */
+  private haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+      * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   saveTripToCalendar(): void {
@@ -1352,49 +1433,72 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
    * call panBy() to apply the correction each frame.
    */
   private installRotationAwareDragHandler(): void {
-    const container = this.map!.getContainer();
-    let active = false;
-    let lastX = 0;
-    let lastY = 0;
+    if (!this.map) return;
+    const map = this.map;
 
-    const rotateBack = (dx: number, dy: number): [number, number] => {
+    // ── PAN CORRECTION ────────────────────────────────────────────────────
+    // Leaflet fires 'move' after every internal pan. We intercept the drag
+    // handler at a lower level: listen to touchstart/touchmove on the
+    // container BEFORE Leaflet does (capture phase), compute the corrected
+    // delta ourselves, and suppress Leaflet's own drag by replacing the
+    // move delta in the DraggableEvent.
+    //
+    // Simpler alternative that actually works: hook Leaflet's drag handler
+    // _startPos and correct the accumulated offset each move.
+    //
+    // The cleanest approach: patch map.dragging._draggable so its
+    // _onMove gets corrected coordinates.
+
+    const draggable: any = (map.dragging as any)._draggable;
+    if (!draggable) return;
+
+    const originalOnMove = draggable._onMove.bind(draggable);
+
+    draggable._onMove = (e: TouchEvent | MouseEvent) => {
+      // Only correct when we have an active rotation
+      if (!this.isNavigating || this.navMapRotation === 0) {
+        originalOnMove(e);
+        return;
+      }
+
+      // Get the current pointer position
+      const point = L.DomEvent.getMousePosition(
+        e as MouseEvent,
+        map.getContainer(),
+      );
+
+      // Leaflet stores the last known position in _lastPoint
+      const last: L.Point = draggable._lastPoint ?? draggable._startPoint;
+      if (!last) { originalOnMove(e); return; }
+
+      // Raw screen-space delta (what Leaflet would use)
+      const rawDx = point.x - last.x;
+      const rawDy = point.y - last.y;
+
+      // Rotate delta into map-space
       const rad = (this.navMapRotation * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
-      return [dx * cos + dy * sin, -dx * sin + dy * cos];
-    };
+      const mapDx = rawDx * cos - rawDy * sin;
+      const mapDy = rawDx * sin + rawDy * cos;
 
-    const onPointerDown = (e: PointerEvent) => {
-      if (!this.isNavigating || this.navMapRotation === 0) return;
-      active = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!active || !this.isNavigating || this.navMapRotation === 0) return;
-      if (!(e.buttons & 1)) { active = false; return; }
-      const rawDx = e.clientX - lastX;
-      const rawDy = e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      if (Math.abs(rawDx) < 0.5 && Math.abs(rawDy) < 0.5) return;
-      const [mapDx, mapDy] = rotateBack(rawDx, rawDy);
+      // Apply correction: pan by the difference so the total movement
+      // equals the rotated delta
       const corrDx = mapDx - rawDx;
       const corrDy = mapDy - rawDy;
-      if (Math.abs(corrDx) < 0.5 && Math.abs(corrDy) < 0.5) return;
-      this.map?.panBy([-corrDx, -corrDy], { animate: false, noMoveStart: true });
+
+      // Let Leaflet process the original event first
+      originalOnMove(e);
+
+      // Then apply the correction
+      if (Math.abs(corrDx) > 0.2 || Math.abs(corrDy) > 0.2) {
+        map.panBy([corrDx, corrDy], { animate: false, noMoveStart: true });
+      }
     };
 
-    const onPointerUp = () => { active = false; };
-
-    container.addEventListener('pointerdown',   onPointerDown,  { passive: true });
-    container.addEventListener('pointermove',   onPointerMove,  { passive: true });
-    container.addEventListener('pointerup',     onPointerUp,    { passive: true });
-    container.addEventListener('pointercancel', onPointerUp,    { passive: true });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (this as any)._dragFixHandlers = { container, onPointerDown, onPointerMove, onPointerUp };
+    // Store for cleanup
+    (this as any)._patchedDraggable = draggable;
+    (this as any)._originalOnMove = originalOnMove;
   }
 
   private requestGeolocation(): void {
