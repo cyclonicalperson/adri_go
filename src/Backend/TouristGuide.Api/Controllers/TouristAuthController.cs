@@ -82,7 +82,8 @@ namespace TouristGuide.Api.Controllers
                     await _emailService.SendVerificationEmailAsync(
                         tourist.Email!,
                         tourist.Name ?? "User",
-                        verificationToken!);
+                        verificationToken!,
+                        tourist.Language);
                 }
                 catch (Exception ex)
                 {
@@ -181,7 +182,8 @@ namespace TouristGuide.Api.Controllers
                 await _emailService.SendVerificationEmailAsync(
                     tourist.Email!,
                     tourist.Name ?? "Korisnik",
-                    tourist.EmailVerificationToken);
+                    tourist.EmailVerificationToken,
+                    tourist.Language);
             }
             catch (Exception) { }
 
@@ -291,7 +293,7 @@ namespace TouristGuide.Api.Controllers
             tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            var savedCount  = await _db.SavedPosts.CountAsync(sp => sp.TouristId == touristId.Value);
+            var savedCount = await _db.SavedPosts.CountAsync(sp => sp.TouristId == touristId.Value);
             var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == touristId.Value);
 
             return Ok(MapToMeDto(tourist, savedCount, reviewCount));
@@ -321,17 +323,17 @@ namespace TouristGuide.Api.Controllers
                 .OrderBy(pi => pi.DayNumber).ThenBy(pi => pi.OrderInDay)
                 .Select(pi => new
                 {
-                    id        = pi.Id,
-                    postId    = pi.PostId,
-                    title     = pi.Post != null ? pi.Post.Title : "(deleted)",
-                    postType  = pi.Post != null ? pi.Post.PostType : "",
-                    address   = pi.Post != null ? pi.Post.Address : "",
-                    date      = pi.Post != null && pi.Post.PublishedAt != null
+                    id = pi.Id,
+                    postId = pi.PostId,
+                    title = pi.Post != null ? pi.Post.Title : "(deleted)",
+                    postType = pi.Post != null ? pi.Post.PostType : "",
+                    address = pi.Post != null ? pi.Post.Address : "",
+                    date = pi.Post != null && pi.Post.PublishedAt != null
                                     ? pi.Post.PublishedAt.Value.ToString("MMMM d, yyyy")
                                     : "",
-                    notes     = pi.Notes,
+                    notes = pi.Notes,
                     scheduledTime = pi.ScheduledTime != null ? pi.ScheduledTime.Value.ToString("HH:mm") : "",
-                    imageUrl  = ExtractFirstImage(pi.Post != null ? pi.Post.Images : null)
+                    imageUrl = ExtractFirstImage(pi.Post != null ? pi.Post.Images : null)
                 })
                 .ToListAsync();
 
@@ -360,8 +362,8 @@ namespace TouristGuide.Api.Controllers
                 planner = new VisitPlanner
                 {
                     TouristId = touristId.Value,
-                    Title     = "My Calendar",
-                    IsPublic  = false,
+                    Title = "My Calendar",
+                    IsPublic = false,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -380,11 +382,11 @@ namespace TouristGuide.Api.Controllers
 
             _db.PlannerItems.Add(new PlannerItem
             {
-                PlannerId    = planner.Id,
-                PostId       = (uint)postId,
-                DayNumber    = 1,
-                OrderInDay   = order,
-                Notes        = null,
+                PlannerId = planner.Id,
+                PostId = (uint)postId,
+                DayNumber = 1,
+                OrderInDay = order,
+                Notes = null,
                 ScheduledTime = null
             });
 
@@ -568,7 +570,8 @@ namespace TouristGuide.Api.Controllers
                 await _emailService.SendPasswordResetEmailAsync(
                     tourist.Email!,
                     tourist.Name ?? "Korisnik",
-                    rawToken);
+                    rawToken,
+                    tourist.Language);
             }
             catch (Exception ex)
             {
@@ -642,19 +645,19 @@ namespace TouristGuide.Api.Controllers
 
             return new TouristMeDto
             {
-                Id             = tourist.Id,
-                Name           = tourist.Name ?? string.Empty,
-                Email          = tourist.Email ?? string.Empty,
-                Language       = tourist.Language,
-                Bio            = tourist.Bio,
-                Location       = tourist.Location,
-                ProfileImage   = tourist.ProfileImage,
-                Interests      = interests,
-                IsActive       = tourist.IsActive,
+                Id = tourist.Id,
+                Name = tourist.Name ?? string.Empty,
+                Email = tourist.Email ?? string.Empty,
+                Language = tourist.Language,
+                Bio = tourist.Bio,
+                Location = tourist.Location,
+                ProfileImage = tourist.ProfileImage,
+                Interests = interests,
+                IsActive = tourist.IsActive,
                 IsEmailVerified = tourist.IsEmailVerified,
-                CreatedAt      = tourist.CreatedAt,
+                CreatedAt = tourist.CreatedAt,
                 SavedPostsCount = savedCount,
-                ReviewsCount   = reviewCount
+                ReviewsCount = reviewCount
             };
         }
 

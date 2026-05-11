@@ -170,7 +170,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.personalizedRecommendations.length > 0;
   }
 
-  private readonly categoryColors: Record<string, { bg: string; icon: string }> = {
+  // ─── Category colors (used for map pins AND chip active state) ───────────
+  readonly categoryColors: Record<string, { bg: string; icon: string }> = {
     accommodation:   { bg: '#3b82f6', icon: 'accommodation' },
     restaurant:      { bg: '#ef4444', icon: 'food' },
     club:            { bg: '#8b5cf6', icon: 'nightlife' },
@@ -326,7 +327,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const preferences = this.preferences.snapshot;
     const analyticsEvents = this.analytics.getRecentEvents();
-    // Priority: user-set content prefs → profile interests → server-side interaction history
     const contentPreferences = preferences.contentPreferences.length > 0
       ? preferences.contentPreferences
       : (this.userProfile?.interests ?? []).length > 0
@@ -390,6 +390,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return `${this.IMAGE_BASE_URL}${clean}`;
     }
     return firstImg;
+  }
+
+  /**
+   * Returns the background color for a category key — same colour used on the map pin.
+   * Falls back to the 'other' colour when the key is unknown.
+   */
+  getCategoryColor(categoryKey: string): string {
+    const key = categoryKey.toLowerCase().replace(/\s+/g, '_');
+    return (this.categoryColors[key] ?? this.categoryColors['other']).bg;
   }
 
   focusOnLocation(loc: MapLocation): void {
@@ -529,8 +538,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
     this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex);
-    // Auto-optimize the route whenever a recommendation is added so the user
-    // doesn't have to press "Optimize order" manually.
     this.optimizeRouteSilently();
     this.analytics.track('planner_detour_applied', {
       postId: suggestion.location.id,
@@ -658,12 +665,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Build coordinate list — getRouteCoordinates() prepends the user's position
-    // when location sharing is on and we have a GPS fix.
     const routeCoordinates = this.getRouteCoordinates();
 
     if (routeCoordinates.length < 2) {
-      // Single stop, no user position → just fly to the stop
       const onlyStop = this.plannerStops[0];
       this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
       this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
@@ -671,7 +675,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Single stop WITH user position → fall through and route user → stop
     if (this.plannerStops.length === 1) {
       this.scenicSuggestions = this.buildNearbyStopSuggestions(this.plannerStops[0]);
     }
@@ -692,15 +695,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           stopCount: this.plannerStops.length,
         };
         this.routeDestTitle = this.getRouteTitle();
-        this.scenicSuggestions = this.scenicMode
-          ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
-              contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
-                ? this.preferences.snapshot.contentPreferences
-                : (this.userProfile?.interests ?? []),
-              userPosition: this.userPosition,
-              limit: 4,
-            })
-          : [];
+        if (this.plannerStops.length >= 2) {
+          this.scenicSuggestions = this.scenicMode
+            ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
+                contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
+                  ? this.preferences.snapshot.contentPreferences
+                  : (this.userProfile?.interests ?? []),
+                userPosition: this.userPosition,
+                limit: 4,
+              })
+            : [];
+        }
 
         if (route.usedFallback) {
           this.plannerMessage = 'Live routing is unavailable right now. We are showing a scenic stop sequence instead.';
@@ -878,8 +883,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async startNavigation(): Promise<void> {
-    // getRouteCoordinates() prepends the user's live position when available,
-    // so 1 stop + GPS location = valid 2-point route.
     const coordinates = this.getRouteCoordinates();
     if (coordinates.length < 2) {
       this.plannerMessage = this.plannerStops.length === 0
@@ -1397,8 +1400,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private requestGeolocation(): void {
     void this.geolocationService.requestCurrentPosition().then((position) => {
       if (!position) return;
-      // Silent init: place the marker but don't auto-fly.
-      // The user can tap the locate button to fly to their position.
       this.showUserLocation(position, false);
       this.updateDistancesAndRecommendations();
       this.applyMarkerFilter();
@@ -1408,7 +1409,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  /** Public: called by the locate-me FAB. Flies to the user's position. */
   locateMe(): void {
     if (this.isLocating) return;
     this.isLocating = true;

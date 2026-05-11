@@ -364,13 +364,55 @@
 }
 .modal-delete-btn:hover { opacity: 0.88; }
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
+/* ── DESKTOP CENTRIRANA ADAPTACIJA ──────────────────────────── */
 @media (min-width: 900px) {
+  
   .subpage-container {
-    max-width: 600px;
-    margin: 0 auto;
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+    /* Fiksiranje u apsolutni centar ekrana */
+    position: fixed !important;
+    inset: auto !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    
+    /* Dimenzije (650px je idealno za duži tekst poput Privacy Policy-ja) */
+    width: 95% !important;
+    max-width: 650px !important;
+    height: 85vh !important;
+    
+    /* Dizajn i estetika plutajuće kartice */
+    background: #ffffff !important;
+    border-radius: 28px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    z-index: 1000 !important;
+    
+    /* Hak za senku iza + sivu pozadinu celog ekrana (da prekrije mapu/pozadinu ispod) */
+    box-shadow: 0 0 0 100vw #e2e8f0, 0 25px 50px rgba(0, 0, 0, 0.15) !important;
   }
-  .header-bar     { padding: 16px 28px; }
-  .scroll-content { padding: 24px 28px; }
+
+  /* Vizuelno prostraniji header na desktopu */
+  .header-bar {
+    padding: 20px 32px !important;
+  }
+
+  /* Više vazduha oko tabova */
+  .tab-bar {
+    padding: 0 32px !important;
+  }
+
+  /* Više prostora unutar sadržaja za čitanje */
+  .scroll-content {
+    padding: 32px 40px !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+  }
+
+  /* Magični fix: modal overlay na desktopu zatamnjuje samo ovu karticu, ne ceo ekran! */
+  .modal-overlay {
+    position: absolute !important;
+    border-radius: 28px !important;
+  }
 }

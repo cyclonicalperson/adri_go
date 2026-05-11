@@ -3,9 +3,7 @@
   <div class="app-header">
     <div class="header-left">
       <span class="logo-icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
+        <img src="assets/logo.jpeg" alt="AdriGo" class="logo-img">
       </span>
       <span class="logo-text">AdriGo</span>
     </div>
@@ -78,30 +76,24 @@
           </button>
         </div>
 
-        <div class="category-chips-row">
-          <button
-            class="cat-chip"
-            [class.cat-chip-all]="true"
-            [class.active]="allCategoriesActive"
-            (click)="toggleAllCategories()">
-            All
-          </button>
-          <button
-            *ngFor="let cat of categories"
-            class="cat-chip"
-            [class.active]="cat.active"
-            (click)="toggleCategory(cat)">
-            <span>{{ cat.icon }}</span> {{ cat.label }}
-          </button>
-        </div>
-
+        <!-- ── Search results dropdown ── -->
         <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
           <div
             *ngFor="let result of searchResults"
             class="search-result-item"
             (click)="selectSearchResult(result)">
-            <div class="search-result-icon">
-              <span>{{ getCategoryIcon(result.postType || result.category) }}</span>
+            <!-- Thumbnail: naslovna slika umesto emoji ikone -->
+            <div class="search-result-thumb">
+              <img
+                [src]="getFirstImage(result)"
+                [alt]="result.title"
+                class="search-result-img"
+                (error)="$any($event.target).src='assets/placeholder.jpg'">
+              <!-- Mala kategorija-boja traka na dnu slike -->
+              <span
+                class="search-result-cat-dot"
+                [style.background]="getCategoryColor(result.postType || result.category || '')">
+              </span>
             </div>
             <div class="search-result-info">
               <div class="search-result-title">{{ result.title }}</div>
@@ -121,6 +113,23 @@
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
           No results for "{{ searchQuery }}"
         </div>
+      </div>
+      <!-- ── Category chip row ── -->
+      <div class="category-chips-row">
+        <button
+          class="cat-chip cat-chip-all"
+          [class.active]="allCategoriesActive"
+          (click)="toggleAllCategories()">
+          All
+        </button>
+        <button
+          *ngFor="let cat of categories"
+          class="cat-chip"
+          [class.active]="cat.active"
+          [style.--cat-color]="getCategoryColor(cat.key)"
+          (click)="toggleCategory(cat)">
+          {{ cat.label }}
+        </button>
       </div>
     </div>
 
@@ -193,7 +202,7 @@
 
   </div>
 
-  <!-- ── LOCATE-ME FAB ────────────────────────────────────────── -->
+  <!-- ── LOCATE-ME FAB ──────────────────────────────────────────────────── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
           [class.locate-hidden]="sheetExpanded"
@@ -235,7 +244,9 @@
   <!-- Clear route confirmation dialog -->
   <div class="modal-overlay" *ngIf="showClearRouteConfirm" (click)="cancelClearRoute()">
     <div class="modal-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-icon">🗑️</div>
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </div>
       <h3>Clear route?</h3>
       <p>This will remove all {{ plannerStops.length }} stop{{ plannerStops.length !== 1 ? 's' : '' }} from your current route.</p>
       <div class="modal-actions">
@@ -285,7 +296,7 @@
 
   </div>
 
-  <!-- ── SAVED ROUTES OVERLAY ─────────────────────────────────── -->
+  <!-- ── SAVED ROUTES OVERLAY ──────────────────────────────────────────── -->
   <div class="saved-routes-overlay" [class.overlay-open]="showSavedRoutes" (click)="showSavedRoutes = false">
     <div class="saved-routes-sheet" (click)="$event.stopPropagation()">
       <div class="saved-routes-sheet-header">
