@@ -30,16 +30,8 @@
 
 .header-left { display: flex; align-items: center; gap: 8px; }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--green-500);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.logo-icon svg { width: 18px; height: 18px; fill: #fff; }
+.logo-icon { display: flex; align-items: center; }
+.logo-icon .logo-img { width: 72px; height: auto; display: block; }
 
 .logo-text {
   font-family: var(--font-display);
@@ -102,7 +94,6 @@
 .leaflet-control-attribution { display: none !important; }
 
 /* ── SIDEBAR SHELL ───────────────────────────────────────────── */
-/* On mobile: transparent – children position themselves independently */
 .sidebar { display: contents; }
 
 /* ── SEARCH STRIP (top overlay on mobile) ───────────────────── */
@@ -119,6 +110,8 @@
   gap: 12px;
 }
 .top-search-strip .search-wrapper { pointer-events: auto; }
+/* Chip row also needs pointer-events — it's a sibling of search-wrapper */
+.top-search-strip .category-chips-row { pointer-events: auto; }
 
 .search-wrapper {
   pointer-events: auto;
@@ -132,7 +125,6 @@
   bottom: 68px;
   left: 0;
   right: 0;
-  /* Collapsed by default — only the header row peeks out */
   max-height: 60px;
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -150,7 +142,6 @@
 }
 .top-ui-layer::-webkit-scrollbar { display: none; }
 
-/* Tappable header row — replaces the tiny drag handle */
 .sheet-header {
   display: flex;
   align-items: center;
@@ -162,7 +153,6 @@
   user-select: none;
   border-radius: 20px 20px 0 0;
   transition: background 0.15s;
-  /* Stays at top when sheet is expanded and user scrolls content */
   position: sticky;
   top: 0;
   background: #fff;
@@ -188,11 +178,8 @@
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
-/* Chevron points up by default (collapsed = expand upward) */
-/* When open, rotate 180° so it points down (collapse) */
 .sheet-chevron.sheet-chevron-open { transform: rotate(180deg); }
 
-/* Panel content padding — inside the sheet below the header */
 .top-ui-layer > :not(.sheet-header) {
   padding: 0 14px;
 }
@@ -268,7 +255,7 @@
   fill: var(--green-500);
 }
 
-/* Search dropdown */
+/* ── SEARCH RESULTS DROPDOWN ─────────────────────────────────── */
 .search-results-dropdown {
   position: absolute;
   top: calc(100% + 6px);
@@ -285,7 +272,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   cursor: pointer;
   transition: background 0.12s;
   border-bottom: 1px solid var(--gray-100);
@@ -293,15 +280,33 @@
 .search-result-item:last-child { border-bottom: none; }
 .search-result-item:hover { background: var(--gray-50, #f9fafb); }
 
-.search-result-icon {
-  width: 36px;
-  height: 36px;
-  background: var(--gray-100);
+/* ── Thumbnail (naslovna slika) ── */
+.search-result-thumb {
+  position: relative;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--gray-100);
+}
+
+.search-result-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Mala tačka u boji kategorije u donjem desnom uglu slike */
+.search-result-cat-dot {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
   flex-shrink: 0;
 }
 
@@ -344,19 +349,26 @@
 }
 .search-no-results svg { width: 16px; height: 16px; fill: var(--gray-300); flex-shrink: 0; }
 
-/* ── CATEGORY CHIP ROW (below search bar) ─────────────────────── */
+/* ── CATEGORY CHIP ROW ────────────────────────────────────────── */
 .category-chips-row {
   display: flex;
   align-items: center;
   gap: 6px;
   overflow-x: auto;
-  padding: 6px 2px 4px;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 4px 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   margin-top: 6px;
 }
 .category-chips-row::-webkit-scrollbar { display: none; }
+/* Chips must never shrink — they overflow so the row scrolls */
+.category-chips-row .cat-chip { flex-shrink: 0; }
 
+/*
+ * Base chip — inactive state.
+ * --cat-color is set inline per chip from getCategoryColor().
+ */
 .cat-chip {
   display: flex;
   align-items: center;
@@ -375,14 +387,35 @@
   flex-shrink: 0;
 }
 .cat-chip:hover { background: var(--gray-50); border-color: var(--gray-300); }
+
+/*
+ * Active category chip — uses the exact same colour as its map pin.
+ * --cat-color is bound per element in the template.
+ */
 .cat-chip.active {
-  background: var(--green-500);
-  border-color: var(--green-500);
+  background: var(--cat-color, #22c55e);
+  border-color: var(--cat-color, #22c55e);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(34,197,94,0.25);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
-.cat-chip-all.active { background: var(--gray-800); border-color: var(--gray-800); color: #fff; }
-.cat-chip-all:hover { background: var(--gray-100); border-color: var(--gray-400); color: var(--gray-800); }
+
+/* "All" chip — outlined (dark border, white bg) when inactive */
+.cat-chip-all {
+  background: #fff;
+  border-color: #1e293b;
+  color: #1e293b;
+}
+.cat-chip-all:hover {
+  background: #f1f5f9;
+  border-color: #1e293b;
+  color: #1e293b;
+}
+/* Filled (dark bg, white text) when active */
+.cat-chip-all.active {
+  background: #1e293b !important;
+  border-color: #1e293b !important;
+  color: #fff !important;
+}
 
 /* Filter badge dot */
 .search-filter-btn { position: relative; }
@@ -395,10 +428,10 @@
   border: 2px solid #fff;
 }
 .search-filter-btn.filter-active { color: var(--green-600); }
-/* Hide the "Filters" label on mobile — icon + badge is enough */
+/* Hide the "Filters" label on mobile */
 .search-filter-btn span:not(.filter-badge) { display: none; }
 
-/* On mobile the route summary lives in the sheet header — no floating pill needed */
+/* Route pill hidden on mobile */
 .route-pill { display: none; }
 
 /* ── SHEET HEADER ROUTE ELEMENTS ─────────────────────────────── */
@@ -435,7 +468,7 @@
 }
 .sheet-clear-btn:hover { background: #fee2e2; }
 
-/* ── DESKTOP: restore floating pill in the map area ──────────── */
+/* ── DESKTOP: floating route pill ────────────────────────────── */
 @media (min-width: 900px) {
   .route-pill {
     display: flex;
@@ -504,143 +537,6 @@
   flex-shrink: 0;
 }
 
-/* ── MAP FLOATING CATEGORY FILTER ────────────────────────────── */
-/* Positioned directly on top of the map, top-left corner */
-.map-category-filter {
-  position: absolute;
-  /* On mobile: below search bar area */
-  top: 130px;
-  left: 14px;
-  z-index: 10;
-  pointer-events: auto;
-}
-
-/* On desktop it goes right below the header, left side of the map area */
-@media (min-width: 900px) {
-  .map-category-filter {
-    /* left side of the actual map (right of sidebar) */
-    top: 76px;
-    left: calc(380px + 14px);
-  }
-}
-
-.filter-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #fff;
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-700);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.13);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.filter-toggle-btn:hover { background: var(--gray-50, #f9fafb); }
-.filter-toggle-btn svg:first-child { width: 16px; height: 16px; fill: var(--green-500); }
-
-.filter-active-count {
-  background: var(--green-500);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 1px 6px;
-  border-radius: 20px;
-  line-height: 1.4;
-}
-
-.filter-chevron {
-  width: 16px;
-  height: 16px;
-  fill: var(--gray-400);
-  transition: transform 0.2s;
-}
-.filter-chevron.rotated { transform: rotate(180deg); }
-
-.filter-dropdown {
-  margin-top: 8px;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
-  padding: 12px 14px;
-  min-width: 200px;
-  animation: fadeSlideDown 0.15s ease;
-}
-
-@keyframes fadeSlideDown {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.filter-dropdown-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--gray-500);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.category-select-all {
-  background: none;
-  border: none;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--green-500);
-  cursor: pointer;
-  padding: 0;
-}
-.category-select-all:hover { opacity: 0.75; }
-
-.category-list { display: flex; flex-direction: column; gap: 4px; }
-
-.category-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.12s;
-  user-select: none;
-  border: 1.5px solid transparent;
-}
-.category-item:hover { background: var(--gray-50, #f9fafb); }
-.category-item.active { border-color: var(--green-200, #bbf7d0); background: var(--green-50, #f0fdf4); }
-
-.cat-checkbox {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  border: 2px solid var(--gray-300);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: #fff;
-  transition: background 0.12s, border-color 0.12s;
-}
-.category-item.active .cat-checkbox {
-  background: var(--green-500);
-  border-color: var(--green-500);
-}
-.cat-checkbox svg { width: 12px; height: 12px; fill: #fff; }
-
-.cat-icon { font-size: 15px; line-height: 1; }
-.cat-label { font-size: 13px; font-weight: 600; color: var(--gray-600); flex: 1; }
-.category-item.active .cat-label { color: var(--gray-800); }
-
-/* ── DESKTOP ONLY ELEMENTS ───────────────────────────────────── */
-.desktop-only { display: none; }
-
-/* Footer is always visible — never hide it on any viewport */
-
 /* ── FOOTER NAV ──────────────────────────────────────────────── */
 .app-footer {
   position: absolute;
@@ -704,34 +600,6 @@ app-location-details-card {
   display: block;
 }
 
-/* ── CUSTOM MAP PINS ─────────────────────────────────────────── */
-.map-pin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  border: 2px solid rgba(255,255,255,0.6);
-}
-.map-pin-inner {
-  transform: rotate(45deg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.map-pin-inner svg { width: 16px; height: 16px; fill: #fff; }
-
-.pin-beach    { background: var(--cat-beach);    }
-.pin-nature   { background: var(--cat-nature);   }
-.pin-culture  { background: var(--cat-culture);  }
-.pin-food     { background: var(--cat-food);     }
-.pin-nightlife{ background: var(--cat-nightlife);}
-.pin-activity { background: var(--cat-activity); }
-.pin-events   { background: var(--cat-events);   }
-
 /* ── AUTH POPUP ─────────────────────────────────────────────── */
 .auth-modal-overlay {
   position: fixed;
@@ -780,8 +648,6 @@ app-location-details-card {
    ============================================================ */
 @media (min-width: 900px) {
 
-  .desktop-only { display: block; }
-
   .map-wrapper { flex-direction: row; }
 
   /* ── Fixed left sidebar ────────────────────────────────── */
@@ -795,7 +661,6 @@ app-location-details-card {
     border-bottom: 1px solid var(--gray-100);
   }
 
-  /* Sidebar shell: stacks search strip + panel layer as a column */
   .sidebar {
     display: flex;
     flex-direction: column;
@@ -823,7 +688,7 @@ app-location-details-card {
     overflow-y: auto;
     max-height: none;
     transition: none;
-    padding: 8px 16px 16px;
+    padding: 0 16px 16px !important;
     background: transparent;
     border-radius: 0;
     box-shadow: none;
@@ -834,11 +699,12 @@ app-location-details-card {
   .top-ui-layer::-webkit-scrollbar { width: 4px; }
   .top-ui-layer::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 4px; }
 
-  /* Remove mobile-only overrides for child padding */
   .top-ui-layer > :not(.sheet-header),
   .top-ui-layer > :last-child { padding: 0; }
 
   .sheet-header { display: none; }
+
+  .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
 
   /* ── Map fills right side ──────────────────────────────── */
   .map-container {
@@ -868,20 +734,73 @@ app-location-details-card {
     height: 68px;
     z-index: 30;
     box-shadow: 0 -1px 0 var(--gray-100);
-    display: flex !important; /* always visible on desktop */
+    display: flex !important;
   }
   .app-footer.footer-hidden { display: flex !important; }
 
   .logo-text { font-size: 22px; }
 
-  /* ── RECOMMENDED PANEL ─────────────────────────────────── */
-  /* Vertical card with big image on top */
+  /* ── Desktop chip row: scrollable horizontally ─────────── */
+  /*
+   * The chip row is a direct child of .top-search-strip which sits inside
+   * the fixed 380px sidebar. We must NOT put overflow:hidden on any ancestor
+   * of the chip row — that creates a new scroll-boundary that prevents the row
+   * from scrolling. Instead we rely on the sidebar's fixed width to naturally
+   * constrain the strip, and let the chip row overflow-x:auto inside it.
+   * The search dropdown (position:absolute) escapes via overflow:visible on
+   * .search-wrapper; it is NOT a child of .top-search-strip so it is unaffected.
+   */
+  .top-search-strip {
+    /* No overflow clipping here — let the chip row scroll freely */
+    overflow: visible;
+  }
+  .search-wrapper {
+    position: relative;
+    overflow: visible;
+  }
+  .category-chips-row {
+    flex-wrap: nowrap;
+    /* Use a max-width equal to the sidebar content width so the row
+       clips at the sidebar edge without needing overflow:hidden on a parent */
+    max-width: 348px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    padding: 6px 4px 4px;
+    margin-top: 6px;
+    cursor: grab;
+  }
+  .category-chips-row::-webkit-scrollbar { display: none; }
+  .category-chips-row:active { cursor: grabbing; }
+  /* Dropdown search results — wider on desktop since sidebar is 380px */
+  .search-results-dropdown {
+    border-radius: 14px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .search-result-item {
+    padding: 13px 16px;
+    gap: 14px;
+  }
+  .search-result-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+  }
+  .search-result-title { font-size: 15px; }
+  .search-result-meta  { font-size: 13px; }
+  .search-result-rating { font-size: 13px; }
 
   .route-pill {
     top: 18px;
     left: calc(380px + ((100vw - 380px) / 2));
   }
+
+  /* Show "Filters" label text on desktop */
+  .search-filter-btn span:not(.filter-badge) { display: inline; }
 }
+
 /* ============================================================
    CLEAR ROUTE CONFIRMATION DIALOG
    ============================================================ */
@@ -916,7 +835,7 @@ app-location-details-card {
 .modal-btn-confirm:hover { background: #dc2626; }
 
 /* ============================================================
-   SAVED ROUTES TOGGLE BUTTON (inside bottom sheet)
+   SAVED ROUTES TOGGLE BUTTON
    ============================================================ */
 .saved-routes-toggle-row { padding: 6px 14px 10px; }
 .saved-routes-toggle-btn {
@@ -941,7 +860,7 @@ app-location-details-card {
 .saved-routes-toggle-btn svg { fill: #fff; }
 
 /* ============================================================
-   SAVED ROUTES — full-screen slide-up overlay
+   SAVED ROUTES — slide-up overlay
    ============================================================ */
 .saved-routes-overlay {
   position: fixed;
@@ -1032,7 +951,6 @@ app-location-details-card {
 .saved-routes-empty p { font-size: 15px; font-weight: 700; color: #64748b; margin: 0; }
 .saved-routes-empty span { font-size: 13px; line-height: 1.5; }
 
-/* Route card */
 .saved-route-card {
   display: flex;
   align-items: center;
@@ -1106,7 +1024,6 @@ app-location-details-card {
 .saved-route-card-delete:hover { color: #ef4444; background: #fef2f2; }
 .saved-route-card-delete svg { fill: currentColor; }
 
-/* Desktop: constrain the sheet to a narrower width centred or left-aligned */
 @media (min-width: 900px) {
   .saved-routes-sheet {
     left: 0;
@@ -1119,15 +1036,14 @@ app-location-details-card {
 }
 
 /* ============================================================
-   SAVE ROUTE TOAST  (pill notification)
+   SAVE ROUTE TOAST
    ============================================================ */
 .save-route-toast {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* Fixed position so it floats above the sheet on mobile */
   position: fixed;
-  bottom: calc(68px + 14px); /* above footer */
+  bottom: calc(68px + 14px);
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
@@ -1152,15 +1068,12 @@ app-location-details-card {
 }
 
 /* ============================================================
-   LOCATE-ME FAB (bottom-right of map)
+   LOCATE-ME FAB
    ============================================================ */
 .locate-btn {
   position: fixed;
   right: 16px;
-
-  /* Mobile: must clear the footer (68px) + collapsed sheet header (60px) + gap (14px) */
   bottom: calc(68px + 60px + 14px);
-
   z-index: 500;
   width: 48px;
   height: 48px;
@@ -1173,14 +1086,13 @@ app-location-details-card {
   justify-content: center;
   cursor: pointer;
   color: #3b82f6;
-  transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s, transform 0.2s;
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
 }
 .locate-btn:hover:not(.locate-loading) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22); transform: scale(1.06); }
 .locate-btn:active:not(.locate-loading) { transform: scale(0.96); }
 .locate-btn.locate-loading { color: var(--gray-400, #94a3b8); cursor: not-allowed; }
 .locate-btn svg { flex-shrink: 0; }
 
-/* Hide gracefully when the bottom sheet is expanded on mobile */
 .locate-btn.locate-hidden {
   opacity: 0;
   pointer-events: none;
@@ -1199,16 +1111,12 @@ app-location-details-card {
 
 @media (min-width: 900px) {
   .locate-btn {
-    /* Desktop: footer lives only in the sidebar (left 380px).
-       The map area has no footer, so pin directly to the viewport bottom. */
     right: 24px;
     bottom: 24px;
   }
-  /* Always visible on desktop — no sheet to conflict with */
   .locate-btn.locate-hidden {
     opacity: 1;
     pointer-events: auto;
     transform: none;
   }
 }
-
