@@ -36,7 +36,8 @@ builder.Services.AddCors(options =>
                 "http://softeng.pmf.kg.ac.rs:10181",    // Admin Angular app HTTP
                 "http://softeng.pmf.kg.ac.rs:10183",    // Turista Angular app HTTP
                 "https://softeng.pmf.kg.ac.rs:10188",   // Admin Angular app HTTPS
-                "https://softeng.pmf.kg.ac.rs:10187"    // Turista Angular app HTTPS
+                "https://softeng.pmf.kg.ac.rs:10187",    // Turista Angular app HTTPS
+                "http://localhost:4201"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
