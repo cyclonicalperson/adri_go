@@ -52,9 +52,13 @@ export class SettingsComponent implements OnInit {
   passwordSuccess = '';
   isSavingPassword = false;
 
+  showDeleteModal = false;
+  deleteError = '';
+  isDeletingAccount = false;
+
   constructor(
     public router: Router,
-    private authService: AuthService,
+    public authService: AuthService,
     public translate: SiteTranslateService,
     private preferences: TouristPreferencesService,
     private userService: UserService,
@@ -374,6 +378,30 @@ export class SettingsComponent implements OnInit {
 
   goToHelp(): void {
     this.router.navigate(['/account/help']);
+  }
+
+  openDeleteAccount(): void {
+    this.showDeleteModal = true;
+    this.deleteError = '';
+  }
+
+  closeDeleteAccount(): void {
+    this.showDeleteModal = false;
+  }
+
+  confirmDeleteAccount(): void {
+    this.isDeletingAccount = true;
+    this.deleteError = '';
+    this.authService.deleteAccount().subscribe({
+      next: () => {
+        this.authService.logout();
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        this.deleteError = err?.error?.message || 'Failed to delete account. Please try again.';
+        this.isDeletingAccount = false;
+      }
+    });
   }
 
   private toggleArrayValue(values: string[], id: string): string[] {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface Location {
@@ -84,7 +85,9 @@ export class LocationService {
       .set('pageSize', pageSize.toString());
     if (type)     params = params.set('type', type);
     if (regionId) params = params.set('region_id', regionId.toString());
-    return this.http.get<LocationsResponse>(`${this.apiUrl}/posts/public`, { params });
+    return this.http.get<LocationsResponse>(`${this.apiUrl}/posts/public`, { params }).pipe(
+      map(res => ({ ...res, data: res.data.map(loc => this.normalize(loc)) }))
+    );
   }
 
   searchLocations(
@@ -109,7 +112,20 @@ export class LocationService {
   }
 
   getLocationById(id: number): Observable<Location> {
-    return this.http.get<Location>(`${this.apiUrl}/posts/${id}`);
+    return this.http.get<Location>(`${this.apiUrl}/posts/${id}`).pipe(
+      map(loc => this.normalize(loc))
+    );
+  }
+
+  private normalize(raw: any): Location {
+    return {
+      ...raw,
+      avgRating:   raw.avgRating   ?? raw.rating    ?? undefined,
+      likeCount:   raw.likeCount   ?? raw.likes     ?? 0,
+      saveCount:   raw.saveCount   ?? raw.saves     ?? 0,
+      reviewCount: raw.reviewCount ?? raw.reviews   ?? 0,
+      postType:    raw.postType    ?? raw.category  ?? '',
+    };
   }
 
   getReviews(postId: number): Observable<ReviewsResponse> {

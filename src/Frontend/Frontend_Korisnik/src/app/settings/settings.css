@@ -190,6 +190,27 @@ input:checked + .slider:before { transform: translateX(21px); }
 .logout-link:hover { opacity: 0.8; }
 .logout-link svg { width: 18px; height: 18px; fill: var(--danger); }
 
+.delete-account-link {
+  width: 100%;
+  padding: 12px;
+  background: none;
+  border: 1.5px solid #fca5a5;
+  border-radius: 10px;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: background 0.18s, opacity 0.18s;
+  margin-top: 4px;
+}
+.delete-account-link:hover { background: #fef2f2; }
+.delete-account-link svg { width: 16px; height: 16px; fill: #b91c1c; }
+
 /* ── VERSION TAG ─────────────────────────────────────────────── */
 .version-tag {
   font-size: 12px;

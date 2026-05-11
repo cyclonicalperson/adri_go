@@ -141,7 +141,7 @@
       </div>
 
       <!-- LOCATION PERMIT -->
-      <div class="permit-card">
+      <div class="permit-card" [class.permit-enabled]="profileForm.get('locationPermit')?.value" (click)="toggleLocationPermit()">
         <span class="permit-icon">
           <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
         </span>
@@ -149,6 +149,10 @@
           <h4>Location permit</h4>
           <p>Use of your location allows us to show you the nearest attractions, beaches and restaurants in real time. Your privacy is a priority.</p>
         </div>
+        <label class="permit-toggle" (click)="$event.stopPropagation()">
+          <input type="checkbox" formControlName="locationPermit" (change)="onLocationPermitChange()">
+          <span class="permit-slider"></span>
+        </label>
       </div>
 
       <!-- TERMS -->
