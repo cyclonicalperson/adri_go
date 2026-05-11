@@ -872,7 +872,7 @@ namespace TouristGuide.Api.Controllers
                 .Replace("ð", "dj");
         }
 
-        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null) => new()
+        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null, decimal? avgRatingOverride = null) => new()
         {
             Id = post.Id,
             AdminId = post.AdminId,
