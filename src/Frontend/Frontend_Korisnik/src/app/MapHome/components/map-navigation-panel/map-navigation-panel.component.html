@@ -36,27 +36,29 @@
 <!-- ── ACTIVE NAVIGATION ───────────────────────────────────── -->
 <ng-container *ngIf="!arrived && !locationDenied">
 
-  <!-- TOP: current instruction -->
+  <!-- TOP: NEXT instruction (upcoming turn) -->
   <div class="nav-top-bar">
-    <!-- Directional arrow -->
+    <!-- Directional arrow for the NEXT turn -->
     <div class="nav-arrow-box">
       <svg
         viewBox="0 0 24 24"
         width="40" height="40"
         fill="white"
-        [style.transform]="'rotate(' + maneuverRotation(currentStep) + 'deg)'"
+        [style.transform]="'rotate(' + maneuverRotation(nextStep) + 'deg)'"
         style="transition: transform 0.3s ease">
         <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
       </svg>
     </div>
 
-    <!-- Instruction text -->
+    <!-- Instruction text for the NEXT turn -->
     <div class="nav-instruction-box">
       <div class="nav-dist-label" *ngIf="distanceToNextM > 0 && userPosition">
         {{ formatDistance(distanceToNextM) }}
       </div>
       <div class="nav-street-label">
-        {{ currentStep?.streetName || currentStep?.instruction || 'Follow the route' }}
+        {{ nextLabel(nextStep) }}
+        <ng-container *ngIf="nextStep?.streetName"> onto {{ nextStep!.streetName }}</ng-container>
+        <ng-container *ngIf="!nextStep">Follow the route</ng-container>
       </div>
     </div>
 
@@ -68,25 +70,44 @@
     </button>
   </div>
 
-  <!-- THEN: next instruction -->
-  <div class="nav-then-bar" *ngIf="nextStep && userPosition">
+  <!-- THEN: the turn AFTER the next one -->
+  <div class="nav-then-bar" *ngIf="nextNextStep && userPosition">
     <svg
       class="nav-then-arrow"
       viewBox="0 0 24 24"
       width="16" height="16"
       fill="currentColor"
-      [style.transform]="'rotate(' + maneuverRotation(nextStep) + 'deg)'">
+      [style.transform]="'rotate(' + maneuverRotation(nextNextStep) + 'deg)'">
       <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
     </svg>
-    <span class="nav-then-label">Then {{ nextLabel(nextStep) }}
-      <ng-container *ngIf="nextStep.streetName"> onto <strong>{{ nextStep.streetName }}</strong></ng-container>
+    <span class="nav-then-label">Then {{ nextLabel(nextNextStep) }}
+      <ng-container *ngIf="nextNextStep.streetName"> onto <strong>{{ nextNextStep.streetName }}</strong></ng-container>
     </span>
+  </div>
+
+  <!-- Fallback: show current step info when nextNextStep not available but nextStep exists -->
+  <div class="nav-then-bar nav-then-current" *ngIf="!nextNextStep && currentStep && userPosition">
+    <svg
+      class="nav-then-arrow"
+      viewBox="0 0 24 24"
+      width="16" height="16"
+      fill="currentColor"
+      [style.transform]="'rotate(' + maneuverRotation(currentStep) + 'deg)'">
+      <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
+    </svg>
+    <span class="nav-then-label">Now: {{ currentStep.streetName || currentStep.instruction || 'Follow the route' }}</span>
   </div>
 
   <!-- GPS acquiring indicator (shown instead of "then" while waiting) -->
   <div class="nav-acquiring" *ngIf="!userPosition">
     <div class="nav-acquiring-spinner"></div>
     <span>Acquiring GPS signal…</span>
+  </div>
+
+  <!-- REROUTING indicator -->
+  <div class="nav-rerouting" *ngIf="isRerouting">
+    <div class="nav-acquiring-spinner"></div>
+    <span>Recalculating route…</span>
   </div>
 
   <!-- DESKTOP-ONLY: scrollable step list -->

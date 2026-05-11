@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationStep } from '../../../services/routing.service';
+import { RoutingService } from '../../../services/routing.service';
 import { TravelMode } from '../../../services/tourist-preferences.service';
 
 @Component({
@@ -31,6 +32,12 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
   /** Emits updated user position so map-home can redraw the user dot */
   @Output() positionUpdated = new EventEmitter<[number, number]>();
   @Output() exitNavigation = new EventEmitter<void>();
+  /** Emits compass heading (degrees) so the map can rotate */
+  @Output() mapRotationUpdated = new EventEmitter<number>();
+  /** Emits remaining geometry (points NOT yet passed) so map-home can trim the polyline */
+  @Output() routeTrailUpdated = new EventEmitter<[number, number][]>();
+  /** Emits a fully recalculated route when the user goes off-route */
+  @Output() routeRecalculated = new EventEmitter<{ steps: NavigationStep[]; geometry: [number, number][] }>();
 
   currentStepIndex = 0;
   distanceToNextM = 0;
@@ -42,8 +49,24 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
   speedKmh: number | null = null;
 
   private watchId: number | null = null;
+  private headingWatchId: number | null = null;
+  private lastHeading: number | null = null;
   private readonly ADVANCE_THRESHOLD_M = 30;
   private readonly ARRIVE_THRESHOLD_M = 50;
+
+  // ─── Rerouting state ─────────────────────────────────────────────────────
+  /** Distance (meters) the user must be off-route to trigger recalculation */
+  private readonly OFF_ROUTE_THRESHOLD_M = 50;
+  /** How many consecutive off-route GPS ticks before rerouting fires */
+  private readonly OFF_ROUTE_CONFIRM_TICKS = 2;
+  /** Minimum milliseconds between two reroute attempts */
+  private readonly REROUTE_COOLDOWN_MS = 10_000;
+  /** Counter of consecutive off-route ticks */
+  private offRouteTicks = 0;
+  /** True while a reroute HTTP request is in flight */
+  isRerouting = false;
+  /** Timestamp of the last successful reroute */
+  private lastRerouteAt = 0;
 
   get currentStep(): NavigationStep | null {
     return this.steps[this.currentStepIndex] ?? null;
@@ -51,6 +74,11 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
 
   get nextStep(): NavigationStep | null {
     return this.steps[this.currentStepIndex + 1] ?? null;
+  }
+
+  /** Step two positions ahead — shown in the "then" strip */
+  get nextNextStep(): NavigationStep | null {
+    return this.steps[this.currentStepIndex + 2] ?? null;
   }
 
   get modeIcon(): string {
@@ -99,16 +127,18 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
     return 'Continue';
   }
 
-  constructor(private cdr: ChangeDetectorRef, private zone: NgZone) {}
+  constructor(private cdr: ChangeDetectorRef, private zone: NgZone, private routingService: RoutingService) {}
 
   ngOnInit(): void {
     this.remainingDistanceKm = this.totalDistanceKm;
     this.remainingMin = this.totalDurationMin;
     this.startWatching();
+    this.startHeadingWatch();
   }
 
   ngOnDestroy(): void {
     this.stopWatching();
+    this.stopHeadingWatch();
   }
 
   formatDistance(meters: number): string {
@@ -137,6 +167,53 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
     return '⬆️';
   }
 
+  private startHeadingWatch(): void {
+    // DeviceOrientationEvent gives us compass heading on mobile
+    const handler = (event: DeviceOrientationEvent) => {
+      // webkitCompassHeading is available on iOS, alpha on Android (needs to be inverted)
+      let heading: number | null = null;
+      if ((event as any).webkitCompassHeading != null) {
+        heading = (event as any).webkitCompassHeading as number;
+      } else if (event.alpha != null) {
+        // Android: alpha is clockwise from North when absolute
+        heading = (360 - event.alpha) % 360;
+      }
+      if (heading !== null) {
+        this.zone.run(() => {
+          this.lastHeading = heading;
+          this.mapRotationUpdated.emit(heading!);
+        });
+      }
+    };
+
+    // iOS 13+ requires permission
+    const doe = DeviceOrientationEvent as any;
+    if (typeof doe.requestPermission === 'function') {
+      doe.requestPermission()
+        .then((state: string) => {
+          if (state === 'granted') {
+            window.addEventListener('deviceorientationabsolute', handler as EventListener, true);
+            window.addEventListener('deviceorientation', handler as EventListener, true);
+          }
+        })
+        .catch(() => {});
+    } else {
+      window.addEventListener('deviceorientationabsolute', handler as EventListener, true);
+      window.addEventListener('deviceorientation', handler as EventListener, true);
+    }
+
+    // Store reference for cleanup
+    (this as any)._orientationHandler = handler;
+  }
+
+  private stopHeadingWatch(): void {
+    const handler = (this as any)._orientationHandler;
+    if (handler) {
+      window.removeEventListener('deviceorientationabsolute', handler, true);
+      window.removeEventListener('deviceorientation', handler, true);
+    }
+  }
+
   private startWatching(): void {
     if (!navigator.geolocation) {
       this.locationDenied = true;
@@ -152,8 +229,16 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
         this.speedKmh = pos.coords.speed != null
           ? Math.round(pos.coords.speed * 3.6)
           : null;
+        // Use GPS course as heading fallback when device orientation not available
+        if (pos.coords.heading != null && !isNaN(pos.coords.heading) && this.lastHeading === null) {
+          this.mapRotationUpdated.emit(pos.coords.heading);
+        }
         this.positionUpdated.emit([lat, lng]);
         this.updateProgress(lat, lng);
+        // Emit the remaining geometry so map can trim the trail
+        this.emitRemainingGeometry(lat, lng);
+        // Check if user has gone off-route and recalculate if needed
+        this.checkOffRoute(lat, lng);
         this.cdr.markForCheck();
       });
     };
@@ -189,6 +274,156 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
     }
+  }
+
+  private emitRemainingGeometry(lat: number, lng: number): void {
+    if (!this.routeGeometry || this.routeGeometry.length < 2) return;
+
+    // Find the closest SEGMENT (not just closest node) so we never
+    // snap backward to a point the user already passed.
+    let bestSegIdx = 0;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < this.routeGeometry.length - 1; i++) {
+      const d = this.pointToSegmentM(
+        lat, lng,
+        this.routeGeometry[i][0],   this.routeGeometry[i][1],
+        this.routeGeometry[i + 1][0], this.routeGeometry[i + 1][1],
+      );
+      if (d < bestDist) {
+        bestDist = d;
+        bestSegIdx = i;
+      }
+    }
+
+    // Emit from the END of the matched segment onward so the already-
+    // travelled part of that segment is also removed from the overlay.
+    const remaining = this.routeGeometry.slice(bestSegIdx + 1);
+    // Always keep at least the current position as first point so the
+    // polyline starts exactly where the user is.
+    this.routeTrailUpdated.emit([[lat, lng], ...remaining]);
+  }
+
+  /**
+   * Off-route detection: measures the perpendicular distance from the current
+   * position to the nearest segment of the route polyline.
+   * If the user is farther than OFF_ROUTE_THRESHOLD_M for OFF_ROUTE_CONFIRM_TICKS
+   * consecutive GPS ticks, a reroute is triggered.
+   */
+  private checkOffRoute(lat: number, lng: number): void {
+    if (this.arrived || this.isRerouting || this.steps.length === 0) return;
+    if (this.routeGeometry.length < 2) return;
+
+    // Cooldown: don’t reroute again too soon
+    if (Date.now() - this.lastRerouteAt < this.REROUTE_COOLDOWN_MS) return;
+
+    const distToRoute = this.distanceToPolylineM(lat, lng, this.routeGeometry);
+
+    if (distToRoute > this.OFF_ROUTE_THRESHOLD_M) {
+      this.offRouteTicks++;
+      if (this.offRouteTicks >= this.OFF_ROUTE_CONFIRM_TICKS) {
+        this.offRouteTicks = 0;
+        this.triggerReroute(lat, lng);
+      }
+    } else {
+      // Back on route — reset counter
+      this.offRouteTicks = 0;
+    }
+  }
+
+  /**
+   * Calculates the minimum distance (meters) from point (lat, lng)
+   * to any segment of the given polyline.
+   */
+  private distanceToPolylineM(lat: number, lng: number, polyline: [number, number][]): number {
+    let minDist = Infinity;
+    for (let i = 0; i < polyline.length - 1; i++) {
+      const d = this.pointToSegmentM(
+        lat, lng,
+        polyline[i][0], polyline[i][1],
+        polyline[i + 1][0], polyline[i + 1][1],
+      );
+      if (d < minDist) minDist = d;
+    }
+    return minDist;
+  }
+
+  /**
+   * Distance from point P to segment AB, in meters.
+   * Uses haversine for the actual metre values.
+   */
+  private pointToSegmentM(
+    pLat: number, pLng: number,
+    aLat: number, aLng: number,
+    bLat: number, bLng: number,
+  ): number {
+    const dLat = bLat - aLat;
+    const dLng = bLng - aLng;
+    const lenSq = dLat * dLat + dLng * dLng;
+
+    if (lenSq === 0) return this.haversineM(pLat, pLng, aLat, aLng);
+
+    // Parameter t: projection of P onto segment AB, clamped to [0,1]
+    const t = Math.max(0, Math.min(1,
+      ((pLat - aLat) * dLat + (pLng - aLng) * dLng) / lenSq,
+    ));
+
+    const closestLat = aLat + t * dLat;
+    const closestLng = aLng + t * dLng;
+    return this.haversineM(pLat, pLng, closestLat, closestLng);
+  }
+
+  /** Fires an async reroute request from the user’s current position to the final destination. */
+  private triggerReroute(lat: number, lng: number): void {
+    // Final destination is always the last step’s position
+    const destination = this.steps[this.steps.length - 1].position;
+
+    // Build waypoints: current position + any remaining planned stops
+    // (steps after currentStepIndex that are destination-type stops)
+    const remainingStopPositions = this.steps
+      .slice(this.currentStepIndex + 1)
+      .filter(s => s.maneuverType === 'arrive')
+      .map(s => s.position);
+
+    // Always include the final destination
+    const waypoints: [number, number][] = [
+      [lat, lng],
+      ...remainingStopPositions,
+    ];
+    // Ensure we don’t duplicate the final destination
+    const lastWp = waypoints[waypoints.length - 1];
+    if (lastWp[0] !== destination[0] || lastWp[1] !== destination[1]) {
+      waypoints.push(destination);
+    }
+
+    this.isRerouting = true;
+    this.cdr.markForCheck();
+
+    this.routingService.computeRouteForNavigation(waypoints, this.travelMode)
+      .then(result => {
+        this.zone.run(() => {
+          if (result.steps && result.steps.length > 0) {
+            // Reset navigation state to the new route
+            this.currentStepIndex = 0;
+            this.offRouteTicks = 0;
+            this.lastRerouteAt = Date.now();
+
+            // Emit the new route up to map-home
+            this.routeRecalculated.emit({
+              steps: result.steps,
+              geometry: result.geometry,
+            });
+          }
+          this.isRerouting = false;
+          this.cdr.markForCheck();
+        });
+      })
+      .catch(() => {
+        this.zone.run(() => {
+          this.isRerouting = false;
+          this.cdr.markForCheck();
+        });
+      });
   }
 
   private updateProgress(lat: number, lng: number): void {

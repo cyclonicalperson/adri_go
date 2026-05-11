@@ -58,7 +58,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   sheetExpanded = false;
   private map: L.Map | undefined;
   private markers: { loc: MapLocation; marker: L.Marker }[] = [];
-  private userMarker: L.Marker | null = null;
+  private userMarker: L.Marker<any> | null = null;
   private routeStopMarkers: L.Marker[] = [];
   private latestQueryParams: Record<string, string> = {};
   private lastHydratedQueryKey = '';
@@ -98,6 +98,22 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isNavigating = false;
   navigationSteps: NavigationStep[] = [];
   navigationRouteGeometry: [number, number][] = [];
+
+  // ─── Navigation map behavior ─────────────────────────────────────────────
+  /** Whether the map is currently auto-following the user during navigation */
+  navFollowMode = true;
+  /** Current map rotation angle in degrees (compass heading) */
+  private navMapRotation = 0;
+  /** Navigation polyline showing only the REMAINING route */
+  private navRemainingPolyline: L.Polyline | null = null;
+  /** Timer ID for auto-refollow after user pans away */
+  private navRefollowTimerId: ReturnType<typeof setTimeout> | null = null;
+  /** How long (ms) to wait before auto-returning to follow mode */
+  private readonly NAV_REFOLLOW_DELAY_MS = 8000;
+  /** Timestamp of last GPS position processed — used for throttling smooth pan */
+  private navLastPanTime = 0;
+  /** Interpolated marker element for smooth movement — avoid remove/add on every tick */
+  private navUserMarkerEl: HTMLElement | null = null;
 
   // ─── Clear route confirmation ────────────────────────────────────────────
   showClearRouteConfirm = false;
@@ -218,6 +234,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.map?.remove();
+    this.clearNavRefollowTimer();
+    // Remove rotation-aware drag handlers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const h = (this as any)._dragFixHandlers;
+    if (h) {
+      h.container.removeEventListener('pointerdown',   h.onPointerDown);
+      h.container.removeEventListener('pointermove',   h.onPointerMove);
+      h.container.removeEventListener('pointerup',     h.onPointerUp);
+      h.container.removeEventListener('pointercancel', h.onPointerUp);
+    }
   }
 
   loadLocations(): void {
@@ -881,13 +907,186 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   stopNavigation(): void {
     this.isNavigating = false;
     this.navigationSteps = [];
+    this.navFollowMode = true;
+    this.navMapRotation = 0;
+    this.navUserMarkerEl = null;
+    this.clearNavRefollowTimer();
+
+    // Remove the remaining-route overlay
+    if (this.navRemainingPolyline && this.map) {
+      this.map.removeLayer(this.navRemainingPolyline);
+      this.navRemainingPolyline = null;
+    }
+
+    // Reset map rotation back to North
+    this.applyMapRotation(0, '0.4s ease');
+
     this.cdr.detectChanges();
   }
 
   onNavigationPositionUpdated(position: [number, number]): void {
-    this.showUserLocation({ lat: position[0], lng: position[1] }, false);
-    if (this.map) {
-      this.map.setView(position, Math.max(this.map.getZoom(), 16), { animate: true });
+    // Move the user marker smoothly without remove/add (avoids flicker)
+    this.moveUserMarkerSmooth(position);
+
+    if (!this.navFollowMode || !this.map) return;
+
+    // Throttle pan to max once per 800ms for smooth animation
+    const now = Date.now();
+    if (now - this.navLastPanTime < 800) return;
+    this.navLastPanTime = now;
+
+    // panTo is smoother than setView for continuous tracking
+    this.map.panTo(position, {
+      animate: true,
+      duration: 0.8,
+      easeLinearity: 0.5,
+      noMoveStart: true,
+    });
+  }
+
+  /** Move user marker by updating LatLng directly — no DOM remove/add = no flicker */
+  private moveUserMarkerSmooth(position: [number, number]): void {
+    this.userPosition = position;
+
+    if (this.userMarker) {
+      // Directly update the marker’s latlng (Leaflet API, no recreate)
+      this.userMarker.setLatLng(position);
+
+      // Apply CSS transition on the inner element for sub-pixel smoothness
+      if (!this.navUserMarkerEl) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.navUserMarkerEl = ((this.userMarker as any).getElement?.() as HTMLElement) ?? null;
+        if (this.navUserMarkerEl) {
+          this.navUserMarkerEl.style.transition = 'transform 0.8s linear';
+        }
+      }
+    } else {
+      // First time: create the marker normally
+      this.showUserLocation({ lat: position[0], lng: position[1] }, false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.navUserMarkerEl = ((this.userMarker as any)?.getElement?.() as HTMLElement) ?? null;
+      if (this.navUserMarkerEl) {
+        this.navUserMarkerEl.style.transition = 'transform 0.8s linear';
+      }
+    }
+  }
+
+  /** Called when the navigation panel has recalculated a new route off-route */
+  onNavigationRouteRecalculated(event: { steps: NavigationStep[]; geometry: [number, number][] }): void {
+    // Swap in the new steps and geometry
+    this.navigationSteps = event.steps;
+    this.navigationRouteGeometry = event.geometry;
+
+    // Replace the route polyline with the new one
+    if (this.routePolyline && this.map) {
+      this.map.removeLayer(this.routePolyline);
+      this.routePolyline = null;
+    }
+    if (this.navRemainingPolyline && this.map) {
+      this.map.removeLayer(this.navRemainingPolyline);
+      this.navRemainingPolyline = null;
+    }
+    if (this.map && event.geometry.length >= 2) {
+      this.navRemainingPolyline = L.polyline(event.geometry, {
+        color: '#22c55e',
+        weight: 6,
+        opacity: 0.9,
+      }).addTo(this.map);
+    }
+
+    this.cdr.detectChanges();
+  }
+
+  /** Helper: returns the #map DOM element which Leaflet owns.
+   *  This is intentionally oversized (142% x 142%) so that tile-loading
+   *  covers all corners even when the element is rotated up to 45 degrees.
+   *  We rotate this element directly; .map-container clips the overflow. */
+  private getMapEl(): HTMLElement | null {
+    return this.map?.getContainer() ?? null;
+  }
+
+  /** Apply compass rotation to the map element with a smooth transition.
+   *  deg=0 resets back to North. */
+  private applyMapRotation(deg: number, transition = '0.6s ease-out'): void {
+    const el = this.getMapEl();
+    if (!el) return;
+    el.style.transformOrigin = '50% 50%';
+    el.style.transition = `transform ${transition}`;
+    el.style.transform = deg === 0 ? '' : `rotate(${deg}deg)`;
+  }
+
+  /** Called when the navigation panel emits a new compass heading */
+  onNavigationMapRotation(heading: number): void {
+    this.navMapRotation = heading;
+    if (!this.navFollowMode || !this.map) return;
+    this.applyMapRotation(-heading);
+  }
+
+  /** Called when the navigation panel emits the remaining route geometry */
+  onNavigationRouteTrailUpdated(remaining: [number, number][]): void {
+    if (!this.map) return;
+
+    if (remaining.length >= 2) {
+      if (this.navRemainingPolyline) {
+        // Update existing polyline in-place — much smoother than remove+add
+        this.navRemainingPolyline.setLatLngs(remaining);
+      } else {
+        this.navRemainingPolyline = L.polyline(remaining, {
+          color: '#22c55e',
+          weight: 6,
+          opacity: 0.9,
+        }).addTo(this.map);
+      }
+    } else if (this.navRemainingPolyline) {
+      this.map.removeLayer(this.navRemainingPolyline);
+      this.navRemainingPolyline = null;
+    }
+  }
+
+  /** Start (or restart) the auto-refollow countdown */
+  private scheduleNavRefollow(): void {
+    this.clearNavRefollowTimer();
+    this.navRefollowTimerId = setTimeout(() => {
+      if (this.isNavigating && !this.navFollowMode) {
+        this.navFollowMode = true;
+        if (this.userPosition && this.map) {
+          this.map.panTo(this.userPosition, {
+            animate: true,
+            duration: 0.8,
+            easeLinearity: 0.5,
+            noMoveStart: true,
+          });
+          this.applyMapRotation(-this.navMapRotation);
+        }
+        this.cdr.detectChanges();
+      }
+    }, this.NAV_REFOLLOW_DELAY_MS);
+  }
+
+  private clearNavRefollowTimer(): void {
+    if (this.navRefollowTimerId !== null) {
+      clearTimeout(this.navRefollowTimerId);
+      this.navRefollowTimerId = null;
+    }
+  }
+
+  /** User taps the locate/recenter button during navigation — re-enables follow mode immediately */
+  locateMeOrRefollow(): void {
+    if (this.isNavigating) {
+      this.clearNavRefollowTimer();
+      this.navFollowMode = true;
+      if (this.userPosition && this.map) {
+        this.map.panTo(this.userPosition, {
+          animate: true,
+          duration: 0.8,
+          easeLinearity: 0.5,
+          noMoveStart: true,
+        });
+        this.applyMapRotation(-this.navMapRotation);
+      }
+      this.cdr.detectChanges();
+    } else {
+      this.locateMe();
     }
   }
 
@@ -1112,7 +1311,90 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       attribution: '© OpenStreetMap'
     }).addTo(this.map);
 
+    // #map is oversized (142% x 142%) in CSS so that rotated corners always
+    // have tiles pre-loaded. After Leaflet attaches we tell it to recalculate
+    // its size so it knows about the larger viewport and fills it with tiles.
+    setTimeout(() => this.map?.invalidateSize(), 0);
+
+    // Install rotation-aware drag compensation so that when #map is rotated
+    // (compass heading mode) swiping left/right still moves the map in the
+    // direction the finger travels on screen, not in the rotated map space.
+    this.installRotationAwareDragHandler();
+
+    // When user manually pans during navigation — disable follow mode and start refollow timer
+    this.map.on('dragstart', () => {
+      if (this.isNavigating) {
+        this.navFollowMode = false;
+        this.cdr.detectChanges();
+        this.scheduleNavRefollow();
+      }
+    });
+
+    // Reset the refollow timer on any further touch/drag interaction
+    this.map.on('drag', () => {
+      if (this.isNavigating && !this.navFollowMode) {
+        this.scheduleNavRefollow();
+      }
+    });
+
     this.requestGeolocation();
+  }
+
+  /**
+   * Installs a pointer-event handler that counter-rotates drag deltas by
+   * navMapRotation so that dragging always moves the map in screen-space
+   * regardless of the current compass rotation applied to #map.
+   *
+   * How it works: Leaflet reads raw pixel deltas from PointerEvents.
+   * When #map is CSS-rotated by R degrees those deltas are in rotated
+   * space, so dragging screen-left moves the map diagonally. We compute
+   * the difference between what Leaflet will do and what we want, then
+   * call panBy() to apply the correction each frame.
+   */
+  private installRotationAwareDragHandler(): void {
+    const container = this.map!.getContainer();
+    let active = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    const rotateBack = (dx: number, dy: number): [number, number] => {
+      const rad = (this.navMapRotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      return [dx * cos + dy * sin, -dx * sin + dy * cos];
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!this.isNavigating || this.navMapRotation === 0) return;
+      active = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!active || !this.isNavigating || this.navMapRotation === 0) return;
+      if (!(e.buttons & 1)) { active = false; return; }
+      const rawDx = e.clientX - lastX;
+      const rawDy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      if (Math.abs(rawDx) < 0.5 && Math.abs(rawDy) < 0.5) return;
+      const [mapDx, mapDy] = rotateBack(rawDx, rawDy);
+      const corrDx = mapDx - rawDx;
+      const corrDy = mapDy - rawDy;
+      if (Math.abs(corrDx) < 0.5 && Math.abs(corrDy) < 0.5) return;
+      this.map?.panBy([-corrDx, -corrDy], { animate: false, noMoveStart: true });
+    };
+
+    const onPointerUp = () => { active = false; };
+
+    container.addEventListener('pointerdown',   onPointerDown,  { passive: true });
+    container.addEventListener('pointermove',   onPointerMove,  { passive: true });
+    container.addEventListener('pointerup',     onPointerUp,    { passive: true });
+    container.addEventListener('pointercancel', onPointerUp,    { passive: true });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this as any)._dragFixHandlers = { container, onPointerDown, onPointerMove, onPointerUp };
   }
 
   private requestGeolocation(): void {
