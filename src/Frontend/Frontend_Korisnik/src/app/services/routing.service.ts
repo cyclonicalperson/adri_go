@@ -301,20 +301,20 @@ export class RoutingService {
       .map(([lat, lng]) => `${lng},${lat}`)
       .join(';');
 
-    // `radiuses` limits how far OSRM searches for a routable road to snap each
-    // waypoint to. 500 m covers rural/mountain coordinates without snapping to
-    // completely wrong roads in cities.
+    // 500 m snap radius covers rural/mountain coordinates without misrouting in cities.
     const radiuses = coordinates.map(() => '500').join(';');
-
     const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
-    // routing.openstreetmap.de runs all three profiles and is more reliable than
-    // the deprecated router.project-osrm.org demo server.
+    // Primary: routing.openstreetmap.de (Geofabrik-hosted, all profiles)
     if (profile === 'foot') {
       return `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coordinatesString}${params}`;
     }
     if (profile === 'bike') {
       return `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${coordinatesString}${params}`;
+    }
+    // Fallback: OSRM project demo server (driving only, same response format)
+    if (profile === 'driving-project') {
+      return `https://router.project-osrm.org/route/v1/driving/${coordinatesString}${params}`;
     }
     return `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordinatesString}${params}`;
   }
@@ -391,7 +391,8 @@ export class RoutingService {
     switch (travelMode) {
       case 'walking':  return ['foot'];
       case 'cycling':  return ['bike'];
-      default:         return ['driving'];
+      // driving: try Geofabrik first, then OSRM demo as fallback
+      default:         return ['driving', 'driving-project'];
     }
   }
 

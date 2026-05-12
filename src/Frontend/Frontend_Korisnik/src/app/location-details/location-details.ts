@@ -366,7 +366,11 @@ export class LocationDetailsComponent implements OnInit {
         this.newComment     = '';
         this.isSubmittingReview = false;
         this.showReviewForm = false;
-        if (this.location) this.location.reviewCount++;
+        if (this.location) {
+          this.location.reviewCount++;
+          const total = this.reviews.reduce((sum, r) => sum + r.rating, 0);
+          this.location.avgRating = Math.round((total / this.reviews.length) * 10) / 10;
+        }
         this.cdr.markForCheck();
       },
       error: (err) => {

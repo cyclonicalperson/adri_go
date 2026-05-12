@@ -6,8 +6,8 @@ KORISNIK_PATH="D:\\Projekti\\globecode\\src\\Frontend\\Frontend_Korisnik"
 
 echo "Pokrecemo sve terminale..."
 
-# Backend — dotnet run
-start powershell -NoExit -Command "Set-Location '$BACKEND_PATH'; dotnet run"
+# Backend — dotnet run (Development uses appsettings.Development.json → local Postgres on 5432)
+start powershell -NoExit -Command "Set-Location '$BACKEND_PATH'; \$env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run"
 
 # Admin Frontend — ng serve (port 4200)
 start powershell -NoExit -Command "Set-Location '$ADMIN_PATH'; ng serve"

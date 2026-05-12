@@ -695,6 +695,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           stopCount: this.plannerStops.length,
         };
         this.routeDestTitle = this.getRouteTitle();
+        // suggestDetours requires 2+ stops; for single-stop, keep the nearby suggestions set earlier
         if (this.plannerStops.length >= 2) {
           this.scenicSuggestions = this.scenicMode
             ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {

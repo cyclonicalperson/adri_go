@@ -232,8 +232,11 @@ namespace TouristGuide.Api.Controllers
             uint liveLikeCount   = (uint)await _context.PostLikes.CountAsync(l => l.PostId == id);
             uint liveSaveCount   = (uint)await _context.SavedPosts.CountAsync(s => s.PostId == id);
             uint liveReviewCount = (uint)await _context.Reviews.CountAsync(r => r.PostId == id && r.Status == "APPROVED");
+            decimal? liveAvgRating = await _context.Reviews
+                .Where(r => r.PostId == id && r.Status == "APPROVED")
+                .AverageAsync(r => (decimal?)r.Rating);
 
-            return Ok(MapToDto(post, isLiked, isSaved, liveLikeCount, liveSaveCount, liveReviewCount));
+            return Ok(MapToDto(post, isLiked, isSaved, liveLikeCount, liveSaveCount, liveReviewCount, liveAvgRating));
         }
 
         [HttpGet("my-saved")]
@@ -765,17 +768,18 @@ namespace TouristGuide.Api.Controllers
                 .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
                 .ToDictionaryAsync(x => x.PostId, x => x.Count);
 
-            var reviewCounts = await _context.Reviews
+            var reviewStats = await _context.Reviews
                 .Where(r => r.PostId != null && postIds.Contains(r.PostId.Value) && r.Status == "APPROVED")
                 .GroupBy(r => r.PostId!.Value)
-                .Select(g => new { PostId = g.Key, Count = (uint)g.Count() })
-                .ToDictionaryAsync(x => x.PostId, x => x.Count);
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count(), Avg = g.Average(r => (decimal?)r.Rating) })
+                .ToDictionaryAsync(x => x.PostId, x => x);
 
             var data = posts.Select(post => MapToDto(
                 post,
                 likeCountOverride:   likeCounts.TryGetValue(post.Id, out var lc) ? lc : 0u,
                 saveCountOverride:   saveCounts.TryGetValue(post.Id, out var sc) ? sc : 0u,
-                reviewCountOverride: reviewCounts.TryGetValue(post.Id, out var rc) ? rc : 0u
+                reviewCountOverride: reviewStats.TryGetValue(post.Id, out var rs) ? rs.Count : 0u,
+                avgRatingOverride:   reviewStats.TryGetValue(post.Id, out var ra) ? ra.Avg : null
             )).ToList();
 
             return new
@@ -868,7 +872,7 @@ namespace TouristGuide.Api.Controllers
                 .Replace("ð", "dj");
         }
 
-        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null) => new()
+        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null, decimal? avgRatingOverride = null) => new()
         {
             Id = post.Id,
             AdminId = post.AdminId,
@@ -893,7 +897,7 @@ namespace TouristGuide.Api.Controllers
             LikeCount = likeCountOverride ?? post.LikeCount,
             SaveCount = saveCountOverride ?? post.SaveCount,
             ReviewCount = reviewCountOverride ?? post.ReviewCount,
-            AvgRating = post.AvgRating,
+            AvgRating = avgRatingOverride ?? post.AvgRating,
             PublishedAt = post.PublishedAt,
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,

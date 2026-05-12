@@ -1,8 +1,8 @@
-<div class="page-container">
+﻿<div class="page-container">
 
   <div class="logo-area">
     <span class="logo-mark">
-      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      <img src="assets/logo.png" alt="AdriGo" class="logo-img">
     </span>
     <span class="logo-name">AdriGo</span>
   </div>
@@ -81,10 +81,10 @@
 
     <!-- Social loading row -->
     <div *ngIf="isSocialLoading" class="social-loading-row">
-      <span class="social-spinner"></span> Signing in…
+      <span class="social-spinner"></span> Signing inâ€¦
     </div>
 
-    <!-- Google Sign-In button — opens OAuth 2.0 popup (no GSI SDK) -->
+    <!-- Google Sign-In button â€” opens OAuth 2.0 popup (no GSI SDK) -->
     <div class="google-btn-host" [class.social-disabled]="isSocialLoading">
       <button
         type="button"
@@ -113,3 +113,4 @@
   </p>
 
 </div>
+

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
 
 @Component({
@@ -43,12 +43,17 @@ export class FiltersComponent implements OnInit {
   fromDate: string = '';
   toDate: string = '';
 
+  private returnTo: string = 'map-home';
+
   constructor(
     private router: Router,
+    private route: ActivatedRoute,
     private filterState: FilterStateService
   ) {}
 
   ngOnInit(): void {
+    this.returnTo = this.route.snapshot.queryParamMap.get('returnTo') || 'map-home';
+
     // Restore previously saved state
     const state = this.filterState.get();
     this.minRating      = state.minRating;
@@ -88,7 +93,7 @@ export class FiltersComponent implements OnInit {
   }
 
   closeFilters() {
-    this.router.navigate(['/map-home']);
+    this.router.navigate(['/' + this.returnTo]);
   }
 
   applyFilters() {
@@ -104,6 +109,6 @@ export class FiltersComponent implements OnInit {
     };
 
     this.filterState.set(state);
-    this.router.navigate(['/map-home']);
+    this.router.navigate(['/' + this.returnTo]);
   }
 }

@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
 
 @Component({
   selector: 'app-register-profile',
@@ -44,10 +45,12 @@ export class RegisterProfileComponent implements OnInit {
     private router: Router,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
-    private translateService: SiteTranslateService
+    private translateService: SiteTranslateService,
+    private preferences: TouristPreferencesService
   ) {}
 
   ngOnInit(): void {
+    const currentLocationSharing = this.preferences.snapshot.locationSharing;
     this.profileForm = this.fb.group({
       fullName: ['', Validators.required],
       emailOrPhone: ['', [Validators.required, Validators.email]],
@@ -55,7 +58,7 @@ export class RegisterProfileComponent implements OnInit {
       confirmPassword: ['', Validators.required],
       language: ['en'],
       selectedInterests: this.fb.array([], [this.minimumSelectionValidator(2)]),
-      locationPermit: [false],
+      locationPermit: [currentLocationSharing],
       termsAccepted: [false, Validators.requiredTrue]
     }, {
       validators: this.matchValidator()

@@ -134,18 +134,56 @@ input::placeholder { color: var(--gray-400); }
 /* ── LOCATION PERMIT ─────────────────────────────────────────── */
 .permit-card {
   background: var(--green-50);
-  border: 1px solid var(--green-100);
+  border: 1.5px solid var(--green-100);
   border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
   gap: 12px;
   margin-bottom: 18px;
-  align-items: flex-start;
+  align-items: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
 }
-.permit-icon { flex-shrink: 0; margin-top: 2px; }
+.permit-card.permit-enabled {
+  background: #f0fdf4;
+  border-color: var(--green-400);
+}
+.permit-icon { flex-shrink: 0; }
 .permit-icon svg { width: 18px; height: 18px; fill: var(--green-600); }
+.permit-text { flex: 1; }
 .permit-text h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--green-800); }
 .permit-text p  { margin: 0; font-size: 12px; color: var(--green-700); line-height: 1.4; }
+
+.permit-toggle {
+  flex-shrink: 0;
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+.permit-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.permit-slider {
+  position: absolute;
+  inset: 0;
+  background: #cbd5e1;
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+.permit-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+.permit-toggle input:checked + .permit-slider { background: var(--green-500); }
+.permit-toggle input:checked + .permit-slider::before { transform: translateX(20px); }
 
 /* ── TERMS ───────────────────────────────────────────────────── */
 .terms-row {
