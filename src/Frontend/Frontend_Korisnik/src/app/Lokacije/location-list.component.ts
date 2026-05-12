@@ -28,6 +28,8 @@ export class LocationListComponent implements OnInit {
 
   searchQuery = '';
   isSearchActive = false;   // true after Search is clicked
+  searchResults: Location[] = [];  // live dropdown results
+  showDropdown = false;
 
   constructor(
     private router: Router,
@@ -60,9 +62,53 @@ export class LocationListComponent implements OnInit {
     });
   }
 
+  /** Called on every keystroke — updates live dropdown */
+  onSearchInput(): void {
+    const q = this.searchQuery.trim().toLowerCase();
+    if (!q) {
+      this.searchResults = [];
+      this.showDropdown = false;
+      this.isSearchActive = false;
+      this.locations = [...this.allLocations];
+      this.cdr.markForCheck();
+      return;
+    }
+    this.searchResults = this.allLocations
+      .filter(loc =>
+        (loc.title || '').toLowerCase().includes(q) ||
+        (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
+        (loc.regionName || '').toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+    // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
+    this.isSearchActive = true;
+    this.locations = this.allLocations.filter(loc =>
+      (loc.title || '').toLowerCase().includes(q) ||
+      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
+      (loc.regionName || '').toLowerCase().includes(q)
+    );
+    this.showDropdown = this.searchResults.length > 0;
+    this.cdr.markForCheck();
+  }
+
+  /** Called when user clicks a dropdown suggestion */
+  selectSearchResult(loc: Location): void {
+    this.searchQuery = loc.title || '';
+    this.showDropdown = false;
+    this.isSearchActive = true;
+    const q = this.searchQuery.trim().toLowerCase();
+    this.locations = this.allLocations.filter(l =>
+      (l.title || '').toLowerCase().includes(q) ||
+      (l.postType || (l as any).category || '').toLowerCase().includes(q) ||
+      (l.regionName || '').toLowerCase().includes(q)
+    );
+    this.cdr.markForCheck();
+  }
+
   /** Called when user clicks Search button or presses Enter */
   executeSearch(): void {
     const q = this.searchQuery.trim().toLowerCase();
+    this.showDropdown = false;
     if (!q) {
       this.clearSearch();
       return;
@@ -70,7 +116,7 @@ export class LocationListComponent implements OnInit {
     this.isSearchActive = true;
     this.locations = this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
-      (loc.postType || loc.category || '').toLowerCase().includes(q) ||
+      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
       (loc.regionName || '').toLowerCase().includes(q)
     );
     this.cdr.markForCheck();
@@ -79,8 +125,18 @@ export class LocationListComponent implements OnInit {
   clearSearch(): void {
     this.searchQuery = '';
     this.isSearchActive = false;
+    this.searchResults = [];
+    this.showDropdown = false;
     this.locations = [...this.allLocations];
     this.cdr.markForCheck();
+  }
+
+  /** Zatvaramo dropdown kad input izgubi fokus (malo kašnjenje zbog mousedown na stavci) */
+  onSearchBlur(): void {
+    setTimeout(() => {
+      this.showDropdown = false;
+      this.cdr.markForCheck();
+    }, 150);
   }
 
   private applyGuestState(locations: Location[]): Location[] {

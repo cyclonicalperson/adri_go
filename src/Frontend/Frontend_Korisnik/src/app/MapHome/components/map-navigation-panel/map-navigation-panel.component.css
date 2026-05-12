@@ -191,8 +191,8 @@
 /* ──────────────────────────────────────────────────────────── */
 .nav-speed-badge {
   position: fixed;
-  left: 14px;
-  bottom: calc(68px + 12px);   /* just above the bottom summary bar */
+  left: 16px;
+  bottom: calc(68px + 60px + 14px);
   z-index: 3040;
   flex-direction: column;
   align-items: center;

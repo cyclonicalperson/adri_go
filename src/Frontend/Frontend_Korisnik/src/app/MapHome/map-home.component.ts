@@ -10,6 +10,7 @@ import { MapNavigationPanelComponent } from './components/map-navigation-panel/m
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-planner-panel.component';
+import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
 import { FilterStateService } from '../services/filter-state.service';
@@ -45,6 +46,7 @@ type MapLocation = Location & {
     RouteDetoursPanelComponent,
     MapRecommendationsPanelComponent,
     MapNavigationPanelComponent,
+    FiltersComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -157,6 +159,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get allCategoriesActive(): boolean {
     return this.categories.every(c => c.active);
+  }
+
+  get noCategoriesActive(): boolean {
+    return this.categories.every(c => !c.active);
   }
 
   get recommendationCards(): LocationRecommendation[] {
@@ -430,7 +436,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleAllCategories(): void {
-    this.categories.forEach(c => c.active = true);
+    // Ako su sve aktivne — ugasi sve; ako nisu sve aktivne — upali sve
+    const shouldActivateAll = !this.allCategoriesActive;
+    this.categories.forEach(c => c.active = shouldActivateAll);
     this.syncFilterState();
     this.applyMarkerFilter();
   }
@@ -1576,14 +1584,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
       marker.on('click', (event: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(event as unknown as Event);
-        this.selectedLocation = loc;
         this.analytics.track('location_opened', {
           postId: loc.id,
           postType: loc.postType,
           regionName: loc.regionName,
         });
         if (this.plannerMode) {
+          // U planner mode: samo dodaj stajaliste, ne otvara karticu
           this.addLocationToPlanner(loc, true);
+        } else {
+          // Van planner mode: otvori karticu objave
+          this.selectedLocation = loc;
         }
         this.cdr.detectChanges();
       });
@@ -1662,8 +1673,30 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   }
 
+  isFiltersOpen = false;
+
   openFilters(): void {
-    this.router.navigate(['/filters']);
+    if (window.innerWidth >= 900) {
+      // Desktop: prikazujemo inline panel, mapa ostaje vidljiva
+      this.isFiltersOpen = true;
+      this.cdr.detectChanges();
+    } else {
+      // Mobilno: navigiramo na poseban ekran
+      this.router.navigate(['/filters']);
+    }
+  }
+
+  closeInlineFilters(): void {
+    this.isFiltersOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  onInlineFiltersApplied(): void {
+    this.isFiltersOpen = false;
+    // Osvezi filtere i markere
+    this.applyFilterState();
+    this.applyMarkerFilter();
+    this.cdr.detectChanges();
   }
 
   toggleMenu(): void {

@@ -435,6 +435,13 @@
   color: #fff !important;
 }
 
+/* Svi filteri su ugaseni — narandzasti chip kao upozorenje */
+.cat-chip-all.all-none {
+  background: #fff7ed !important;
+  border-color: #f97316 !important;
+  color: #c2410c !important;
+}
+
 /* Filter badge dot */
 .search-filter-btn { position: relative; }
 .filter-badge {
@@ -737,7 +744,7 @@ app-location-details-card {
   /* ── Location card in sidebar ──────────────────────────── */
   app-location-details-card {
     position: fixed !important;
-    bottom: 80px;
+    bottom: 68px;
     left: 8px;
     right: auto;
     width: 364px;
@@ -1150,4 +1157,19 @@ app-location-details-card {
     pointer-events: auto;
     transform: none;
   }
+}
+
+/* ── DESKTOP: filteri se otvaraju kao panel levo od sidebar-a ──
+   Mapa i sidebar vec imaju fiksne pozicije, filtri su posebna ruta.
+   Na desktopu ne treba pomerat map-container jer filter panel
+   koristi istu sirinu kao sidebar (380px) i vec je pozicioniran
+   fixed left:0, dok je mapa fixed left:380px. Nema potrebe za
+   dodatnim pomeranjem. Klasa ostaje prazna ali ne kvari nista.
+   (คlasa filters-open se i dalje postavlja u TS-u) ──────────── */
+@media (min-width: 900px) {
+  /* Filteri su fixed panel koji se otvara ispred sidebar-a —
+     mapa ostaje na svom mestu (left: 380px), nema pomeranja. */
+  .map-wrapper.filters-open .map-container { /* no change */ }
+  .map-wrapper.filters-open .top-search-strip { /* no change */ }
+  .map-wrapper.filters-open .top-ui-layer { /* no change */ }
 }
