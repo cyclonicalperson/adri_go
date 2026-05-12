@@ -700,6 +700,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           stopCount: this.plannerStops.length,
         };
         this.routeDestTitle = this.getRouteTitle();
+        // suggestDetours requires 2+ stops; for single-stop, keep the nearby suggestions set earlier
         if (this.plannerStops.length >= 2) {
           this.scenicSuggestions = this.scenicMode
             ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
@@ -1426,7 +1427,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    this.requestGeolocation();
   }
 
   /**
@@ -1507,18 +1507,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Store for cleanup
     (this as any)._patchedDraggable = draggable;
     (this as any)._originalOnMove = originalOnMove;
-  }
-
-  private requestGeolocation(): void {
-    void this.geolocationService.requestCurrentPosition().then((position) => {
-      if (!position) return;
-      this.showUserLocation(position, false);
-      this.updateDistancesAndRecommendations();
-      this.applyMarkerFilter();
-      this.refreshRecommendations();
-      this.renderPlannerRoute();
-      this.cdr.detectChanges();
-    });
   }
 
   locateMe(): void {

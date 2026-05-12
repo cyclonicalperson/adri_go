@@ -33,10 +33,12 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontends", policy =>
     {
             policy.WithOrigins(
-                "http://softeng.pmf.kg.ac.rs:10181",    // Admin Angular app HTTP
-                "http://softeng.pmf.kg.ac.rs:10183",    // Turista Angular app HTTP
-                "https://softeng.pmf.kg.ac.rs:10188",   // Admin Angular app HTTPS
-                "https://softeng.pmf.kg.ac.rs:10187"    // Turista Angular app HTTPS
+                "http://softeng.pmf.kg.ac.rs:10181",    // Admin HTTP
+                "http://softeng.pmf.kg.ac.rs:10183",    // Turista HTTP
+                "https://softeng.pmf.kg.ac.rs:10188",   // Admin HTTPS
+                "https://softeng.pmf.kg.ac.rs:10187",    // Turista HTTPS
+                "http://localhost:4200",                // Admin Angular app (lokalni razvoj)
+                "http://localhost:4201"                 // Turista Angular app (lokalni razvoj)
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -100,6 +102,7 @@ builder.Services.AddScoped<DatabaseSeeder>();
 // ── SignalR ────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
 builder.Services.AddScoped<NotificationService>();
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

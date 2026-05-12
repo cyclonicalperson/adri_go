@@ -23,8 +23,10 @@
 }
 
 .logo { display: flex; align-items: center; gap: 8px; }
+
 .logo-icon-box { display: flex; align-items: center; }
 .logo-icon-box .logo-img { width: 72px; height: auto; display: block; }
+
 .logo-text {
   font-family: var(--font-display);
   font-size: 20px;
