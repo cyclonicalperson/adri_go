@@ -1338,7 +1338,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    this.requestGeolocation();
   }
 
   /**
@@ -1396,18 +1395,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (this as any)._dragFixHandlers = { container, onPointerDown, onPointerMove, onPointerUp };
-  }
-
-  private requestGeolocation(): void {
-    void this.geolocationService.requestCurrentPosition().then((position) => {
-      if (!position) return;
-      this.showUserLocation(position, false);
-      this.updateDistancesAndRecommendations();
-      this.applyMarkerFilter();
-      this.refreshRecommendations();
-      this.renderPlannerRoute();
-      this.cdr.detectChanges();
-    });
   }
 
   locateMe(): void {

@@ -6,6 +6,7 @@ import {
   FormControl,
   Validators,
   AbstractControl,
+  ValidationErrors,
   ValidatorFn,
   ReactiveFormsModule,
 } from '@angular/forms';
@@ -53,23 +54,23 @@ export class RegisterProfileComponent implements OnInit {
     this.profileForm = this.fb.group({
       fullName: ['', Validators.required],
       emailOrPhone: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8)]],
+      password: ['', [Validators.required, this.pwValidator()]],
+      confirmPassword: ['', Validators.required],
       language: ['en'],
       selectedInterests: this.fb.array([], [this.minimumSelectionValidator(2)]),
       locationPermit: [currentLocationSharing],
       termsAccepted: [false, Validators.requiredTrue]
+    }, {
+      validators: this.matchValidator()
     });
   }
 
-  toggleLocationPermit(): void {
-    const current = this.profileForm.get('locationPermit')?.value;
-    this.profileForm.patchValue({ locationPermit: !current });
-    this.preferences.update({ locationSharing: !current });
+  get pw(): AbstractControl | null {
+    return this.profileForm.get('password');
   }
 
-  onLocationPermitChange(): void {
-    const value = this.profileForm.get('locationPermit')?.value;
-    this.preferences.update({ locationSharing: value });
+  get cpw(): AbstractControl | null {
+    return this.profileForm.get('confirmPassword');
   }
 
   get selectedInterestsArray(): FormArray {
@@ -95,6 +96,84 @@ export class RegisterProfileComponent implements OnInit {
       const arr = control as FormArray;
       return arr && arr.length < min ? { requireAtLeast: min } : null;
     };
+  }
+
+  pwValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = String(control.value ?? '');
+
+      if (value.length < 8) {
+        return { short: true };
+      }
+
+      if (!/[A-Z]/.test(value)) {
+        return { upper: true };
+      }
+
+      if (!(/[0-9]/.test(value) || /[^A-Za-z0-9]/.test(value))) {
+        return { extra: true };
+      }
+
+      return null;
+    };
+  }
+
+  matchValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const password = control.get('password')?.value;
+      const confirmPassword = control.get('confirmPassword')?.value;
+
+      return password && confirmPassword && password !== confirmPassword
+        ? { mismatch: true }
+        : null;
+    };
+  }
+
+  get pwMsg(): string {
+    const control = this.pw;
+    if (!control || (!control.touched && !control.dirty)) {
+      return '';
+    }
+
+    if (control.hasError('short')) {
+      return 'Lozinka mora imati najmanje 8 karaktera.';
+    }
+
+    if (control.hasError('upper')) {
+      return 'Lozinka mora sadržati najmanje jedno veliko slovo.';
+    }
+
+    if (control.hasError('extra')) {
+      return 'Lozinka mora sadržati najmanje jedan broj ili jedan specijalni karakter.';
+    }
+
+    if (control.valid) {
+      return 'Lozinka je validna.';
+    }
+
+    return '';
+  }
+
+  get pwOk(): boolean {
+    const control = this.pw;
+    return !!control && (control.touched || control.dirty) && control.valid;
+  }
+
+  get cpwMsg(): string {
+    const control = this.cpw;
+    if (!control || (!control.touched && !control.dirty)) {
+      return '';
+    }
+
+    if (control.hasError('required')) {
+      return 'Potvrdite lozinku.';
+    }
+
+    if (this.profileForm.hasError('mismatch')) {
+      return 'Lozinke se ne poklapaju.';
+    }
+
+    return '';
   }
 
   onLanguageChange(lang: string): void {
