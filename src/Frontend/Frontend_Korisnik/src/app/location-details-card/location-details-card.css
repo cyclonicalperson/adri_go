@@ -216,3 +216,27 @@
 .btn-details:hover  { opacity: 0.92; }
 .btn-details:active { opacity: 0.85; transform: scale(0.98); }
 .btn-details svg { width: 16px; height: 16px; fill: #fff; flex-shrink: 0; }
+
+/* ── DESKTOP: kartica uz dno, desno od sidebar-a (360px) ─── */
+@media (min-width: 900px) {
+  .bottom-sheet-overlay {
+    position: fixed;
+    bottom: 24px;
+    left: 374px;   /* sidebar širina 360px + 14px razmak */
+    width: 340px;
+    z-index: 60;
+    animation: slideUpDesktop 0.28s cubic-bezier(0.34,1.15,0.64,1);
+  }
+
+  @keyframes slideUpDesktop {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .location-details-card {
+    border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 10px rgba(0,0,0,0.08);
+  }
+
+  .image-container { height: 140px; }
+}

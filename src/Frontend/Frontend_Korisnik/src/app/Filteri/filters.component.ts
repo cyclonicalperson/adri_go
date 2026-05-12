@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,6 +12,12 @@ import { FilterStateService, FilterState } from '../services/filter-state.servic
   styleUrls: ['./filters.component.css']
 })
 export class FiltersComponent implements OnInit {
+
+  /** Kada je true, komponenta se prikazuje kao inline overlay (desktop),
+   *  closeFilters/applyFilters emituju evente umesto da navigiraju */
+  @Input() inlineMode = false;
+  @Output() closed    = new EventEmitter<void>();
+  @Output() applied   = new EventEmitter<void>();
 
   // Categories use actual DB postType keys so the map can filter correctly
   categories = [
@@ -93,7 +99,11 @@ export class FiltersComponent implements OnInit {
   }
 
   closeFilters() {
-    this.router.navigate(['/' + this.returnTo]);
+    if (this.inlineMode) {
+      this.closed.emit();
+    } else {
+      this.router.navigate(['/map-home']);
+    }
   }
 
   applyFilters() {
@@ -109,6 +119,11 @@ export class FiltersComponent implements OnInit {
     };
 
     this.filterState.set(state);
-    this.router.navigate(['/' + this.returnTo]);
+
+    if (this.inlineMode) {
+      this.applied.emit();
+    } else {
+      this.router.navigate(['/map-home']);
+    }
   }
 }

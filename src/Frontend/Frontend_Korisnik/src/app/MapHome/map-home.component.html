@@ -1,4 +1,4 @@
-﻿<div class="map-wrapper">
+<div class="map-wrapper" [class.filters-open]="isFiltersOpen">
 
   <div class="app-header">
     <div class="header-left">
@@ -119,7 +119,15 @@
         <button
           class="cat-chip cat-chip-all"
           [class.active]="allCategoriesActive"
+          [class.all-none]="noCategoriesActive"
+          [title]="allCategoriesActive ? 'Klikni da ugasis sve kategorije' : 'Klikni da upalis sve kategorije'"
           (click)="toggleAllCategories()">
+          <svg *ngIf="allCategoriesActive" viewBox="0 0 24 24" width="11" height="11" style="fill:currentColor;flex-shrink:0">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+          <svg *ngIf="noCategoriesActive" viewBox="0 0 24 24" width="11" height="11" style="fill:currentColor;flex-shrink:0">
+            <path d="M19 13H5v-2h14v2z"/>
+          </svg>
           All
         </button>
         <button
@@ -348,6 +356,15 @@
   </div>
 
   <app-side-menu *ngIf="isMenuOpen" (onClose)="isMenuOpen = false"></app-side-menu>
+
+  <!-- ── DESKTOP INLINE FILTER PANEL ────────────────────────────── -->
+  <!-- Prikazujemo samo na desktopu (≫900px) kao overlay pored mape -->
+  <app-filters
+    *ngIf="isFiltersOpen"
+    [inlineMode]="true"
+    (closed)="closeInlineFilters()"
+    (applied)="onInlineFiltersApplied()">
+  </app-filters>
 
   <div class="auth-modal-overlay" *ngIf="showAuthPopup">
     <div class="auth-modal">

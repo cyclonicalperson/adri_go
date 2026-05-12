@@ -414,105 +414,84 @@ input:checked + .slider:before { transform: translateX(21px); }
   color: #dc2626;
 }
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
+/* ── DESKTOP (po uzoru na Calendar ekran) ────────────────── */
 @media (min-width: 900px) {
-  /* Pozadina iza settings kartice */
-  body {
-    background-color: var(--gray-200); /* Tamnija pozadina da bi settings kartica iskočila */
-  }
-
   .settings-container {
-    max-width: 760px; /* Malo širi kontejner za bolji balans */
-    margin: 40px auto; /* Više prostora od vrha i dna ekrana (40px) */
-    background: var(--gray-50);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.15); /* Dublja senka za "floating" efekat */
-    min-height: auto; /* Da se ne rasteže na ceo ekran ako ima malo sadržaja */
-    border-radius: var(--radius-xl, 24px); /* Jako zaobljene ivice */
-    overflow: hidden; /* Da header ne "curi" van zaobljenih ivica */
-    padding-bottom: 40px;
+    position: fixed !important;
+    inset: auto !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 95% !important;
+    max-width: 800px !important;
+    height: 88vh !important;
+    background: var(--gray-50) !important;
+    border-radius: 28px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(0,0,0,0.06) !important;
+    z-index: 100 !important;
+    box-shadow: 0 0 0 100vw #e2e8f0, 0 25px 50px rgba(0,0,0,0.15) !important;
+    min-height: unset !important;
+    padding-bottom: 0 !important;
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Prilagođavanje headera na desktopu */
   .header {
-    padding: 24px 32px;
+    padding: 20px 32px;
     border-bottom: 1px solid var(--gray-100);
-    position: relative; /* Na desktopu često ne želimo da bude sticky ako je kartica kratka */
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+    flex-shrink: 0;
   }
+  .header h1 { font-size: 20px; }
 
-  .header h1 {
-    font-size: 22px; /* Veći naslov */
-  }
-
-  /* Više prostora između sekcija na desktopu */
   .scroll-content {
-    padding: 32px 40px;
+    padding: 28px 36px;
+    overflow-y: auto;
+    flex: 1;
   }
 
-  .settings-group {
-    margin-bottom: 36px; /* Znatno veći razmak između grupa */
-  }
+  .settings-group { margin-bottom: 28px; }
+  .group-label { margin: 0 0 10px 8px; font-size: 12px; letter-spacing: 1px; }
 
-  .group-label {
-    margin: 0 0 12px 10px;
-    font-size: 12px;
-    letter-spacing: 1.2px;
-  }
+  .setting-row { padding: 16px 20px; gap: 16px; }
+  .row-icon { width: 38px; height: 38px; }
+  .row-text .label { font-size: 15px; }
 
-  /* Setting redovi na desktopu */
-  .setting-row {
-    padding: 20px 24px; /* Veći unutrašnji razmaci */
-    gap: 18px;
-  }
+  .footer-actions { margin-top: 16px; padding: 0 36px 28px; }
+  .save-btn { padding: 15px; font-size: 15px; }
+  .save-btn:hover { opacity: 1; box-shadow: 0 8px 20px rgba(34,197,94,0.3); }
+  .logout-link:hover { background: #fef2f2; opacity: 1; border-radius: var(--radius-md); }
 
-  .row-icon {
-    width: 42px; /* Veće ikonice */
-    height: 42px;
-  }
-
-  .row-text .label {
-    font-size: 16px; /* Čitljiviji font */
-  }
-
-  /* Footer akcije unutar kartice */
-  .footer-actions {
-    margin-top: 20px;
-    padding: 0 40px;
-  }
-
-  /* Dugmad na desktopu */
-  .save-btn {
-    padding: 18px;
-    font-size: 16px;
-    transition: all 0.2s ease;
-  }
-  
-  .save-btn:hover {
-    transform: translateY(-2px); /* Mali hover efekat podizanja */
-    opacity: 1;
-    box-shadow: 0 8px 20px rgba(34,197,94,0.3);
-  }
-
-  .logout-link {
-    margin-top: 10px;
-    border-radius: var(--radius-md);
-  }
-  
-  .logout-link:hover {
-    background: #fef2f2; /* Suptilna crvena pozadina na hover */
-    opacity: 1;
-  }
+  .settings-sheet-overlay { align-items: center; }
 }
 
-/* Dodatni efekat za ultra-wide ekrane */
-@media (min-width: 1400px) {
+/* ── DESKTOP: full-screen kao Calendar ──────────────────── */
+@media (min-width: 900px) {
   .settings-container {
-    max-width: 850px;
-    margin: 60px auto;
+    /* Uklanjamo centriranu karticu, vracamo full-screen kao Calendar */
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 100dvh;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding-bottom: 60px;
   }
-  .header        { padding: 16px 28px; }
-  .scroll-content { padding: 20px 28px; }
-  .settings-group { margin-bottom: 28px; }
-  .settings-sheet-overlay {
-    align-items: center;
-  }
+
+  .header { padding: 16px 48px; }
+  .header h1 { font-size: 20px; }
+  .scroll-content { padding: 24px 48px; }
+  .settings-group { margin-bottom: 20px; }
+  .setting-row { padding: 13px 18px; }
+  .footer-actions { padding: 0 48px 32px; margin-top: 8px; }
 }
