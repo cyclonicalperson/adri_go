@@ -222,4 +222,15 @@ export class RegisterProfileComponent implements OnInit {
   goToMap(): void {
     this.router.navigate(['/map-home']);
   }
+
+  toggleLocationPermit(): void {
+    const current = this.profileForm.get('locationPermit')?.value;
+    this.profileForm.patchValue({ locationPermit: !current });
+    this.preferences.update({ locationSharing: !current });
+  }
+
+  onLocationPermitChange(): void {
+    const value = this.profileForm.get('locationPermit')?.value;
+    this.preferences.update({ locationSharing: value });
+  }
 }
