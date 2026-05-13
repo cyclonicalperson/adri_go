@@ -249,3 +249,46 @@ input[type="checkbox"]:checked + .toggle-track {
   font-weight: 600;
   margin-top: 4px;
 }
+
+.input.password-control-invalid {
+  border-color: #ef4444;
+
+  &:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+  }
+}
+
+.input.password-control-valid {
+  border-color: #16a34a;
+
+  &:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,.12);
+  }
+}
+
+.input:disabled {
+  background: #f8fafc;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.password-rules {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.password-rule {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #dc2626;
+}
+
+.password-valid-message {
+  font-size: 12px;
+  color: #15803d;
+  margin-top: 8px;
+  font-weight: 600;
+}

@@ -14,6 +14,18 @@ function passwordMatchValidator(g: AbstractControl): ValidationErrors | null {
   return pw && cpw && pw !== cpw ? { mismatch: true } : null;
 }
 
+function passwordUppercaseValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string | null;
+  if (!value) return null;
+  return /[A-Z]/.test(value) ? null : { uppercase: true };
+}
+
+function passwordNumberOrSpecialValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string | null;
+  if (!value) return null;
+  return /[\d\W_]/.test(value) ? null : { numberOrSpecial: true };
+}
+
 interface ExtendedUser {
   userId: number;
   fullName: string;
@@ -47,6 +59,7 @@ export class ProfileComponent implements OnInit {
   pwError: string | null = null;
   pwSuccess: string | null = null;
   pwForm!: FormGroup;
+  pwNewPasswordInteracted = false;
 
   userPermissions: UserPermission[] = [];
   permsLoading = false;
@@ -81,9 +94,16 @@ export class ProfileComponent implements OnInit {
 
     this.pwForm = this.fb.group({
       currentPassword: ['', Validators.required],
-      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      newPassword: ['', [
+        Validators.required,
+        Validators.minLength(8),
+        passwordUppercaseValidator,
+        passwordNumberOrSpecialValidator,
+      ]],
       confirmPassword: ['', Validators.required],
     }, { validators: passwordMatchValidator });
+    this.pw('newPassword').valueChanges.subscribe(() => this.syncPwConfirmState());
+    this.syncPwConfirmState();
 
     if (!this.isSuperAdmin && this.user?.userId) {
       this.loadPermissions(this.user.userId);
@@ -136,6 +156,50 @@ export class ProfileComponent implements OnInit {
     if (this.user?.organization?.name) return this.user.organization.name;
     if (this.user?.organizationId) return `Org #${this.user.organizationId}`;
     return null;
+  }
+
+  get pwRulesVisible(): boolean {
+    return this.pwNewPasswordInteracted && this.pw('newPassword').invalid;
+  }
+
+  get pwHasMinLength(): boolean {
+    return !this.pw('newPassword').hasError('minlength');
+  }
+
+  get pwHasUppercase(): boolean {
+    return !this.pw('newPassword').hasError('uppercase');
+  }
+
+  get pwHasNumberOrSpecial(): boolean {
+    return !this.pw('newPassword').hasError('numberOrSpecial');
+  }
+
+  get pwIsValid(): boolean {
+    return this.pw('newPassword').valid;
+  }
+
+  get showPwValidMessage(): boolean {
+    return this.pwNewPasswordInteracted && !!this.pw('newPassword').value && this.pwIsValid;
+  }
+
+  get pwInputInvalid(): boolean {
+    return this.pwNewPasswordInteracted && this.pw('newPassword').invalid;
+  }
+
+  get pwInputValid(): boolean {
+    return this.pwNewPasswordInteracted && !!this.pw('newPassword').value && this.pw('newPassword').valid;
+  }
+
+  get pwConfirmEnabled(): boolean {
+    return this.pw('confirmPassword').enabled;
+  }
+
+  get pwConfirmMismatchVisible(): boolean {
+    return this.pwConfirmEnabled && !!this.pw('confirmPassword').value && this.pwForm.hasError('mismatch');
+  }
+
+  get pwConfirmValid(): boolean {
+    return this.pwConfirmEnabled && !!this.pw('confirmPassword').value && !this.pwForm.hasError('mismatch');
   }
 
   get permsByCategory(): { category: string; label: string; icon: string; perms: UserPermission[] }[] {
@@ -192,28 +256,48 @@ export class ProfileComponent implements OnInit {
   cancelEdit(): void { this.editMode = false; this.saveError = null; this.editForm.reset({ fullName: this.user?.fullName, email: this.user?.email }); }
 
   // ── Password change ───────────────────────────────────────────────────
-  openPwMode(): void { this.pwMode = true; this.pwError = null; this.pwSuccess = null; this.pwForm.reset(); }
+  openPwMode(): void {
+    this.pwMode = true;
+    this.pwError = null;
+    this.pwSuccess = null;
+    this.pwNewPasswordInteracted = false;
+    this.pwForm.reset();
+    this.syncPwConfirmState();
+  }
   cancelPw(): void { this.pwMode = false; this.pwError = null; this.pwSuccess = null; }
+
+  onPwNewPasswordInteract(): void {
+    this.pwNewPasswordInteracted = true;
+  }
+
+  private syncPwConfirmState(): void {
+    const confirmControl = this.pw('confirmPassword');
+    if (this.pw('newPassword').valid) {
+      if (confirmControl.disabled) {
+        confirmControl.enable({ emitEvent: false });
+      }
+      this.pwForm.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    if (confirmControl.enabled) {
+      confirmControl.reset('', { emitEvent: false });
+      confirmControl.disable({ emitEvent: false });
+      confirmControl.markAsPristine();
+      confirmControl.markAsUntouched();
+    }
+
+    this.pwForm.updateValueAndValidity({ emitEvent: false });
+  }
 
   changePassword(): void {
     if (this.pwForm.invalid) { this.pwForm.markAllAsTouched(); return; }
-
-    const { newPassword } = this.pwForm.value;
-    if (newPassword && newPassword.length < 8) {
-      this.pwError = 'Nova lozinka mora imati najmanje 8 karaktera.';
-      return;
-    }
-
-    if (this.pwForm.hasError('mismatch')) {
-      this.pwError = 'Lozinke se ne podudaraju.';
-      return;
-    }
 
     this.pwSaving = true;
     this.pwError = null;
     this.pwSuccess = null;
 
-    const { currentPassword } = this.pwForm.value;
+    const { currentPassword, newPassword } = this.pwForm.value;
     this.userService.changePassword(currentPassword, newPassword).subscribe({
       next: () => {
         this.pwSaving = false;
