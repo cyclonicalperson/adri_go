@@ -11,10 +11,13 @@ export interface Tourist {
   isEmailVerified?: boolean;
 }
 
+export type AuthProvider = 'password' | 'google' | 'apple';
+
 export interface StoredSession {
   tourist: Tourist;
   token: string;
   expiresAtUtc?: string | null;
+  authProvider?: AuthProvider;
 }
 
 export interface TouristAuthResponse {
@@ -60,7 +63,7 @@ export class AuthService {
       map(res => this.mapRegistrationResponse(res)),
       tap(res => {
         if (res.session) {
-          this.saveAuthSession(res.session);
+          this.saveAuthSession(res.session, 'password');
         }
       }),
     );
@@ -69,7 +72,7 @@ export class AuthService {
   login(email: string, password: string): Observable<TouristAuthResponse> {
     return this.http.post<any>(`${this.authApiUrl}/login`, { email, password }).pipe(
       map(res => this.mapAuthResponse(res)),
-      tap(res => this.saveAuthSession(res)),
+      tap(res => this.saveAuthSession(res, 'password')),
     );
   }
 
@@ -82,7 +85,7 @@ export class AuthService {
       .post<any>(`${this.authApiUrl}/social-login`, { provider, credential, displayName })
       .pipe(
         map(res => this.mapAuthResponse(res)),
-        tap(res => this.saveAuthSession(res)),
+        tap(res => this.saveAuthSession(res, provider)),
       );
   }
 
@@ -120,9 +123,8 @@ export class AuthService {
     });
   }
 
-  changePassword(currentPassword: string, newPassword: string): Observable<{ message: string }> {
+  changePassword(newPassword: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.authApiUrl}/change-password`, {
-      currentPassword,
       newPassword,
     });
   }
@@ -171,6 +173,14 @@ export class AuthService {
     return !!this.sessionSubject.value?.token;
   }
 
+  get authProvider(): AuthProvider {
+    return this.sessionSubject.value?.authProvider ?? 'password';
+  }
+
+  get isGoogleAccount(): boolean {
+    return this.authProvider === 'google';
+  }
+
   private mapRegistrationResponse(res: any): TouristRegistrationResponse {
     const session = res?.session
       ? this.mapAuthResponse(res.session)
@@ -208,11 +218,12 @@ export class AuthService {
     };
   }
 
-  private saveAuthSession(response: TouristAuthResponse): void {
+  private saveAuthSession(response: TouristAuthResponse, authProvider: AuthProvider = 'password'): void {
     const session: StoredSession = {
       tourist: response.user,
       token: response.token,
       expiresAtUtc: response.expiresAtUtc || null,
+      authProvider,
     };
 
     localStorage.setItem('tourist_session', JSON.stringify(session));

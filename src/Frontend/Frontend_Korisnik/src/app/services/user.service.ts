@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, forkJoin, map, of } from 'rxjs';
+import { Observable, forkJoin, map, of, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
-import { GuestItineraryService, LocalCalendarSeed } from './guest-itinerary.service';
 import { PlannerStop } from './route-planner.service';
 import { RouteSummary } from './routing.service';
 import { TravelMode } from './tourist-preferences.service';
@@ -109,7 +108,6 @@ export class UserService {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private guestItinerary: GuestItineraryService,
   ) {}
 
   getUserProfile(): Observable<UserProfile> {
@@ -126,7 +124,7 @@ export class UserService {
 
   getCalendar(): Observable<CalendarItem[]> {
     if (!this.authService.isLoggedIn) {
-      return of(this.guestItinerary.getGuestCalendar());
+      return of([]);
     }
 
     return this.http.get<CalendarItem[]>(`${this.authApiUrl}/calendar`);
@@ -134,10 +132,7 @@ export class UserService {
 
   addToCalendar(postId: number): Observable<any> {
     if (!this.authService.isLoggedIn) {
-      return of({
-        localOnly: true,
-        message: 'Guests need full location details to save calendar items locally.',
-      });
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
     return this.http.post(`${this.authApiUrl}/calendar/${postId}`, {});
@@ -156,14 +151,7 @@ export class UserService {
       );
     }
 
-    const localResult = this.guestItinerary.addLocationToCalendar(this.toLocalCalendarSeed(location));
-    return of({
-      message: localResult.alreadyAdded
-        ? 'Already saved locally on this device. Log in to sync it everywhere.'
-        : 'Saved locally on this device. Log in if you want this calendar to sync across devices.',
-      alreadyAdded: localResult.alreadyAdded,
-      localOnly: true,
-    });
+    return throwError(() => ({ status: 401, message: 'Login required.' }));
   }
 
   saveTripToCalendar(
@@ -187,23 +175,7 @@ export class UserService {
     }
 
     if (!this.authService.isLoggedIn) {
-      const localResult = this.guestItinerary.saveTripToCalendar(validStops, routeSummary, {
-        title: options.title,
-        travelMode: options.travelMode,
-        scenicMode: options.scenicMode,
-      });
-
-      const message = localResult.addedCount > 0
-        ? `Trip saved locally on this device. ${localResult.addedCount} stop(s) were added to your local calendar. Log in to sync them on the server.`
-        : 'This trip is already saved locally on this device. Log in if you want cross-device sync.';
-
-      return of({
-        message,
-        localOnly: true,
-        addedCount: localResult.addedCount,
-        alreadyCount: localResult.alreadyCount,
-        savedTripId: localResult.savedTrip.id,
-      });
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
     return forkJoin(validStops.map(stop =>
@@ -246,10 +218,7 @@ export class UserService {
 
   removeFromCalendar(postId: number, plannerItemId?: number): Observable<any> {
     if (!this.authService.isLoggedIn) {
-      return of({
-        success: this.guestItinerary.removeCalendarItem(postId, plannerItemId),
-        localOnly: true,
-      });
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
     return this.http.delete(`${this.authApiUrl}/calendar/${postId}`);
@@ -272,17 +241,4 @@ export class UserService {
     };
   }
 
-  private toLocalCalendarSeed(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }): LocalCalendarSeed {
-    const firstImage = location.imageUrl
-      ?? (() => { try { const imgs = Array.isArray(location.images) ? location.images : (JSON.parse(location.images ?? '[]') as string[]); return imgs[0]; } catch { return undefined; } })()
-      ?? null;
-
-    return {
-      postId: location.id,
-      title: location.title,
-      postType: location.postType,
-      address: location.address || location.regionName || '',
-      imageUrl: firstImage,
-    };
-  }
 }

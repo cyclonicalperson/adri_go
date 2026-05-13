@@ -158,6 +158,10 @@ section { margin-bottom: 24px; }
   background: color-mix(in srgb, var(--cat-color, #6b7280) 10%, transparent);
   color: var(--gray-900);
 }
+.chip:not(.active) {
+  background: #fff;
+  color: var(--gray-700);
+}
 .chip.active {
   background: var(--cat-color, #6b7280);
   color: #fff;

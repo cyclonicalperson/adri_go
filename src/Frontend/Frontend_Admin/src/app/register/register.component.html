@@ -69,7 +69,7 @@
         <input id="email" class="input"
                [class.invalid]="email.invalid && email.touched"
                type="email"
-               placeholder="ime@kompanija.com"
+               [placeholder]="emailPlaceholder"
                formControlName="email"
                autocomplete="email" />
         @if (email.invalid && email.touched) {

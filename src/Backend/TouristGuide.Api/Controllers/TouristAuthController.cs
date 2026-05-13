@@ -256,10 +256,11 @@ namespace TouristGuide.Api.Controllers
             if (tourist is null)
                 return NotFound(new { message = "Account not found." });
 
-            _db.Tourists.Remove(tourist);
+            tourist.IsActive = false;
+            tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Account permanently deleted." });
+            return Ok(new { message = "Account deactivated." });
         }
 
         // PUT /api/tourist-auth/profile
@@ -532,9 +533,8 @@ namespace TouristGuide.Api.Controllers
             var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
             if (tourist is null) return NotFound(new { message = "Tourist not found." });
 
-            if (string.IsNullOrWhiteSpace(tourist.PasswordHash) ||
-                !PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
-                return BadRequest(new { message = "Current password is incorrect." });
+            if (string.IsNullOrWhiteSpace(tourist.PasswordHash))
+                return BadRequest(new { message = "Password change is not available for this account." });
 
             tourist.PasswordHash = PasswordHelper.Hash(dto.NewPassword);
             tourist.UpdatedAt = DateTime.UtcNow;

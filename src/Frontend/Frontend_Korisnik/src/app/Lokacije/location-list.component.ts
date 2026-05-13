@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -23,7 +23,7 @@ const SECTION_LIMIT = 10;
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
-export class LocationListComponent implements OnInit {
+export class LocationListComponent implements OnInit, OnDestroy {
   readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   isMenuOpen = false;
@@ -33,9 +33,12 @@ export class LocationListComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
   feedbackMessage = '';
+  showAuthPopup = false;
+  authPopupMessage = 'Please log in to save locations, like places, and add items to your calendar.';
   private userPosition: UserPosition | null = null;
 
   searchQuery = '';
+  submittedSearchQuery = '';
   isSearchActive = false;
   searchResults: Location[] = [];
   showDropdown = false;
@@ -92,6 +95,10 @@ export class LocationListComponent implements OnInit {
     this.loadUserPosition();
   }
 
+  ngOnDestroy(): void {
+    this.setPageScrollLock(false);
+  }
+
   loadLocations(): void {
     this.isLoading = true;
     this.locationService.getLocations(1, 100).subscribe({
@@ -117,8 +124,6 @@ export class LocationListComponent implements OnInit {
     if (!q) {
       this.searchResults = [];
       this.showDropdown = false;
-      this.isSearchActive = false;
-      this.locations = [...this.allLocations];
       this.cdr.markForCheck();
       return;
     }
@@ -130,12 +135,6 @@ export class LocationListComponent implements OnInit {
       )
       .slice(0, 8);
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
-    this.isSearchActive = true;
-    this.locations = this.allLocations.filter(loc =>
-      (loc.title || '').toLowerCase().includes(q) ||
-      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-      (loc.regionName || '').toLowerCase().includes(q)
-    );
     this.showDropdown = this.searchResults.length > 0;
     this.cdr.markForCheck();
   }
@@ -143,6 +142,7 @@ export class LocationListComponent implements OnInit {
   /** Called when user clicks a dropdown suggestion */
   selectSearchResult(loc: Location): void {
     this.searchQuery = loc.title || '';
+    this.submittedSearchQuery = this.searchQuery;
     this.showDropdown = false;
     this.isSearchActive = true;
     const q = this.searchQuery.trim().toLowerCase();
@@ -163,6 +163,7 @@ export class LocationListComponent implements OnInit {
       return;
     }
     this.isSearchActive = true;
+    this.submittedSearchQuery = this.searchQuery.trim();
     this.locations = this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
@@ -173,6 +174,7 @@ export class LocationListComponent implements OnInit {
 
   clearSearch(): void {
     this.searchQuery = '';
+    this.submittedSearchQuery = '';
     this.isSearchActive = false;
     this.searchResults = [];
     this.showDropdown = false;
@@ -190,12 +192,10 @@ export class LocationListComponent implements OnInit {
 
   private applyGuestState(locations: Location[]): Location[] {
     if (this.authService.isLoggedIn) return locations;
-    const likedIds: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
     return locations.map(loc => ({
       ...loc,
-      isLiked: likedIds.includes(loc.id),
-      isSaved: savedIds.includes(loc.id),
+      isLiked: false,
+      isSaved: false,
     }));
   }
 
@@ -203,15 +203,10 @@ export class LocationListComponent implements OnInit {
     event.stopPropagation();
 
     if (!this.authService.isLoggedIn) {
-      const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-      const idx = liked.indexOf(loc.id);
-      if (idx >= 0) { liked.splice(idx, 1); loc.isLiked = false; loc.likeCount = Math.max(0, (loc.likeCount || 0) - 1); }
-      else { liked.push(loc.id); loc.isLiked = true; loc.likeCount = (loc.likeCount || 0) + 1; }
-      localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
-      this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed');
-      this.cdr.markForCheck();
+      this.openAuthPopup('Please log in to like locations.');
       return;
     }
+
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
     action$.subscribe({
       next: (res) => { loc.isLiked = !loc.isLiked; if (res.likeCount !== undefined) loc.likeCount = res.likeCount; this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed'); this.cdr.markForCheck(); },
@@ -223,15 +218,10 @@ export class LocationListComponent implements OnInit {
     event.stopPropagation();
 
     if (!this.authService.isLoggedIn) {
-      const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-      const idx = saved.indexOf(loc.id);
-      if (idx >= 0) { saved.splice(idx, 1); loc.isSaved = false; loc.saveCount = Math.max(0, (loc.saveCount || 0) - 1); }
-      else { saved.push(loc.id); loc.isSaved = true; loc.saveCount = (loc.saveCount || 0) + 1; }
-      localStorage.setItem('guest_saved_ids', JSON.stringify(saved));
-      this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
-      this.cdr.markForCheck();
+      this.openAuthPopup('Please log in to save locations.');
       return;
     }
+
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
     action$.subscribe({
       next: (res) => { loc.isSaved = !loc.isSaved; if (res.saveCount !== undefined) loc.saveCount = res.saveCount; this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved'); this.cdr.markForCheck(); },
@@ -241,8 +231,16 @@ export class LocationListComponent implements OnInit {
 
   toggleMenu(): void { this.isMenuOpen = !this.isMenuOpen; }
   goToMap(): void { this.router.navigate(['/map-home']); }
-  openFilters(): void { this.isFiltersOpen = true; this.cdr.markForCheck(); }
-  closeFilters(): void { this.isFiltersOpen = false; this.cdr.markForCheck(); }
+  openFilters(): void {
+    this.isFiltersOpen = true;
+    this.setPageScrollLock(true);
+    this.cdr.markForCheck();
+  }
+  closeFilters(): void {
+    this.isFiltersOpen = false;
+    this.setPageScrollLock(false);
+    this.cdr.markForCheck();
+  }
 
   onFiltersApplied(state: FilterState): void {
     // NE zatvaramo panel — korisnik sam zatvara sa X
@@ -333,7 +331,7 @@ export class LocationListComponent implements OnInit {
   formatPostType(type?: string | null): string { return formatPostType(type); }
 
   get sectionTitle(): string {
-    if (this.isSearchActive) return `Results for "${this.searchQuery}"`;
+    if (this.isSearchActive) return `Results for "${this.submittedSearchQuery || this.searchQuery}"`;
     return 'Explore';
   }
 
@@ -351,7 +349,7 @@ export class LocationListComponent implements OnInit {
 
     // 2. Recommended for You: personalized recommendations
     try {
-      const calendarItems = JSON.parse(localStorage.getItem('adrigo_guest_calendar_v1') || '[]');
+      const calendarItems: any[] = [];
       const analytics = this.analyticsService.getRecentEvents();
       const recs = this.recommendationService.buildPersonalizedRecommendations(
         this.allLocations, null, [], calendarItems, analytics,
@@ -385,6 +383,42 @@ export class LocationListComponent implements OnInit {
   private showFeedback(msg: string): void {
     this.feedbackMessage = msg;
     setTimeout(() => (this.feedbackMessage = ''), 2500);
+  }
+
+  openAuthPopup(message = 'Please log in to continue.'): void {
+    this.authPopupMessage = message;
+    this.showAuthPopup = true;
+    this.cdr.markForCheck();
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+    this.cdr.markForCheck();
+  }
+
+  goToLogin(): void {
+    this.closeAuthPopup();
+    this.router.navigate(['/login']);
+  }
+
+  goToSaved(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view and manage saved locations.');
+      return;
+    }
+    this.router.navigate(['/saved']);
+  }
+
+  goToAccount(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your account.');
+      return;
+    }
+    this.router.navigate(['/account']);
+  }
+
+  private setPageScrollLock(locked: boolean): void {
+    document.body.style.overflow = locked ? 'hidden' : '';
   }
 
   private loadUserPosition(): void {

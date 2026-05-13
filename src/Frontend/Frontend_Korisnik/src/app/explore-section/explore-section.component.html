@@ -6,7 +6,13 @@
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
     </button>
     <h1 class="header-title">{{ sectionLabel }}</h1>
-    <div style="width:40px"></div>
+    <select class="sort-select" [(ngModel)]="sortValue" (ngModelChange)="onSort($any($event))" aria-label="Sort locations">
+      <option value="distance:asc">Nearest</option>
+      <option value="createdAt:desc">Newest</option>
+      <option value="title:asc">Name A-Z</option>
+      <option value="rating:desc">Rating</option>
+      <option value="reviews:desc">Reviews</option>
+    </select>
   </div>
 
   <!-- Loading -->
@@ -90,4 +96,14 @@
   </div>
 
   <div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
+  <div class="auth-modal-overlay" *ngIf="showAuthPopup" (click)="closeAuthPopup()">
+    <div class="auth-modal" (click)="$event.stopPropagation()">
+      <h3>Login Required</h3>
+      <p>{{ authPopupMessage }}</p>
+      <div class="auth-modal-actions">
+        <button class="btn-cancel" (click)="closeAuthPopup()">Cancel</button>
+        <button class="btn-login" (click)="goToLogin()">Login</button>
+      </div>
+    </div>
+  </div>
 </div>

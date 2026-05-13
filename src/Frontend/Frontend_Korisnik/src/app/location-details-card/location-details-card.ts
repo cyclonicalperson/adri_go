@@ -21,6 +21,7 @@ export class LocationDetailsCardComponent {
 
   defaultImage = 'assets/plaza.jpg';
   calendarMessage = '';
+  showAuthModal = false;
 
   constructor(
     private router: Router,
@@ -78,6 +79,11 @@ export class LocationDetailsCardComponent {
   addToCalendar(event: Event): void {
     event.stopPropagation();
     if (!this.locationData?.id) return;
+    if (!this.authService.isLoggedIn) {
+      this.showAuthModal = true;
+      this.cdr.detectChanges();
+      return;
+    }
 
     this.userService.addLocationToCalendar({
       id: this.locationData.id,
@@ -105,5 +111,16 @@ export class LocationDetailsCardComponent {
 
   get isEvent(): boolean {
     return (this.locationData?.postType || '').toLowerCase() === 'event';
+  }
+
+  closeAuthModal(event?: Event): void {
+    event?.stopPropagation();
+    this.showAuthModal = false;
+    this.cdr.detectChanges();
+  }
+
+  goToLogin(event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/login']);
   }
 }

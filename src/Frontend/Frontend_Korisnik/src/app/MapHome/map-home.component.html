@@ -123,6 +123,11 @@
           {{ cat.label }}
         </button>
       </div>
+      <button class="builder-mode-pill" *ngIf="plannerMode" (click)="stopPlannerMode()">
+        <span class="builder-mode-dot"></span>
+        Route builder on
+        <svg viewBox="0 0 24 24"><path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"/></svg>
+      </button>
     </div>
 
     <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded">
@@ -169,7 +174,7 @@
       </app-trip-planner-panel>
 
       <div class="saved-routes-toggle-row">
-        <button class="saved-routes-toggle-btn" (click)="showSavedRoutes = true">
+        <button class="saved-routes-toggle-btn" (click)="openSavedRoutes()">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
           Saved routes<span *ngIf="savedRoutes.length > 0"> ({{ savedRoutes.length }})</span>
         </button>
@@ -195,7 +200,7 @@
   <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
-          [class.locate-hidden]="sheetExpanded"
+          [class.locate-hidden]="sheetExpanded || isFiltersOpen"
           [class.locate-refollow]="isNavigating && !navFollowMode"
           (click)="locateMeOrRefollow()"
           aria-label="Show my location">
@@ -346,7 +351,7 @@
   <div class="auth-modal-overlay" *ngIf="showAuthPopup">
     <div class="auth-modal">
       <h3>Login Required</h3>
-      <p>You need to be logged in to access your account settings.</p>
+      <p>Please log in to save items, use your calendar, and access your account.</p>
       <div class="auth-modal-actions">
         <button class="btn-cancel" (click)="showAuthPopup = false">Cancel</button>
         <button class="btn-login" (click)="goToLogin()">Login</button>

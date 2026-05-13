@@ -57,6 +57,7 @@
   justify-content: center;
   flex-shrink: 0;
 }
+.user-header .user-avatar { cursor: pointer; }
 .user-avatar svg { width: 24px; height: 24px; fill: #fff; }
 
 .user-info { flex: 1; min-width: 0; }

@@ -79,6 +79,10 @@ export class RegisterComponent {
       : 'Dokaz o registraciji firme ili organizacije (JPG, PNG ili PDF, max 5MB).';
   }
 
+  get emailPlaceholder(): string {
+    return this.isIndividualSelected ? 'ime@email.com' : 'ime@kompanija.com';
+  }
+
   get fileIconEmoji(): string {
     if (!this.selectedFile) return '\u{1F4CE}';
     if (this.selectedFile.type === 'application/pdf') return '\u{1F4C4}';

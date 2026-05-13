@@ -47,7 +47,7 @@ export class SettingsComponent implements OnInit {
   ];
 
   showPasswordModal = false;
-  changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+  changePasswordForm = { newPassword: '', confirmPassword: '' };
   passwordError = '';
   passwordSuccess = '';
   isSavingPassword = false;
@@ -198,6 +198,9 @@ export class SettingsComponent implements OnInit {
             ? 'Push notifications enabled'
             : 'Notification permission was not granted'
         );
+      }).catch(() => {
+        this.settings.pushNotifications = false;
+        this.saveChanges('Notification permission was not granted');
       });
       return;
     }
@@ -332,8 +335,13 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
+    if (this.authService.isGoogleAccount) {
+      window.location.href = 'https://myaccount.google.com/';
+      return;
+    }
+
     this.showPasswordModal = true;
-    this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    this.changePasswordForm = { newPassword: '', confirmPassword: '' };
     this.passwordError = '';
     this.passwordSuccess = '';
   }
@@ -346,10 +354,6 @@ export class SettingsComponent implements OnInit {
     this.passwordError = '';
     this.passwordSuccess = '';
 
-    if (!this.changePasswordForm.currentPassword) {
-      this.passwordError = 'Please enter your current password.';
-      return;
-    }
     if (this.changePasswordForm.newPassword.length < 6) {
       this.passwordError = 'New password must be at least 6 characters.';
       return;
@@ -360,10 +364,7 @@ export class SettingsComponent implements OnInit {
     }
 
     this.isSavingPassword = true;
-    this.authService.changePassword(
-      this.changePasswordForm.currentPassword,
-      this.changePasswordForm.newPassword,
-    ).subscribe({
+    this.authService.changePassword(this.changePasswordForm.newPassword).subscribe({
       next: () => {
         this.passwordSuccess = '✓ Password changed successfully!';
         this.isSavingPassword = false;

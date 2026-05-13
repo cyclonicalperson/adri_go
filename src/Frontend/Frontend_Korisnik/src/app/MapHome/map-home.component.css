@@ -104,6 +104,10 @@
   will-change: transform;
 }
 
+:host ::ng-deep .user-location-marker {
+  transition: none !important;
+}
+
 
 .leaflet-map-pane {
   will-change: transform;
@@ -404,6 +408,10 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   flex-shrink: 0;
 }
+.cat-chip:not(.active) {
+  background: #fff;
+  color: var(--gray-600);
+}
 .cat-chip:hover {
   background: color-mix(in srgb, var(--cat-color, #6b7280) 10%, transparent);
   color: var(--gray-800);
@@ -417,6 +425,37 @@
   border-color: var(--cat-color, #22c55e);
   color: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+
+.builder-mode-pill {
+  align-self: flex-start;
+  pointer-events: auto;
+  margin: -2px 4px 0;
+  border: none;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-sans);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+}
+.builder-mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+}
+.builder-mode-pill svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 
 /* Filter badge dot */
