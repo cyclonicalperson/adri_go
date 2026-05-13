@@ -266,7 +266,76 @@ export class RoutingService {
       }
     }
 
+    const segmentedRoute = await this.fetchSegmentedRoute(coordinates, travelMode);
+    if (segmentedRoute) {
+      return segmentedRoute;
+    }
+
     throw lastError ?? new Error('No routing profiles succeeded.');
+  }
+
+  private async fetchSegmentedRoute(
+    coordinates: [number, number][],
+    travelMode: TravelMode,
+  ): Promise<ComputedRoute | null> {
+    if (coordinates.length < 3) {
+      return null;
+    }
+
+    const geometry: [number, number][] = [];
+    let distanceKm = 0;
+    let durationMin = 0;
+
+    for (let index = 0; index < coordinates.length - 1; index++) {
+      const leg = await this.fetchDirectRoute([coordinates[index], coordinates[index + 1]], travelMode);
+      if (!leg) {
+        return null;
+      }
+
+      if (geometry.length > 0 && leg.geometry.length > 0) {
+        geometry.push(...leg.geometry.slice(1));
+      } else {
+        geometry.push(...leg.geometry);
+      }
+      distanceKm += leg.distanceKm;
+      durationMin += leg.durationMin;
+    }
+
+    return {
+      geometry,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      durationMin: Math.max(1, Math.round(durationMin)),
+      usedFallback: false,
+    };
+  }
+
+  private async fetchDirectRoute(
+    coordinates: [number, number][],
+    travelMode: TravelMode,
+  ): Promise<ComputedRoute | null> {
+    for (const profile of this.resolveRoutingProfiles(travelMode)) {
+      try {
+        const response = await fetch(this.buildOsrmUrl(coordinates, profile));
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const route = data?.routes?.[0];
+        if (!route?.geometry?.coordinates) continue;
+
+        return {
+          geometry: route.geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
+          ),
+          distanceKm: Math.round(((route.distance ?? 0) / 1000) * 10) / 10,
+          durationMin: Math.max(1, Math.round((route.duration ?? 0) / 60)),
+          usedFallback: false,
+        };
+      } catch {
+        // try next endpoint/profile
+      }
+    }
+
+    return null;
   }
 
   private buildInstruction(step: any): string {
@@ -305,14 +374,12 @@ export class RoutingService {
     const radiuses = coordinates.map(() => '500').join(';');
     const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
-    // Primary: routing.openstreetmap.de (Geofabrik-hosted, all profiles)
-    if (profile === 'foot') {
+    if (profile === 'foot-osm') {
       return `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coordinatesString}${params}`;
     }
-    if (profile === 'bike') {
+    if (profile === 'bike-osm') {
       return `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${coordinatesString}${params}`;
     }
-    // Fallback: OSRM project demo server (driving only, same response format)
     if (profile === 'driving-project') {
       return `https://router.project-osrm.org/route/v1/driving/${coordinatesString}${params}`;
     }
@@ -389,8 +456,8 @@ export class RoutingService {
 
   private resolveRoutingProfiles(travelMode: TravelMode): string[] {
     switch (travelMode) {
-      case 'walking':  return ['foot'];
-      case 'cycling':  return ['bike'];
+      case 'walking':  return ['foot-osm', 'driving', 'driving-project'];
+      case 'cycling':  return ['bike-osm', 'driving', 'driving-project'];
       // driving: try Geofabrik first, then OSRM demo as fallback
       default:         return ['driving', 'driving-project'];
     }

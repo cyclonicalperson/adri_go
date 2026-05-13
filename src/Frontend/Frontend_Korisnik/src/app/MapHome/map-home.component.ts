@@ -195,7 +195,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     culture:       '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
     monument:      '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
     food:          '<path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>',
-    nightlife:     '<path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/>',
+    nightlife:     '<path d="M7 2h10l2 6-7 14L5 8l2-6zm1.44 6l3.56 7.13L15.56 8H8.44zM9 4l-.67 2h7.34L15 4H9z"/>',
     activity:      '<path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>',
     events:        '<path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>',
     accommodation: '<path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/>',
@@ -228,6 +228,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initMap();
+    this.tryAutoLocateUser();
     this.loadPersonalizationContext();
     this.loadLocations();
     this.activatedRoute.queryParams.subscribe(params => {
@@ -373,7 +374,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const imagesValue = loc.images;
-    if (!imagesValue) return 'assets/placeholder.jpg';
+    if (!imagesValue) return 'assets/Budva.jpg';
 
     let firstImg = '';
     if (typeof imagesValue === 'string') {
@@ -387,7 +388,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       firstImg = imagesValue[0];
     }
 
-    if (!firstImg) return 'assets/placeholder.jpg';
+    if (!firstImg) return 'assets/Budva.jpg';
     if (!firstImg.startsWith('http')) {
       const clean = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
       return `${this.IMAGE_BASE_URL}${clean}`;
@@ -581,6 +582,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const tripParam = this.latestQueryParams['trip'];
     const directTo = this.latestQueryParams['directTo'];
+    const focusId = Number(this.latestQueryParams['focusId']);
     const plannerFlag = this.latestQueryParams['planner'] === '1';
     const scenicFlag = this.latestQueryParams['scenic'];
     const modeParam = this.latestQueryParams['mode'];
@@ -593,6 +595,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (scenicFlag === '0' || scenicFlag === '1') {
       this.routePlanner.setScenicMode(scenicFlag === '1');
       this.scenicMode = scenicFlag === '1';
+    }
+
+    if (Number.isFinite(focusId) && focusId > 0) {
+      const matched = this.locationsList.find(location => location.id === focusId);
+      if (matched) {
+        this.focusOnLocation(matched);
+      }
     }
 
     if (tripParam) {
@@ -816,6 +825,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   requestClearRoute(): void {
+    if (this.isNavigating) {
+      this.clearRoute();
+      return;
+    }
     this.showClearRouteConfirm = true;
     this.cdr.detectChanges();
   }
@@ -832,6 +845,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   clearRoute(): void {
     this.plannerRenderToken++;
+    if (this.isNavigating) {
+      this.stopNavigation();
+    }
     this.routePlanner.clear();
     this.plannerStops = [];
     this.plannerMode = false;
@@ -891,6 +907,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async startNavigation(): Promise<void> {
+    this.showClearRouteConfirm = false;
+    await this.ensureUserPosition();
+
     const coordinates = this.getRouteCoordinates();
     if (coordinates.length < 2) {
       this.plannerMessage = this.plannerStops.length === 0
@@ -909,6 +928,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     } catch {
       this.plannerMessage = 'Could not fetch navigation data. Check your connection.';
       setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 2400);
+    }
+  }
+
+  private async ensureUserPosition(): Promise<void> {
+    if (this.userPosition || !this.preferences.snapshot.locationSharing) {
+      return;
+    }
+
+    const position = await this.geolocationService.requestCurrentPosition({ maximumAge: 30000 });
+    if (position) {
+      this.showUserLocation(position, false);
+      this.updateDistancesAndRecommendations();
+      this.applyMarkerFilter();
+      this.refreshRecommendations();
     }
   }
 
@@ -1526,6 +1559,32 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private tryAutoLocateUser(): void {
+    if (!this.preferences.snapshot.locationSharing || typeof navigator === 'undefined') {
+      return;
+    }
+
+    const locate = () => {
+      void this.geolocationService.requestCurrentPosition({ maximumAge: 60000 }).then((position) => {
+        if (!position) return;
+        this.showUserLocation(position, false);
+        this.updateDistancesAndRecommendations();
+        this.applyMarkerFilter();
+        this.refreshRecommendations();
+        this.cdr.detectChanges();
+      });
+    };
+
+    const permissions = navigator.permissions;
+    if (permissions?.query) {
+      permissions.query({ name: 'geolocation' as PermissionName })
+        .then(status => {
+          if (status.state === 'granted') locate();
+        })
+        .catch(() => {});
+    }
+  }
+
   private showUserLocation(position: UserPosition, fly: boolean): void {
     const userIcon = L.divIcon({
       html: `<div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25);"></div>`,
@@ -1620,11 +1679,44 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.searchResults = this.locationsList
-      .filter(loc =>
-        (loc.title || '').toLowerCase().includes(normalized) ||
-        (loc.postType || loc.category || '').toLowerCase().includes(normalized)
-      )
+      .map(loc => ({ loc, score: this.scoreSearchResult(loc, normalized) }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => item.loc)
       .slice(0, 8);
+  }
+
+  private scoreSearchResult(loc: MapLocation, query: string): number {
+    const terms = query.split(/\s+/).filter(Boolean);
+    const fields = [
+      loc.title,
+      loc.regionName,
+      loc.address,
+      loc.description,
+      loc.postType,
+      loc.category,
+      ...(Array.isArray((loc as any).tagNames) ? (loc as any).tagNames : []),
+    ].filter(Boolean).map(value => String(value).toLowerCase());
+
+    let score = 0;
+    for (const term of terms) {
+      const title = (loc.title || '').toLowerCase();
+      if (title === term) score += 120;
+      else if (title.startsWith(term)) score += 80;
+      else if (title.includes(term)) score += 55;
+
+      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
+      if (fields.some(field => field.includes(term))) score += 15;
+    }
+
+    const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
+    const typeKey = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');
+    if (activeKeys.includes(typeKey)) score += 8;
+    if (this.userProfile?.interests?.some(interest => fields.some(field => field.includes(interest.toLowerCase())))) score += 6;
+    if (loc.distanceKm != null) score += Math.max(0, 10 - loc.distanceKm);
+    score += Math.min(10, Number(loc.avgRating || loc.rating || 0));
+
+    return score;
   }
 
   selectSearchResult(loc: MapLocation): void {

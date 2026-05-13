@@ -14,7 +14,7 @@
         </svg>
         Login
       </button>
-      <button class="header-menu-btn" (click)="toggleMenu()">
+      <button *ngIf="!isNavigating" class="header-menu-btn" (click)="toggleMenu()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
         </svg>
@@ -88,7 +88,7 @@
                 [src]="getFirstImage(result)"
                 [alt]="result.title"
                 class="search-result-img"
-                (error)="$any($event.target).src='assets/placeholder.jpg'">
+                (error)="$any($event.target).src='assets/Budva.jpg'">
               <!-- Mala kategorija-boja traka na dnu slike -->
               <span
                 class="search-result-cat-dot"
@@ -264,7 +264,7 @@
     </div>
   </div>
 
-  <div class="app-footer">
+  <div class="app-footer" *ngIf="!isNavigating">
 
     <button class="footer-btn" [class.active]="activeTab === 'map'" (click)="activeTab = 'map'">
       <span class="footer-icon">

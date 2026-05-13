@@ -174,7 +174,8 @@
   position: sticky;
   top: 0;
   background: #fff;
-  z-index: 1;
+  z-index: 30;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.8);
 }
 .sheet-header:hover { background: var(--gray-50, #f9fafb); }
 .sheet-header:active { background: var(--gray-100); }

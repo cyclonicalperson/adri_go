@@ -17,6 +17,7 @@ export class PersonalInfoComponent implements OnInit {
   userData: UserProfile | null = null;
   loading    = true;
   isSaving   = false;
+  isUploadingPhoto = false;
   editMode   = false;
   saveSuccess = false;
   saveError   = '';
@@ -116,7 +117,8 @@ export class PersonalInfoComponent implements OnInit {
       name:      this.form.fullName.trim(),
       bio:       this.form.bio.trim(),
       location:  this.form.location.trim(),
-      interests: [...this.selectedInterests]
+      interests: [...this.selectedInterests],
+      profileImage: this.userData?.profilePic ?? null,
     };
 
     this.userService.updateProfile(payload).subscribe({
@@ -127,6 +129,7 @@ export class PersonalInfoComponent implements OnInit {
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
+          this.userData.profilePic = updated.profilePic ?? this.userData.profilePic;
         }
         this.authService.updateCurrentTourist({
           name: updated.fullName || this.form.fullName,
@@ -150,5 +153,29 @@ export class PersonalInfoComponent implements OnInit {
   getInitials(): string {
     if (!this.userData?.fullName) return '?';
     return this.userData.fullName.trim().charAt(0).toUpperCase();
+  }
+
+  onProfilePhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || this.isUploadingPhoto) return;
+
+    this.isUploadingPhoto = true;
+    this.saveError = '';
+    this.userService.uploadProfileImage(file).subscribe({
+      next: (url) => {
+        this.userData = {
+          ...(this.userData as UserProfile),
+          profilePic: url,
+        };
+        this.isUploadingPhoto = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isUploadingPhoto = false;
+        this.saveError = 'Could not upload profile photo. Please try another image.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

@@ -63,6 +63,7 @@ namespace TouristGuide.Api.Controllers
                 PasswordHash = PasswordHelper.Hash(request.Password),
                 Language = string.IsNullOrWhiteSpace(request.Language) ? "en" : request.Language.Trim().ToLowerInvariant(),
                 Interests = SerializeInterests(request.Interests),
+                ProfileImage = string.IsNullOrWhiteSpace(request.ProfileImage) ? null : request.ProfileImage.Trim(),
                 IsActive = true,
                 IsEmailVerified = !smtpConfigured, // auto-verified when no SMTP
                 EmailVerificationToken = verificationToken,
@@ -289,6 +290,9 @@ namespace TouristGuide.Api.Controllers
 
             if (dto.Interests is not null)
                 tourist.Interests = System.Text.Json.JsonSerializer.Serialize(dto.Interests);
+
+            if (dto.ProfileImage is not null)
+                tourist.ProfileImage = string.IsNullOrWhiteSpace(dto.ProfileImage) ? null : dto.ProfileImage.Trim();
 
             tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();

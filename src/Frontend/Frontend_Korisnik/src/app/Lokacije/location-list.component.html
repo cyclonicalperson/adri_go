@@ -56,7 +56,7 @@
               [src]="getFirstImage(result)"
               [alt]="result.title"
               class="search-result-img"
-              (error)="$any($event.target).src='assets/placeholder.jpg'">
+              (error)="$any($event.target).src='assets/Budva.jpg'">
             <span
               class="search-result-cat-dot"
               [style.background]="getCategoryColor(result.postType)"></span>
@@ -107,7 +107,7 @@
     <div class="location-card" *ngFor="let loc of locations">
 
       <div class="image-wrapper" (click)="viewDetails(loc.id)">
-        <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/placeholder.jpg'">
+        <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/Budva.jpg'">
         <div class="image-gradient"></div>
 
         <span class="category-badge">

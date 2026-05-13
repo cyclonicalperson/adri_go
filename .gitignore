@@ -173,3 +173,4 @@ desktop.ini
 /src/Backend/TouristGuide.Api/images/uploads/docs
 /src/Backend/TouristGuide.Api/images/verification-documents
 /.appdata/NuGet
+/src/Backend/TouristGuide.Api/appsettings.json

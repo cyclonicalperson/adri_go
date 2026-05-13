@@ -30,6 +30,7 @@ export class ObjectFormComponent implements OnInit {
   destinations: Region[] = [];
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
+  resolvingAddress = false;
 
   readonly categoryOptions: { value: ObjectCategory; label: string }[] = [
     { value: 'HOTEL', label: '🏔️ Hotel' },
@@ -95,8 +96,9 @@ export class ObjectFormComponent implements OnInit {
     }
   }
 
-  onLocationPicked(loc: { lat: number; lng: number }): void {
+  async onLocationPicked(loc: { lat: number; lng: number }): Promise<void> {
     this.form.patchValue({ latitude: loc.lat, longitude: loc.lng });
+    await this.resolveAddress(loc.lat, loc.lng);
   }
 
   get lat(): number { return this.form.get('latitude')?.value ?? 43.85; }
@@ -122,4 +124,27 @@ export class ObjectFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
+
+  private async resolveAddress(lat: number, lng: number): Promise<void> {
+    this.resolvingAddress = true;
+    try {
+      const params = new URLSearchParams({
+        format: 'jsonv2',
+        lat: String(lat),
+        lon: String(lng),
+        zoom: '18',
+        addressdetails: '1',
+        'accept-language': 'sr,en',
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const address = typeof data?.display_name === 'string' ? data.display_name : '';
+      if (address) this.form.patchValue({ address });
+    } catch {
+      // Reverse geocoding is best-effort; coordinates remain selected.
+    } finally {
+      this.resolvingAddress = false;
+    }
+  }
 }

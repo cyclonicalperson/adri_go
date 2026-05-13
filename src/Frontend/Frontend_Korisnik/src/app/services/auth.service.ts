@@ -9,6 +9,7 @@ export interface Tourist {
   email: string;
   language?: string;
   isEmailVerified?: boolean;
+  profileImage?: string | null;
 }
 
 export interface StoredSession {
@@ -48,7 +49,7 @@ export class AuthService {
     name: string,
     email: string,
     password: string,
-    options?: { language?: string; interests?: string[] },
+    options?: { language?: string; interests?: string[]; profileImage?: string | null },
   ): Observable<TouristRegistrationResponse> {
     return this.http.post<any>(`${this.authApiUrl}/register`, {
       name,
@@ -56,6 +57,7 @@ export class AuthService {
       password,
       language: options?.language ?? 'en',
       interests: options?.interests ?? [],
+      profileImage: options?.profileImage ?? null,
     }).pipe(
       map(res => this.mapRegistrationResponse(res)),
       tap(res => {
@@ -94,6 +96,14 @@ export class AuthService {
     interests: string[] = [],
   ): Observable<TouristRegistrationResponse> {
     return this.register(name, email, password, { language, interests });
+  }
+
+  uploadProfileImage(file: File): Observable<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ url: string }>(`${environment.apiUrl}/images/upload/profile`, formData).pipe(
+      map(res => res.url),
+    );
   }
 
   loginWithToken(email: string, password: string): Observable<TouristAuthResponse> {

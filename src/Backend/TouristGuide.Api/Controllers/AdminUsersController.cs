@@ -162,6 +162,9 @@ namespace TouristGuide.Api.Controllers
             if (dto.OrganizationId.HasValue) user.OrganizationId = dto.OrganizationId.Value == 0 ? null : dto.OrganizationId;
             if (dto.IsIndividual.HasValue) user.IsIndividual = dto.IsIndividual.Value;
             if (dto.AccountStatus is not null) user.AccountStatus = dto.AccountStatus;
+            if (dto.ProfileImage is not null)
+                user.ProfileImage = string.IsNullOrWhiteSpace(dto.ProfileImage) ? null : dto.ProfileImage.Trim();
+
             user.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -483,6 +486,7 @@ namespace TouristGuide.Api.Controllers
         public uint? OrganizationId { get; set; }
         public bool? IsIndividual { get; set; }
         public string? AccountStatus { get; set; }
+        public string? ProfileImage { get; set; }
     }
 
     public class GrantPermissionDto
@@ -495,6 +499,7 @@ namespace TouristGuide.Api.Controllers
     {
         public string? FullName { get; set; }
         public string? Email { get; set; }
+        public string? ProfileImage { get; set; }
     }
 
     public class ChangePasswordDto

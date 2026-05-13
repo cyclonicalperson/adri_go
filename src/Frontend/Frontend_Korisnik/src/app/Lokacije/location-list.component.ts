@@ -198,12 +198,12 @@ export class LocationListComponent implements OnInit {
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
 
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
-    if (!loc?.images) return 'assets/placeholder.jpg';
+    if (!loc?.images) return 'assets/Budva.jpg';
     let firstImg = '';
     if (typeof loc.images === 'string') {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
-    if (!firstImg) return 'assets/placeholder.jpg';
+    if (!firstImg) return 'assets/Budva.jpg';
     if (!firstImg.startsWith('http')) { const c = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg; return `${this.IMAGE_BASE_URL}${c}`; }
     return firstImg;
   }

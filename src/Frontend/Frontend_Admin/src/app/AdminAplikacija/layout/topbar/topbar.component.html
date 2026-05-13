@@ -126,7 +126,7 @@
         <div class="user-name">{{ auth.currentUser?.fullName }}</div>
         <div class="user-role">{{ roleLabel }}</div>
       </div>
-      <div class="header-avatar">{{ initials }}</div>
+      <img class="header-avatar" [src]="auth.currentUser?.profileImage || 'assets/default-profile.svg'" alt="Profil">
     </a>
   </div>
 </header>
