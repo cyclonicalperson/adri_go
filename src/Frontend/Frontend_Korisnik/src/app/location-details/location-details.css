@@ -108,6 +108,10 @@
   z-index: 3;
 }
 
+/* Thumbnail strip — skriveni na mobilnom, vidljivi via desktop media query */
+.hero-thumbnails { display: none; }
+.hero-thumb { display: none; }
+
 /* ── CONTENT CARD ────────────────────────────────────────────── */
 .content-card {
   background: #fff;
@@ -393,30 +397,121 @@
 .nearby-meta { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray-500); }
 .nearby-meta svg { width: 12px; height: 12px; fill: var(--gray-400); }
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
+/* ── DESKTOP — two-column full-width layout ──────────────────── */
 @media (min-width: 900px) {
-  .hero-section { height: 50vh; max-height: 420px; }
-  .content-card { padding: 32px 28px; border-radius: 36px 36px 0 0; }
-  .title-row h1 { font-size: 26px; }
-  .info-grid { gap: 16px; }
-}
 
-/* ── DESKTOP ─────────────────────────────────────────────────── */
-@media (min-width: 900px) {
   .details-container {
-    max-width: 760px;
-    margin: 0 auto;
-    background: var(--gray-50);
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+    max-width: 100%;
+    margin: 0;
+    background: #f4f6f8;
+    min-height: 100dvh;
+    box-shadow: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
   }
+
+  /* Loading & error — span oba stupca */
+  .details-container > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  /* Hero zauzima lijevi stupac, čitava visina */
   .hero-section {
-    height: 52vh;
-    max-height: 460px;
+    grid-column: 1;
+    grid-row: 1;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    position: sticky;
+    top: 0;
+    overflow: hidden;
   }
+
+  /* Gradient pojačan za bolji kontrast na desktop */
+  .hero-gradient {
+    background: linear-gradient(
+      to bottom,
+      rgba(0,0,0,0.5) 0%,
+      rgba(0,0,0,0) 40%,
+      rgba(0,0,0,0.35) 100%
+    );
+  }
+
+  /* Back & share dugmad — pomjereni da ne sijeku sa sadržajem */
+  .back-btn  { top: 28px; left: 28px; }
+  .share-btn { top: 28px; right: 28px; }
+
+  /* Nav dugmad za slike — vidljivi unutar hero-a */
+  .hero-nav-btn.left  { left: 20px; }
+  .hero-nav-btn.right { right: 20px; }
+
+  /* Brojač slika — pomjeren više od dna zbog thumbnail stripa */
+  .hero-image-counter {
+    bottom: 120px;
+    font-size: 13px;
+    padding: 7px 16px;
+  }
+
+  /* Thumbnail strip na dnu heroe */
+  .hero-thumbnails {
+    display: flex !important;
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 8px;
+    z-index: 4;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    max-width: calc(100% - 56px);
+    overflow-x: auto;
+  }
+  .hero-thumbnails::-webkit-scrollbar { display: none; }
+
+  .hero-thumb {
+    display: block !important;
+    width: 60px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s, transform 0.15s;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .hero-thumb.active {
+    border-color: #fff;
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  .hero-thumb:hover { opacity: 0.9; }
+
+  /* Content card — desni stupac, scrollable */
   .content-card {
-    padding: 36px 36px;
-    border-radius: 40px 40px 0 0;
+    grid-column: 2;
+    grid-row: 1;
+    margin-top: 0;
+    border-radius: 0;
+    padding: 40px 40px 60px;
+    overflow-y: auto;
+    height: 100dvh;
+    background: #fff;
+    box-shadow: -2px 0 24px rgba(0,0,0,0.07);
+    position: relative;
+    z-index: 3;
   }
+
+  /* Scrollbar desnog panela */
+  .content-card::-webkit-scrollbar { width: 5px; }
+  .content-card::-webkit-scrollbar-track { background: transparent; }
+  .content-card::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+
   .title-row h1 { font-size: 28px; }
   .info-grid { gap: 16px; }
   .nearby-card { width: 160px; }
