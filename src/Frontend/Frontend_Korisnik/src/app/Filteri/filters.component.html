@@ -1,4 +1,6 @@
-<div class="filters-container">
+<div class="filters-backdrop" *ngIf="context === 'explore'" (click)="closeFilters()"></div>
+
+<div class="filters-container" [class.ctx-map]="context === 'map'" [class.ctx-explore]="context === 'explore'" (click)="$event.stopPropagation()">
 
   <div class="header">
     <button class="close-btn" (click)="closeFilters()">
@@ -14,12 +16,12 @@
     <section>
       <div class="section-header">
         <h2>Categories</h2>
-        <span class="section-hint">Select to show only these on the map</span>
       </div>
       <div class="category-chips">
-        <button class="chip main-chip"
+        <button class="chip"
                 *ngFor="let cat of categories"
                 [class.active]="cat.selected"
+                [style.--cat-color]="getCategoryColor(cat.id)"
                 (click)="toggleCategory(cat)">
           <span class="chip-icon">{{ cat.icon }}</span> {{ cat.label }}
         </button>
@@ -38,7 +40,9 @@
         </div>
         <input type="range" class="custom-slider"
                min="0" [max]="radiusSteps.length - 1"
-               [(ngModel)]="radiusIndex" step="1">
+               [(ngModel)]="radiusIndex"
+               (ngModelChange)="onAnyChange()"
+               step="1">
         <div class="range-markers">
           <span>0 (Unlimited)</span>
           <span>10 km</span>
@@ -73,7 +77,7 @@
           <p>Show only places open right now</p>
         </div>
         <label class="switch">
-          <input type="checkbox" [(ngModel)]="openNow">
+          <input type="checkbox" [(ngModel)]="openNow" (ngModelChange)="onAnyChange()">
           <span class="slider round"></span>
         </label>
       </div>
@@ -87,16 +91,16 @@
       <div class="date-picker-row">
         <div class="date-input">
           <label>FROM</label>
-          <input type="date" [(ngModel)]="fromDate">
+          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onAnyChange()">
         </div>
         <div class="date-input">
           <label>TO</label>
-          <input type="date" [(ngModel)]="toDate">
+          <input type="date" [(ngModel)]="toDate" (ngModelChange)="onAnyChange()">
         </div>
       </div>
     </section>
 
-    <!-- SAVED ONLY (visible when savedPostIds are stored) -->
+    <!-- SAVED ONLY -->
     <section *ngIf="savedPostIds.length > 0">
       <div class="section-header">
         <h2>Saved Locations</h2>
@@ -107,16 +111,12 @@
           <p>Display only your {{ savedPostIds.length }} saved destinations</p>
         </div>
         <label class="switch">
-          <input type="checkbox" [(ngModel)]="showOnlySaved">
+          <input type="checkbox" [(ngModel)]="showOnlySaved" (ngModelChange)="onAnyChange()">
           <span class="slider round"></span>
         </label>
       </div>
     </section>
 
-  </div>
-
-  <div class="footer">
-    <button class="apply-btn" (click)="applyFilters()">Apply Filters</button>
   </div>
 
 </div>

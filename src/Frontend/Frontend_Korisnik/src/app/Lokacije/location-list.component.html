@@ -1,6 +1,7 @@
 ﻿<div class="list-container">
 
-  <div class="header-bar">
+  <div class="sticky-top">
+    <div class="header-bar">
     <div class="logo">
       <span class="logo-icon-box">
         <img src="assets/logo.png" alt="AdriGo" class="logo-img">
@@ -78,107 +79,265 @@
       Search
     </button>
 
-  </div>
+  </div><!-- /search-section -->
+  </div><!-- /sticky-top -->
 
   <div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
+  <!-- ── LOADING ── -->
   <div class="loading-state" *ngIf="isLoading">
     <div class="loading-icon"></div>
     Loading locations...
   </div>
 
+  <!-- ── ERROR ── -->
   <div class="error-state" *ngIf="errorMessage && !isLoading">
     {{ errorMessage }}
     <button (click)="loadLocations()" style="margin-left:10px;cursor:pointer;text-decoration:underline;background:none;border:none;color:inherit;font-weight:700;">Retry</button>
   </div>
 
-  <div class="empty-state" *ngIf="!isLoading && !errorMessage && locations.length === 0">
-    <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-    <p>No results found for "{{ searchQuery }}".</p>
-    <button class="clear-search-link" (click)="clearSearch()">Show all locations</button>
-  </div>
+  <!-- ── SEARCH RESULTS VIEW ── -->
+  <ng-container *ngIf="isSearchActive && !isLoading">
+    <div class="empty-state" *ngIf="locations.length === 0">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <p>No results found for "{{ searchQuery }}".</p>
+      <button class="clear-search-link" (click)="clearSearch()">Show all locations</button>
+    </div>
+    <div *ngIf="locations.length > 0">
+      <h2 class="section-title">
+        Results for "{{ searchQuery }}"
+        <span class="result-count">{{ locations.length }}</span>
+      </h2>
+      <div class="grid-area">
+        <div class="location-card" *ngFor="let loc of locations">
+          <ng-container *ngTemplateOutlet="cardTpl; context: { loc: loc }"></ng-container>
+        </div>
+      </div>
+    </div>
+  </ng-container>
 
-  <h2 class="section-title" *ngIf="!isLoading && locations.length > 0">
-    {{ sectionTitle }}
-    <span class="result-count">{{ locations.length }}</span>
-  </h2>
+  <!-- ── FILTER RESULTS VIEW ── -->
+  <ng-container *ngIf="isFilterView && !isLoading">
+    <div class="filter-results-header">
+      <div class="filter-results-title">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+        Filtered results
+        <span class="result-count">{{ filteredLocations.length }}</span>
+      </div>
+      <button class="clear-filter-btn" (click)="clearFilterView()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        Clear filters
+      </button>
+    </div>
+    <div class="empty-state" *ngIf="filteredLocations.length === 0">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+      <p>No locations match the selected filters.</p>
+      <button class="clear-search-link" (click)="clearFilterView()">Clear filters</button>
+    </div>
+    <div class="grid-area" *ngIf="filteredLocations.length > 0">
+      <div class="location-card" *ngFor="let loc of filteredLocations">
+        <ng-container *ngTemplateOutlet="cardTpl; context: { loc: loc }"></ng-container>
+      </div>
+    </div>
+  </ng-container>
 
-  <div class="scroll-area">
-    <div class="location-card" *ngFor="let loc of locations">
+  <!-- ── EXPLORE SECTIONS VIEW ── -->
+  <ng-container *ngIf="!isSearchActive && !isFilterView && !isLoading && !errorMessage">
 
-      <div class="image-wrapper" (click)="viewDetails(loc.id)">
-        <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/Budva.jpg'">
-        <div class="image-gradient"></div>
+    <!-- ── EXPANDED SECTION (when See All clicked) ── -->
+    <ng-container *ngIf="activeSectionView">
+      <div class="expanded-section-header">
+        <button class="back-to-explore-btn" (click)="closeSection()">
+          <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          Back
+        </button>
+        <span class="expanded-section-label">{{ activeSectionLabel }}</span>
+      </div>
+      <div class="grid-area">
+        <div class="location-card" *ngFor="let loc of activeSectionLocations">
+          <ng-container *ngTemplateOutlet="cardTpl; context: { loc: loc }"></ng-container>
+        </div>
+      </div>
+    </ng-container>
 
-        <span class="category-badge">
-          <span class="cat-dot" [style.background]="getCategoryColor(loc.postType)"></span>
-          {{ formatPostType(loc.postType) }}
-        </span>
+    <!-- ── NORMAL 3-SECTION VIEW ── -->
+    <ng-container *ngIf="!activeSectionView">
 
-        <div class="action-btns">
-          <button class="action-btn" (click)="onLike(loc, $event)" title="Like">
-            <svg viewBox="0 0 24 24"
-                 [attr.fill]="loc.isLiked ? '#ef4444' : 'none'"
-                 [attr.stroke]="loc.isLiked ? '#ef4444' : 'currentColor'"
-                 stroke-width="2">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
+      <!-- NEAR YOU -->
+      <div class="explore-section" *ngIf="nearYouLocations.length > 0">
+        <div class="section-header">
+          <h2 class="section-title">📍 Near You</h2>
+          <button class="see-all-btn" (click)="openSection('near-you')">
+            See All
+            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
           </button>
-          <button class="action-btn" (click)="onSave(loc, $event)" title="Save">
-            <svg viewBox="0 0 24 24"
-                 [attr.fill]="loc.isSaved ? '#3b82f6' : 'none'"
-                 [attr.stroke]="loc.isSaved ? '#3b82f6' : 'currentColor'"
-                 stroke-width="2">
-              <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
-            </svg>
-          </button>
+        </div>
+        <div class="horizontal-scroll">
+          <div class="h-card" *ngFor="let loc of nearYouLocations">
+            <ng-container *ngTemplateOutlet="hCardTpl; context: { loc: loc }"></ng-container>
+          </div>
         </div>
       </div>
 
-      <div class="card-content" (click)="viewDetails(loc.id)">
-        <div class="title-row">
-          <h3>{{ loc.title }}</h3>
-          <div class="rating-badge">
-            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-            {{ loc.avgRating ? (loc.avgRating | number:'1.1-1') : 'N/A' }}
+      <!-- RECOMMENDED FOR YOU -->
+      <div class="explore-section" *ngIf="recommendedLocations.length > 0">
+        <div class="section-header">
+          <h2 class="section-title">✨ Recommended for You</h2>
+          <button class="see-all-btn" (click)="openSection('recommended')">
+            See All
+            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </button>
+        </div>
+        <div class="horizontal-scroll">
+          <div class="h-card" *ngFor="let loc of recommendedLocations">
+            <ng-container *ngTemplateOutlet="hCardTpl; context: { loc: loc }"></ng-container>
           </div>
         </div>
+      </div>
 
-        <div class="info-row">
-          <span class="info-item" *ngIf="loc.regionName">
-            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            {{ loc.regionName }}
-          </span>
-          <span class="info-item" *ngIf="loc.distanceKm != null">
-            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            {{ formatDistance(loc.distanceKm) }}
-          </span>
-          <span class="info-item">
-            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            {{ loc.likeCount }}
-          </span>
-          <span class="info-item">
-            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-            {{ loc.saveCount }}
-          </span>
-          <span class="info-item">
-            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-            {{ loc.reviewCount }}
-          </span>
-        </div>
-
-        <div class="divider"></div>
-
-        <button class="view-details-btn">
-          VIEW DETAILS
-          <span class="arrow-icon">
+      <!-- TOP RATED (GLOBAL) -->
+      <div class="explore-section" *ngIf="topRatedLocations.length > 0">
+        <div class="section-header">
+          <h2 class="section-title">🌟 Top Rated</h2>
+          <button class="see-all-btn" (click)="openSection('top-rated')">
+            See All
             <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-          </span>
+          </button>
+        </div>
+        <div class="horizontal-scroll">
+          <div class="h-card" *ngFor="let loc of topRatedLocations">
+            <ng-container *ngTemplateOutlet="hCardTpl; context: { loc: loc }"></ng-container>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="empty-state" *ngIf="nearYouLocations.length === 0 && recommendedLocations.length === 0 && topRatedLocations.length === 0">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        <p>No locations available right now.</p>
+      </div>
+
+    </ng-container>
+  </ng-container>
+
+  <!-- ── HORIZONTAL CARD TEMPLATE ── -->
+  <ng-template #hCardTpl let-loc="loc">
+    <div class="h-image-wrapper" (click)="viewDetails(loc.id)">
+      <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/placeholder.jpg'">
+      <div class="h-image-gradient"></div>
+      <span class="h-category-badge">
+        <span class="cat-dot" [style.background]="getCategoryColor(loc.postType)"></span>
+        {{ formatPostType(loc.postType) }}
+      </span>
+      <div class="h-action-btns">
+        <button class="action-btn" (click)="onLike(loc, $event)" title="Like">
+          <svg viewBox="0 0 24 24"
+               [attr.fill]="loc.isLiked ? '#ef4444' : 'none'"
+               [attr.stroke]="loc.isLiked ? '#ef4444' : 'currentColor'"
+               stroke-width="2">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </button>
+        <button class="action-btn" (click)="onSave(loc, $event)" title="Save">
+          <svg viewBox="0 0 24 24"
+               [attr.fill]="loc.isSaved ? '#3b82f6' : 'none'"
+               [attr.stroke]="loc.isSaved ? '#3b82f6' : 'currentColor'"
+               stroke-width="2">
+            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="h-rating-chip">
+        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        {{ loc.avgRating ? (loc.avgRating | number:'1.1-1') : 'N/A' }}
+      </div>
+    </div>
+    <div class="h-card-content" (click)="viewDetails(loc.id)">
+      <h3 class="h-card-title">{{ loc.title }}</h3>
+      <div class="h-card-meta">
+        <span *ngIf="loc.regionName">📍 {{ loc.regionName }}</span>
+        <span *ngIf="loc.distanceKm != null"> · {{ formatDistance(loc.distanceKm) }}</span>
+      </div>
+    </div>
+  </ng-template>
+
+  <!-- ── FULL GRID CARD TEMPLATE (for search results) ── -->
+  <ng-template #cardTpl let-loc="loc">
+    <div class="image-wrapper" (click)="viewDetails(loc.id)">
+      <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/placeholder.jpg'">
+      <div class="image-gradient"></div>
+      <span class="category-badge">
+        <span class="cat-dot" [style.background]="getCategoryColor(loc.postType)"></span>
+        {{ formatPostType(loc.postType) }}
+      </span>
+      <div class="action-btns">
+        <button class="action-btn" (click)="onLike(loc, $event)" title="Like">
+          <svg viewBox="0 0 24 24"
+               [attr.fill]="loc.isLiked ? '#ef4444' : 'none'"
+               [attr.stroke]="loc.isLiked ? '#ef4444' : 'currentColor'"
+               stroke-width="2">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </button>
+        <button class="action-btn" (click)="onSave(loc, $event)" title="Save">
+          <svg viewBox="0 0 24 24"
+               [attr.fill]="loc.isSaved ? '#3b82f6' : 'none'"
+               [attr.stroke]="loc.isSaved ? '#3b82f6' : 'currentColor'"
+               stroke-width="2">
+            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+          </svg>
         </button>
       </div>
     </div>
-  </div>
+    <div class="card-content" (click)="viewDetails(loc.id)">
+      <div class="title-row">
+        <h3>{{ loc.title }}</h3>
+        <div class="rating-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          {{ loc.avgRating ? (loc.avgRating | number:'1.1-1') : 'N/A' }}
+        </div>
+      </div>
+      <div class="info-row">
+        <span class="info-item" *ngIf="loc.regionName">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          {{ loc.regionName }}
+        </span>
+        <span class="info-item" *ngIf="loc.distanceKm != null">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          {{ formatDistance(loc.distanceKm) }}
+        </span>
+        <span class="info-item">
+          <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          {{ loc.likeCount }}
+        </span>
+        <span class="info-item">
+          <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+          {{ loc.saveCount }}
+        </span>
+        <span class="info-item">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+          {{ loc.reviewCount }}
+        </span>
+      </div>
+      <div class="divider"></div>
+      <button class="view-details-btn">
+        VIEW DETAILS
+        <span class="arrow-icon">
+          <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </span>
+      </button>
+    </div>
+  </ng-template>
 
   <app-side-menu *ngIf="isMenuOpen" (onClose)="isMenuOpen = false"></app-side-menu>
+
+  <!-- ── EXPLORE FILTERS MODAL ── -->
+  <app-filters
+    *ngIf="isFiltersOpen"
+    context="explore"
+    (closed)="closeFilters()"
+    (applied)="onFiltersApplied($event)">
+  </app-filters>
+
 </div>
 

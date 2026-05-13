@@ -3,15 +3,23 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SideMenuComponent } from '../SideMenu/side-menu.component';
+import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { Location, LocationService } from '../services/location.service';
+import { RecommendationService } from '../services/recommendation.service';
+import { UserService } from '../services/user.service';
+import { TouristAnalyticsService } from '../services/tourist-analytics.service';
+import { FilterStateService, FilterState } from '../services/filter-state.service';
 import { formatPostType } from '../utils/post-type.utils';
+
+// Max cards shown per section row (prevents overcrowding)
+const SECTION_LIMIT = 10;
 
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, SideMenuComponent],
+  imports: [CommonModule, FormsModule, SideMenuComponent, FiltersComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
@@ -19,6 +27,7 @@ export class LocationListComponent implements OnInit {
   readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   isMenuOpen = false;
+  isFiltersOpen = false;
   locations: Location[] = [];
   private allLocations: Location[] = [];
   isLoading = false;
@@ -27,16 +36,55 @@ export class LocationListComponent implements OnInit {
   private userPosition: UserPosition | null = null;
 
   searchQuery = '';
-  isSearchActive = false;   // true after Search is clicked
-  searchResults: Location[] = [];  // live dropdown results
+  isSearchActive = false;
+  searchResults: Location[] = [];
   showDropdown = false;
+
+  // Section arrays
+  nearYouLocations: Location[] = [];
+  recommendedLocations: Location[] = [];
+  topRatedLocations: Location[] = [];
+
+  // Filter state
+  isFilterActive = false;
+  filteredLocations: Location[] = [];
+  activeFilterState: FilterState | null = null;
+
+  get isFilterView(): boolean {
+    return this.isFilterActive && !this.isSearchActive;
+  }
+
+  // Expanded section view (inline, no navigation)
+  activeSectionView: 'near-you' | 'recommended' | 'top-rated' | null = null;
+
+  get activeSectionLabel(): string {
+    switch (this.activeSectionView) {
+      case 'near-you': return '📍 Near You';
+      case 'recommended': return '✨ Recommended for You';
+      case 'top-rated': return '🌟 Top Rated';
+      default: return '';
+    }
+  }
+
+  get activeSectionLocations(): Location[] {
+    switch (this.activeSectionView) {
+      case 'near-you': return this.nearYouLocations;
+      case 'recommended': return this.recommendedLocations;
+      case 'top-rated': return this.topRatedLocations;
+      default: return [];
+    }
+  }
 
   constructor(
     private router: Router,
     private locationService: LocationService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
-    private geolocationService: GeolocationService
+    private geolocationService: GeolocationService,
+    private recommendationService: RecommendationService,
+    private userService: UserService,
+    private analyticsService: TouristAnalyticsService,
+    private filterStateService: FilterStateService,
   ) { }
 
   ngOnInit(): void {
@@ -46,11 +94,12 @@ export class LocationListComponent implements OnInit {
 
   loadLocations(): void {
     this.isLoading = true;
-    this.locationService.getLocations().subscribe({
+    this.locationService.getLocations(1, 100).subscribe({
       next: (res) => {
         const decorated = this.decorateLocations(res.data);
         this.allLocations = this.applyGuestState(decorated);
         this.locations = [...this.allLocations];
+        this.buildSections();
         this.isLoading = false;
         this.cdr.markForCheck();
       },
@@ -192,8 +241,72 @@ export class LocationListComponent implements OnInit {
 
   toggleMenu(): void { this.isMenuOpen = !this.isMenuOpen; }
   goToMap(): void { this.router.navigate(['/map-home']); }
-  openFilters(): void { this.router.navigate(['/filters'], { queryParams: { returnTo: 'location-list' } }); }
+  openFilters(): void { this.isFiltersOpen = true; this.cdr.markForCheck(); }
+  closeFilters(): void { this.isFiltersOpen = false; this.cdr.markForCheck(); }
+
+  onFiltersApplied(state: FilterState): void {
+    // NE zatvaramo panel — korisnik sam zatvara sa X
+    // Odmah primeni filtere reaktivno
+    this.activeFilterState = state;
+    const hasActiveFilter =
+      state.activeCategories.length > 0 ||
+      state.minRating > 0 ||
+      state.openNow ||
+      (state.radius > 0);
+
+    if (hasActiveFilter) {
+      this.filteredLocations = this.applyFiltersToLocations(this.allLocations, state);
+      this.isFilterActive = true;
+      this.activeSectionView = null;
+    } else {
+      this.filteredLocations = [];
+      this.isFilterActive = false;
+    }
+    this.cdr.markForCheck();
+  }
+
+  clearFilterView(): void {
+    this.isFilterActive = false;
+    this.filteredLocations = [];
+    this.activeFilterState = null;
+    this.filterStateService.clear();
+    this.cdr.markForCheck();
+  }
+
+  private applyFiltersToLocations(locations: Location[], state: FilterState): Location[] {
+    return locations.filter(loc => {
+      // Kategorija filter
+      if (state.activeCategories.length > 0) {
+        const key = (loc.postType || (loc as any).category || '').toLowerCase().replace(/\s+/g, '_');
+        if (!state.activeCategories.includes(key)) return false;
+      }
+      // Rating filter
+      if (state.minRating > 0 && (loc.avgRating || 0) < state.minRating) return false;
+      // Radius filter
+      if (state.radius > 0 && this.userPosition) {
+        const coords = this.getLocationCoordinates(loc);
+        if (coords) {
+          const dist = this.geolocationService.haversineKm(this.userPosition, coords);
+          if (dist > state.radius) return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  openSection(section: 'near-you' | 'recommended' | 'top-rated'): void {
+    this.activeSectionView = section;
+    this.isFilterActive = false; // zatvaramo filter view kad se otvara sekcija
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.cdr.markForCheck();
+  }
+
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
+
+  closeSection(): void {
+    this.activeSectionView = null;
+    this.cdr.markForCheck();
+  }
 
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
 
@@ -221,7 +334,52 @@ export class LocationListComponent implements OnInit {
 
   get sectionTitle(): string {
     if (this.isSearchActive) return `Results for "${this.searchQuery}"`;
-    return 'Near you';
+    return 'Explore';
+  }
+
+  private buildSections(): void {
+    const pos = this.userPosition
+      ? [this.userPosition.lat, this.userPosition.lng] as [number, number]
+      : null;
+
+    // 1. Near You: sorted by distance
+    const withDistance = [...this.allLocations]
+      .filter(l => l.distanceKm != null)
+      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+    const withoutDistance = this.allLocations.filter(l => l.distanceKm == null);
+    this.nearYouLocations = [...withDistance, ...withoutDistance].slice(0, SECTION_LIMIT);
+
+    // 2. Recommended for You: personalized recommendations
+    try {
+      const calendarItems = JSON.parse(localStorage.getItem('adrigo_guest_calendar_v1') || '[]');
+      const analytics = this.analyticsService.getRecentEvents();
+      const recs = this.recommendationService.buildPersonalizedRecommendations(
+        this.allLocations, null, [], calendarItems, analytics,
+        { userPosition: pos, limit: SECTION_LIMIT }
+      );
+      this.recommendedLocations = recs.map(r => r.location).slice(0, SECTION_LIMIT);
+    } catch {
+      // Fallback: show high-rated ones
+      this.recommendedLocations = [...this.allLocations]
+        .filter(l => l.avgRating != null)
+        .sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0))
+        .slice(0, SECTION_LIMIT);
+    }
+
+    // 3. Top Rated: global recommendations by rating & engagement
+    try {
+      const global = this.recommendationService.buildGlobalRecommendations(
+        this.allLocations, { userPosition: pos, limit: SECTION_LIMIT }
+      );
+      this.topRatedLocations = global.map(r => r.location).slice(0, SECTION_LIMIT);
+    } catch {
+      this.topRatedLocations = [...this.allLocations]
+        .filter(l => l.avgRating != null)
+        .sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0))
+        .slice(0, SECTION_LIMIT);
+    }
+
+    this.cdr.markForCheck();
   }
 
   private showFeedback(msg: string): void {
@@ -235,6 +393,7 @@ export class LocationListComponent implements OnInit {
       this.userPosition = position;
       this.allLocations = this.decorateLocations(this.allLocations);
       if (!this.isSearchActive) this.locations = [...this.allLocations];
+      this.buildSections();
       this.cdr.markForCheck();
     });
   }

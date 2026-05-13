@@ -13,7 +13,7 @@ import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-
 import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
-import { FilterStateService } from '../services/filter-state.service';
+import { FilterStateService, FilterState } from '../services/filter-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { UserService, CalendarItem, UserProfile, ServerPreferences } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
@@ -129,15 +129,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isLocating = false;
 
   categories = [
-    { key: 'attraction', label: 'Attractions', icon: '🏖️', active: true },
-    { key: 'restaurant', label: 'Restaurants', icon: '🍽️', active: true },
-    { key: 'cultural_site', label: 'Culture', icon: '🏛️', active: true },
-    { key: 'monument', label: 'Monuments', icon: '🗿', active: true },
-    { key: 'club', label: 'Nightlife', icon: '🎉', active: true },
-    { key: 'sports_facility', label: 'Activities', icon: '🏄', active: true },
-    { key: 'event', label: 'Events', icon: '📅', active: true },
-    { key: 'accommodation', label: 'Accommodation', icon: '🏨', active: true },
-    { key: 'shop', label: 'Shopping', icon: '🛍️', active: true },
+    { key: 'attraction', label: 'Attractions', icon: '🏖️', active: false },
+    { key: 'restaurant', label: 'Restaurants', icon: '🍽️', active: false },
+    { key: 'cultural_site', label: 'Culture', icon: '🏛️', active: false },
+    { key: 'monument', label: 'Monuments', icon: '🗿', active: false },
+    { key: 'club', label: 'Nightlife', icon: '🎉', active: false },
+    { key: 'sports_facility', label: 'Activities', icon: '🏄', active: false },
+    { key: 'event', label: 'Events', icon: '📅', active: false },
+    { key: 'accommodation', label: 'Accommodation', icon: '🏨', active: false },
+    { key: 'shop', label: 'Shopping', icon: '🛍️', active: false },
   ];
 
   filterMinRating = 0;
@@ -153,8 +153,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.filterMinRating > 0
       || this.filterOpenNow
       || (this.filterRadius > 0 && !!this.userPosition)
-      || !this.allCategoriesActive
+      || this.hasAnyCategorySelected
       || this.filterShowOnlySaved;
+  }
+
+  /** True when at least one category chip is selected (filled) */
+  get hasAnyCategorySelected(): boolean {
+    return this.categories.some(c => c.active);
   }
 
   get allCategoriesActive(): boolean {
@@ -437,9 +442,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleAllCategories(): void {
-    // Ako su sve aktivne — ugasi sve; ako nisu sve aktivne — upali sve
-    const shouldActivateAll = !this.allCategoriesActive;
-    this.categories.forEach(c => c.active = shouldActivateAll);
+    // Ako je bar jedan selektovan — deselektuj sve (vidi se sve)
+    // Ako nijedan nije selektovan — nema potrebe za ovom akcijom, ali ostavi je
+    const shouldDeselect = this.hasAnyCategorySelected;
+    this.categories.forEach(c => c.active = !shouldDeselect);
     this.syncFilterState();
     this.applyMarkerFilter();
   }
@@ -1318,19 +1324,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterRadius = state.radius ?? 0;
     this.filterShowOnlySaved = state.showOnlySaved ?? false;
     this.filterSavedPostIds = state.savedPostIds ?? [];
-    if (state.activeCategories.length > 0) {
-      this.categories.forEach(c => {
-        c.active = state.activeCategories.includes(c.key);
-      });
-    }
+    // activeCategories prazan niz = nijedan chip selektovan = sve vidljivo
+    this.categories.forEach(c => {
+      c.active = state.activeCategories.includes(c.key);
+    });
   }
 
   private syncFilterState(): void {
     const state = this.filterStateService.get();
-    const activeKeys = this.allCategoriesActive
-      ? []
-      : this.categories.filter(c => c.active).map(c => c.key);
-    this.filterStateService.set({ ...state, activeCategories: activeKeys });
+    // Snimamo samo selektovane — prazan niz znaci sve vidljivo
+    const selectedKeys = this.categories.filter(c => c.active).map(c => c.key);
+    this.filterStateService.set({ ...state, activeCategories: selectedKeys });
   }
 
   private updateDistancesAndRecommendations(): void {
@@ -1385,11 +1389,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.filterSavedPostIds.includes(loc.id)) return false;
     }
 
-    if (!this.allCategoriesActive) {
+    // Kategorija filter: ako nijedan chip nije selektovan → sve prolazi
+    // Ako je bar jedan selektovan → prikazuju se samo selektovane kategorije
+    if (this.hasAnyCategorySelected) {
       const key = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');
-      const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
+      const selectedKeys = this.categories.filter(c => c.active).map(c => c.key);
       const isKnownType = this.categories.some(c => c.key === key);
-      if (isKnownType && !activeKeys.includes(key)) return false;
+      if (isKnownType && !selectedKeys.includes(key)) return false;
     }
 
     if (this.filterMinRating > 0 && (loc.avgRating || 0) < this.filterMinRating) return false;
@@ -1756,14 +1762,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isFiltersOpen = false;
 
   openFilters(): void {
-    if (window.innerWidth >= 900) {
-      // Desktop: prikazujemo inline panel, mapa ostaje vidljiva
-      this.isFiltersOpen = true;
-      this.cdr.detectChanges();
-    } else {
-      // Mobilno: navigiramo na poseban ekran
-      this.router.navigate(['/filters']);
-    }
+    this.isFiltersOpen = true;
+    this.cdr.detectChanges();
   }
 
   closeInlineFilters(): void {
@@ -1773,7 +1773,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onInlineFiltersApplied(): void {
     this.isFiltersOpen = false;
-    // Osvezi filtere i markere
+    this.applyFilterState();
+    this.applyMarkerFilter();
+    this.cdr.detectChanges();
+  }
+
+  onFiltersChanged(state?: FilterState): void {
+    // Reactive: called on every filter change while panel is open — panel stays open
     this.applyFilterState();
     this.applyMarkerFilter();
     this.cdr.detectChanges();
