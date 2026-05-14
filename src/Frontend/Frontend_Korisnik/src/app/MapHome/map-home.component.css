@@ -1109,7 +1109,7 @@ app-location-details-card {
 .locate-btn {
   position: fixed;
   right: 16px;
-  bottom: calc(68px + 14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(68px + 60px + 14px + env(safe-area-inset-bottom, 0px));
   z-index: 500;
   width: 48px;
   height: 48px;
@@ -1123,6 +1123,9 @@ app-location-details-card {
   cursor: pointer;
   color: #3b82f6;
   transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
+}
+.map-wrapper.navigating .locate-btn {
+  bottom: calc(68px + 14px + env(safe-area-inset-bottom, 0px));
 }
 .locate-btn:hover:not(.locate-loading) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22); transform: scale(1.06); }
 .locate-btn:active:not(.locate-loading) { transform: scale(0.96); }

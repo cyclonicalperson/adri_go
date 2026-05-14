@@ -394,13 +394,12 @@
                    [centerLng]="19.1"
                    [zoom]="8"
                    height="280px" />
-          <div class="heat-legend">
-            @for (m of movements; track m.regionId) {
-            <span class="heat-legend-item">
-              <span class="heat-dot" [style.background]="heatColor(m)"></span>
-              {{ m.regionName }} · {{ m.visitCount }} poseta
-            </span>
-            }
+          <div class="heat-scale-legend">
+            <div class="heat-scale-bar" aria-hidden="true"></div>
+            <div class="heat-scale-labels">
+              <span>0 poseta</span>
+              <span>{{ movementMaxVisits }} poseta</span>
+            </div>
           </div>
           } @else {
           <div class="state-msg">Nema podataka o kretanju.</div>

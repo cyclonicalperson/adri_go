@@ -939,23 +939,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   clearRoute(): void {
-    this.plannerRenderToken++;
     if (this.isNavigating) {
       this.stopNavigation();
+      return;
     }
-    this.routePlanner.clear();
-    this.plannerStops = [];
-    this.plannerMode = false;
-    this.scenicMode = true;
-    this.scenicSuggestions = [];
-    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
-    this.showRoutePanel = false;
-    this.routeDestTitle = '';
-    this.plannerMessage = '';
-    this.isNavigating = false;
-    this.navigationSteps = [];
-    this.clearRouteVisuals();
-    this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    this.resetRouteState();
     this.cdr.detectChanges();
   }
 
@@ -1046,39 +1034,43 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   stopNavigation(): void {
-    this.isNavigating = false;
-    this.navigationSteps = [];
-    this.navigationRouteGeometry = [];
     this.navFollowMode = true;
     this.navMapRotation = 0;
     if (this.navUserMarkerEl) {
       this.navUserMarkerEl.style.transition = '';
     }
     this.navUserMarkerEl = null;
-    this.routePlanner.clear();
-    this.plannerStops = [];
-    this.plannerMode = false;
-    this.scenicSuggestions = [];
-    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
-    this.routeDestTitle = '';
-    this.plannerMessage = '';
-    this.showRoutePanel = false;
-    this.selectedLocation = null;
     this.clearNavRefollowTimer();
     this.setNavigationMapLock(false);
     void this.releaseScreenWakeLock();
 
-    // Remove the remaining-route overlay
-    this.clearRouteVisuals();
-    if (this.navRemainingPolyline && this.map) {
-      this.map.removeLayer(this.navRemainingPolyline);
-      this.navRemainingPolyline = null;
-    }
+    this.resetRouteState();
 
     // Reset map rotation back to North
     this.applyMapRotation(0, '0.4s ease');
 
     this.cdr.detectChanges();
+  }
+
+  private resetRouteState(): void {
+    this.plannerRenderToken++;
+    this.routePlanner.clear();
+    this.latestQueryParams = {};
+    this.plannerStops = [];
+    this.plannerMode = false;
+    this.scenicMode = true;
+    this.scenicSuggestions = [];
+    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
+    this.routeDestTitle = '';
+    this.plannerMessage = '';
+    this.showRoutePanel = false;
+    this.isRenderingRoute = false;
+    this.isNavigating = false;
+    this.navigationSteps = [];
+    this.navigationRouteGeometry = [];
+    this.selectedLocation = null;
+    this.clearRouteVisuals();
+    this.router.navigate([], { queryParams: {}, replaceUrl: true });
   }
 
   onNavigationArrived(): void {
