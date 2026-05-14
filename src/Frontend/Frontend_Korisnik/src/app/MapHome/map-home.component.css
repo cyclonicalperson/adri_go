@@ -285,6 +285,15 @@
   position: relative;
   z-index: 2500;
 }
+
+.map-wrapper.navigating .top-search-strip,
+.map-wrapper.navigating .top-ui-layer,
+.map-wrapper.navigating .sidebar,
+.map-wrapper.navigating .app-footer,
+.map-wrapper.navigating app-location-details-card,
+.map-wrapper.navigating .route-pill {
+  pointer-events: none;
+}
 .search-filter-btn:hover { color: var(--green-500); }
 .search-filter-btn svg {
   width: 17px;

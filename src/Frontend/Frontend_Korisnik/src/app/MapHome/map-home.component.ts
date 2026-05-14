@@ -65,6 +65,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private latestQueryParams: Record<string, string> = {};
   private lastHydratedQueryKey = '';
   private plannerRenderToken = 0;
+  private plannerRouteGeometry: [number, number][] = [];
+  private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
@@ -113,16 +115,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private navRefollowTimerId: ReturnType<typeof setTimeout> | null = null;
   /** How long (ms) to wait before auto-returning to follow mode */
   private readonly NAV_REFOLLOW_DELAY_MS = 8000;
-  /** Timestamp of last GPS position processed — used for throttling smooth pan */
-  private navLastPanTime = 0;
   /** Interpolated marker element for smooth movement — avoid remove/add on every tick */
   private navUserMarkerEl: HTMLElement | null = null;
+  private previousNavigationZoomOptions: Pick<L.MapOptions, 'scrollWheelZoom' | 'doubleClickZoom' | 'touchZoom'> | null = null;
   private wakeLock: any = null;
   private readonly onVisibilityChange = () => {
     if (document.visibilityState === 'visible' && this.isNavigating) {
       void this.requestScreenWakeLock();
     }
   };
+  private readonly handleWindowResize = () => this.scheduleMapViewportRefresh();
+  private readonly handleNavigationZoomRecenter = () => this.centerNavigationOnUser(false);
   private autoLocatePermissionStatus: PermissionStatus | null = null;
   private readonly handleAutoLocatePermissionChange = () => this.tryAutoLocateUser();
 
@@ -242,6 +245,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.initMap();
     document.addEventListener('visibilitychange', this.onVisibilityChange);
+    window.addEventListener('resize', this.handleWindowResize);
     this.tryAutoLocateUser();
     this.loadPersonalizationContext();
     this.loadLocations();
@@ -262,7 +266,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.map?.remove();
     this.clearNavRefollowTimer();
+    this.clearMapResizeTimer();
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    window.removeEventListener('resize', this.handleWindowResize);
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
     this.autoLocatePermissionStatus = null;
     void this.releaseScreenWakeLock();
@@ -551,13 +557,21 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   setTravelMode(mode: TravelMode): void {
-    if (this.travelMode === mode) {
-      return;
-    }
+    const changed = this.travelMode !== mode;
     this.travelMode = mode;
     this.routePlanner.setTravelMode(mode);
     this.preferences.update({ preferredTravelMode: mode });
-    this.renderPlannerRoute();
+    this.plannerMessage = '';
+
+    if (changed || this.plannerStops.length > 0) {
+      this.renderPlannerRoute();
+    }
+
+    this.analytics.track('planner_travel_mode_changed', {
+      travelMode: mode,
+      stopCount: this.plannerStops.length,
+    });
+    this.cdr.detectChanges();
   }
 
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
@@ -701,6 +715,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (routeCoordinates.length < 2) {
       const onlyStop = this.plannerStops[0];
+      if (this.preferences.snapshot.locationSharing && !this.userPosition) {
+        this.tryAutoLocateUser();
+      }
       this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
       this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
       this.cdr.detectChanges();
@@ -714,7 +731,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isRenderingRoute = true;
     const renderToken = ++this.plannerRenderToken;
 
-    this.routingService.computeRoute(routeCoordinates, this.travelMode)
+    this.routingService.computeRoute(routeCoordinates, this.travelMode, { viewport: this.getRouteViewportMode() })
       .then(route => {
         if (renderToken !== this.plannerRenderToken || !this.map) {
           return;
@@ -788,6 +805,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private clearRouteVisuals(): void {
+    this.plannerRouteGeometry = [];
     if (this.routePolyline) {
       this.map?.removeLayer(this.routePolyline);
       this.routePolyline = null;
@@ -941,10 +959,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     try {
-      const result = await this.routingService.computeRouteForNavigation(coordinates, this.travelMode);
+      const result = await this.routingService.computeRouteForNavigation(
+        coordinates,
+        this.travelMode,
+        { viewport: this.getRouteViewportMode() },
+      );
       this.navigationSteps = result.steps ?? [];
       this.navigationRouteGeometry = result.geometry;
       this.isNavigating = true;
+      this.showRoutePanel = false;
+      this.selectedLocation = null;
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
       this.sheetExpanded = false;
@@ -962,10 +986,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const position = await this.geolocationService.requestCurrentPosition({ maximumAge: 30000 });
     if (position) {
-      this.showUserLocation(position, false);
-      this.updateDistancesAndRecommendations();
-      this.applyMarkerFilter();
-      this.refreshRecommendations();
+      this.handleUserPositionAvailable(position, { fly: false, rerenderRoute: false });
     }
   }
 
@@ -974,7 +995,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navigationSteps = [];
     this.navFollowMode = true;
     this.navMapRotation = 0;
+    if (this.navUserMarkerEl) {
+      this.navUserMarkerEl.style.transition = '';
+    }
     this.navUserMarkerEl = null;
+    this.showRoutePanel = false;
+    this.selectedLocation = null;
     this.clearNavRefollowTimer();
     this.setNavigationMapLock(false);
     void this.releaseScreenWakeLock();
@@ -1000,12 +1026,34 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (locked) {
       this.navFollowMode = true;
+      if (!this.previousNavigationZoomOptions) {
+        this.previousNavigationZoomOptions = {
+          scrollWheelZoom: this.map.options.scrollWheelZoom,
+          doubleClickZoom: this.map.options.doubleClickZoom,
+          touchZoom: this.map.options.touchZoom,
+        };
+      }
+      this.map.options.scrollWheelZoom = 'center';
+      this.map.options.doubleClickZoom = 'center';
+      this.map.options.touchZoom = 'center';
       this.map.dragging.disable();
       this.map.boxZoom.disable();
       this.map.keyboard.disable();
+      this.map.scrollWheelZoom.enable();
+      this.map.doubleClickZoom.enable();
+      this.map.touchZoom.enable();
+      this.map.on('zoomstart zoomend', this.handleNavigationZoomRecenter);
+      this.centerNavigationOnUser(false);
       return;
     }
 
+    if (this.previousNavigationZoomOptions) {
+      this.map.options.scrollWheelZoom = this.previousNavigationZoomOptions.scrollWheelZoom;
+      this.map.options.doubleClickZoom = this.previousNavigationZoomOptions.doubleClickZoom;
+      this.map.options.touchZoom = this.previousNavigationZoomOptions.touchZoom;
+      this.previousNavigationZoomOptions = null;
+    }
+    this.map.off('zoomstart zoomend', this.handleNavigationZoomRecenter);
     this.map.dragging.enable();
     this.map.boxZoom.enable();
     this.map.keyboard.enable();
@@ -1045,19 +1093,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.moveUserMarkerSmooth(position);
 
     if (!this.navFollowMode || !this.map) return;
+    this.centerNavigationOnUser(false);
+  }
 
-    // Throttle pan to max once per 800ms for smooth animation
-    const now = Date.now();
-    if (now - this.navLastPanTime < 800) return;
-    this.navLastPanTime = now;
-
-    // panTo is smoother than setView for continuous tracking
-    this.map.panTo(position, {
-      animate: true,
-      duration: 0.8,
-      easeLinearity: 0.5,
-      noMoveStart: true,
-    });
+  private centerNavigationOnUser(animate: boolean): void {
+    if (!this.map || !this.userPosition) return;
+    this.map.setView(this.userPosition, this.map.getZoom(), { animate });
   }
 
   /** Move user marker by updating LatLng directly — no DOM remove/add = no flicker */
@@ -1073,8 +1114,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.navUserMarkerEl = ((this.userMarker as any).getElement?.() as HTMLElement) ?? null;
         if (this.navUserMarkerEl) {
-          this.navUserMarkerEl.style.transition = 'transform 0.8s linear';
+          this.navUserMarkerEl.style.transition = this.isNavigating && this.navFollowMode
+            ? 'none'
+            : 'transform 0.8s linear';
         }
+      } else {
+        this.navUserMarkerEl.style.transition = this.isNavigating && this.navFollowMode
+          ? 'none'
+          : 'transform 0.8s linear';
       }
     } else {
       // First time: create the marker normally
@@ -1082,7 +1129,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.navUserMarkerEl = ((this.userMarker as any)?.getElement?.() as HTMLElement) ?? null;
       if (this.navUserMarkerEl) {
-        this.navUserMarkerEl.style.transition = 'transform 0.8s linear';
+        this.navUserMarkerEl.style.transition = this.isNavigating && this.navFollowMode
+          ? 'none'
+          : 'transform 0.8s linear';
       }
     }
   }
@@ -1102,12 +1151,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map.removeLayer(this.navRemainingPolyline);
       this.navRemainingPolyline = null;
     }
+    this.walkingDotMarkers.forEach(marker => this.map?.removeLayer(marker));
+    this.walkingDotMarkers = [];
     if (this.map && event.geometry.length >= 2) {
-      this.navRemainingPolyline = L.polyline(event.geometry, {
-        color: '#22c55e',
-        weight: 6,
-        opacity: 0.9,
-      }).addTo(this.map);
+      if (this.travelMode === 'walking') {
+        this.drawWalkingDots(event.geometry, true);
+      } else {
+        this.navRemainingPolyline = L.polyline(event.geometry, {
+          color: '#22c55e',
+          weight: 6,
+          opacity: 0.9,
+        }).addTo(this.map);
+      }
     }
 
     this.cdr.detectChanges();
@@ -1172,15 +1227,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navRefollowTimerId = setTimeout(() => {
       if (this.isNavigating && !this.navFollowMode) {
         this.navFollowMode = true;
-        if (this.userPosition && this.map) {
-          this.map.panTo(this.userPosition, {
-            animate: true,
-            duration: 0.8,
-            easeLinearity: 0.5,
-            noMoveStart: true,
-          });
-          this.applyMapRotation(-this.navMapRotation);
-        }
+        this.centerNavigationOnUser(false);
+        this.applyMapRotation(-this.navMapRotation);
         this.cdr.detectChanges();
       }
     }, this.NAV_REFOLLOW_DELAY_MS);
@@ -1193,20 +1241,38 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** User taps the locate/recenter button during navigation — re-enables follow mode immediately */
+  /** Debounced viewport refresh for desktop/mobile switches and browser resizes. */
+  private scheduleMapViewportRefresh(): void {
+    this.clearMapResizeTimer();
+    this.mapResizeTimerId = setTimeout(() => {
+      this.mapResizeTimerId = null;
+      this.map?.invalidateSize();
+
+      if (this.isNavigating && this.navFollowMode) {
+        this.centerNavigationOnUser(false);
+        return;
+      }
+
+      if (!this.isNavigating && this.plannerRouteGeometry.length >= 2) {
+        this.fitRouteGeometry(this.plannerRouteGeometry, false);
+      }
+    }, 120);
+  }
+
+  private clearMapResizeTimer(): void {
+    if (this.mapResizeTimerId !== null) {
+      clearTimeout(this.mapResizeTimerId);
+      this.mapResizeTimerId = null;
+    }
+  }
+
+  /** User taps the locate/recenter button during navigation. */
   locateMeOrRefollow(): void {
     if (this.isNavigating) {
       this.clearNavRefollowTimer();
       this.navFollowMode = true;
-      if (this.userPosition && this.map) {
-        this.map.panTo(this.userPosition, {
-          animate: true,
-          duration: 0.8,
-          easeLinearity: 0.5,
-          noMoveStart: true,
-        });
-        this.applyMapRotation(-this.navMapRotation);
-      }
+      this.centerNavigationOnUser(false);
+      this.applyMapRotation(-this.navMapRotation);
       this.cdr.detectChanges();
     } else {
       this.locateMe();
@@ -1251,6 +1317,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private drawPlannerPolyline(route: ComputedRoute): void {
     if (!this.map || route.geometry.length < 2) return;
+    this.plannerRouteGeometry = route.geometry;
 
     if (this.travelMode === 'walking') {
       this.drawWalkingDots(route.geometry, false);
@@ -1263,8 +1330,29 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }).addTo(this.map);
     }
 
-    const bounds = L.latLngBounds(route.geometry);
-    this.map.fitBounds(bounds, { padding: [60, 60] });
+    this.fitRouteGeometry(route.geometry);
+  }
+
+  private getRouteViewportMode(): 'mobile' | 'desktop' {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 899px)').matches
+      ? 'mobile'
+      : 'desktop';
+  }
+
+  private fitRouteGeometry(geometry: [number, number][], animate = true): void {
+    if (!this.map || geometry.length < 2) return;
+
+    const bounds = L.latLngBounds(geometry);
+    if (this.getRouteViewportMode() === 'mobile') {
+      this.map.fitBounds(bounds, {
+        paddingTopLeft: [42, 150],
+        paddingBottomRight: [42, 160],
+        animate,
+      });
+      return;
+    }
+
+    this.map.fitBounds(bounds, { padding: [60, 60], animate });
   }
 
   /**
@@ -1314,6 +1402,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       const lng = geometry[i][1];
 
       const segLen = this.haversineM(prevLat, prevLng, lat, lng);
+      if (segLen <= 0) {
+        prevLat = lat;
+        prevLng = lng;
+        continue;
+      }
       accumulated += segLen;
 
       while (accumulated >= SPACING_M) {
@@ -1641,10 +1734,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.geolocationService.requestCurrentPosition({ maximumAge: 0 }).then((position) => {
       this.isLocating = false;
       if (position) {
-        this.showUserLocation(position, true);
-        this.updateDistancesAndRecommendations();
-        this.applyMarkerFilter();
-        this.refreshRecommendations();
+        this.handleUserPositionAvailable(position, { fly: true, rerenderRoute: true });
       }
       this.cdr.detectChanges();
     });
@@ -1658,10 +1748,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const locate = () => {
       void this.geolocationService.requestCurrentPosition({ maximumAge: 60000 }).then((position) => {
         if (!position) return;
-        this.showUserLocation(position, false);
-        this.updateDistancesAndRecommendations();
-        this.applyMarkerFilter();
-        this.refreshRecommendations();
+        this.handleUserPositionAvailable(position, { fly: false, rerenderRoute: true });
         this.cdr.detectChanges();
       });
     };
@@ -1680,6 +1767,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     locate();
+  }
+
+  private handleUserPositionAvailable(
+    position: UserPosition,
+    options: { fly?: boolean; rerenderRoute?: boolean } = {},
+  ): void {
+    this.showUserLocation(position, !!options.fly);
+    this.updateDistancesAndRecommendations();
+    this.applyMarkerFilter();
+    this.refreshRecommendations();
+
+    if (this.isNavigating && this.navFollowMode) {
+      this.centerNavigationOnUser(false);
+      return;
+    }
+
+    if (options.rerenderRoute && this.plannerStops.length > 0) {
+      this.renderPlannerRoute();
+    }
   }
 
   private showUserLocation(position: UserPosition, fly: boolean): void {

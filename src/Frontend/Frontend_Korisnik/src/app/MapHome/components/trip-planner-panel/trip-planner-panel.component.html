@@ -15,9 +15,14 @@
 
   <div class="planner-controls">
     <div class="travel-mode-switch">
-      <button type="button" [class.active]="travelMode === 'driving'" (click)="travelModeSelected.emit('driving')">Drive</button>
-      <button type="button" [class.active]="travelMode === 'walking'" (click)="travelModeSelected.emit('walking')">Walk</button>
-      <button type="button" [class.active]="travelMode === 'cycling'" (click)="travelModeSelected.emit('cycling')">Cycle</button>
+      <button
+        type="button"
+        *ngFor="let option of travelModes"
+        [class.active]="travelMode === option.mode"
+        [attr.aria-pressed]="travelMode === option.mode"
+        (click)="selectTravelMode(option.mode, $event)">
+        {{ option.label }}
+      </button>
     </div>
     <button type="button" class="scenic-toggle" [class.active]="scenicMode" (click)="scenicModeToggled.emit()">
       Scenic detours {{ scenicMode ? 'On' : 'Off' }}

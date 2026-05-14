@@ -311,12 +311,13 @@
     position: fixed;
     top: 64px; left: 0;
     width: 380px;
-    height: calc(100dvh - 64px - 68px);
+    height: calc(100dvh - 64px);
     z-index: 3000;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: #1e3a2f;
+    pointer-events: auto;
   }
 
   /* "Then" strip stays as is — just static inside sidebar */
