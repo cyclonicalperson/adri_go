@@ -9,9 +9,14 @@ interface StoredUserSettings {
   locationSharing?: boolean;
 }
 
+interface StoredTouristPreferences {
+  locationSharing?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GeolocationService {
   private readonly SETTINGS_KEY = 'user_settings';
+  private readonly PREFERENCES_KEY = 'adrigo_user_preferences_v2';
 
   isSupported(): boolean {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
@@ -23,6 +28,14 @@ export class GeolocationService {
 
   isLocationSharingEnabled(): boolean {
     try {
+      const preferencesRaw = localStorage.getItem(this.PREFERENCES_KEY);
+      if (preferencesRaw) {
+        const preferences = JSON.parse(preferencesRaw) as StoredTouristPreferences;
+        if (typeof preferences.locationSharing === 'boolean') {
+          return preferences.locationSharing;
+        }
+      }
+
       const raw = localStorage.getItem(this.SETTINGS_KEY);
       if (!raw) return true;
 

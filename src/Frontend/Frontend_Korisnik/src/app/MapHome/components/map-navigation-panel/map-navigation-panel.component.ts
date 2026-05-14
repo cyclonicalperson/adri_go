@@ -38,6 +38,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
   @Output() routeTrailUpdated = new EventEmitter<[number, number][]>();
   /** Emits a fully recalculated route when the user goes off-route */
   @Output() routeRecalculated = new EventEmitter<{ steps: NavigationStep[]; geometry: [number, number][] }>();
+  @Output() navigationArrived = new EventEmitter<void>();
 
   currentStepIndex = 0;
   distanceToNextM = 0;
@@ -435,6 +436,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy {
       this.arrived = true;
       this.remainingDistanceKm = 0;
       this.remainingMin = 0;
+      this.navigationArrived.emit();
       return;
     }
 

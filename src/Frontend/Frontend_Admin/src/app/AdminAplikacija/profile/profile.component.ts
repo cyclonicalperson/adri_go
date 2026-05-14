@@ -204,7 +204,21 @@ export class ProfileComponent implements OnInit {
     this.userService.uploadProfileImage(file).subscribe({
       next: url => {
         if (this.user) this.user = { ...this.user, profileImage: url };
-        this.photoUploading = false;
+        this.userService.updateSelf({ profileImage: url }).subscribe({
+          next: () => {
+            const current = this.authService.currentUser;
+            if (current) {
+              const updated = { ...current, profileImage: url };
+              (this.authService as any)['_currentUser$']?.next(updated);
+              try { localStorage.setItem('tg_user', JSON.stringify(updated)); } catch { /* ignore */ }
+            }
+            this.photoUploading = false;
+          },
+          error: () => {
+            this.photoUploading = false;
+            this.saveError = 'Slika je uploadovana, ali profil nije azuriran.';
+          },
+        });
       },
       error: () => {
         this.photoUploading = false;

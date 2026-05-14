@@ -1,0 +1,51 @@
+<div class="activities-page">
+  <header class="topbar">
+    <button class="icon-btn" (click)="goToMap()" aria-label="Back to map">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <h1>Activities</h1>
+    <button class="icon-btn" (click)="toggleMenu()" aria-label="Menu">
+      <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    </button>
+  </header>
+
+  <section class="controls">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/></svg>
+      <input [(ngModel)]="searchQuery" placeholder="Search activities">
+    </div>
+    <select [(ngModel)]="sortOption">
+      <option value="name-asc">Name A-Z</option>
+      <option value="popular">Most viewed</option>
+      <option value="difficulty">Difficulty</option>
+    </select>
+  </section>
+
+  <div class="state" *ngIf="isLoading">Loading activities...</div>
+  <div class="state error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <main class="activity-grid" *ngIf="!isLoading && !errorMessage">
+    <article class="activity-card" *ngFor="let activity of visibleActivities">
+      <div class="activity-head">
+        <span class="activity-dot" [style.background]="activity.color"></span>
+        <div>
+          <h2>{{ activity.name }}</h2>
+          <p>{{ activity.locationName || activity.category }}</p>
+        </div>
+      </div>
+      <p class="description">{{ activity.description || 'No description available.' }}</p>
+      <div class="tags">
+        <span *ngIf="activity.duration">{{ activity.duration }}</span>
+        <span *ngIf="activity.difficulty">{{ activity.difficulty }}</span>
+        <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} places</span>
+      </div>
+      <button class="primary-btn" (click)="openActivity(activity)" [disabled]="!activity.postId && (activity.lat == null || activity.lng == null)">
+        Open
+      </button>
+    </article>
+
+    <div class="state" *ngIf="visibleActivities.length === 0">No activities found.</div>
+  </main>
+
+  <app-side-menu *ngIf="isMenuOpen" (onClose)="isMenuOpen = false"></app-side-menu>
+</div>

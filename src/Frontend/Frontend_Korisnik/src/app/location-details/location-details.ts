@@ -97,11 +97,8 @@ export class LocationDetailsComponent implements OnInit {
         this.currentImageIndex = 0;
 
         if (!this.authService.isLoggedIn) {
-          // Guest: read like/save state from localStorage
-          const likedIds: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-          const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-          this.location.isLiked          = likedIds.includes(loc.id);
-          (this.location as any).isSaved = savedIds.includes(loc.id);
+          this.location.isLiked = false;
+          (this.location as any).isSaved = false;
         } else {
           // Logged-in: API returns isLiked and isSaved from DB
           // isLiked is already on Location interface
@@ -163,7 +160,7 @@ export class LocationDetailsComponent implements OnInit {
     if (!this.location) return;
 
     if (!this.authService.isLoggedIn) {
-      this.toggleGuestLike(this.location.id);
+      this.openAuthModal();
       return;
     }
 
@@ -197,35 +194,12 @@ export class LocationDetailsComponent implements OnInit {
     }
   }
 
-  private toggleGuestLike(id: number): void {
-    const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-    const idx = liked.indexOf(id);
-    if (idx >= 0) {
-      liked.splice(idx, 1);
-      this.likeMessage = 'Like removed';
-      if (this.location) {
-        this.location.isLiked = false;
-        this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
-      }
-    } else {
-      liked.push(id);
-      this.likeMessage = '❤️ Liked!';
-      if (this.location) {
-        this.location.isLiked = true;
-        this.location.likeCount = (this.location.likeCount || 0) + 1;
-      }
-    }
-    localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
-    setTimeout(() => (this.likeMessage = ''), 3000);
-    this.cdr.markForCheck();
-  }
-
   // ── SAVE ─────────────────────────────────────────────────────────
   onSave(): void {
     if (!this.location) return;
 
     if (!this.authService.isLoggedIn) {
-      this.toggleGuestSave(this.location.id);
+      this.openAuthModal();
       return;
     }
 
@@ -252,29 +226,6 @@ export class LocationDetailsComponent implements OnInit {
         }
       }
     });
-  }
-
-  private toggleGuestSave(id: number): void {
-    const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-    const idx = saved.indexOf(id);
-    if (idx >= 0) {
-      saved.splice(idx, 1);
-      this.saveMessage = 'Removed from saved';
-      if (this.location) {
-        (this.location as any).isSaved = false;
-        this.location.saveCount = Math.max(0, (this.location.saveCount || 0) - 1);
-      }
-    } else {
-      saved.push(id);
-      this.saveMessage = '🔖 Saved!';
-      if (this.location) {
-        (this.location as any).isSaved = true;
-        this.location.saveCount = (this.location.saveCount || 0) + 1;
-      }
-    }
-    localStorage.setItem('guest_saved_ids', JSON.stringify(saved));
-    setTimeout(() => (this.saveMessage = ''), 3000);
-    this.cdr.markForCheck();
   }
 
   // ── WORKING HOURS ─────────────────────────────────────────────────

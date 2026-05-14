@@ -157,6 +157,14 @@ export class LoginComponent implements OnInit {
         success: 'Se ha enviado un nuevo correo de verificacion.',
         error: 'No se pudo reenviar el correo de verificacion.',
       },
+      nl: {
+        success: 'Er is een nieuwe verificatie-e-mail verzonden.',
+        error: 'De verificatie-e-mail kon niet opnieuw worden verzonden.',
+      },
+      ru: {
+        success: 'Новое письмо для подтверждения отправлено.',
+        error: 'Не удалось повторно отправить письмо для подтверждения.',
+      },
     };
     return (messages[lang] ?? messages['en'])[kind];
   }

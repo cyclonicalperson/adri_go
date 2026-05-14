@@ -135,6 +135,7 @@ export class PersonalInfoComponent implements OnInit {
           name: updated.fullName || this.form.fullName,
           email: updated.emailOrPhone || this.form.emailOrPhone,
           language: updated.language || this.userData?.language,
+          profileImage: updated.profilePic ?? this.userData?.profilePic ?? null,
         });
         this.isSaving    = false;
         this.editMode    = false;
@@ -168,8 +169,24 @@ export class PersonalInfoComponent implements OnInit {
           ...(this.userData as UserProfile),
           profilePic: url,
         };
-        this.isUploadingPhoto = false;
-        this.cdr.detectChanges();
+        this.authService.updateCurrentTourist({ profileImage: url });
+        this.userService.updateProfile({ profileImage: url }).subscribe({
+          next: (updated) => {
+            if (this.userData) {
+              this.userData.profilePic = updated.profilePic ?? url;
+            }
+            this.authService.updateCurrentTourist({ profileImage: this.userData?.profilePic ?? url });
+            this.isUploadingPhoto = false;
+            this.saveSuccess = true;
+            setTimeout(() => (this.saveSuccess = false), 2500);
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.isUploadingPhoto = false;
+            this.saveError = 'Photo uploaded, but the profile could not be updated.';
+            this.cdr.detectChanges();
+          }
+        });
       },
       error: () => {
         this.isUploadingPhoto = false;

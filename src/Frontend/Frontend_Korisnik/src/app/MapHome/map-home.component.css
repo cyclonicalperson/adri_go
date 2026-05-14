@@ -212,6 +212,9 @@
   padding: 10px 16px;
   box-shadow: var(--shadow-lg);
   gap: 10px;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
 }
 
 .search-icon {
@@ -223,6 +226,7 @@
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   font-size: 14px;
@@ -240,6 +244,7 @@
   padding: 0;
   cursor: pointer;
   color: var(--gray-400);
+  flex-shrink: 0;
 }
 .search-clear-btn svg { width: 18px; height: 18px; fill: var(--gray-400); }
 .search-clear-btn:hover svg { fill: var(--gray-600); }
@@ -266,6 +271,19 @@
   white-space: nowrap;
   transition: color 0.15s;
   flex-shrink: 0;
+}
+
+.map-wrapper.filters-open .top-search-strip,
+.map-wrapper.filters-open .top-ui-layer,
+.map-wrapper.filters-open .locate-btn,
+.map-wrapper.filters-open app-location-details-card {
+  pointer-events: none;
+}
+
+.map-wrapper app-filters {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2500;
 }
 .search-filter-btn:hover { color: var(--green-500); }
 .search-filter-btn svg {

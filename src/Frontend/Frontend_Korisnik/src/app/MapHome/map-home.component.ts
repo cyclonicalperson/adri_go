@@ -68,7 +68,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
-  private walkingDotMarkers: L.Marker[] = [];
+  private walkingDotMarkers: L.Layer[] = [];
   routeDestTitle = '';
   showRoutePanel = false;
   isRenderingRoute = false;
@@ -117,6 +117,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private navLastPanTime = 0;
   /** Interpolated marker element for smooth movement — avoid remove/add on every tick */
   private navUserMarkerEl: HTMLElement | null = null;
+  private wakeLock: any = null;
+  private readonly onVisibilityChange = () => {
+    if (document.visibilityState === 'visible' && this.isNavigating) {
+      void this.requestScreenWakeLock();
+    }
+  };
+  private autoLocatePermissionStatus: PermissionStatus | null = null;
+  private readonly handleAutoLocatePermissionChange = () => this.tryAutoLocateUser();
 
   showClearRouteConfirm = false;
 
@@ -233,6 +241,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initMap();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.tryAutoLocateUser();
     this.loadPersonalizationContext();
     this.loadLocations();
@@ -253,6 +262,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.map?.remove();
     this.clearNavRefollowTimer();
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
+    this.autoLocatePermissionStatus = null;
+    void this.releaseScreenWakeLock();
   }
 
   loadLocations(): void {
@@ -323,8 +336,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-    this.savedLocationsContext = this.locationsList.filter(location => savedIds.includes(location.id));
+    this.savedLocationsContext = [];
   }
 
   private refreshRecommendations(): void {
@@ -780,6 +792,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map?.removeLayer(this.routePolyline);
       this.routePolyline = null;
     }
+    if (this.navRemainingPolyline) {
+      this.map?.removeLayer(this.navRemainingPolyline);
+      this.navRemainingPolyline = null;
+    }
     this.walkingDotMarkers.forEach(m => this.map?.removeLayer(m));
     this.walkingDotMarkers = [];
     this.routeStopMarkers.forEach(marker => this.map?.removeLayer(marker));
@@ -929,6 +945,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.navigationSteps = result.steps ?? [];
       this.navigationRouteGeometry = result.geometry;
       this.isNavigating = true;
+      this.setNavigationMapLock(true);
+      void this.requestScreenWakeLock();
       this.sheetExpanded = false;
       this.cdr.detectChanges();
     } catch {
@@ -958,6 +976,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navMapRotation = 0;
     this.navUserMarkerEl = null;
     this.clearNavRefollowTimer();
+    this.setNavigationMapLock(false);
+    void this.releaseScreenWakeLock();
 
     // Remove the remaining-route overlay
     if (this.navRemainingPolyline && this.map) {
@@ -969,6 +989,55 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.applyMapRotation(0, '0.4s ease');
 
     this.cdr.detectChanges();
+  }
+
+  onNavigationArrived(): void {
+    this.clearRoute();
+  }
+
+  private setNavigationMapLock(locked: boolean): void {
+    if (!this.map) return;
+
+    if (locked) {
+      this.navFollowMode = true;
+      this.map.dragging.disable();
+      this.map.boxZoom.disable();
+      this.map.keyboard.disable();
+      return;
+    }
+
+    this.map.dragging.enable();
+    this.map.boxZoom.enable();
+    this.map.keyboard.enable();
+  }
+
+  private async requestScreenWakeLock(): Promise<void> {
+    if (!('wakeLock' in navigator) || this.wakeLock) {
+      return;
+    }
+
+    try {
+      this.wakeLock = await (navigator as any).wakeLock.request('screen');
+      this.wakeLock?.addEventListener?.('release', () => {
+        this.wakeLock = null;
+      });
+    } catch {
+      this.wakeLock = null;
+    }
+  }
+
+  private async releaseScreenWakeLock(): Promise<void> {
+    if (!this.wakeLock) {
+      return;
+    }
+
+    const lock = this.wakeLock;
+    this.wakeLock = null;
+    try {
+      await lock.release?.();
+    } catch {
+      // The browser may have already released it when the tab lost focus.
+    }
   }
 
   onNavigationPositionUpdated(position: [number, number]): void {
@@ -1212,8 +1281,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ): void {
     if (!this.map || geometry.length < 2) return;
 
-    // Dot spacing in meters. At zoom ~15 this gives a dot every ~8px.
-    const SPACING_M = 12;
+    const totalDistanceM = this.geometryDistanceM(geometry);
+    const maxDots = isNav ? 120 : 180;
+    const minSpacingM = isNav ? 18 : 24;
+    const SPACING_M = Math.max(minSpacingM, Math.ceil(totalDistanceM / maxDots));
     const color = '#22c55e';
     const dotSize = isNav ? 7 : 8;
 
@@ -1223,15 +1294,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     let prevLng = geometry[0][1];
 
     const place = (lat: number, lng: number) => {
-      const icon = L.divIcon({
-        html: `<div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"></div>`,
-        className: '',
-        iconSize: [dotSize, dotSize],
-        iconAnchor: [dotSize / 2, dotSize / 2],
-      });
-      const m = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: 100 });
-      m.addTo(this.map!);
-      this.walkingDotMarkers.push(m);
+      const marker = L.circleMarker([lat, lng], {
+        radius: dotSize / 2,
+        color: '#fff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1,
+        opacity: 1,
+        interactive: false,
+      }).addTo(this.map!);
+      this.walkingDotMarkers.push(marker);
     };
 
     // Always place a dot at the very start
@@ -1257,6 +1329,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       prevLat = lat;
       prevLng = lng;
     }
+  }
+
+  private geometryDistanceM(geometry: [number, number][]): number {
+    let total = 0;
+    for (let index = 1; index < geometry.length; index++) {
+      total += this.haversineM(
+        geometry[index - 1][0],
+        geometry[index - 1][1],
+        geometry[index][0],
+        geometry[index][1],
+      );
+    }
+    return total;
   }
 
   /** Simple haversine distance in metres between two lat/lng points. */
@@ -1585,10 +1670,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (permissions?.query) {
       permissions.query({ name: 'geolocation' as PermissionName })
         .then(status => {
+          this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
+          this.autoLocatePermissionStatus = status;
+          status.addEventListener?.('change', this.handleAutoLocatePermissionChange);
           if (status.state === 'granted') locate();
         })
-        .catch(() => {});
+        .catch(() => locate());
+      return;
     }
+
+    locate();
   }
 
   private showUserLocation(position: UserPosition, fly: boolean): void {
@@ -1600,12 +1691,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     if (this.userMarker) {
-      this.map!.removeLayer(this.userMarker);
+      this.userMarker.setLatLng([position.lat, position.lng]);
+    } else {
+      this.userMarker = L.marker([position.lat, position.lng], { icon: userIcon, zIndexOffset: 1000 })
+        .bindPopup('<b>You are here</b>')
+        .addTo(this.map!);
     }
-
-    this.userMarker = L.marker([position.lat, position.lng], { icon: userIcon, zIndexOffset: 1000 })
-      .bindPopup('<b>You are here</b>')
-      .addTo(this.map!);
 
     this.userPosition = [position.lat, position.lng];
     if (fly) {

@@ -113,21 +113,13 @@ export class ExploreSectionComponent implements OnInit {
 
   private applyGuestState(locations: Location[]): Location[] {
     if (this.authService.isLoggedIn) return locations;
-    const likedIds: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-    return locations.map(loc => ({ ...loc, isLiked: likedIds.includes(loc.id), isSaved: savedIds.includes(loc.id) }));
+    return locations.map(loc => ({ ...loc, isLiked: false, isSaved: false }));
   }
 
   onLike(loc: Location, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) {
-      const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-      const idx = liked.indexOf(loc.id);
-      if (idx >= 0) { liked.splice(idx, 1); loc.isLiked = false; loc.likeCount = Math.max(0, (loc.likeCount || 0) - 1); }
-      else { liked.push(loc.id); loc.isLiked = true; loc.likeCount = (loc.likeCount || 0) + 1; }
-      localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
-      this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed');
-      this.cdr.markForCheck();
+      this.router.navigate(['/login']);
       return;
     }
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
@@ -140,13 +132,7 @@ export class ExploreSectionComponent implements OnInit {
   onSave(loc: Location, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) {
-      const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-      const idx = saved.indexOf(loc.id);
-      if (idx >= 0) { saved.splice(idx, 1); loc.isSaved = false; loc.saveCount = Math.max(0, (loc.saveCount || 0) - 1); }
-      else { saved.push(loc.id); loc.isSaved = true; loc.saveCount = (loc.saveCount || 0) + 1; }
-      localStorage.setItem('guest_saved_ids', JSON.stringify(saved));
-      this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
-      this.cdr.markForCheck();
+      this.router.navigate(['/login']);
       return;
     }
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);

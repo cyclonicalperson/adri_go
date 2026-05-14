@@ -393,6 +393,15 @@ namespace TouristGuide.Api.Controllers
                 Notes = null,
                 ScheduledTime = null
             });
+            _db.Notifications.Add(new Notification
+            {
+                TouristId = touristId.Value,
+                Type = "calendar",
+                Title = "Added to calendar",
+                Body = $"{post.Title} is now in your travel calendar.",
+                Payload = System.Text.Json.JsonSerializer.Serialize(new { postId }),
+                CreatedAt = DateTime.UtcNow
+            });
 
             await _db.SaveChangesAsync();
             return Ok(new { message = "Added to calendar." });

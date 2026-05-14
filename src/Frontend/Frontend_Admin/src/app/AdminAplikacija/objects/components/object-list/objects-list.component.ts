@@ -149,8 +149,10 @@ export class ObjectsListComponent implements OnInit {
     this.router.navigate(['/admin/lokacije', objectItem.objectId]);
   }
 
-  goMap(_: TouristObject): void {
-    this.router.navigate(['/admin/map-admin']);
+  goMap(objectItem: TouristObject): void {
+    this.router.navigate(['/admin/map-admin'], {
+      queryParams: { focusPostId: objectItem.objectId },
+    });
   }
 
   confirmDelete(objectItem: TouristObject): void {

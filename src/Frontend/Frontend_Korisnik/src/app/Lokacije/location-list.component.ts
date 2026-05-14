@@ -15,6 +15,7 @@ import { formatPostType } from '../utils/post-type.utils';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
+type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
 
 @Component({
   selector: 'app-location-list',
@@ -34,6 +35,16 @@ export class LocationListComponent implements OnInit {
   errorMessage = '';
   feedbackMessage = '';
   private userPosition: UserPosition | null = null;
+  sortOption: SortOption = 'recommended';
+  readonly sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'recommended', label: 'Recommended' },
+    { value: 'rating-desc', label: 'Highest rated' },
+    { value: 'distance-asc', label: 'Nearest' },
+    { value: 'name-asc', label: 'Name A-Z' },
+    { value: 'name-desc', label: 'Name Z-A' },
+    { value: 'newest', label: 'Newest' },
+    { value: 'popular', label: 'Most popular' },
+  ];
 
   searchQuery = '';
   isSearchActive = false;
@@ -67,12 +78,15 @@ export class LocationListComponent implements OnInit {
   }
 
   get activeSectionLocations(): Location[] {
-    switch (this.activeSectionView) {
+    const items = (() => {
+      switch (this.activeSectionView) {
       case 'near-you': return this.nearYouLocations;
       case 'recommended': return this.recommendedLocations;
       case 'top-rated': return this.topRatedLocations;
       default: return [];
-    }
+      }
+    })();
+    return this.applySort(items);
   }
 
   constructor(
@@ -98,7 +112,7 @@ export class LocationListComponent implements OnInit {
       next: (res) => {
         const decorated = this.decorateLocations(res.data);
         this.allLocations = this.applyGuestState(decorated);
-        this.locations = [...this.allLocations];
+        this.locations = this.applySort(this.allLocations);
         this.buildSections();
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -118,7 +132,7 @@ export class LocationListComponent implements OnInit {
       this.searchResults = [];
       this.showDropdown = false;
       this.isSearchActive = false;
-      this.locations = [...this.allLocations];
+      this.locations = this.applySort(this.allLocations);
       this.cdr.markForCheck();
       return;
     }
@@ -131,11 +145,11 @@ export class LocationListComponent implements OnInit {
       .slice(0, 8);
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
     this.isSearchActive = true;
-    this.locations = this.allLocations.filter(loc =>
+    this.locations = this.applySort(this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
       (loc.regionName || '').toLowerCase().includes(q)
-    );
+    ));
     this.showDropdown = this.searchResults.length > 0;
     this.cdr.markForCheck();
   }
@@ -146,11 +160,11 @@ export class LocationListComponent implements OnInit {
     this.showDropdown = false;
     this.isSearchActive = true;
     const q = this.searchQuery.trim().toLowerCase();
-    this.locations = this.allLocations.filter(l =>
+    this.locations = this.applySort(this.allLocations.filter(l =>
       (l.title || '').toLowerCase().includes(q) ||
       (l.postType || (l as any).category || '').toLowerCase().includes(q) ||
       (l.regionName || '').toLowerCase().includes(q)
-    );
+    ));
     this.cdr.markForCheck();
   }
 
@@ -163,11 +177,11 @@ export class LocationListComponent implements OnInit {
       return;
     }
     this.isSearchActive = true;
-    this.locations = this.allLocations.filter(loc =>
+    this.locations = this.applySort(this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
       (loc.regionName || '').toLowerCase().includes(q)
-    );
+    ));
     this.cdr.markForCheck();
   }
 
@@ -176,7 +190,7 @@ export class LocationListComponent implements OnInit {
     this.isSearchActive = false;
     this.searchResults = [];
     this.showDropdown = false;
-    this.locations = [...this.allLocations];
+    this.locations = this.applySort(this.allLocations);
     this.cdr.markForCheck();
   }
 
@@ -190,12 +204,10 @@ export class LocationListComponent implements OnInit {
 
   private applyGuestState(locations: Location[]): Location[] {
     if (this.authService.isLoggedIn) return locations;
-    const likedIds: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
     return locations.map(loc => ({
       ...loc,
-      isLiked: likedIds.includes(loc.id),
-      isSaved: savedIds.includes(loc.id),
+      isLiked: false,
+      isSaved: false,
     }));
   }
 
@@ -203,13 +215,7 @@ export class LocationListComponent implements OnInit {
     event.stopPropagation();
 
     if (!this.authService.isLoggedIn) {
-      const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-      const idx = liked.indexOf(loc.id);
-      if (idx >= 0) { liked.splice(idx, 1); loc.isLiked = false; loc.likeCount = Math.max(0, (loc.likeCount || 0) - 1); }
-      else { liked.push(loc.id); loc.isLiked = true; loc.likeCount = (loc.likeCount || 0) + 1; }
-      localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
-      this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed');
-      this.cdr.markForCheck();
+      this.router.navigate(['/login']);
       return;
     }
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
@@ -223,13 +229,7 @@ export class LocationListComponent implements OnInit {
     event.stopPropagation();
 
     if (!this.authService.isLoggedIn) {
-      const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-      const idx = saved.indexOf(loc.id);
-      if (idx >= 0) { saved.splice(idx, 1); loc.isSaved = false; loc.saveCount = Math.max(0, (loc.saveCount || 0) - 1); }
-      else { saved.push(loc.id); loc.isSaved = true; loc.saveCount = (loc.saveCount || 0) + 1; }
-      localStorage.setItem('guest_saved_ids', JSON.stringify(saved));
-      this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
-      this.cdr.markForCheck();
+      this.router.navigate(['/login']);
       return;
     }
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
@@ -274,7 +274,7 @@ export class LocationListComponent implements OnInit {
   }
 
   private applyFiltersToLocations(locations: Location[], state: FilterState): Location[] {
-    return locations.filter(loc => {
+    return this.applySort(locations.filter(loc => {
       // Kategorija filter
       if (state.activeCategories.length > 0) {
         const key = (loc.postType || (loc as any).category || '').toLowerCase().replace(/\s+/g, '_');
@@ -291,7 +291,16 @@ export class LocationListComponent implements OnInit {
         }
       }
       return true;
-    });
+    }));
+  }
+
+  onSortChanged(): void {
+    this.locations = this.applySort(this.locations);
+    this.filteredLocations = this.applySort(this.filteredLocations);
+    this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
+    this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
+    this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
+    this.cdr.markForCheck();
   }
 
   openSection(section: 'near-you' | 'recommended' | 'top-rated'): void {
@@ -379,6 +388,12 @@ export class LocationListComponent implements OnInit {
         .slice(0, SECTION_LIMIT);
     }
 
+    if (this.sortOption !== 'recommended') {
+      this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
+      this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
+      this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
+    }
+
     this.cdr.markForCheck();
   }
 
@@ -392,7 +407,7 @@ export class LocationListComponent implements OnInit {
       if (!position) return;
       this.userPosition = position;
       this.allLocations = this.decorateLocations(this.allLocations);
-      if (!this.isSearchActive) this.locations = [...this.allLocations];
+      if (!this.isSearchActive) this.locations = this.applySort(this.allLocations);
       this.buildSections();
       this.cdr.markForCheck();
     });
@@ -406,6 +421,32 @@ export class LocationListComponent implements OnInit {
         return { ...l, distanceKm: c ? this.geolocationService.haversineKm(this.userPosition!, c) : null };
       })
       .sort((a, b) => ((a as any).distanceKm ?? Infinity) - ((b as any).distanceKm ?? Infinity));
+  }
+
+  private applySort(locations: Location[]): Location[] {
+    const sorted = [...locations];
+    switch (this.sortOption) {
+      case 'rating-desc':
+        return sorted.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
+      case 'distance-asc':
+        return sorted.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+      case 'name-asc':
+        return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'name-desc':
+        return sorted.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+      case 'newest':
+        return sorted.sort((a, b) =>
+          new Date(b.createdAt || b.publishedAt || 0).getTime() -
+          new Date(a.createdAt || a.publishedAt || 0).getTime()
+        );
+      case 'popular':
+        return sorted.sort((a, b) =>
+          ((b.viewCount ?? 0) + (b.likeCount ?? 0) + (b.saveCount ?? 0)) -
+          ((a.viewCount ?? 0) + (a.likeCount ?? 0) + (a.saveCount ?? 0))
+        );
+      default:
+        return sorted;
+    }
   }
 
   private getLocationCoordinates(location: Partial<Location>): UserPosition | null {

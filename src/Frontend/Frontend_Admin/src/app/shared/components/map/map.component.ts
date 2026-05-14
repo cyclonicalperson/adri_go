@@ -75,6 +75,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   private pathLayer!: L.LayerGroup;
   private heatLayer!: L.LayerGroup;
   private selectedPin: L.Marker | null = null;
+  private markerRefs = new Map<number, L.Marker>();
 
   constructor(private zone: NgZone) {}
 
@@ -96,7 +97,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.map) return;
 
-    if (changes['markers']) this.zone.runOutsideAngular(() => this.renderMarkers());
+    if (changes['markers'] || changes['selectedMarkerId']) this.zone.runOutsideAngular(() => this.renderMarkers());
     if (changes['paths']) this.zone.runOutsideAngular(() => this.renderPaths());
     if (changes['heatPoints']) this.zone.runOutsideAngular(() => this.renderHeat());
 
@@ -125,6 +126,20 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   clearHeat(): void {
     this.heatLayer?.clearLayers();
+  }
+
+  focusMarker(markerId: number, zoom = 16): void {
+    const marker = this.markerRefs.get(markerId);
+    if (!marker) return;
+
+    this.selectedMarkerId = markerId;
+    this.renderMarkers();
+    const nextMarker = this.markerRefs.get(markerId) ?? marker;
+    this.map.flyTo(nextMarker.getLatLng(), Math.max(this.map.getZoom(), zoom), {
+      animate: true,
+      duration: 0.8,
+    });
+    nextMarker.openPopup();
   }
 
   private initMap(): void {
@@ -201,6 +216,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   private renderMarkers(): void {
     this.markerLayer.clearLayers();
+    this.markerRefs.clear();
 
     this.markers.forEach(m => {
       const isSelected = m.id === this.selectedMarkerId;
@@ -214,6 +230,11 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
       marker.bindPopup(`<strong>${m.label}</strong>${catLabel ? '<br><small>' + catLabel + '</small>' : ''}`);
       marker.on('click', () => this.zone.run(() => this.markerClicked.emit(m)));
       this.markerLayer.addLayer(marker);
+      this.markerRefs.set(m.id, marker);
+
+      if (isSelected) {
+        setTimeout(() => marker.openPopup(), 0);
+      }
     });
   }
 

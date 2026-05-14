@@ -42,6 +42,7 @@ export interface ExternalNavigationLink {
 @Injectable({ providedIn: 'root' })
 export class RoutingService {
   private readonly cacheTtlMs = 4 * 60 * 1000;
+  private readonly requestTimeoutMs = 10000;
   private readonly routeCache = new Map<string, { route: ComputedRoute; storedAt: number }>();
 
   async computeRoute(
@@ -191,10 +192,8 @@ export class RoutingService {
 
     for (const profile of this.resolveRoutingProfiles(travelMode)) {
       try {
-        const response = await fetch(this.buildOsrmUrl(coordinates, profile, true));
-        if (!response.ok) continue;
-
-        const data = await response.json();
+        const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile, true));
+        if (data?.code && data.code !== 'Ok') continue;
         const route = data?.routes?.[0];
         if (!route?.geometry?.coordinates) continue;
 
@@ -235,16 +234,18 @@ export class RoutingService {
     travelMode: TravelMode,
   ): Promise<ComputedRoute> {
     let lastError: Error | null = null;
+    const profiles = this.resolveRoutingProfiles(travelMode);
+    const primaryProfileCount = travelMode === 'driving' ? profiles.length : 1;
+    const primaryProfiles = profiles.slice(0, primaryProfileCount);
+    const fallbackProfiles = profiles.slice(primaryProfileCount);
 
-    for (const profile of this.resolveRoutingProfiles(travelMode)) {
+    for (const profile of primaryProfiles) {
       try {
-        const response = await fetch(this.buildOsrmUrl(coordinates, profile));
-        if (!response.ok) {
-          lastError = new Error(`OSRM request failed with status ${response.status}`);
+        const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile));
+        if (data?.code && data.code !== 'Ok') {
+          lastError = new Error(`OSRM route failed with code ${data.code}.`);
           continue;
         }
-
-        const data = await response.json();
         const route = data?.routes?.[0];
         if (!route?.geometry?.coordinates) {
           lastError = new Error('No route geometry returned from OSRM.');
@@ -266,7 +267,20 @@ export class RoutingService {
       }
     }
 
-    const segmentedRoute = await this.fetchSegmentedRoute(coordinates, travelMode);
+    const primarySegmentedRoute = await this.fetchSegmentedRoute(coordinates, primaryProfiles);
+    if (primarySegmentedRoute) {
+      return primarySegmentedRoute;
+    }
+
+    for (const profile of fallbackProfiles) {
+      try {
+        return await this.fetchRouteForProfile(coordinates, profile);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Failed to fetch route.');
+      }
+    }
+
+    const segmentedRoute = await this.fetchSegmentedRoute(coordinates, profiles);
     if (segmentedRoute) {
       return segmentedRoute;
     }
@@ -276,7 +290,7 @@ export class RoutingService {
 
   private async fetchSegmentedRoute(
     coordinates: [number, number][],
-    travelMode: TravelMode,
+    profiles: string[],
   ): Promise<ComputedRoute | null> {
     if (coordinates.length < 3) {
       return null;
@@ -287,7 +301,7 @@ export class RoutingService {
     let durationMin = 0;
 
     for (let index = 0; index < coordinates.length - 1; index++) {
-      const leg = await this.fetchDirectRoute([coordinates[index], coordinates[index + 1]], travelMode);
+      const leg = await this.fetchDirectRoute([coordinates[index], coordinates[index + 1]], profiles);
       if (!leg) {
         return null;
       }
@@ -311,31 +325,53 @@ export class RoutingService {
 
   private async fetchDirectRoute(
     coordinates: [number, number][],
-    travelMode: TravelMode,
+    profiles: string[],
   ): Promise<ComputedRoute | null> {
-    for (const profile of this.resolveRoutingProfiles(travelMode)) {
+    for (const profile of profiles) {
       try {
-        const response = await fetch(this.buildOsrmUrl(coordinates, profile));
-        if (!response.ok) continue;
-
-        const data = await response.json();
-        const route = data?.routes?.[0];
-        if (!route?.geometry?.coordinates) continue;
-
-        return {
-          geometry: route.geometry.coordinates.map(
-            ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
-          ),
-          distanceKm: Math.round(((route.distance ?? 0) / 1000) * 10) / 10,
-          durationMin: Math.max(1, Math.round((route.duration ?? 0) / 60)),
-          usedFallback: false,
-        };
+        return await this.fetchRouteForProfile(coordinates, profile);
       } catch {
         // try next endpoint/profile
       }
     }
 
     return null;
+  }
+
+  private async fetchRouteForProfile(coordinates: [number, number][], profile: string): Promise<ComputedRoute> {
+    const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile));
+    if (data?.code && data.code !== 'Ok') {
+      throw new Error(`OSRM route failed with code ${data.code}.`);
+    }
+
+    const route = data?.routes?.[0];
+    if (!route?.geometry?.coordinates) {
+      throw new Error('No route geometry returned from OSRM.');
+    }
+
+    return {
+      geometry: route.geometry.coordinates.map(
+        ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
+      ),
+      distanceKm: Math.round(((route.distance ?? 0) / 1000) * 10) / 10,
+      durationMin: Math.max(1, Math.round((route.duration ?? 0) / 60)),
+      usedFallback: false,
+    };
+  }
+
+  private async fetchJsonWithTimeout(url: string): Promise<any> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`OSRM request failed with status ${response.status}.`);
+      }
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private buildInstruction(step: any): string {
@@ -372,7 +408,7 @@ export class RoutingService {
 
     // 500 m snap radius covers rural/mountain coordinates without misrouting in cities.
     const radiuses = coordinates.map(() => '500').join(';');
-    const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
+    const params = `?overview=full&geometries=geojson&alternatives=false&continue_straight=false&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
     if (profile === 'foot-osm') {
       return `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coordinatesString}${params}`;

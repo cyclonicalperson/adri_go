@@ -10,6 +10,7 @@ export interface Tourist {
   language?: string;
   isEmailVerified?: boolean;
   profileImage?: string | null;
+  authProvider?: 'google' | 'apple' | 'password' | string;
 }
 
 export interface StoredSession {
@@ -83,7 +84,16 @@ export class AuthService {
     return this.http
       .post<any>(`${this.authApiUrl}/social-login`, { provider, credential, displayName })
       .pipe(
-        map(res => this.mapAuthResponse(res)),
+        map(res => {
+          const mapped = this.mapAuthResponse(res);
+          return {
+            ...mapped,
+            user: {
+              ...mapped.user,
+              authProvider: provider,
+            },
+          };
+        }),
         tap(res => this.saveAuthSession(res)),
       );
   }
@@ -214,6 +224,8 @@ export class AuthService {
         email: rawUser?.email ?? rawUser?.Email ?? '',
         language: rawUser?.language ?? rawUser?.Language ?? undefined,
         isEmailVerified: rawUser?.isEmailVerified ?? rawUser?.IsEmailVerified ?? undefined,
+        profileImage: rawUser?.profileImage ?? rawUser?.ProfileImage ?? null,
+        authProvider: rawUser?.authProvider ?? rawUser?.AuthProvider ?? res?.authProvider ?? res?.provider ?? 'password',
       },
     };
   }
