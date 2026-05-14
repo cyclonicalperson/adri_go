@@ -30,6 +30,7 @@ export class RegisterProfileComponent implements OnInit {
   registrationSuccess = false;
   registrationEmail = '';
   autoLoggedIn = false;
+  passwordFocused = false;
 
   interests = [
     { id: 'nature', label: 'Nature', icon: 'forest' },
@@ -63,6 +64,8 @@ export class RegisterProfileComponent implements OnInit {
     }, {
       validators: this.matchValidator()
     });
+    this.pw?.valueChanges.subscribe(() => this.syncConfirmPasswordState());
+    this.syncConfirmPasswordState();
   }
 
   get pw(): AbstractControl | null {
@@ -71,6 +74,67 @@ export class RegisterProfileComponent implements OnInit {
 
   get cpw(): AbstractControl | null {
     return this.profileForm.get('confirmPassword');
+  }
+
+  get hasPasswordInteracted(): boolean {
+    const control = this.pw;
+    return this.passwordFocused || (!!control && (control.touched || control.dirty));
+  }
+
+  get showPasswordRules(): boolean {
+    const control = this.pw;
+    return !!control && this.hasPasswordInteracted && !!String(control.value ?? '') && control.invalid;
+  }
+
+  get passwordMinLengthMet(): boolean {
+    return String(this.pw?.value ?? '').length >= 8;
+  }
+
+  get passwordHasUppercase(): boolean {
+    return /[A-Z]/.test(String(this.pw?.value ?? ''));
+  }
+
+  get passwordHasNumberOrSpecial(): boolean {
+    const value = String(this.pw?.value ?? '');
+    return /[0-9]/.test(value) || /[^A-Za-z0-9]/.test(value);
+  }
+
+  get passwordValidMessageVisible(): boolean {
+    const control = this.pw;
+    return !!control && this.hasPasswordInteracted && control.valid;
+  }
+
+  get passwordInputInvalid(): boolean {
+    return !!this.pw && this.hasPasswordInteracted && this.pw.invalid;
+  }
+
+  get passwordInputValid(): boolean {
+    return !!this.pw && this.hasPasswordInteracted && this.pw.valid;
+  }
+
+  get confirmPasswordEnabled(): boolean {
+    return !!this.cpw && this.cpw.enabled;
+  }
+
+  get confirmPasswordValid(): boolean {
+    return !!this.cpw
+      && this.confirmPasswordEnabled
+      && !!this.cpw.value
+      && !this.profileForm.hasError('mismatch');
+  }
+
+  get confirmPasswordInvalid(): boolean {
+    return !!this.cpw && (
+      this.confirmPasswordMismatchVisible
+      || (this.confirmPasswordEnabled && this.cpw.hasError('required') && (this.cpw.touched || this.cpw.dirty))
+    );
+  }
+
+  get confirmPasswordMismatchVisible(): boolean {
+    return !!this.cpw
+      && this.confirmPasswordEnabled
+      && !!this.cpw.value
+      && this.profileForm.hasError('mismatch');
   }
 
   get selectedInterestsArray(): FormArray {
@@ -129,51 +193,43 @@ export class RegisterProfileComponent implements OnInit {
     };
   }
 
-  get pwMsg(): string {
-    const control = this.pw;
-    if (!control || (!control.touched && !control.dirty)) {
-      return '';
-    }
-
-    if (control.hasError('short')) {
-      return 'Lozinka mora imati najmanje 8 karaktera.';
-    }
-
-    if (control.hasError('upper')) {
-      return 'Lozinka mora sadržati najmanje jedno veliko slovo.';
-    }
-
-    if (control.hasError('extra')) {
-      return 'Lozinka mora sadržati najmanje jedan broj ili jedan specijalni karakter.';
-    }
-
-    if (control.valid) {
-      return 'Lozinka je validna.';
-    }
-
-    return '';
-  }
-
-  get pwOk(): boolean {
-    const control = this.pw;
-    return !!control && (control.touched || control.dirty) && control.valid;
-  }
-
   get cpwMsg(): string {
     const control = this.cpw;
-    if (!control || (!control.touched && !control.dirty)) {
+    if (!control || control.disabled || (!control.touched && !control.dirty && !control.value)) {
       return '';
     }
 
     if (control.hasError('required')) {
-      return 'Potvrdite lozinku.';
+      return 'Please confirm your password.';
     }
 
     if (this.profileForm.hasError('mismatch')) {
-      return 'Lozinke se ne poklapaju.';
+      return 'Passwords do not match.';
     }
 
     return '';
+  }
+
+  private syncConfirmPasswordState(): void {
+    const confirmControl = this.cpw;
+    if (!confirmControl) return;
+
+    if (this.pw?.valid) {
+      if (confirmControl.disabled) {
+        confirmControl.enable({ emitEvent: false });
+      }
+      this.profileForm.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    if (confirmControl.enabled) {
+      confirmControl.reset('', { emitEvent: false });
+      confirmControl.disable({ emitEvent: false });
+      confirmControl.markAsPristine();
+      confirmControl.markAsUntouched();
+    }
+
+    this.profileForm.updateValueAndValidity({ emitEvent: false });
   }
 
   onLanguageChange(lang: string): void {
