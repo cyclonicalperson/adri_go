@@ -171,8 +171,8 @@ export class SettingsComponent implements OnInit {
   onEmailNotificationsToggle(): void {
     this.saveChanges(
       this.settings.emailNotifications
-        ? 'Trip email summaries enabled'
-        : 'Trip email summaries disabled'
+        ? 'Trip email digests enabled'
+        : 'Trip email digests disabled'
     );
   }
 

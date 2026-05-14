@@ -1189,6 +1189,9 @@ namespace TouristGuide.Api.Services
 
             foreach (var doc in docs)
             {
+                if (Uri.TryCreate(doc.FilePath, UriKind.Absolute, out _))
+                    continue;
+
                 var rel = doc.FilePath.TrimStart('/').TrimStart('\\').Replace("\\", "/");
                 var abs = Path.Combine(_env.ContentRootPath, "images",
                     rel.Replace("/", Path.DirectorySeparatorChar.ToString()));
@@ -1254,15 +1257,15 @@ namespace TouristGuide.Api.Services
                 await _db.SaveChangesAsync();
             }
 
-            // Verification documents — files are handled by EnsureVerificationFilesAsync at startup
+            // Verification documents — seed samples point to hosted public document images.
             var requests = await _db.AdminRegistrationRequests.OrderBy(r => r.Id).ToListAsync();
             if (requests.Count < 3) return;
 
-            (string relPath, string fileName, string fileType)[] docMeta =
+            (string url, string fileName, string fileType)[] docMeta =
             [
-                ($"verification-documents/{requests[0].Id}-milica_licna.jpg",   "licna_karta.jpg",             "jpg"),
-                ($"verification-documents/{requests[1].Id}-boris_registracija.pdf", "rjesenje_o_registraciji.pdf", "pdf"),
-                ($"verification-documents/{requests[2].Id}-tijana_potvrda.png", "potvrda_org.png",             "png"),
+                ("https://upload.wikimedia.org/wikipedia/commons/a/ab/Identity_card_of_the_State_of_Califorinia%2C_sample_%282010%29.jpg", "licna_karta_primjer.jpg", "jpg"),
+                ("https://commons.wikimedia.org/wiki/Special:Redirect/file/Certificate_of_incorporation.png", "rjesenje_o_registraciji_primjer.png", "png"),
+                ("https://commons.wikimedia.org/wiki/Special:Redirect/file/Sec-cert-template.png", "potvrda_organizacije_primjer.png", "png"),
             ];
 
             for (var i = 0; i < 3; i++)
@@ -1273,11 +1276,23 @@ namespace TouristGuide.Api.Services
                     _db.VerificationDocuments.Add(new VerificationDocument
                     {
                         RegistrationRequestId = requestId,
-                        FilePath = docMeta[i].relPath,
+                        FilePath = docMeta[i].url,
                         FileName = docMeta[i].fileName,
                         FileType = docMeta[i].fileType,
                         FileSizeKb = 1
                     });
+                }
+                else
+                {
+                    var existingDoc = await _db.VerificationDocuments
+                        .FirstAsync(d => d.RegistrationRequestId == requestId);
+                    if (!Uri.TryCreate(existingDoc.FilePath, UriKind.Absolute, out var currentUri) || currentUri.IsLoopback)
+                    {
+                        existingDoc.FilePath = docMeta[i].url;
+                        existingDoc.FileName = docMeta[i].fileName;
+                        existingDoc.FileType = docMeta[i].fileType;
+                        existingDoc.FileSizeKb = 1;
+                    }
                 }
             }
 

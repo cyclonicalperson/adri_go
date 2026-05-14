@@ -15,17 +15,20 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _context;
         private readonly AdminIdentityService _adminIdentityService;
         private readonly AdminPermissionService _permissionService;
+        private readonly NotificationService _notificationService;
         private const char SEP = '|';
         private const string INNER_SEP = "\u2630";
 
         public ActivitiesController(
             AppDbContext context,
             AdminIdentityService adminIdentityService,
-            AdminPermissionService permissionService)
+            AdminPermissionService permissionService,
+            NotificationService notificationService)
         {
             _context = context;
             _adminIdentityService = adminIdentityService;
             _permissionService = permissionService;
+            _notificationService = notificationService;
         }
 
         private static readonly Dictionary<string, string> ColorMap = new()
@@ -275,6 +278,14 @@ namespace TouristGuide.Api.Controllers
                     await _context.SaveChangesAsync();
                 }
             }
+            if (statusFlag == "pending")
+            {
+                await _notificationService.BroadcastToSuperAdminsAsync(
+                    "activity_pending",
+                    "Nova aktivnost ceka pregled",
+                    $"Aktivnost \"{noviTag.Name}\" je poslata na odobrenje.",
+                    new { activityId = noviTag.Id, postId = dto.PostId, url = "/admin/aktivnosti" });
+            }
             return Ok(new { data = new { activityId = noviTag.Id, id = noviTag.Id }, success = true });
         }
 
@@ -330,6 +341,15 @@ namespace TouristGuide.Api.Controllers
                 if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
                     _context.PostTags.Add(new PostTag { PostId = dto.PostId.Value, TagId = id });
                 await _context.SaveChangesAsync();
+            }
+
+            if (statusFlag == "pending" && existing.Status != "pending")
+            {
+                await _notificationService.BroadcastToSuperAdminsAsync(
+                    "activity_pending",
+                    "Aktivnost ceka pregled",
+                    $"Aktivnost \"{tag.Name}\" je prebacena na odobrenje.",
+                    new { activityId = tag.Id, postId = dto.PostId, url = "/admin/aktivnosti" });
             }
 
             return Ok(new { success = true });

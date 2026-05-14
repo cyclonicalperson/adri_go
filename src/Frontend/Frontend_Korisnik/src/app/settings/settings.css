@@ -517,3 +517,78 @@ input:checked + .slider:before { transform: translateX(21px); }
     margin-top: 0;
   }
 }
+
+@media (min-width: 900px) {
+  .settings-container {
+    min-height: 100dvh !important;
+    background: #eef2f6 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .header {
+    padding: 18px max(48px, calc((100vw - 1180px) / 2)) !important;
+    border-bottom: 1px solid #dbe3ea !important;
+    box-shadow: none !important;
+  }
+
+  .header h1 {
+    text-align: left;
+    padding-right: 0;
+    font-size: 22px !important;
+  }
+
+  .back-btn {
+    border-radius: 8px;
+    background: #f1f5f9;
+  }
+
+  .scroll-content {
+    width: min(1180px, calc(100vw - 80px)) !important;
+    margin: 0 auto !important;
+    padding: 30px 0 44px !important;
+    display: grid !important;
+    grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.05fr);
+    gap: 18px 22px !important;
+    align-items: start;
+  }
+
+  .settings-group {
+    margin: 0 !important;
+    min-width: 0;
+  }
+
+  .group-items {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .setting-row {
+    min-height: 68px;
+    padding: 14px 18px !important;
+  }
+
+  .row-icon {
+    border-radius: 8px;
+  }
+
+  .footer-actions {
+    grid-column: 1 / -1;
+    width: min(620px, 100%);
+    justify-self: end;
+    padding: 8px 0 0 !important;
+  }
+
+  .save-btn,
+  .delete-account-link {
+    border-radius: 8px;
+  }
+
+  .logout-link:hover {
+    border-radius: 8px;
+  }
+
+  .settings-sheet {
+    border-radius: 8px;
+  }
+}

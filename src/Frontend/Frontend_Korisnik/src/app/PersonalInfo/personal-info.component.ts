@@ -161,15 +161,14 @@ export class PersonalInfoComponent implements OnInit {
     const file = input.files?.[0];
     if (!file || this.isUploadingPhoto) return;
 
+    const previousProfilePic = this.userData?.profilePic;
     this.isUploadingPhoto = true;
     this.saveError = '';
     this.userService.uploadProfileImage(file).subscribe({
       next: (url) => {
-        this.userData = {
-          ...(this.userData as UserProfile),
-          profilePic: url,
-        };
-        this.authService.updateCurrentTourist({ profileImage: url });
+        if (this.userData) {
+          this.userData.profilePic = url;
+        }
         this.userService.updateProfile({ profileImage: url }).subscribe({
           next: (updated) => {
             if (this.userData) {
@@ -181,9 +180,12 @@ export class PersonalInfoComponent implements OnInit {
             setTimeout(() => (this.saveSuccess = false), 2500);
             this.cdr.detectChanges();
           },
-          error: () => {
+          error: (err) => {
+            if (this.userData) {
+              this.userData.profilePic = previousProfilePic;
+            }
             this.isUploadingPhoto = false;
-            this.saveError = 'Photo uploaded, but the profile could not be updated.';
+            this.saveError = err?.error?.message || 'Photo uploaded, but the profile could not be updated.';
             this.cdr.detectChanges();
           }
         });

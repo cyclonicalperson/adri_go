@@ -574,6 +574,61 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  async changeNavigationMode(mode: TravelMode): Promise<void> {
+    if (this.travelMode === mode) return;
+
+    if (!this.isNavigating) {
+      this.setTravelMode(mode);
+      return;
+    }
+
+    this.travelMode = mode;
+    this.routePlanner.setTravelMode(mode);
+    this.preferences.update({ preferredTravelMode: mode });
+
+    const coordinates = this.getRouteCoordinates();
+    if (coordinates.length < 2) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isRenderingRoute = true;
+    this.plannerMessage = '';
+    this.analytics.track('navigation_travel_mode_changed', {
+      travelMode: mode,
+      stopCount: this.plannerStops.length,
+    });
+
+    try {
+      const result = await this.routingService.computeRouteForNavigation(
+        coordinates,
+        mode,
+        { viewport: this.getRouteViewportMode() },
+      );
+      this.navigationSteps = result.steps ?? [];
+      this.navigationRouteGeometry = result.geometry;
+      this.routeSummary = {
+        distanceKm: result.distanceKm,
+        durationMin: result.durationMin,
+        stopCount: this.plannerStops.length,
+      };
+      this.routeDestTitle = this.getRouteTitle();
+      this.replaceNavigationRouteOverlay(result.geometry);
+      if (this.navFollowMode) {
+        this.centerNavigationOnUser(false);
+      }
+    } catch {
+      this.plannerMessage = 'Could not switch navigation mode right now.';
+      setTimeout(() => {
+        this.plannerMessage = '';
+        this.cdr.detectChanges();
+      }, 2400);
+    } finally {
+      this.isRenderingRoute = false;
+      this.cdr.detectChanges();
+    }
+  }
+
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
     this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex);
     this.optimizeRouteSilently();
@@ -1141,8 +1196,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Swap in the new steps and geometry
     this.navigationSteps = event.steps;
     this.navigationRouteGeometry = event.geometry;
+    this.replaceNavigationRouteOverlay(event.geometry);
+    this.cdr.detectChanges();
+  }
 
-    // Replace the route polyline with the new one
+  private replaceNavigationRouteOverlay(geometry: [number, number][]): void {
     if (this.routePolyline && this.map) {
       this.map.removeLayer(this.routePolyline);
       this.routePolyline = null;
@@ -1153,19 +1211,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.walkingDotMarkers.forEach(marker => this.map?.removeLayer(marker));
     this.walkingDotMarkers = [];
-    if (this.map && event.geometry.length >= 2) {
+    if (this.map && geometry.length >= 2) {
       if (this.travelMode === 'walking') {
-        this.drawWalkingDots(event.geometry, true);
+        this.drawWalkingDots(geometry, true);
       } else {
-        this.navRemainingPolyline = L.polyline(event.geometry, {
+        this.navRemainingPolyline = L.polyline(geometry, {
           color: '#22c55e',
           weight: 6,
           opacity: 0.9,
         }).addTo(this.map);
       }
     }
-
-    this.cdr.detectChanges();
   }
 
   /** Helper: returns the #map DOM element which Leaflet owns.
@@ -1474,6 +1530,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (addedCount > 0) {
           this.plannerMessage = `${addedCount} stop(s) added to your calendar.${suffix}`;
+          this.showTripSavedBrowserNotification(addedCount);
         } else if (alreadyCount > 0) {
           this.plannerMessage = 'These stops are already in your calendar.';
         } else {
@@ -1493,6 +1550,21 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private showTripSavedBrowserNotification(addedCount: number): void {
+    if (!this.preferences.snapshot.pushNotifications || !('Notification' in window)) {
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+
+    const title = addedCount === 1 ? 'Trip stop saved' : 'Trip stops saved';
+    const body = addedCount === 1
+      ? 'Your stop was added to the travel calendar.'
+      : `${addedCount} stops were added to the travel calendar.`;
+    new Notification(title, { body });
   }
 
   private applyFilterState(): void {
@@ -1997,6 +2069,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   goToSaved(): void {
     this.activeTab = 'saved';
     this.router.navigate(['/saved']);
+  }
+
+  goToRoutes(): void {
+    this.activeTab = 'routes';
+    this.router.navigate(['/routes']);
+  }
+
+  goToActivities(): void {
+    this.activeTab = 'activities';
+    this.router.navigate(['/activities']);
   }
 
   goToAccount(): void {

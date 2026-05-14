@@ -340,6 +340,9 @@ namespace TouristGuide.Api.Controllers
             if (string.IsNullOrWhiteSpace(documentPath))
                 return null;
 
+            if (Uri.TryCreate(documentPath, UriKind.Absolute, out _))
+                return documentPath;
+
             return $"/images/{documentPath.TrimStart('/').TrimStart('\\').Replace("\\", "/")}";
         }
     }

@@ -79,21 +79,21 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
-    <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
+    <select class="filter-select" [value]="req.regionId ?? ''" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Svi regioni</option>
       @for (r of regions; track r.regionId) {
       <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
 
-    <select class="filter-select" (change)="onStatusFilter($any($event.target).value)">
+    <select class="filter-select" [value]="activeStatusFilter" (change)="onStatusFilter($any($event.target).value)">
       <option value="">Svi statusi</option>
       <option value="active">✅ Aktivna</option>
       <option value="pending">⏳ Na čekanju</option>
       <option value="inactive">❌ Neaktivna</option>
     </select>
 
-    <select class="filter-select" (change)="onSort($any($event.target).value)">
+    <select class="filter-select" [value]="activeSortValue" (change)="onSort($any($event.target).value)">
       <option value="createdAt:desc">Sortiraj: Najnovije</option>
       <option value="name:asc">Naziv A–Z</option>
       <option value="averageRating:desc">Ocena ↓</option>
