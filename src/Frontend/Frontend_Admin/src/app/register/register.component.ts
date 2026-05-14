@@ -18,6 +18,18 @@ function passwordMatch(group: AbstractControl): ValidationErrors | null {
   return password && confirmPassword && password !== confirmPassword ? { mismatch: true } : null;
 }
 
+function passwordUppercaseValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string | null;
+  if (!value) return null;
+  return /[A-Z]/.test(value) ? null : { uppercase: true };
+}
+
+function passwordNumberOrSpecialValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string | null;
+  if (!value) return null;
+  return /[\d\W_]/.test(value) ? null : { numberOrSpecial: true };
+}
+
 type AccountType = 'organization' | 'individual';
 
 @Component({
@@ -35,6 +47,7 @@ export class RegisterComponent {
   selectedFile: File | null = null;
   fileError: string | null = null;
   submittedEmail = '';
+  passwordInteracted = false;
   readonly touristAppUrl = environment.touristAppUrl;
 
   constructor(
@@ -48,7 +61,12 @@ export class RegisterComponent {
         lastName: ['', Validators.required],
         email: ['', [Validators.required, Validators.email]],
         orgName: [''],
-        password: ['', [Validators.required, Validators.minLength(8)]],
+        password: ['', [
+          Validators.required,
+          Validators.minLength(8),
+          passwordUppercaseValidator,
+          passwordNumberOrSpecialValidator,
+        ]],
         confirmPassword: ['', Validators.required],
       },
       { validators: passwordMatch },
@@ -59,6 +77,8 @@ export class RegisterComponent {
       this.updateOrganizationValidators(value as AccountType);
       this.fileError = null;
     });
+    this.password.valueChanges.subscribe(() => this.syncConfirmPasswordState());
+    this.syncConfirmPasswordState();
   }
 
   get accountType() { return this.form.get('accountType')!; }
@@ -68,6 +88,50 @@ export class RegisterComponent {
   get orgName() { return this.form.get('orgName')!; }
   get password() { return this.form.get('password')!; }
   get confirmPassword() { return this.form.get('confirmPassword')!; }
+
+  get passwordRulesVisible(): boolean {
+    return this.passwordInteracted && this.password.invalid;
+  }
+
+  get passwordHasMinLength(): boolean {
+    return !this.password.hasError('minlength');
+  }
+
+  get passwordHasUppercase(): boolean {
+    return !this.password.hasError('uppercase');
+  }
+
+  get passwordHasNumberOrSpecial(): boolean {
+    return !this.password.hasError('numberOrSpecial');
+  }
+
+  get passwordIsValid(): boolean {
+    return this.password.valid;
+  }
+
+  get showPasswordValidMessage(): boolean {
+    return this.passwordInteracted && !!this.password.value && this.passwordIsValid;
+  }
+
+  get passwordInputInvalid(): boolean {
+    return this.passwordInteracted && this.password.invalid;
+  }
+
+  get passwordInputValid(): boolean {
+    return this.passwordInteracted && !!this.password.value && this.password.valid;
+  }
+
+  get confirmPasswordEnabled(): boolean {
+    return this.confirmPassword.enabled;
+  }
+
+  get confirmPasswordMismatchVisible(): boolean {
+    return this.confirmPasswordEnabled && !!this.confirmPassword.value && this.form.hasError('mismatch');
+  }
+
+  get confirmPasswordValid(): boolean {
+    return this.confirmPasswordEnabled && !!this.confirmPassword.value && !this.form.hasError('mismatch');
+  }
 
   get isIndividualSelected(): boolean {
     return this.accountType.value === 'individual';
@@ -141,6 +205,29 @@ export class RegisterComponent {
     this.fileError = null;
   }
 
+  onPasswordInteract(): void {
+    this.passwordInteracted = true;
+  }
+
+  private syncConfirmPasswordState(): void {
+    if (this.password.valid) {
+      if (this.confirmPassword.disabled) {
+        this.confirmPassword.enable({ emitEvent: false });
+      }
+      this.form.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    if (this.confirmPassword.enabled) {
+      this.confirmPassword.reset('', { emitEvent: false });
+      this.confirmPassword.disable({ emitEvent: false });
+      this.confirmPassword.markAsPristine();
+      this.confirmPassword.markAsUntouched();
+    }
+
+    this.form.updateValueAndValidity({ emitEvent: false });
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -190,6 +277,8 @@ export class RegisterComponent {
           password: '',
           confirmPassword: '',
         });
+        this.passwordInteracted = false;
+        this.syncConfirmPasswordState();
         this.updateOrganizationValidators('organization');
         this.selectedFile = null;
         this.fileError = null;

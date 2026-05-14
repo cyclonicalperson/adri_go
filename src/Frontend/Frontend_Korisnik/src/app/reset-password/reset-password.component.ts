@@ -19,6 +19,12 @@ export class ResetPasswordComponent implements OnInit {
   successMessage = '';
   errorMessage = '';
   tokenInvalid = false;
+  submitted = false;
+  newPasswordFocused = false;
+  newPasswordInteracted = false;
+  newPasswordTouched = false;
+  confirmPasswordInteracted = false;
+  confirmPasswordTouched = false;
 
   constructor(
     private router: Router,
@@ -34,14 +40,97 @@ export class ResetPasswordComponent implements OnInit {
     }
   }
 
+  get showPasswordRules(): boolean {
+    return (this.newPasswordInteracted || this.newPasswordFocused)
+      && !!this.newPassword.trim()
+      && !this.isNewPasswordFormatValid;
+  }
+
+  get newPasswordMinLengthMet(): boolean {
+    return this.newPassword.length >= 8;
+  }
+
+  get newPasswordHasUppercase(): boolean {
+    return /[A-Z]/.test(this.newPassword);
+  }
+
+  get newPasswordHasNumberOrSpecialCharacter(): boolean {
+    return /[0-9]/.test(this.newPassword) || /[^A-Za-z0-9]/.test(this.newPassword);
+  }
+
+  get isNewPasswordFormatValid(): boolean {
+    return this.newPasswordMinLengthMet
+      && this.newPasswordHasUppercase
+      && this.newPasswordHasNumberOrSpecialCharacter;
+  }
+
+  get showValidPasswordMessage(): boolean {
+    return (this.newPasswordInteracted || this.newPasswordFocused) && this.isNewPasswordFormatValid;
+  }
+
+  get newPasswordInputInvalid(): boolean {
+    return (this.newPasswordInteracted || this.newPasswordFocused) && !this.isNewPasswordFormatValid;
+  }
+
+  get newPasswordInputValid(): boolean {
+    return (this.newPasswordInteracted || this.newPasswordFocused) && !!this.newPassword && this.isNewPasswordFormatValid;
+  }
+
+  get confirmPasswordEnabled(): boolean {
+    return this.isNewPasswordFormatValid;
+  }
+
+  get showNewPasswordRequiredError(): boolean {
+    return (this.submitted || this.newPasswordTouched) && !this.newPassword.trim();
+  }
+
+  get showConfirmPasswordRequiredError(): boolean {
+    return this.confirmPasswordEnabled
+      && (this.submitted || this.confirmPasswordTouched)
+      && !this.confirmPassword.trim();
+  }
+
+  get showConfirmPasswordMismatchError(): boolean {
+    return this.confirmPasswordEnabled
+      && (this.confirmPasswordInteracted || this.submitted)
+      && !!this.confirmPassword.trim()
+      && this.newPassword !== this.confirmPassword;
+  }
+
+  get confirmPasswordInputInvalid(): boolean {
+    return this.showConfirmPasswordMismatchError
+      || (this.confirmPasswordEnabled && this.showConfirmPasswordRequiredError);
+  }
+
+  get confirmPasswordInputValid(): boolean {
+    return this.confirmPasswordEnabled
+      && !!this.confirmPassword.trim()
+      && this.newPassword === this.confirmPassword;
+  }
+
+  onNewPasswordChange(value: string): void {
+    this.newPassword = value;
+    this.newPasswordInteracted = true;
+
+    if (!this.isNewPasswordFormatValid && this.confirmPassword) {
+      this.confirmPassword = '';
+      this.confirmPasswordInteracted = false;
+      this.confirmPasswordTouched = false;
+    }
+  }
+
+  onConfirmPasswordChange(value: string): void {
+    this.confirmPassword = value;
+    this.confirmPasswordInteracted = true;
+  }
+
   submit(): void {
+    this.submitted = true;
     this.errorMessage = '';
-    if (this.newPassword.length < 6) {
-      this.errorMessage = 'Password must be at least 6 characters.'; return;
-    }
-    if (this.newPassword !== this.confirmPassword) {
-      this.errorMessage = 'Passwords do not match.'; return;
-    }
+    if (!this.newPassword.trim()) return;
+    if (!this.isNewPasswordFormatValid) return;
+    if (!this.confirmPassword.trim()) return;
+    if (this.newPassword !== this.confirmPassword) return;
 
     this.isLoading = true;
     this.authService.resetPassword(this.token, this.newPassword).subscribe({

@@ -45,14 +45,52 @@
           <div class="input-wrap">
             <input class="input"
                    [type]="showPassword ? 'text' : 'password'"
-                   [class.invalid]="f('password').invalid && f('password').touched"
-                   formControlName="password"
-                   placeholder="••••••••" />
+                   [class.password-control-invalid]="passwordInputInvalid"
+                   [class.password-control-valid]="passwordInputValid"
+                   (focus)="onPasswordInteract()" (input)="onPasswordInteract()"
+                   formControlName="password" />
             <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
               {{ showPassword ? 'Sakrij' : 'Prikaži' }}
             </button>
           </div>
+          @if (!isEdit && f('password').hasError('required') && f('password').touched) {
+          <span class="field-error">Lozinka je obavezna.</span>
+          }
+          @if (!isEdit && passwordRulesVisible) {
+          <div class="password-rules">
+            @if (!passwordHasMinLength) {
+            <div class="password-rule">Lozinka mora imati najmanje 8 karaktera</div>
+            }
+            @if (!passwordHasUppercase) {
+            <div class="password-rule">Lozinka mora sadržati veliko slovo</div>
+            }
+            @if (!passwordHasNumberOrSpecial) {
+            <div class="password-rule">Lozinka mora sadržati broj ili specijalni karakter</div>
+            }
+          </div>
+          }
+          @if (!isEdit && showPasswordValidMessage) {
+          <div class="password-valid-message">Lozinka je validna</div>
+          }
         </div>
+
+        @if (!isEdit) {
+        <div class="field">
+          <label class="label">Potvrdi lozinku *</label>
+          <div class="input-wrap">
+            <input class="input"
+                   [type]="showPassword ? 'text' : 'password'"
+                   [class.password-control-invalid]="confirmPasswordMismatchVisible || (confirmPasswordEnabled && f('confirmPassword').hasError('required') && f('confirmPassword').touched)"
+                   [class.password-control-valid]="confirmPasswordValid"
+                   formControlName="confirmPassword" />
+          </div>
+          @if (confirmPasswordEnabled && f('confirmPassword').hasError('required') && f('confirmPassword').touched) {
+          <span class="field-error">Potvrda lozinke je obavezna.</span>
+          } @else if (confirmPasswordMismatchVisible) {
+          <span class="field-error">Lozinke se ne poklapaju.</span>
+          }
+        </div>
+        }
 
         <div class="row-2">
           <div class="field">

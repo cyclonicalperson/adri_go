@@ -1,10 +1,28 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UserService } from '@core/services/user.service';
 import { Role, Organization } from '@core/models/user.model';
 import { AdminRole } from '@core/auth/auth.service';
 import { RolesPermissionsComponent } from '../role-permissions/roles-permissions.component';
+
+function passwordMatch(group: AbstractControl): ValidationErrors | null {
+  const password = group.get('password')?.value;
+  const confirmPassword = group.get('confirmPassword')?.value;
+  return password && confirmPassword && password !== confirmPassword ? { mismatch: true } : null;
+}
+
+function passwordUppercaseValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string | null;
+  if (!value) return null;
+  return /[A-Z]/.test(value) ? null : { uppercase: true };
+}
+
+function passwordNumberOrSpecialValidator(control: AbstractControl): ValidationErrors | null {
+  const value = control.value as string | null;
+  if (!value) return null;
+  return /[\d\W_]/.test(value) ? null : { numberOrSpecial: true };
+}
 
 @Component({
   selector: 'app-user-form',
@@ -23,6 +41,7 @@ export class UserFormComponent implements OnInit {
   roles: Role[] = [];
   organizations: Organization[] = [];
   showPassword = false;
+  passwordInteracted = false;
 
   constructor(
     private fb: FormBuilder,
@@ -36,6 +55,7 @@ export class UserFormComponent implements OnInit {
       fullName:       ['', Validators.required],
       email:          ['', [Validators.required, Validators.email]],
       password:       [''],
+      confirmPassword:[''],
       role:           ['admin', Validators.required],  // Backend koristi role string ('admin'|'superadmin')
       organizationId: [null],
       isIndividual:   [true],
@@ -49,6 +69,7 @@ export class UserFormComponent implements OnInit {
     this.isEdit = !!this.id;
 
     if (this.isEdit) {
+      this.form.get('confirmPassword')!.disable({ emitEvent: false });
       this.service.getById(this.id!).subscribe(res => {
         const u = res.data;
         if (!u) return;
@@ -64,8 +85,19 @@ export class UserFormComponent implements OnInit {
       });
     } else {
       // Lozinka obavezna samo pri kreiranju
-      this.form.get('password')!.setValidators(Validators.required);
+      this.form.get('password')!.setValidators([
+        Validators.required,
+        Validators.minLength(8),
+        passwordUppercaseValidator,
+        passwordNumberOrSpecialValidator,
+      ]);
+      this.form.get('confirmPassword')!.setValidators(Validators.required);
       this.form.get('password')!.updateValueAndValidity();
+      this.form.get('confirmPassword')!.updateValueAndValidity();
+      this.form.setValidators(passwordMatch);
+      this.form.updateValueAndValidity();
+      this.f('password').valueChanges.subscribe(() => this.syncConfirmPasswordState());
+      this.syncConfirmPasswordState();
     }
   }
 
@@ -85,7 +117,77 @@ export class UserFormComponent implements OnInit {
     return this.roles.find(r => r.roleName === roleName)?.roleId ?? null;
   }
 
+  get passwordRulesVisible(): boolean {
+    return !this.isEdit && this.passwordInteracted && this.f('password').invalid;
+  }
+
+  get passwordHasMinLength(): boolean {
+    return !this.f('password').hasError('minlength');
+  }
+
+  get passwordHasUppercase(): boolean {
+    return !this.f('password').hasError('uppercase');
+  }
+
+  get passwordHasNumberOrSpecial(): boolean {
+    return !this.f('password').hasError('numberOrSpecial');
+  }
+
+  get passwordIsValid(): boolean {
+    return this.f('password').valid;
+  }
+
+  get showPasswordValidMessage(): boolean {
+    return !this.isEdit && this.passwordInteracted && !!this.f('password').value && this.passwordIsValid;
+  }
+
+  get passwordInputInvalid(): boolean {
+    return !this.isEdit && this.passwordInteracted && this.f('password').invalid;
+  }
+
+  get passwordInputValid(): boolean {
+    return !this.isEdit && this.passwordInteracted && !!this.f('password').value && this.f('password').valid;
+  }
+
+  get confirmPasswordEnabled(): boolean {
+    return !this.isEdit && this.f('confirmPassword').enabled;
+  }
+
+  get confirmPasswordMismatchVisible(): boolean {
+    return this.confirmPasswordEnabled && !!this.f('confirmPassword').value && this.form.hasError('mismatch');
+  }
+
+  get confirmPasswordValid(): boolean {
+    return this.confirmPasswordEnabled && !!this.f('confirmPassword').value && !this.form.hasError('mismatch');
+  }
+
   f(name: string) { return this.form.get(name)!; }
+
+  onPasswordInteract(): void {
+    this.passwordInteracted = true;
+  }
+
+  private syncConfirmPasswordState(): void {
+    if (this.isEdit) return;
+
+    const confirmControl = this.f('confirmPassword');
+    if (this.f('password').valid) {
+      if (confirmControl.disabled) {
+        confirmControl.enable({ emitEvent: false });
+      }
+      this.form.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    if (confirmControl.enabled) {
+      confirmControl.reset('', { emitEvent: false });
+      confirmControl.disable({ emitEvent: false });
+      confirmControl.markAsPristine();
+      confirmControl.markAsUntouched();
+    }
+
+    this.form.updateValueAndValidity({ emitEvent: false });
+  }
 
   submit(): void {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }

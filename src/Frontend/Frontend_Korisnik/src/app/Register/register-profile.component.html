@@ -84,22 +84,32 @@
       <div class="form-group">
         <label class="field-label" for="password">
           <span class="label-icon lbl-green"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
-          Unesi šifru
+          Password
         </label>
-        <div class="input-wrapper" [class.input-error]="pw?.invalid && (pw?.touched || pw?.dirty)">
+        <div class="input-wrapper password-control-wrapper"
+          [class.password-control-invalid]="passwordInputInvalid"
+          [class.password-control-valid]="passwordInputValid">
           <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
-          <input type="password" id="password" formControlName="password">
+          <input type="password" id="password" formControlName="password" (focus)="passwordFocused = true" (blur)="passwordFocused = false">
         </div>
-        <p class="field-message" [class.field-message-valid]="pwOk" *ngIf="pwMsg">{{ pwMsg }}</p>
+        <div class="password-rules" *ngIf="showPasswordRules">
+          <p class="password-rule" *ngIf="!passwordMinLengthMet">Password must be at least 8 characters.</p>
+          <p class="password-rule" *ngIf="!passwordHasUppercase">Password must contain an uppercase letter.</p>
+          <p class="password-rule" *ngIf="!passwordHasNumberOrSpecial">Password must contain a number or special character.</p>
+        </div>
+        <p class="password-valid-message" *ngIf="passwordValidMessageVisible">Password is valid.</p>
+        <p class="field-error" *ngIf="pw?.hasError('required') && pw?.touched">Password is required.</p>
       </div>
 
       <!-- Confirm Password -->
       <div class="form-group">
         <label class="field-label" for="confirmPassword">
           <span class="label-icon lbl-green"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
-          Potvrdi šifru
+          Confirm Password
         </label>
-        <div class="input-wrapper" [class.input-error]="(cpw?.invalid && (cpw?.touched || cpw?.dirty)) || (profileForm.hasError('mismatch') && (cpw?.touched || cpw?.dirty))">
+        <div class="input-wrapper password-control-wrapper"
+          [class.password-control-invalid]="confirmPasswordInvalid"
+          [class.password-control-valid]="confirmPasswordValid">
           <span class="input-icon"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
           <input type="password" id="confirmPassword" formControlName="confirmPassword">
         </div>
