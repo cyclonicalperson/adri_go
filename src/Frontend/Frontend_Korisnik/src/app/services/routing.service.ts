@@ -185,6 +185,7 @@ export class RoutingService {
   async computeRouteForNavigation(
     coordinates: [number, number][],
     travelMode: TravelMode,
+    options: RouteComputeOptions = {},
   ): Promise<ComputedRoute> {
     if (coordinates.length < 2) {
       return { geometry: [...coordinates], distanceKm: 0, durationMin: 0, usedFallback: false, steps: [] };
@@ -218,14 +219,23 @@ export class RoutingService {
             ] as [number, number],
           }));
 
-        return { geometry, distanceKm, durationMin, usedFallback: false, steps };
+        return {
+          geometry: this.simplifyGeometry(
+            geometry,
+            options.viewport === 'mobile' ? 1000 : 2000,
+          ),
+          distanceKm,
+          durationMin,
+          usedFallback: false,
+          steps,
+        };
       } catch {
         // try next profile
       }
     }
 
     // Fallback without steps
-    const route = await this.computeRoute(coordinates, travelMode);
+    const route = await this.computeRoute(coordinates, travelMode, options);
     return { ...route, steps: [] };
   }
 

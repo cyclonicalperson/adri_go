@@ -1,4 +1,4 @@
-<div class="map-wrapper" [class.filters-open]="isFiltersOpen">
+<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating">
 
   <div class="app-header">
     <div class="header-left">
@@ -26,7 +26,7 @@
     <div id="map"></div>
   </div>
 
-  <div *ngIf="showRoutePanel" class="route-pill">
+  <div *ngIf="showRoutePanel && !isNavigating" class="route-pill">
     <div class="route-pill-icon">
       <svg viewBox="0 0 24 24">
         <path d="M7 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm10 8a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM9.5 8h5v2h-5zm0 8h5v-2h-5z"/>
