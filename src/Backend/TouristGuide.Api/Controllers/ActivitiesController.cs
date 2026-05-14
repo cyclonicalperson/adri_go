@@ -9,7 +9,6 @@ namespace TouristGuide.Api.Controllers
 {
     [ApiController]
     [Route("api/activities")]
-    [Authorize(Roles = "admin,superadmin")]
     public class ActivitiesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -247,6 +246,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Create([FromBody] CreateActivityDto dto)
         {
             if (!await _permissionService.CanManageTagsAsync())
@@ -290,6 +290,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Update(uint id, [FromBody] CreateActivityDto dto)
         {
             if (!await _permissionService.CanManageTagsAsync())
@@ -356,6 +357,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Delete(uint id)
         {
             if (!await _permissionService.CanManageTagsAsync())

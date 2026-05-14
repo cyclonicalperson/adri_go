@@ -48,12 +48,18 @@ export class TouristActivitiesService {
         difficulty: item.difficulty ?? '',
         tags: item.tags ?? '',
         locationName: item.locationName ?? '',
-        lat: item.lat != null ? Number(item.lat) : null,
-        lng: item.lng != null ? Number(item.lng) : null,
+        lat: this.normalizeCoordinate(item.lat),
+        lng: this.normalizeCoordinate(item.lng),
         postId: item.postId ?? null,
         viewCount: item.viewCount ?? 0,
         linkedPosts: item.linkedPosts ?? 0,
       }))),
     );
+  }
+
+  private normalizeCoordinate(value: unknown): number | null {
+    if (value == null || value === '') return null;
+    const coordinate = Number(value);
+    return Number.isFinite(coordinate) ? coordinate : null;
   }
 }

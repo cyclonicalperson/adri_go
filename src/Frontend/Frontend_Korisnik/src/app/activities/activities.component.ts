@@ -71,7 +71,7 @@ export class ActivitiesComponent implements OnInit {
       return;
     }
 
-    if (activity.lat != null && activity.lng != null) {
+    if (this.hasUsableCoordinates(activity)) {
       this.routePlanner.replaceStops([{
         id: -activity.id,
         title: activity.name,
@@ -82,6 +82,10 @@ export class ActivitiesComponent implements OnInit {
       }], { plannerMode: true, scenicMode: true, travelMode: 'walking' });
       this.router.navigate(['/map-home']);
     }
+  }
+
+  hasUsableCoordinates(activity: TouristActivityItem): activity is TouristActivityItem & { lat: number; lng: number } {
+    return Number.isFinite(activity.lat) && Number.isFinite(activity.lng);
   }
 
   toggleMenu(): void {

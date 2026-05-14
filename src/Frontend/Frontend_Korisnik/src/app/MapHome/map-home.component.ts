@@ -1048,12 +1048,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   stopNavigation(): void {
     this.isNavigating = false;
     this.navigationSteps = [];
+    this.navigationRouteGeometry = [];
     this.navFollowMode = true;
     this.navMapRotation = 0;
     if (this.navUserMarkerEl) {
       this.navUserMarkerEl.style.transition = '';
     }
     this.navUserMarkerEl = null;
+    this.routePlanner.clear();
+    this.plannerStops = [];
+    this.plannerMode = false;
+    this.scenicSuggestions = [];
+    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
+    this.routeDestTitle = '';
+    this.plannerMessage = '';
     this.showRoutePanel = false;
     this.selectedLocation = null;
     this.clearNavRefollowTimer();
@@ -1061,6 +1069,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.releaseScreenWakeLock();
 
     // Remove the remaining-route overlay
+    this.clearRouteVisuals();
     if (this.navRemainingPolyline && this.map) {
       this.map.removeLayer(this.navRemainingPolyline);
       this.navRemainingPolyline = null;
@@ -1861,6 +1870,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private showUserLocation(position: UserPosition, fly: boolean): void {
+    this.userPosition = [position.lat, position.lng];
+    if (!this.map || !this.map.getPane('markerPane')) {
+      return;
+    }
+
     const userIcon = L.divIcon({
       html: `<div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25);"></div>`,
       className: '',
@@ -1876,7 +1890,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         .addTo(this.map!);
     }
 
-    this.userPosition = [position.lat, position.lng];
     if (fly) {
       this.map!.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
     }

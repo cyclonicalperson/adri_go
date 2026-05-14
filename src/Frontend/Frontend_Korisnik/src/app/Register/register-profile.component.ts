@@ -237,7 +237,7 @@ export class RegisterProfileComponent implements OnInit {
 
   goToLogin(): void {
     const queryParams = !this.autoLoggedIn && this.registrationEmail
-      ? { registered: '1', email: this.registrationEmail }
+      ? { email: this.registrationEmail }
       : undefined;
 
     this.router.navigate(['/login'], { queryParams });
