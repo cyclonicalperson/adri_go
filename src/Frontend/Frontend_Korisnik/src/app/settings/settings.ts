@@ -36,7 +36,6 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
-    { id: 'apple' as const, label: 'Apple', desc: 'Keep Apple ready as a private sign-in option.' },
   ];
 
   bookingOptions = [
@@ -261,6 +260,7 @@ export class SettingsComponent implements OnInit {
         [provider]: !this.settings.connectedAccounts[provider],
       }
     };
+    this.saveChanges('Connected account preferences updated');
   }
 
   isBookingServiceEnabled(id: string): boolean {

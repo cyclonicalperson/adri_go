@@ -14,9 +14,33 @@
   height: 45vh;
   min-height: 240px;
   max-height: 380px;
-  background-size: cover;
-  background-position: center;
   position: relative;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.hero-image-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.025);
+  transition: opacity 420ms ease, transform 720ms ease;
+  will-change: opacity, transform;
+}
+
+.hero-image.active {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .hero-gradient {
@@ -28,6 +52,7 @@
     rgba(0,0,0,0) 45%,
     rgba(0,0,0,0.2) 100%
   );
+  z-index: 1;
 }
 
 .back-btn {
@@ -111,6 +136,13 @@
 /* Thumbnail strip — skriveni na mobilnom, vidljivi via desktop media query */
 .hero-thumbnails { display: none; }
 .hero-thumb { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-image {
+    transition: none;
+    transform: none;
+  }
+}
 
 /* ── CONTENT CARD ────────────────────────────────────────────── */
 .content-card {

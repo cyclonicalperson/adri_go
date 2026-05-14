@@ -591,4 +591,31 @@ input:checked + .slider:before { transform: translateX(21px); }
   .settings-sheet {
     border-radius: 8px;
   }
+
+  .settings-group-account,
+  .settings-group-language {
+    grid-column: 1;
+  }
+
+  .settings-group-account { grid-row: 1; }
+  .settings-group-language { grid-row: 2; }
+
+  .settings-group-privacy,
+  .settings-group-notifications,
+  .settings-group-integrations,
+  .settings-group-about {
+    grid-column: 2;
+  }
+
+  .settings-group-privacy      { grid-row: 1; }
+  .settings-group-notifications { grid-row: 2; }
+  .settings-group-integrations  { grid-row: 3; }
+  .settings-group-about         { grid-row: 4; }
+
+  .settings-group-privacy .setting-row,
+  .settings-group-notifications .setting-row,
+  .settings-group-integrations .setting-row,
+  .settings-group-about .setting-row {
+    min-height: 62px;
+  }
 }

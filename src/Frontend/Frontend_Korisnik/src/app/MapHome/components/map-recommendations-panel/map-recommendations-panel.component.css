@@ -199,3 +199,55 @@
   font-weight: 400;
   color: var(--gray-400);
 }
+
+:host-context(html[data-theme='dark']) .recommended-panel {
+  background: #1f2937;
+  border: 1px solid #334155;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .recommended-header {
+  background: #1f2937;
+  border-bottom: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .recommended-title,
+:host-context(html[data-theme='dark']) .rec-title,
+:host-context(html[data-theme='dark']) .rec-rating {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .recommended-subtitle,
+:host-context(html[data-theme='dark']) .rec-meta,
+:host-context(html[data-theme='dark']) .rec-reason,
+:host-context(html[data-theme='dark']) .rec-reviews {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .recommendation-tabs {
+  background: #111827;
+  border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .recommendation-tabs button {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .recommendation-tabs button.active {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+:host-context(html[data-theme='dark']) .recommended-card {
+  background: #111827;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .recommended-card:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .rec-category {
+  color: #e5edf6;
+}

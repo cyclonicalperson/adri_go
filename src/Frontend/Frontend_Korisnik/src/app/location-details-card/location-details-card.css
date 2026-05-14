@@ -260,6 +260,113 @@
 .btn-details svg { width: 16px; height: 16px; fill: #fff; flex-shrink: 0; }
 
 /* ── DESKTOP: kartica centrirana na dnu mape, pomerena desno od sidebara ─── */
+:host-context(html[data-theme='dark']) .location-details-card {
+  background: #1f2937;
+  border: 1px solid #334155;
+  box-shadow: 0 -6px 34px rgba(0, 0, 0, 0.46), 0 14px 42px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .card-header {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .category-label {
+  background: #064e3b;
+  color: #bbf7d0;
+  border: 1px solid rgba(34, 197, 94, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .label-dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+:host-context(html[data-theme='dark']) .close-btn {
+  background: #334155;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .close-btn:hover {
+  background: #475569;
+}
+
+:host-context(html[data-theme='dark']) .close-btn svg {
+  fill: #e5edf6;
+}
+
+:host-context(html[data-theme='dark']) .image-container {
+  border: 1px solid #334155;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+}
+
+:host-context(html[data-theme='dark']) .location-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .info-item {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .info-item svg {
+  fill: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .reviews-text {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .rating-box {
+  background: #451a03;
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .calendar-toast {
+  background: #064e3b;
+  border-color: rgba(34, 197, 94, 0.42);
+  color: #bbf7d0;
+}
+
+:host-context(html[data-theme='dark']) .btn-calendar {
+  background: #123222;
+  border-color: #166534;
+}
+
+:host-context(html[data-theme='dark']) .btn-calendar:hover {
+  background: #14532d;
+}
+
+:host-context(html[data-theme='dark']) .btn-calendar svg {
+  fill: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .btn-route {
+  background: #172554;
+  border-color: #1d4ed8;
+  color: #dbeafe;
+}
+
+:host-context(html[data-theme='dark']) .btn-route:hover {
+  background: #1e3a8a;
+}
+
+:host-context(html[data-theme='dark']) .btn-details {
+  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.22);
+}
+
+:host-context(html[data-theme='dark']) .auth-modal {
+  background: #1f2937;
+  border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .auth-modal h3 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .auth-modal p {
+  color: #94a3b8;
+}
+
 @media (min-width: 900px) {
   .bottom-sheet-overlay {
     /* Sidebar je 360px sirok; centriramo karticu u preostalom prostoru mape */

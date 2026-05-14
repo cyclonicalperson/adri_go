@@ -8,7 +8,6 @@ import { MapRecommendationsPanelComponent } from './components/map-recommendatio
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
 import { MapNavigationPanelComponent } from './components/map-navigation-panel/map-navigation-panel.component';
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
-import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-planner-panel.component';
 import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
@@ -41,7 +40,6 @@ type MapLocation = Location & {
     CommonModule,
     FormsModule,
     LocationDetailsCardComponent,
-    SideMenuComponent,
     TripPlannerPanelComponent,
     RouteDetoursPanelComponent,
     MapRecommendationsPanelComponent,
@@ -2030,6 +2028,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const normalized = query.toLowerCase().trim();
+
     this.searchResults = this.locationsList
       .map(loc => ({ loc, score: this.scoreSearchResult(loc, normalized) }))
       .filter(item => item.score > 0)
@@ -2206,6 +2206,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   goToActivities(): void {
     this.activeTab = 'activities';
     this.router.navigate(['/activities']);
+  }
+
+  goToNotifications(): void {
+    this.router.navigate(['/notifications']);
+  }
+
+  goToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
+    this.activeTab = 'calendar';
+    this.router.navigate(['/calendar']);
   }
 
   goToAccount(): void {

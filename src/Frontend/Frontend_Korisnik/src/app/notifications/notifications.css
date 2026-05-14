@@ -111,6 +111,76 @@
 
 .dot { font-size: 8px; }
 /* ── DESKTOP ─────────────────────────────────────────────────── */
+:host-context(html[data-theme='dark']) .notif-container {
+  background: #111827;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .header {
+  background: #1f2937;
+  border-bottom: 1px solid #334155;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .header h1 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .back-btn {
+  color: #e5edf6;
+  background: transparent;
+}
+
+:host-context(html[data-theme='dark']) .mark-read {
+  background: #dcfce7;
+  color: #166534;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.16);
+}
+
+:host-context(html[data-theme='dark']) .filter-bar {
+  background: #1f2937;
+  border-bottom: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .filter-chip {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .filter-chip:not(.active):hover {
+  background: #111827;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .filter-chip.active {
+  background: #22c55e;
+  color: #fff;
+}
+
+:host-context(html[data-theme='dark']) .notif-card,
+:host-context(html[data-theme='dark']) .unread {
+  background: #1f2937;
+  border-color: #22c55e;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26);
+}
+
+:host-context(html[data-theme='dark']) .title-row h3 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .time,
+:host-context(html[data-theme='dark']) .notif-text {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .divider {
+  background: #334155;
+}
+
+:host-context(html[data-theme='dark']) .booking { background: #451a1a; }
+:host-context(html[data-theme='dark']) .recommendation { background: #123222; }
+:host-context(html[data-theme='dark']) .support { background: #172554; }
+:host-context(html[data-theme='dark']) .alert { background: #451a03; }
+
 @media (min-width: 900px) {
   .notifications-container, .container {
     max-width: 720px;

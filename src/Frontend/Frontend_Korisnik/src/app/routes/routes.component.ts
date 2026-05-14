@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 
@@ -11,7 +10,7 @@ type RouteSort = 'created-desc' | 'distance-asc' | 'distance-desc' | 'duration-a
 @Component({
   selector: 'app-routes',
   standalone: true,
-  imports: [CommonModule, FormsModule, SideMenuComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './routes.component.html',
   styleUrls: ['./routes.component.css'],
 })
@@ -83,6 +82,10 @@ export class RoutesComponent implements OnInit {
 
   toggleMenu(): void {
     this.isMenuOpen = !this.isMenuOpen;
+  }
+
+  goToNotifications(): void {
+    this.router.navigate(['/notifications']);
   }
 
   goToMap(): void {

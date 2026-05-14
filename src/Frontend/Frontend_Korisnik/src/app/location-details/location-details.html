@@ -16,8 +16,20 @@
   <ng-container *ngIf="location && !isLoading">
 
     <!-- HERO -->
-    <div class="hero-section"
-      [style.backgroundImage]="images.length ? 'url(' + images[currentImageIndex] + ')' : 'url(assets/Budva.jpg)'">
+    <div class="hero-section">
+      <div class="hero-image-stage" aria-hidden="true">
+        <img
+          *ngIf="!images.length"
+          src="assets/Budva.jpg"
+          alt=""
+          class="hero-image active">
+        <img
+          *ngFor="let img of images; let i = index"
+          [src]="img"
+          alt=""
+          class="hero-image"
+          [class.active]="i === currentImageIndex">
+      </div>
       <div class="hero-gradient"></div>
       <button *ngIf="images.length > 1" class="hero-nav-btn left" (click)="prevImage()" aria-label="Previous image">
         <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>

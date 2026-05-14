@@ -2,7 +2,6 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
@@ -20,7 +19,7 @@ type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, SideMenuComponent, FiltersComponent],
+  imports: [CommonModule, FormsModule, FiltersComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
@@ -28,6 +27,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   isMenuOpen = false;
+  sortMenuOpen = false;
   isFiltersOpen = false;
   locations: Location[] = [];
   private allLocations: Location[] = [];
@@ -139,6 +139,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       this.searchResults = [];
       this.showDropdown = false;
       this.isSearchActive = false;
+      this.submittedSearchQuery = '';
       this.locations = this.applySort(this.allLocations);
       this.cdr.markForCheck();
       return;
@@ -151,12 +152,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
       )
       .slice(0, 8);
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
-    this.isSearchActive = true;
-    this.locations = this.applySort(this.allLocations.filter(loc =>
-      (loc.title || '').toLowerCase().includes(q) ||
-      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-      (loc.regionName || '').toLowerCase().includes(q)
-    ));
     this.showDropdown = this.searchResults.length > 0;
     this.cdr.markForCheck();
   }
@@ -164,8 +159,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
   /** Called when user clicks a dropdown suggestion */
   selectSearchResult(loc: Location): void {
     this.searchQuery = loc.title || '';
-    this.submittedSearchQuery = this.searchQuery;
     this.showDropdown = false;
+    this.submittedSearchQuery = this.searchQuery.trim();
     this.isSearchActive = true;
     const q = this.searchQuery.trim().toLowerCase();
     this.locations = this.applySort(this.allLocations.filter(l =>
@@ -177,14 +172,17 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   /** Called when user clicks Search button or presses Enter */
-  executeSearch(): void {
-    const q = this.searchQuery.trim().toLowerCase();
+  executeSearch(rawQuery = this.searchQuery): void {
+    this.searchQuery = rawQuery;
+    const q = rawQuery.trim().toLowerCase();
     this.showDropdown = false;
+    this.sortMenuOpen = false;
     if (!q) {
       this.clearSearch();
       return;
     }
     this.isSearchActive = true;
+    this.submittedSearchQuery = rawQuery.trim();
     this.locations = this.applySort(this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
@@ -251,6 +249,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   toggleMenu(): void { this.isMenuOpen = !this.isMenuOpen; }
+  goToNotifications(): void { this.router.navigate(['/notifications']); }
   goToMap(): void { this.router.navigate(['/map-home']); }
   openFilters(): void {
     this.isFiltersOpen = true;
@@ -443,6 +442,26 @@ export class LocationListComponent implements OnInit, OnDestroy {
       return;
     }
     this.router.navigate(['/saved']);
+  }
+
+  goToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your calendar.');
+      return;
+    }
+    this.router.navigate(['/calendar']);
+  }
+
+  goToActivities(): void {
+    this.router.navigate(['/activities']);
+  }
+
+  goToRoutes(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your routes.');
+      return;
+    }
+    this.router.navigate(['/routes']);
   }
 
   goToAccount(): void {

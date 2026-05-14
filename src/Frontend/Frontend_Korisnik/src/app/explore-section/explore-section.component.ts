@@ -22,6 +22,8 @@ export class ExploreSectionComponent implements OnInit {
   section: 'near-you' | 'recommended' | 'top-rated' = 'near-you';
   locations: Location[] = [];
   sortValue: 'distance:asc' | 'createdAt:desc' | 'title:asc' | 'rating:desc' | 'reviews:desc' = 'distance:asc';
+  hasSearched = true; // locations loaded = search already done
+  sortOpen = false;
   isLoading = false;
   feedbackMessage = '';
   showAuthPopup = false;
@@ -37,7 +39,7 @@ export class ExploreSectionComponent implements OnInit {
   }
 
   constructor(
-    private router: Router,
+    public router: Router,
     private route: ActivatedRoute,
     private locationService: LocationService,
     private authService: AuthService,

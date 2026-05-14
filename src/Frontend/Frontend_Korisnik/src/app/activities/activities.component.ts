@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 
@@ -11,7 +10,7 @@ type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
 @Component({
   selector: 'app-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, SideMenuComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './activities.component.html',
   styleUrls: ['./activities.component.css'],
 })
@@ -57,8 +56,14 @@ export class ActivitiesComponent implements OnInit {
         this.isLoading = false;
         this.cdr.markForCheck();
       },
-      error: () => {
-        this.errorMessage = 'Could not load activities.';
+      error: (err) => {
+        if (err.status === 403 || err.status === 401) {
+          this.errorMessage = 'Activities require a registered account. Please log in to access this section.';
+        } else if (err.status === 404) {
+          this.errorMessage = 'Activities feature is not available on this server.';
+        } else {
+          this.errorMessage = 'Could not load activities. Please try again later.';
+        }
         this.isLoading = false;
         this.cdr.markForCheck();
       },
@@ -86,6 +91,10 @@ export class ActivitiesComponent implements OnInit {
 
   toggleMenu(): void {
     this.isMenuOpen = !this.isMenuOpen;
+  }
+
+  goToNotifications(): void {
+    this.router.navigate(['/notifications']);
   }
 
   goToMap(): void {
