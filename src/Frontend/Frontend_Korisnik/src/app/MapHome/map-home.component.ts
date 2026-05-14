@@ -67,10 +67,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private plannerRenderToken = 0;
   private locationWatchId: number | null = null;
   private hasCenteredOnUserLocation = false;
+  private plannerRouteGeometry: [number, number][] = [];
+  private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
-  private walkingDotMarkers: L.Marker[] = [];
+  private walkingDotMarkers: L.Layer[] = [];
   routeDestTitle = '';
   showRoutePanel = false;
   isRenderingRoute = false;
@@ -115,10 +117,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private navRefollowTimerId: ReturnType<typeof setTimeout> | null = null;
   /** How long (ms) to wait before auto-returning to follow mode */
   private readonly NAV_REFOLLOW_DELAY_MS = 8000;
-  /** Timestamp of last GPS position processed — used for throttling smooth pan */
-  private navLastPanTime = 0;
   /** Interpolated marker element for smooth movement — avoid remove/add on every tick */
   private navUserMarkerEl: HTMLElement | null = null;
+  private previousNavigationZoomOptions: Pick<L.MapOptions, 'scrollWheelZoom' | 'doubleClickZoom' | 'touchZoom'> | null = null;
+  private wakeLock: any = null;
+  private readonly onVisibilityChange = () => {
+    if (document.visibilityState === 'visible' && this.isNavigating) {
+      void this.requestScreenWakeLock();
+    }
+  };
+  private readonly handleWindowResize = () => this.scheduleMapViewportRefresh();
+  private readonly handleNavigationZoomRecenter = () => this.centerNavigationOnUser(false);
+  private autoLocatePermissionStatus: PermissionStatus | null = null;
+  private readonly handleAutoLocatePermissionChange = () => this.tryAutoLocateUser();
 
   showClearRouteConfirm = false;
 
@@ -199,7 +210,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     culture:       '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
     monument:      '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
     food:          '<path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>',
-    nightlife:     '<path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/>',
+    nightlife:     '<path d="M7 2h10l2 6-7 14L5 8l2-6zm1.44 6l3.56 7.13L15.56 8H8.44zM9 4l-.67 2h7.34L15 4H9z"/>',
     activity:      '<path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>',
     events:        '<path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>',
     accommodation: '<path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/>',
@@ -233,6 +244,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.initMap();
     this.startLocationTracking();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    window.addEventListener('resize', this.handleWindowResize);
+    this.tryAutoLocateUser();
     this.loadPersonalizationContext();
     this.loadLocations();
     this.activatedRoute.queryParams.subscribe(params => {
@@ -253,6 +267,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.map?.remove();
     this.stopLocationTracking();
     this.clearNavRefollowTimer();
+    this.clearMapResizeTimer();
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    window.removeEventListener('resize', this.handleWindowResize);
+    this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
+    this.autoLocatePermissionStatus = null;
+    void this.releaseScreenWakeLock();
   }
 
   loadLocations(): void {
@@ -386,7 +406,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const imagesValue = loc.images;
-    if (!imagesValue) return 'assets/placeholder.jpg';
+    if (!imagesValue) return 'assets/Budva.jpg';
 
     let firstImg = '';
     if (typeof imagesValue === 'string') {
@@ -400,7 +420,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       firstImg = imagesValue[0];
     }
 
-    if (!firstImg) return 'assets/placeholder.jpg';
+    if (!firstImg) return 'assets/Budva.jpg';
     if (!firstImg.startsWith('http')) {
       const clean = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
       return `${this.IMAGE_BASE_URL}${clean}`;
@@ -555,13 +575,76 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   setTravelMode(mode: TravelMode): void {
-    if (this.travelMode === mode) {
-      return;
-    }
+    const changed = this.travelMode !== mode;
     this.travelMode = mode;
     this.routePlanner.setTravelMode(mode);
     this.preferences.update({ preferredTravelMode: mode });
-    this.renderPlannerRoute();
+    this.plannerMessage = '';
+
+    if (changed || this.plannerStops.length > 0) {
+      this.renderPlannerRoute();
+    }
+
+    this.analytics.track('planner_travel_mode_changed', {
+      travelMode: mode,
+      stopCount: this.plannerStops.length,
+    });
+    this.cdr.detectChanges();
+  }
+
+  async changeNavigationMode(mode: TravelMode): Promise<void> {
+    if (this.travelMode === mode) return;
+
+    if (!this.isNavigating) {
+      this.setTravelMode(mode);
+      return;
+    }
+
+    this.travelMode = mode;
+    this.routePlanner.setTravelMode(mode);
+    this.preferences.update({ preferredTravelMode: mode });
+
+    const coordinates = this.getRouteCoordinates();
+    if (coordinates.length < 2) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isRenderingRoute = true;
+    this.plannerMessage = '';
+    this.analytics.track('navigation_travel_mode_changed', {
+      travelMode: mode,
+      stopCount: this.plannerStops.length,
+    });
+
+    try {
+      const result = await this.routingService.computeRouteForNavigation(
+        coordinates,
+        mode,
+        { viewport: this.getRouteViewportMode() },
+      );
+      this.navigationSteps = result.steps ?? [];
+      this.navigationRouteGeometry = result.geometry;
+      this.routeSummary = {
+        distanceKm: result.distanceKm,
+        durationMin: result.durationMin,
+        stopCount: this.plannerStops.length,
+      };
+      this.routeDestTitle = this.getRouteTitle();
+      this.replaceNavigationRouteOverlay(result.geometry);
+      if (this.navFollowMode) {
+        this.centerNavigationOnUser(false);
+      }
+    } catch {
+      this.plannerMessage = 'Could not switch navigation mode right now.';
+      setTimeout(() => {
+        this.plannerMessage = '';
+        this.cdr.detectChanges();
+      }, 2400);
+    } finally {
+      this.isRenderingRoute = false;
+      this.cdr.detectChanges();
+    }
   }
 
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
@@ -604,6 +687,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const tripParam = this.latestQueryParams['trip'];
     const directTo = this.latestQueryParams['directTo'];
+    const focusId = Number(this.latestQueryParams['focusId']);
     const plannerFlag = this.latestQueryParams['planner'] === '1';
     const scenicFlag = this.latestQueryParams['scenic'];
     const modeParam = this.latestQueryParams['mode'];
@@ -616,6 +700,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (scenicFlag === '0' || scenicFlag === '1') {
       this.routePlanner.setScenicMode(scenicFlag === '1');
       this.scenicMode = scenicFlag === '1';
+    }
+
+    if (Number.isFinite(focusId) && focusId > 0) {
+      const matched = this.locationsList.find(location => location.id === focusId);
+      if (matched) {
+        this.focusOnLocation(matched);
+      }
     }
 
     if (tripParam) {
@@ -697,6 +788,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (routeCoordinates.length < 2) {
       const onlyStop = this.plannerStops[0];
+      if (this.preferences.snapshot.locationSharing && !this.userPosition) {
+        this.tryAutoLocateUser();
+      }
       this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
       this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
       this.cdr.detectChanges();
@@ -710,7 +804,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isRenderingRoute = true;
     const renderToken = ++this.plannerRenderToken;
 
-    this.routingService.computeRoute(routeCoordinates, this.travelMode)
+    this.routingService.computeRoute(routeCoordinates, this.travelMode, { viewport: this.getRouteViewportMode() })
       .then(route => {
         if (renderToken !== this.plannerRenderToken || !this.map) {
           return;
@@ -784,9 +878,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private clearRouteVisuals(): void {
+    this.plannerRouteGeometry = [];
     if (this.routePolyline) {
       this.map?.removeLayer(this.routePolyline);
       this.routePolyline = null;
+    }
+    if (this.navRemainingPolyline) {
+      this.map?.removeLayer(this.navRemainingPolyline);
+      this.navRemainingPolyline = null;
     }
     this.walkingDotMarkers.forEach(m => this.map?.removeLayer(m));
     this.walkingDotMarkers = [];
@@ -839,6 +938,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   requestClearRoute(): void {
+    if (this.isNavigating) {
+      this.clearRoute();
+      return;
+    }
     this.showClearRouteConfirm = true;
     this.cdr.detectChanges();
   }
@@ -855,6 +958,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   clearRoute(): void {
     this.plannerRenderToken++;
+    if (this.isNavigating) {
+      this.stopNavigation();
+    }
     this.routePlanner.clear();
     this.plannerStops = [];
     this.plannerMode = false;
@@ -926,6 +1032,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async startNavigation(): Promise<void> {
+    this.showClearRouteConfirm = false;
+    await this.ensureUserPosition();
+
     const coordinates = this.getRouteCoordinates();
     if (coordinates.length < 2) {
       this.plannerMessage = this.plannerStops.length === 0
@@ -935,10 +1044,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     try {
-      const result = await this.routingService.computeRouteForNavigation(coordinates, this.travelMode);
+      const result = await this.routingService.computeRouteForNavigation(
+        coordinates,
+        this.travelMode,
+        { viewport: this.getRouteViewportMode() },
+      );
       this.navigationSteps = result.steps ?? [];
       this.navigationRouteGeometry = result.geometry;
       this.isNavigating = true;
+      this.showRoutePanel = false;
+      this.selectedLocation = null;
+      this.setNavigationMapLock(true);
+      void this.requestScreenWakeLock();
       this.sheetExpanded = false;
       this.cdr.detectChanges();
     } catch {
@@ -947,13 +1064,31 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private async ensureUserPosition(): Promise<void> {
+    if (this.userPosition || !this.preferences.snapshot.locationSharing) {
+      return;
+    }
+
+    const position = await this.geolocationService.requestCurrentPosition({ maximumAge: 30000 });
+    if (position) {
+      this.handleUserPositionAvailable(position, { fly: false, rerenderRoute: false });
+    }
+  }
+
   stopNavigation(): void {
     this.isNavigating = false;
     this.navigationSteps = [];
     this.navFollowMode = true;
     this.navMapRotation = 0;
+    if (this.navUserMarkerEl) {
+      this.navUserMarkerEl.style.transition = '';
+    }
     this.navUserMarkerEl = null;
+    this.showRoutePanel = false;
+    this.selectedLocation = null;
     this.clearNavRefollowTimer();
+    this.setNavigationMapLock(false);
+    void this.releaseScreenWakeLock();
 
     // Remove the remaining-route overlay
     if (this.navRemainingPolyline && this.map) {
@@ -967,24 +1102,88 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  onNavigationArrived(): void {
+    this.clearRoute();
+  }
+
+  private setNavigationMapLock(locked: boolean): void {
+    if (!this.map) return;
+
+    if (locked) {
+      this.navFollowMode = true;
+      if (!this.previousNavigationZoomOptions) {
+        this.previousNavigationZoomOptions = {
+          scrollWheelZoom: this.map.options.scrollWheelZoom,
+          doubleClickZoom: this.map.options.doubleClickZoom,
+          touchZoom: this.map.options.touchZoom,
+        };
+      }
+      this.map.options.scrollWheelZoom = 'center';
+      this.map.options.doubleClickZoom = 'center';
+      this.map.options.touchZoom = 'center';
+      this.map.dragging.disable();
+      this.map.boxZoom.disable();
+      this.map.keyboard.disable();
+      this.map.scrollWheelZoom.enable();
+      this.map.doubleClickZoom.enable();
+      this.map.touchZoom.enable();
+      this.map.on('zoomstart zoomend', this.handleNavigationZoomRecenter);
+      this.centerNavigationOnUser(false);
+      return;
+    }
+
+    if (this.previousNavigationZoomOptions) {
+      this.map.options.scrollWheelZoom = this.previousNavigationZoomOptions.scrollWheelZoom;
+      this.map.options.doubleClickZoom = this.previousNavigationZoomOptions.doubleClickZoom;
+      this.map.options.touchZoom = this.previousNavigationZoomOptions.touchZoom;
+      this.previousNavigationZoomOptions = null;
+    }
+    this.map.off('zoomstart zoomend', this.handleNavigationZoomRecenter);
+    this.map.dragging.enable();
+    this.map.boxZoom.enable();
+    this.map.keyboard.enable();
+  }
+
+  private async requestScreenWakeLock(): Promise<void> {
+    if (!('wakeLock' in navigator) || this.wakeLock) {
+      return;
+    }
+
+    try {
+      this.wakeLock = await (navigator as any).wakeLock.request('screen');
+      this.wakeLock?.addEventListener?.('release', () => {
+        this.wakeLock = null;
+      });
+    } catch {
+      this.wakeLock = null;
+    }
+  }
+
+  private async releaseScreenWakeLock(): Promise<void> {
+    if (!this.wakeLock) {
+      return;
+    }
+
+    const lock = this.wakeLock;
+    this.wakeLock = null;
+    try {
+      await lock.release?.();
+    } catch {
+      // The browser may have already released it when the tab lost focus.
+    }
+  }
+
   onNavigationPositionUpdated(position: [number, number]): void {
     // Move the user marker smoothly without remove/add (avoids flicker)
     this.moveUserMarkerSmooth(position);
 
     if (!this.navFollowMode || !this.map) return;
+    this.centerNavigationOnUser(false);
+  }
 
-    // Throttle pan to max once per 800ms for smooth animation
-    const now = Date.now();
-    if (now - this.navLastPanTime < 800) return;
-    this.navLastPanTime = now;
-
-    // panTo is smoother than setView for continuous tracking
-    this.map.panTo(position, {
-      animate: true,
-      duration: 0.8,
-      easeLinearity: 0.5,
-      noMoveStart: true,
-    });
+  private centerNavigationOnUser(animate: boolean): void {
+    if (!this.map || !this.userPosition) return;
+    this.map.setView(this.userPosition, this.map.getZoom(), { animate });
   }
 
   /** Move user marker by updating LatLng directly — no DOM remove/add = no flicker */
@@ -998,12 +1197,26 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.navUserMarkerEl) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.navUserMarkerEl = ((this.userMarker as any).getElement?.() as HTMLElement) ?? null;
+        if (this.navUserMarkerEl) {
+          this.navUserMarkerEl.style.transition = this.isNavigating && this.navFollowMode
+            ? 'none'
+            : 'transform 0.8s linear';
+        }
+      } else {
+        this.navUserMarkerEl.style.transition = this.isNavigating && this.navFollowMode
+          ? 'none'
+          : 'transform 0.8s linear';
       }
     } else {
       // First time: create the marker normally
       this.showUserLocation({ lat: position[0], lng: position[1] }, false);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.navUserMarkerEl = ((this.userMarker as any)?.getElement?.() as HTMLElement) ?? null;
+      if (this.navUserMarkerEl) {
+        this.navUserMarkerEl.style.transition = this.isNavigating && this.navFollowMode
+          ? 'none'
+          : 'transform 0.8s linear';
+      }
     }
   }
 
@@ -1012,8 +1225,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Swap in the new steps and geometry
     this.navigationSteps = event.steps;
     this.navigationRouteGeometry = event.geometry;
+    this.replaceNavigationRouteOverlay(event.geometry);
+    this.cdr.detectChanges();
+  }
 
-    // Replace the route polyline with the new one
+  private replaceNavigationRouteOverlay(geometry: [number, number][]): void {
     if (this.routePolyline && this.map) {
       this.map.removeLayer(this.routePolyline);
       this.routePolyline = null;
@@ -1022,15 +1238,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map.removeLayer(this.navRemainingPolyline);
       this.navRemainingPolyline = null;
     }
-    if (this.map && event.geometry.length >= 2) {
-      this.navRemainingPolyline = L.polyline(event.geometry, {
-        color: '#22c55e',
-        weight: 6,
-        opacity: 0.9,
-      }).addTo(this.map);
+    this.walkingDotMarkers.forEach(marker => this.map?.removeLayer(marker));
+    this.walkingDotMarkers = [];
+    if (this.map && geometry.length >= 2) {
+      if (this.travelMode === 'walking') {
+        this.drawWalkingDots(geometry, true);
+      } else {
+        this.navRemainingPolyline = L.polyline(geometry, {
+          color: '#22c55e',
+          weight: 6,
+          opacity: 0.9,
+        }).addTo(this.map);
+      }
     }
-
-    this.cdr.detectChanges();
   }
 
   /** Helper: returns the #map DOM element which Leaflet owns.
@@ -1092,15 +1312,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navRefollowTimerId = setTimeout(() => {
       if (this.isNavigating && !this.navFollowMode) {
         this.navFollowMode = true;
-        if (this.userPosition && this.map) {
-          this.map.panTo(this.userPosition, {
-            animate: true,
-            duration: 0.8,
-            easeLinearity: 0.5,
-            noMoveStart: true,
-          });
-          this.applyMapRotation(-this.navMapRotation);
-        }
+        this.centerNavigationOnUser(false);
+        this.applyMapRotation(-this.navMapRotation);
         this.cdr.detectChanges();
       }
     }, this.NAV_REFOLLOW_DELAY_MS);
@@ -1113,20 +1326,38 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** User taps the locate/recenter button during navigation — re-enables follow mode immediately */
+  /** Debounced viewport refresh for desktop/mobile switches and browser resizes. */
+  private scheduleMapViewportRefresh(): void {
+    this.clearMapResizeTimer();
+    this.mapResizeTimerId = setTimeout(() => {
+      this.mapResizeTimerId = null;
+      this.map?.invalidateSize();
+
+      if (this.isNavigating && this.navFollowMode) {
+        this.centerNavigationOnUser(false);
+        return;
+      }
+
+      if (!this.isNavigating && this.plannerRouteGeometry.length >= 2) {
+        this.fitRouteGeometry(this.plannerRouteGeometry, false);
+      }
+    }, 120);
+  }
+
+  private clearMapResizeTimer(): void {
+    if (this.mapResizeTimerId !== null) {
+      clearTimeout(this.mapResizeTimerId);
+      this.mapResizeTimerId = null;
+    }
+  }
+
+  /** User taps the locate/recenter button during navigation. */
   locateMeOrRefollow(): void {
     if (this.isNavigating) {
       this.clearNavRefollowTimer();
       this.navFollowMode = true;
-      if (this.userPosition && this.map) {
-        this.map.panTo(this.userPosition, {
-          animate: true,
-          duration: 0.8,
-          easeLinearity: 0.5,
-          noMoveStart: true,
-        });
-        this.applyMapRotation(-this.navMapRotation);
-      }
+      this.centerNavigationOnUser(false);
+      this.applyMapRotation(-this.navMapRotation);
       this.cdr.detectChanges();
     } else {
       this.locateMe();
@@ -1171,6 +1402,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private drawPlannerPolyline(route: ComputedRoute): void {
     if (!this.map || route.geometry.length < 2) return;
+    this.plannerRouteGeometry = route.geometry;
 
     if (this.travelMode === 'walking') {
       this.drawWalkingDots(route.geometry, false);
@@ -1183,8 +1415,29 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }).addTo(this.map);
     }
 
-    const bounds = L.latLngBounds(route.geometry);
-    this.map.fitBounds(bounds, { padding: [60, 60] });
+    this.fitRouteGeometry(route.geometry);
+  }
+
+  private getRouteViewportMode(): 'mobile' | 'desktop' {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 899px)').matches
+      ? 'mobile'
+      : 'desktop';
+  }
+
+  private fitRouteGeometry(geometry: [number, number][], animate = true): void {
+    if (!this.map || geometry.length < 2) return;
+
+    const bounds = L.latLngBounds(geometry);
+    if (this.getRouteViewportMode() === 'mobile') {
+      this.map.fitBounds(bounds, {
+        paddingTopLeft: [42, 150],
+        paddingBottomRight: [42, 160],
+        animate,
+      });
+      return;
+    }
+
+    this.map.fitBounds(bounds, { padding: [60, 60], animate });
   }
 
   /**
@@ -1201,8 +1454,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ): void {
     if (!this.map || geometry.length < 2) return;
 
-    // Dot spacing in meters. At zoom ~15 this gives a dot every ~8px.
-    const SPACING_M = 12;
+    const totalDistanceM = this.geometryDistanceM(geometry);
+    const maxDots = isNav ? 120 : 180;
+    const minSpacingM = isNav ? 18 : 24;
+    const SPACING_M = Math.max(minSpacingM, Math.ceil(totalDistanceM / maxDots));
     const color = '#22c55e';
     const dotSize = isNav ? 7 : 8;
 
@@ -1212,15 +1467,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     let prevLng = geometry[0][1];
 
     const place = (lat: number, lng: number) => {
-      const icon = L.divIcon({
-        html: `<div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"></div>`,
-        className: '',
-        iconSize: [dotSize, dotSize],
-        iconAnchor: [dotSize / 2, dotSize / 2],
-      });
-      const m = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: 100 });
-      m.addTo(this.map!);
-      this.walkingDotMarkers.push(m);
+      const marker = L.circleMarker([lat, lng], {
+        radius: dotSize / 2,
+        color: '#fff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1,
+        opacity: 1,
+        interactive: false,
+      }).addTo(this.map!);
+      this.walkingDotMarkers.push(marker);
     };
 
     // Always place a dot at the very start
@@ -1231,6 +1487,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       const lng = geometry[i][1];
 
       const segLen = this.haversineM(prevLat, prevLng, lat, lng);
+      if (segLen <= 0) {
+        prevLat = lat;
+        prevLng = lng;
+        continue;
+      }
       accumulated += segLen;
 
       while (accumulated >= SPACING_M) {
@@ -1246,6 +1507,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       prevLat = lat;
       prevLng = lng;
     }
+  }
+
+  private geometryDistanceM(geometry: [number, number][]): number {
+    let total = 0;
+    for (let index = 1; index < geometry.length; index++) {
+      total += this.haversineM(
+        geometry[index - 1][0],
+        geometry[index - 1][1],
+        geometry[index][0],
+        geometry[index][1],
+      );
+    }
+    return total;
   }
 
   /** Simple haversine distance in metres between two lat/lng points. */
@@ -1285,6 +1559,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (addedCount > 0) {
           this.plannerMessage = `${addedCount} stop(s) added to your calendar.${suffix}`;
+          this.showTripSavedBrowserNotification(addedCount);
         } else if (alreadyCount > 0) {
           this.plannerMessage = 'These stops are already in your calendar.';
         } else {
@@ -1304,6 +1579,21 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private showTripSavedBrowserNotification(addedCount: number): void {
+    if (!this.preferences.snapshot.pushNotifications || !('Notification' in window)) {
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      return;
+    }
+
+    const title = addedCount === 1 ? 'Trip stop saved' : 'Trip stops saved';
+    const body = addedCount === 1
+      ? 'Your stop was added to the travel calendar.'
+      : `${addedCount} stops were added to the travel calendar.`;
+    new Notification(title, { body });
   }
 
   private applyFilterState(): void {
@@ -1592,9 +1882,58 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.updateDistancesAndRecommendations();
         this.applyMarkerFilter();
         this.refreshRecommendations();
+        this.handleUserPositionAvailable(position, { fly: true, rerenderRoute: true });
       }
       this.cdr.detectChanges();
     });
+  }
+
+  private tryAutoLocateUser(): void {
+    if (!this.preferences.snapshot.locationSharing || typeof navigator === 'undefined') {
+      return;
+    }
+
+    const locate = () => {
+      void this.geolocationService.requestCurrentPosition({ maximumAge: 60000 }).then((position) => {
+        if (!position) return;
+        this.handleUserPositionAvailable(position, { fly: false, rerenderRoute: true });
+        this.cdr.detectChanges();
+      });
+    };
+
+    const permissions = navigator.permissions;
+    if (permissions?.query) {
+      permissions.query({ name: 'geolocation' as PermissionName })
+        .then(status => {
+          this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
+          this.autoLocatePermissionStatus = status;
+          status.addEventListener?.('change', this.handleAutoLocatePermissionChange);
+          if (status.state === 'granted') locate();
+        })
+        .catch(() => locate());
+      return;
+    }
+
+    locate();
+  }
+
+  private handleUserPositionAvailable(
+    position: UserPosition,
+    options: { fly?: boolean; rerenderRoute?: boolean } = {},
+  ): void {
+    this.showUserLocation(position, !!options.fly);
+    this.updateDistancesAndRecommendations();
+    this.applyMarkerFilter();
+    this.refreshRecommendations();
+
+    if (this.isNavigating && this.navFollowMode) {
+      this.centerNavigationOnUser(false);
+      return;
+    }
+
+    if (options.rerenderRoute && this.plannerStops.length > 0) {
+      this.renderPlannerRoute();
+    }
   }
 
   private showUserLocation(position: UserPosition, fly: boolean): void {
@@ -1612,7 +1951,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       this.userMarker = L.marker([position.lat, position.lng], { icon: userIcon, zIndexOffset: 1000 })
         .bindPopup('<b>You are here</b>')
-        .addTo(this.map);
+        .addTo(this.map!);
     }
 
     this.userPosition = [position.lat, position.lng];
@@ -1691,47 +2030,43 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.searchResults = this.buildContextualSearchResults(query);
-  }
-
-  private buildContextualSearchResults(query: string): MapLocation[] {
-    const terms = this.expandSearchTerms(this.tokenizeSearch(query));
-    if (terms.length === 0) return [];
-
-    return this.locationsList
-      .map(location => ({ location, score: this.scoreSearchLocation(location, terms) }))
+    this.searchResults = this.locationsList
+      .map(loc => ({ loc, score: this.scoreSearchResult(loc, normalized) }))
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
-      .map(item => item.location)
+      .map(item => item.loc)
       .slice(0, 8);
   }
 
-  private scoreSearchLocation(location: MapLocation, terms: string[]): number {
-    const title = this.normalizeSearchValue(location.title);
-    const type = this.normalizeSearchValue(`${location.postType ?? ''} ${location.category ?? ''} ${this.formatPostType(location.postType || location.category)}`);
-    const place = this.normalizeSearchValue(`${location.regionName ?? ''} ${location.address ?? ''}`);
-    const description = this.normalizeSearchValue(`${location.description ?? ''} ${location.details ?? ''}`);
-    const selectedTypes = this.categories.filter(c => c.active).map(c => c.key);
+  private scoreSearchResult(loc: MapLocation, query: string): number {
+    const terms = query.split(/\s+/).filter(Boolean);
+    const fields = [
+      loc.title,
+      loc.regionName,
+      loc.address,
+      loc.description,
+      loc.postType,
+      loc.category,
+      ...(Array.isArray((loc as any).tagNames) ? (loc as any).tagNames : []),
+    ].filter(Boolean).map(value => String(value).toLowerCase());
 
     let score = 0;
     for (const term of terms) {
-      if (title === term) score += 90;
-      else if (title.startsWith(term)) score += 70;
-      else if (title.includes(term)) score += 52;
+      const title = (loc.title || '').toLowerCase();
+      if (title === term) score += 120;
+      else if (title.startsWith(term)) score += 80;
+      else if (title.includes(term)) score += 55;
 
-      if (place === term) score += 62;
-      else if (place.includes(term)) score += 38;
-
-      if (type === term) score += 48;
-      else if (type.includes(term)) score += 30;
-
-      if (description.includes(term)) score += 22;
+      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
+      if (fields.some(field => field.includes(term))) score += 15;
     }
 
-    const normalizedType = (location.postType || location.category || '').toLowerCase().replace(/\s+/g, '_');
-    if (selectedTypes.length > 0 && selectedTypes.includes(normalizedType)) score += 16;
-    if (location.avgRating) score += location.avgRating * 2;
-    if (location.distanceKm != null) score += Math.max(0, 12 - location.distanceKm);
+    const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
+    const typeKey = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');
+    if (activeKeys.includes(typeKey)) score += 8;
+    if (this.userProfile?.interests?.some(interest => fields.some(field => field.includes(interest.toLowerCase())))) score += 6;
+    if (loc.distanceKm != null) score += Math.max(0, 10 - loc.distanceKm);
+    score += Math.min(10, Number(loc.avgRating || loc.rating || 0));
 
     return score;
   }
@@ -1861,6 +2196,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.activeTab = 'saved';
     this.router.navigate(['/saved']);
+  }
+
+  goToRoutes(): void {
+    this.activeTab = 'routes';
+    this.router.navigate(['/routes']);
+  }
+
+  goToActivities(): void {
+    this.activeTab = 'activities';
+    this.router.navigate(['/activities']);
   }
 
   goToAccount(): void {

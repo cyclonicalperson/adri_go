@@ -409,6 +409,7 @@ export class LocationDetailsComponent implements OnInit {
     this.router.navigate(['/map-home'], {
       queryParams: {
         planner: '1',
+        focusId: this.location.id,
       }
     });
   }
@@ -430,7 +431,21 @@ export class LocationDetailsComponent implements OnInit {
     this.router.navigate(['/map-home'], {
       queryParams: {
         planner: '1',
+        focusId: this.location.id,
       }
+    });
+  }
+
+  openExternalLink(): void {
+    const location = this.location;
+    const url = location?.externalUrl;
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    this.analytics.track('external_link_opened', {
+      source: 'location-details',
+      postId: location.id,
+      postType: location.postType,
+      regionName: location.regionName,
     });
   }
 

@@ -178,7 +178,8 @@
   position: sticky;
   top: 0;
   background: #fff;
-  z-index: 1;
+  z-index: 30;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.8);
 }
 .sheet-header:hover { background: var(--gray-50, #f9fafb); }
 .sheet-header:active { background: var(--gray-100); }
@@ -215,6 +216,9 @@
   padding: 10px 16px;
   box-shadow: var(--shadow-lg);
   gap: 10px;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
 }
 
 .search-icon {
@@ -226,6 +230,7 @@
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   font-size: 14px;
@@ -243,6 +248,7 @@
   padding: 0;
   cursor: pointer;
   color: var(--gray-400);
+  flex-shrink: 0;
 }
 .search-clear-btn svg { width: 18px; height: 18px; fill: var(--gray-400); }
 .search-clear-btn:hover svg { fill: var(--gray-600); }
@@ -269,6 +275,34 @@
   white-space: nowrap;
   transition: color 0.15s;
   flex-shrink: 0;
+}
+
+.map-wrapper.filters-open .top-search-strip,
+.map-wrapper.filters-open .top-ui-layer,
+.map-wrapper.filters-open .locate-btn,
+.map-wrapper.filters-open app-location-details-card {
+  pointer-events: none;
+}
+
+.map-wrapper app-filters {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2500;
+}
+
+.map-wrapper.navigating .top-search-strip,
+.map-wrapper.navigating .top-ui-layer,
+.map-wrapper.navigating .sidebar,
+.map-wrapper.navigating .app-footer,
+.map-wrapper.navigating app-location-details-card,
+.map-wrapper.navigating .route-pill {
+  pointer-events: none;
+}
+
+@media (max-width: 899px) {
+  .map-wrapper.navigating .top-ui-layer {
+    display: none;
+  }
 }
 .search-filter-btn:hover { color: var(--green-500); }
 .search-filter-btn svg {
@@ -602,7 +636,7 @@
   gap: 4px;
   background: none;
   border: none;
-  padding: 8px 4px;
+  padding: 8px 2px;
   border-radius: var(--radius-md);
   color: var(--gray-400);
   transition: color 0.15s, background 0.15s;
@@ -613,18 +647,18 @@
 .footer-btn.active { color: var(--green-500); }
 
 .footer-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.2s;
 }
-.footer-icon svg { width: 22px; height: 22px; fill: currentColor; }
+.footer-icon svg { width: 20px; height: 20px; fill: currentColor; }
 .footer-btn.active .footer-icon { transform: scale(1.1); }
 
 .footer-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.3px;
   line-height: 1;

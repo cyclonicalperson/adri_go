@@ -22,6 +22,7 @@ interface ExtendedUser {
   organizationId: number | null;
   isIndividual: boolean;
   accountStatus: 'active' | 'suspended' | 'pending';
+  profileImage?: string | null;
   organization?: { name: string } | null;
   createdAt?: string | null;
 }
@@ -38,6 +39,7 @@ export class ProfileComponent implements OnInit {
 
   editMode = false;
   saving = false;
+  photoUploading = false;
   saveError: string | null = null;
   editForm!: FormGroup;
 
@@ -167,6 +169,7 @@ export class ProfileComponent implements OnInit {
     const payload = {
       fullName: this.editForm.value.fullName,
       email: this.editForm.value.email,
+      profileImage: this.user?.profileImage ?? null,
     };
 
     // Use PATCH /admin-users/me — works for any role (no superadmin required)
@@ -190,6 +193,39 @@ export class ProfileComponent implements OnInit {
   }
 
   cancelEdit(): void { this.editMode = false; this.saveError = null; this.editForm.reset({ fullName: this.user?.fullName, email: this.user?.email }); }
+
+  onProfilePhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || this.photoUploading) return;
+
+    this.photoUploading = true;
+    this.saveError = null;
+    this.userService.uploadProfileImage(file).subscribe({
+      next: url => {
+        if (this.user) this.user = { ...this.user, profileImage: url };
+        this.userService.updateSelf({ profileImage: url }).subscribe({
+          next: () => {
+            const current = this.authService.currentUser;
+            if (current) {
+              const updated = { ...current, profileImage: url };
+              (this.authService as any)['_currentUser$']?.next(updated);
+              try { localStorage.setItem('tg_user', JSON.stringify(updated)); } catch { /* ignore */ }
+            }
+            this.photoUploading = false;
+          },
+          error: () => {
+            this.photoUploading = false;
+            this.saveError = 'Slika je uploadovana, ali profil nije azuriran.';
+          },
+        });
+      },
+      error: () => {
+        this.photoUploading = false;
+        this.saveError = 'Greška pri uploadu slike profila.';
+      }
+    });
+  }
 
   // ── Password change ───────────────────────────────────────────────────
   openPwMode(): void { this.pwMode = true; this.pwError = null; this.pwSuccess = null; this.pwForm.reset(); }

@@ -130,6 +130,12 @@
         </button>
 
         <!-- Calendar button — available for all location types -->
+        <button *ngIf="location.externalUrl" (click)="openExternalLink()"
+          style="display:flex;align-items:center;justify-content:center;gap:6px;background:#eef2ff;color:#4338ca;border:1.5px solid #c7d2fe;padding:10px 14px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap;overflow:hidden;min-width:0;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#4338ca;flex-shrink:0;"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg>
+          {{ location.externalUrlLabel || 'Booking' }}
+        </button>
+
         <button (click)="addToCalendar()"
           style="display:flex;align-items:center;justify-content:center;gap:6px;background:#fdf4ff;color:#7e22ce;border:1.5px solid #e9d5ff;padding:10px 14px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap;overflow:hidden;min-width:0;">
           <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#7e22ce;flex-shrink:0;"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>

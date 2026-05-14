@@ -15,6 +15,7 @@ import { formatPostType } from '../utils/post-type.utils';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
+type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
 
 @Component({
   selector: 'app-location-list',
@@ -36,6 +37,16 @@ export class LocationListComponent implements OnInit, OnDestroy {
   showAuthPopup = false;
   authPopupMessage = 'Please log in to save locations, like places, and add items to your calendar.';
   private userPosition: UserPosition | null = null;
+  sortOption: SortOption = 'recommended';
+  readonly sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'recommended', label: 'Recommended' },
+    { value: 'rating-desc', label: 'Highest rated' },
+    { value: 'distance-asc', label: 'Nearest' },
+    { value: 'name-asc', label: 'Name A-Z' },
+    { value: 'name-desc', label: 'Name Z-A' },
+    { value: 'newest', label: 'Newest' },
+    { value: 'popular', label: 'Most popular' },
+  ];
 
   searchQuery = '';
   submittedSearchQuery = '';
@@ -70,12 +81,15 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get activeSectionLocations(): Location[] {
-    switch (this.activeSectionView) {
+    const items = (() => {
+      switch (this.activeSectionView) {
       case 'near-you': return this.nearYouLocations;
       case 'recommended': return this.recommendedLocations;
       case 'top-rated': return this.topRatedLocations;
       default: return [];
-    }
+      }
+    })();
+    return this.applySort(items);
   }
 
   constructor(
@@ -105,7 +119,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       next: (res) => {
         const decorated = this.decorateLocations(res.data);
         this.allLocations = this.applyGuestState(decorated);
-        this.locations = [...this.allLocations];
+        this.locations = this.applySort(this.allLocations);
         this.buildSections();
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -124,6 +138,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
     if (!q) {
       this.searchResults = [];
       this.showDropdown = false;
+      this.isSearchActive = false;
+      this.locations = this.applySort(this.allLocations);
       this.cdr.markForCheck();
       return;
     }
@@ -135,6 +151,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
       )
       .slice(0, 8);
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
+    this.isSearchActive = true;
+    this.locations = this.applySort(this.allLocations.filter(loc =>
+      (loc.title || '').toLowerCase().includes(q) ||
+      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
+      (loc.regionName || '').toLowerCase().includes(q)
+    ));
     this.showDropdown = this.searchResults.length > 0;
     this.cdr.markForCheck();
   }
@@ -146,11 +168,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.showDropdown = false;
     this.isSearchActive = true;
     const q = this.searchQuery.trim().toLowerCase();
-    this.locations = this.allLocations.filter(l =>
+    this.locations = this.applySort(this.allLocations.filter(l =>
       (l.title || '').toLowerCase().includes(q) ||
       (l.postType || (l as any).category || '').toLowerCase().includes(q) ||
       (l.regionName || '').toLowerCase().includes(q)
-    );
+    ));
     this.cdr.markForCheck();
   }
 
@@ -163,12 +185,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
       return;
     }
     this.isSearchActive = true;
-    this.submittedSearchQuery = this.searchQuery.trim();
-    this.locations = this.allLocations.filter(loc =>
+    this.locations = this.applySort(this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
       (loc.regionName || '').toLowerCase().includes(q)
-    );
+    ));
     this.cdr.markForCheck();
   }
 
@@ -178,7 +199,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.isSearchActive = false;
     this.searchResults = [];
     this.showDropdown = false;
-    this.locations = [...this.allLocations];
+    this.locations = this.applySort(this.allLocations);
     this.cdr.markForCheck();
   }
 
@@ -272,7 +293,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   private applyFiltersToLocations(locations: Location[], state: FilterState): Location[] {
-    return locations.filter(loc => {
+    return this.applySort(locations.filter(loc => {
       // Kategorija filter
       if (state.activeCategories.length > 0) {
         const key = (loc.postType || (loc as any).category || '').toLowerCase().replace(/\s+/g, '_');
@@ -289,7 +310,16 @@ export class LocationListComponent implements OnInit, OnDestroy {
         }
       }
       return true;
-    });
+    }));
+  }
+
+  onSortChanged(): void {
+    this.locations = this.applySort(this.locations);
+    this.filteredLocations = this.applySort(this.filteredLocations);
+    this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
+    this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
+    this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
+    this.cdr.markForCheck();
   }
 
   openSection(section: 'near-you' | 'recommended' | 'top-rated'): void {
@@ -309,12 +339,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
 
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
-    if (!loc?.images) return 'assets/placeholder.jpg';
+    if (!loc?.images) return 'assets/Budva.jpg';
     let firstImg = '';
     if (typeof loc.images === 'string') {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
-    if (!firstImg) return 'assets/placeholder.jpg';
+    if (!firstImg) return 'assets/Budva.jpg';
     if (!firstImg.startsWith('http')) { const c = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg; return `${this.IMAGE_BASE_URL}${c}`; }
     return firstImg;
   }
@@ -377,6 +407,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
         .slice(0, SECTION_LIMIT);
     }
 
+    if (this.sortOption !== 'recommended') {
+      this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
+      this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
+      this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
+    }
+
     this.cdr.markForCheck();
   }
 
@@ -426,7 +462,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if (!position) return;
       this.userPosition = position;
       this.allLocations = this.decorateLocations(this.allLocations);
-      if (!this.isSearchActive) this.locations = [...this.allLocations];
+      if (!this.isSearchActive) this.locations = this.applySort(this.allLocations);
       this.buildSections();
       this.cdr.markForCheck();
     });
@@ -440,6 +476,32 @@ export class LocationListComponent implements OnInit, OnDestroy {
         return { ...l, distanceKm: c ? this.geolocationService.haversineKm(this.userPosition!, c) : null };
       })
       .sort((a, b) => ((a as any).distanceKm ?? Infinity) - ((b as any).distanceKm ?? Infinity));
+  }
+
+  private applySort(locations: Location[]): Location[] {
+    const sorted = [...locations];
+    switch (this.sortOption) {
+      case 'rating-desc':
+        return sorted.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
+      case 'distance-asc':
+        return sorted.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+      case 'name-asc':
+        return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'name-desc':
+        return sorted.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+      case 'newest':
+        return sorted.sort((a, b) =>
+          new Date(b.createdAt || b.publishedAt || 0).getTime() -
+          new Date(a.createdAt || a.publishedAt || 0).getTime()
+        );
+      case 'popular':
+        return sorted.sort((a, b) =>
+          ((b.viewCount ?? 0) + (b.likeCount ?? 0) + (b.saveCount ?? 0)) -
+          ((a.viewCount ?? 0) + (a.likeCount ?? 0) + (a.saveCount ?? 0))
+        );
+      default:
+        return sorted;
+    }
   }
 
   private getLocationCoordinates(location: Partial<Location>): UserPosition | null {

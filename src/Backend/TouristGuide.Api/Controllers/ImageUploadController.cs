@@ -41,6 +41,7 @@ namespace TouristGuide.Api.Controllers
         /// Upload profilne slike za admina.
         /// </summary>
         [HttpPost("upload/profile")]
+        [AllowAnonymous]
         public async Task<IActionResult> UploadProfileImage(IFormFile file)
             => await UploadToFolder(file, "profiles");
 

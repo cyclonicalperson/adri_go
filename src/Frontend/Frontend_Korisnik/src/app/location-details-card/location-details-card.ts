@@ -19,7 +19,7 @@ export class LocationDetailsCardComponent {
   @Output() onViewDetails = new EventEmitter<void>();
   @Output() onAddToRoute = new EventEmitter<void>();
 
-  defaultImage = 'assets/plaza.jpg';
+  defaultImage = 'assets/Budva.jpg';
   calendarMessage = '';
   showAuthModal = false;
 

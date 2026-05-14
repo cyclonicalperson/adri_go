@@ -126,6 +126,7 @@ export class ObjectService {
       images: (payload.media ?? [])
         .filter(m => m.url && (m.url.startsWith('http://') || m.url.startsWith('https://')))
         .map(m => m.url),
+      tagIds: payload.activityIds ?? [],
       status: 'draft',
     };
     return this.http.post<any>(this.url, body).pipe(

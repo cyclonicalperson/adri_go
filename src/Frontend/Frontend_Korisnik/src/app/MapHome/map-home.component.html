@@ -1,4 +1,4 @@
-<div class="map-wrapper" [class.filters-open]="isFiltersOpen">
+<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating">
 
   <div class="app-header">
     <div class="header-left">
@@ -14,7 +14,7 @@
         </svg>
         Login
       </button>
-      <button class="header-menu-btn" (click)="toggleMenu()">
+      <button *ngIf="!isNavigating" class="header-menu-btn" (click)="toggleMenu()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
         </svg>
@@ -26,7 +26,7 @@
     <div id="map"></div>
   </div>
 
-  <div *ngIf="showRoutePanel" class="route-pill">
+  <div *ngIf="showRoutePanel && !isNavigating" class="route-pill">
     <div class="route-pill-icon">
       <svg viewBox="0 0 24 24">
         <path d="M7 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm10 8a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM9.5 8h5v2h-5zm0 8h5v-2h-5z"/>
@@ -232,6 +232,8 @@
     (mapRotationUpdated)="onNavigationMapRotation($event)"
     (routeTrailUpdated)="onNavigationRouteTrailUpdated($event)"
     (routeRecalculated)="onNavigationRouteRecalculated($event)"
+    (navigationArrived)="onNavigationArrived()"
+    (travelModeChanged)="changeNavigationMode($event)"
     (exitNavigation)="stopNavigation()">
   </app-map-navigation-panel>
 
@@ -275,6 +277,24 @@
         </svg>
       </span>
       <span class="footer-label">Saved</span>
+    </button>
+
+    <button class="footer-btn" [class.active]="activeTab === 'routes'" (click)="goToRoutes()">
+      <span class="footer-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/>
+        </svg>
+      </span>
+      <span class="footer-label">Routes</span>
+    </button>
+
+    <button class="footer-btn" [class.active]="activeTab === 'activities'" (click)="goToActivities()">
+      <span class="footer-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+        </svg>
+      </span>
+      <span class="footer-label">Activities</span>
     </button>
 
     <button class="footer-btn" [class.active]="activeTab === 'account'" (click)="goToAccount()">

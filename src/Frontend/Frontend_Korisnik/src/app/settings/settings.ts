@@ -109,6 +109,11 @@ export class SettingsComponent implements OnInit {
     return linked.length > 0 ? linked.join(', ') : 'Not configured';
   }
 
+  get isGoogleAccount(): boolean {
+    return this.authService.currentTourist?.authProvider === 'google'
+      || this.settings.connectedAccounts.google;
+  }
+
   get bookingServicesSummary(): string {
     const enabled = this.bookingOptions
       .filter(option => this.settings.bookingServices.includes(option.id))
@@ -166,15 +171,15 @@ export class SettingsComponent implements OnInit {
   onEmailNotificationsToggle(): void {
     this.saveChanges(
       this.settings.emailNotifications
-        ? 'Trip email summaries enabled'
-        : 'Trip email summaries disabled'
+        ? 'Trip email digests enabled'
+        : 'Trip email digests disabled'
     );
   }
 
   onPushNotificationsToggle(): void {
     if (!('Notification' in window)) {
       this.settings.pushNotifications = false;
-      this.showSavedMessage('Push notifications are not supported in this browser.');
+      this.saveChanges('Push notifications are not supported in this browser.');
       return;
     }
 
@@ -186,7 +191,7 @@ export class SettingsComponent implements OnInit {
 
       if (Notification.permission === 'denied') {
         this.settings.pushNotifications = false;
-        this.showSavedMessage('Notifications are blocked. Please allow them in browser settings.');
+        this.saveChanges('Notifications are blocked. Please allow them in browser settings.');
         return;
       }
 
@@ -212,7 +217,7 @@ export class SettingsComponent implements OnInit {
     if (this.settings.locationSharing) {
       if (!navigator.geolocation) {
         this.settings.locationSharing = false;
-        this.showSavedMessage('Geolocation is not supported in this browser.');
+        this.saveChanges('Geolocation is not supported in this browser.');
         return;
       }
 
@@ -220,7 +225,7 @@ export class SettingsComponent implements OnInit {
         () => this.saveChanges('Location sharing enabled'),
         () => {
           this.settings.locationSharing = false;
-          this.showSavedMessage('Location permission denied. Please allow it in browser settings.');
+          this.saveChanges('Location permission denied. Please allow it in browser settings.');
         }
       );
       return;
@@ -344,6 +349,10 @@ export class SettingsComponent implements OnInit {
     this.changePasswordForm = { newPassword: '', confirmPassword: '' };
     this.passwordError = '';
     this.passwordSuccess = '';
+  }
+
+  openGoogleAccount(): void {
+    window.open('https://myaccount.google.com/', '_blank', 'noopener,noreferrer');
   }
 
   closePasswordModal(): void {

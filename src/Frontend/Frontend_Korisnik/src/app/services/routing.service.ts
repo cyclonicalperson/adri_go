@@ -42,6 +42,7 @@ export interface ExternalNavigationLink {
 @Injectable({ providedIn: 'root' })
 export class RoutingService {
   private readonly cacheTtlMs = 4 * 60 * 1000;
+  private readonly requestTimeoutMs = 10000;
   private readonly routeCache = new Map<string, { route: ComputedRoute; storedAt: number }>();
 
   async computeRoute(
@@ -184,6 +185,7 @@ export class RoutingService {
   async computeRouteForNavigation(
     coordinates: [number, number][],
     travelMode: TravelMode,
+    options: RouteComputeOptions = {},
   ): Promise<ComputedRoute> {
     if (coordinates.length < 2) {
       return { geometry: [...coordinates], distanceKm: 0, durationMin: 0, usedFallback: false, steps: [] };
@@ -191,10 +193,8 @@ export class RoutingService {
 
     for (const profile of this.resolveRoutingProfiles(travelMode)) {
       try {
-        const response = await fetch(this.buildOsrmUrl(coordinates, profile, true));
-        if (!response.ok) continue;
-
-        const data = await response.json();
+        const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile, true));
+        if (data?.code && data.code !== 'Ok') continue;
         const route = data?.routes?.[0];
         if (!route?.geometry?.coordinates) continue;
 
@@ -219,14 +219,23 @@ export class RoutingService {
             ] as [number, number],
           }));
 
-        return { geometry, distanceKm, durationMin, usedFallback: false, steps };
+        return {
+          geometry: this.simplifyGeometry(
+            geometry,
+            options.viewport === 'mobile' ? 1000 : 2000,
+          ),
+          distanceKm,
+          durationMin,
+          usedFallback: false,
+          steps,
+        };
       } catch {
         // try next profile
       }
     }
 
     // Fallback without steps
-    const route = await this.computeRoute(coordinates, travelMode);
+    const route = await this.computeRoute(coordinates, travelMode, options);
     return { ...route, steps: [] };
   }
 
@@ -235,16 +244,18 @@ export class RoutingService {
     travelMode: TravelMode,
   ): Promise<ComputedRoute> {
     let lastError: Error | null = null;
+    const profiles = this.resolveRoutingProfiles(travelMode);
+    const primaryProfileCount = travelMode === 'driving' ? profiles.length : 1;
+    const primaryProfiles = profiles.slice(0, primaryProfileCount);
+    const fallbackProfiles = profiles.slice(primaryProfileCount);
 
-    for (const profile of this.resolveRoutingProfiles(travelMode)) {
+    for (const profile of primaryProfiles) {
       try {
-        const response = await fetch(this.buildOsrmUrl(coordinates, profile));
-        if (!response.ok) {
-          lastError = new Error(`OSRM request failed with status ${response.status}`);
+        const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile));
+        if (data?.code && data.code !== 'Ok') {
+          lastError = new Error(`OSRM route failed with code ${data.code}.`);
           continue;
         }
-
-        const data = await response.json();
         const route = data?.routes?.[0];
         if (!route?.geometry?.coordinates) {
           lastError = new Error('No route geometry returned from OSRM.');
@@ -266,7 +277,111 @@ export class RoutingService {
       }
     }
 
+    const primarySegmentedRoute = await this.fetchSegmentedRoute(coordinates, primaryProfiles);
+    if (primarySegmentedRoute) {
+      return primarySegmentedRoute;
+    }
+
+    for (const profile of fallbackProfiles) {
+      try {
+        return await this.fetchRouteForProfile(coordinates, profile);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Failed to fetch route.');
+      }
+    }
+
+    const segmentedRoute = await this.fetchSegmentedRoute(coordinates, profiles);
+    if (segmentedRoute) {
+      return segmentedRoute;
+    }
+
     throw lastError ?? new Error('No routing profiles succeeded.');
+  }
+
+  private async fetchSegmentedRoute(
+    coordinates: [number, number][],
+    profiles: string[],
+  ): Promise<ComputedRoute | null> {
+    if (coordinates.length < 3) {
+      return null;
+    }
+
+    const geometry: [number, number][] = [];
+    let distanceKm = 0;
+    let durationMin = 0;
+
+    for (let index = 0; index < coordinates.length - 1; index++) {
+      const leg = await this.fetchDirectRoute([coordinates[index], coordinates[index + 1]], profiles);
+      if (!leg) {
+        return null;
+      }
+
+      if (geometry.length > 0 && leg.geometry.length > 0) {
+        geometry.push(...leg.geometry.slice(1));
+      } else {
+        geometry.push(...leg.geometry);
+      }
+      distanceKm += leg.distanceKm;
+      durationMin += leg.durationMin;
+    }
+
+    return {
+      geometry,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      durationMin: Math.max(1, Math.round(durationMin)),
+      usedFallback: false,
+    };
+  }
+
+  private async fetchDirectRoute(
+    coordinates: [number, number][],
+    profiles: string[],
+  ): Promise<ComputedRoute | null> {
+    for (const profile of profiles) {
+      try {
+        return await this.fetchRouteForProfile(coordinates, profile);
+      } catch {
+        // try next endpoint/profile
+      }
+    }
+
+    return null;
+  }
+
+  private async fetchRouteForProfile(coordinates: [number, number][], profile: string): Promise<ComputedRoute> {
+    const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile));
+    if (data?.code && data.code !== 'Ok') {
+      throw new Error(`OSRM route failed with code ${data.code}.`);
+    }
+
+    const route = data?.routes?.[0];
+    if (!route?.geometry?.coordinates) {
+      throw new Error('No route geometry returned from OSRM.');
+    }
+
+    return {
+      geometry: route.geometry.coordinates.map(
+        ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
+      ),
+      distanceKm: Math.round(((route.distance ?? 0) / 1000) * 10) / 10,
+      durationMin: Math.max(1, Math.round((route.duration ?? 0) / 60)),
+      usedFallback: false,
+    };
+  }
+
+  private async fetchJsonWithTimeout(url: string): Promise<any> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`OSRM request failed with status ${response.status}.`);
+      }
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private buildInstruction(step: any): string {
@@ -303,16 +418,14 @@ export class RoutingService {
 
     // 500 m snap radius covers rural/mountain coordinates without misrouting in cities.
     const radiuses = coordinates.map(() => '500').join(';');
-    const params = `?overview=full&geometries=geojson&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
+    const params = `?overview=full&geometries=geojson&alternatives=false&continue_straight=false&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
-    // Primary: routing.openstreetmap.de (Geofabrik-hosted, all profiles)
-    if (profile === 'foot') {
+    if (profile === 'foot-osm') {
       return `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${coordinatesString}${params}`;
     }
-    if (profile === 'bike') {
+    if (profile === 'bike-osm') {
       return `https://routing.openstreetmap.de/routed-bike/route/v1/bike/${coordinatesString}${params}`;
     }
-    // Fallback: OSRM project demo server (driving only, same response format)
     if (profile === 'driving-project') {
       return `https://router.project-osrm.org/route/v1/driving/${coordinatesString}${params}`;
     }
@@ -389,8 +502,8 @@ export class RoutingService {
 
   private resolveRoutingProfiles(travelMode: TravelMode): string[] {
     switch (travelMode) {
-      case 'walking':  return ['foot'];
-      case 'cycling':  return ['bike'];
+      case 'walking':  return ['foot-osm', 'driving', 'driving-project'];
+      case 'cycling':  return ['bike-osm', 'driving', 'driving-project'];
       // driving: try Geofabrik first, then OSRM demo as fallback
       default:         return ['driving', 'driving-project'];
     }

@@ -135,39 +135,6 @@ export class SavedLocationsComponent implements OnInit {
     });
   }
 
-  // ── Guest: load from localStorage ────────────────────────────
-  loadGuestSavedLocations() {
-    this.isLoading = true;
-    const savedIds: number[] = [];
-
-    if (savedIds.length === 0) {
-      this.isLoading = false;
-      this.cdr.detectChanges();
-      return;
-    }
-
-    let completed = 0;
-    savedIds.forEach(id => {
-      this.locationService.getLocationById(id).subscribe({
-        next: (post) => {
-          this.savedItems.push(this.mapToItem(post));
-          completed++;
-          if (completed === savedIds.length) {
-            this.isLoading = false;
-            this.cdr.detectChanges();
-          }
-        },
-        error: () => {
-          completed++;
-          if (completed === savedIds.length) {
-            this.isLoading = false;
-            this.cdr.detectChanges();
-          }
-        }
-      });
-    });
-  }
-
   private mapToItem(post: Location): any {
     const imagesArr = this.locationService.parseImages(post.images);
     const firstImage = resolveBackendAssetUrl(
