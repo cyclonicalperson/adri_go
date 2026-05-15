@@ -157,6 +157,7 @@
   z-index: 15;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 .top-ui-layer.sheet-expanded {
   max-height: min(45dvh, calc(100dvh - 290px));
@@ -207,6 +208,10 @@
   padding: 0 14px;
 }
 .top-ui-layer > :last-child { padding-bottom: 16px; }
+.top-ui-layer > app-trip-planner-panel {
+  display: block;
+  margin-top: 0;
+}
 
 .search-container {
   display: flex;
@@ -316,6 +321,19 @@
   gap: 8px;
   overflow-x: auto;
   padding: 8px 2px 0;
+  border: none;
+  box-shadow: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.search-suggestions {
+  overflow-x: auto;
+  scrollbar-width: none;      
+  -ms-overflow-style: none;   
+}
+
+.search-suggestions::-webkit-scrollbar {
+  display: none;             
 }
 
 .search-suggestion-chip {
@@ -447,6 +465,8 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding: 2px 4px 4px;
+  border: none;
+  box-shadow: none;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -648,9 +668,11 @@
 
 /* ── FOOTER NAV ──────────────────────────────────────────────── */
 .app-footer {
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: auto;
   height: 68px;
   background: #fff;
   box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
@@ -659,6 +681,8 @@
   justify-content: space-around;
   z-index: 20;
   padding: 0 4px env(safe-area-inset-bottom, 0);
+  margin: 0;
+  border-radius: 0;
 }
 
 .footer-btn {
@@ -801,7 +825,7 @@ app-location-details-card {
     background: transparent;
     border-radius: 0;
     box-shadow: none;
-    gap: 16px;
+    gap: 14px;
     scrollbar-width: thin;
     scrollbar-color: var(--gray-200) transparent;
   }
@@ -814,6 +838,9 @@ app-location-details-card {
   .sheet-header { display: none; }
 
   .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
+  .top-ui-layer > app-trip-planner-panel {
+    margin-top: 0;
+  }
 
   /* ── Map fills right side ──────────────────────────────── */
   .map-container {
@@ -838,7 +865,7 @@ app-location-details-card {
   /* ── Footer as bottom bar of sidebar ──────────────────── */
   .app-footer {
     position: fixed;
-    bottom: 0; left: 0;
+    bottom: 0; left: 0; right: auto;
     width: 380px;
     height: 68px;
     z-index: 30;
@@ -909,6 +936,67 @@ app-location-details-card {
   .search-filter-btn span:not(.filter-badge) { display: inline; }
 }
 
+:host-context(html[data-theme='dark']) .search-container,
+:host-context(html[data-theme='dark']) .top-ui-layer,
+:host-context(html[data-theme='dark']) .sheet-header,
+:host-context(html[data-theme='dark']) .search-results-dropdown,
+:host-context(html[data-theme='dark']) .search-no-results {
+  border-color: #334155;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .search-input,
+:host-context(html[data-theme='dark']) .search-result-title,
+:host-context(html[data-theme='dark']) .search-result-rating,
+:host-context(html[data-theme='dark']) .sheet-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .search-input::placeholder,
+:host-context(html[data-theme='dark']) .search-result-meta,
+:host-context(html[data-theme='dark']) .search-result-reason,
+:host-context(html[data-theme='dark']) .search-no-results,
+:host-context(html[data-theme='dark']) .sheet-route-meta {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .search-icon svg,
+:host-context(html[data-theme='dark']) .search-clear-btn svg,
+:host-context(html[data-theme='dark']) .sheet-chevron,
+:host-context(html[data-theme='dark']) .search-no-results svg {
+  fill: #334155;
+}
+
+:host-context(html[data-theme='dark']) .search-divider,
+:host-context(html[data-theme='dark']) .search-result-item {
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .search-suggestion-chip,
+:host-context(html[data-theme='dark']) .cat-chip:not(.active) {
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: #e2e8f0;
+  border-color: var(--cat-color, #475569);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+:host-context(html[data-theme='dark']) .search-suggestion-chip {
+  border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .cat-chip:hover,
+:host-context(html[data-theme='dark']) .search-suggestion-chip:hover,
+:host-context(html[data-theme='dark']) .search-result-item:hover,
+:host-context(html[data-theme='dark']) .sheet-header:hover {
+  background: #1f2937 !important;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .cat-chip.active {
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+}
+
 /* ============================================================
    CLEAR ROUTE CONFIRMATION DIALOG
    ============================================================ */
@@ -945,7 +1033,7 @@ app-location-details-card {
 /* ============================================================
    SAVED ROUTES TOGGLE BUTTON
    ============================================================ */
-.saved-routes-toggle-row { padding: 6px 14px 10px; }
+.saved-routes-toggle-row { padding: 0 14px; }
 .saved-routes-toggle-btn {
   width: 100%;
   display: flex;
