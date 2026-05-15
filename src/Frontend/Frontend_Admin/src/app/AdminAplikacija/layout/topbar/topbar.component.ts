@@ -258,7 +258,6 @@ export class TopbarComponent implements OnInit, OnDestroy {
     return ({
       pending_review: '#fef2f2',
       route_pending: '#eff6ff',
-      activity_pending: '#fff7ed',
       new_registration: '#eff6ff',
       post_approved: '#f0fdf4',
       post_rejected: '#fef2f2',
@@ -330,8 +329,6 @@ export class TopbarComponent implements OnInit, OnDestroy {
         return '/admin/zahtevi';
       case 'pending_review':
         return '/admin/reviews';
-      case 'activity_pending':
-        return '/admin/aktivnosti';
       default:
         return null;
     }

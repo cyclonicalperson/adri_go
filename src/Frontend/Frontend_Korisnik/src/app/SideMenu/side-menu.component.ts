@@ -53,12 +53,10 @@ export class SideMenuComponent {
   }
   goToSaved() {
     this.onClose.emit();
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
+    // Guests can access saved (their saves are stored in localStorage)
     this.router.navigate(['/saved']);
   }
-  goToRoutes() { this.onClose.emit(); this.router.navigate(['/routes']); }
-  goToActivities() { this.onClose.emit(); this.router.navigate(['/activities']); }
-  goToCalendar() { this.onClose.emit(); this.router.navigate(['/calendar']); }
-  goToNotifications() { this.onClose.emit(); this.router.navigate(['/notifications']); }
-  goToSettings() { this.onClose.emit(); this.router.navigate(['/settings']); }
+  goToCalendar() { this.router.navigate(['/calendar']); }
+  goToNotifications() { this.router.navigate(['/notifications']); }
+  goToSettings() { this.router.navigate(['/settings']); }
 }

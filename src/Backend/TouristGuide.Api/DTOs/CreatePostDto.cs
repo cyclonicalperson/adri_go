@@ -47,8 +47,6 @@ namespace TouristGuide.Api.DTOs
         /// <summary>JSON string ili objekat sa specifičnim atributima.</summary>
         public JsonNode? Details { get; set; }
 
-        public List<uint>? TagIds { get; set; }
-
         // Helpers za normalizaciju u string za DB
         public string? ImagesToString() => NormalizeJson(Images);
         public string? OpeningHoursToString() => NormalizeJson(OpeningHours);

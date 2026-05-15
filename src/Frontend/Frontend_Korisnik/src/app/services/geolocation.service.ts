@@ -9,14 +9,9 @@ interface StoredUserSettings {
   locationSharing?: boolean;
 }
 
-interface StoredTouristPreferences {
-  locationSharing?: boolean;
-}
-
 @Injectable({ providedIn: 'root' })
 export class GeolocationService {
   private readonly SETTINGS_KEY = 'user_settings';
-  private readonly PREFERENCES_KEY = 'adrigo_user_preferences_v2';
 
   isSupported(): boolean {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
@@ -28,14 +23,6 @@ export class GeolocationService {
 
   isLocationSharingEnabled(): boolean {
     try {
-      const preferencesRaw = localStorage.getItem(this.PREFERENCES_KEY);
-      if (preferencesRaw) {
-        const preferences = JSON.parse(preferencesRaw) as StoredTouristPreferences;
-        if (typeof preferences.locationSharing === 'boolean') {
-          return preferences.locationSharing;
-        }
-      }
-
       const raw = localStorage.getItem(this.SETTINGS_KEY);
       if (!raw) return true;
 
@@ -85,43 +72,6 @@ export class GeolocationService {
     // If the first attempt timed out / failed and we were already using low-accuracy,
     // do a final retry with a shorter timeout (IP-only, always fast).
     return tryGet({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
-  }
-
-  watchPosition(
-    onPosition: (position: UserPosition) => void,
-    onError?: (error: GeolocationPositionError) => void,
-    options?: PositionOptions,
-  ): number | null {
-    if (!this.isSupported()) {
-      console.warn('Geolocation nije podrzan u ovom browseru.');
-      return null;
-    }
-
-    if (!this.isSecureContext()) {
-      console.warn('Geolocation zahteva HTTPS. Lokacija nije dostupna na HTTP.');
-      return null;
-    }
-
-    if (!this.isLocationSharingEnabled()) {
-      return null;
-    }
-
-    const defaults: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 5000,
-    };
-
-    return navigator.geolocation.watchPosition(
-      (pos) => onPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (error) => onError?.(error),
-      { ...defaults, ...options },
-    );
-  }
-
-  clearWatch(watchId: number | null | undefined): void {
-    if (watchId == null || !this.isSupported()) return;
-    navigator.geolocation.clearWatch(watchId);
   }
 
   haversineKm(from: UserPosition, to: UserPosition): number {

@@ -13,12 +13,6 @@ import { formatPostType } from '../../../utils/post-type.utils';
   styleUrls: ['./trip-planner-panel.component.css'],
 })
 export class TripPlannerPanelComponent {
-  readonly travelModes: Array<{ mode: TravelMode; label: string }> = [
-    { mode: 'driving', label: 'Drive' },
-    { mode: 'walking', label: 'Walk' },
-    { mode: 'cycling', label: 'Cycle' },
-  ];
-
   @Input() plannerMode = false;
   @Input() plannerStops: PlannerStop[] = [];
   @Input() scenicMode = true;
@@ -61,10 +55,5 @@ export class TripPlannerPanelComponent {
 
   trackByStopId(index: number, stop: PlannerStop): number {
     return stop.id || index;
-  }
-
-  selectTravelMode(mode: TravelMode, event: Event): void {
-    event.stopPropagation();
-    this.travelModeSelected.emit(mode);
   }
 }

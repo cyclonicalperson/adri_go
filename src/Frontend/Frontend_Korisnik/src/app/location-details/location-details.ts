@@ -97,8 +97,11 @@ export class LocationDetailsComponent implements OnInit {
         this.currentImageIndex = 0;
 
         if (!this.authService.isLoggedIn) {
-          this.location.isLiked = false;
-          (this.location as any).isSaved = false;
+          // Guest: read like/save state from localStorage
+          const likedIds: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
+          const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
+          this.location.isLiked          = likedIds.includes(loc.id);
+          (this.location as any).isSaved = savedIds.includes(loc.id);
         } else {
           // Logged-in: API returns isLiked and isSaved from DB
           // isLiked is already on Location interface
@@ -160,7 +163,7 @@ export class LocationDetailsComponent implements OnInit {
     if (!this.location) return;
 
     if (!this.authService.isLoggedIn) {
-      this.openAuthModal();
+      this.toggleGuestLike(this.location.id);
       return;
     }
 
@@ -195,7 +198,7 @@ export class LocationDetailsComponent implements OnInit {
   }
 
   private toggleGuestLike(id: number): void {
-    const liked: number[] = [];
+    const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
     const idx = liked.indexOf(id);
     if (idx >= 0) {
       liked.splice(idx, 1);
@@ -212,7 +215,7 @@ export class LocationDetailsComponent implements OnInit {
         this.location.likeCount = (this.location.likeCount || 0) + 1;
       }
     }
-    this.openAuthModal();
+    localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
     setTimeout(() => (this.likeMessage = ''), 3000);
     this.cdr.markForCheck();
   }
@@ -222,7 +225,7 @@ export class LocationDetailsComponent implements OnInit {
     if (!this.location) return;
 
     if (!this.authService.isLoggedIn) {
-      this.openAuthModal();
+      this.toggleGuestSave(this.location.id);
       return;
     }
 
@@ -252,7 +255,7 @@ export class LocationDetailsComponent implements OnInit {
   }
 
   private toggleGuestSave(id: number): void {
-    const saved: number[] = [];
+    const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
     const idx = saved.indexOf(id);
     if (idx >= 0) {
       saved.splice(idx, 1);
@@ -269,7 +272,7 @@ export class LocationDetailsComponent implements OnInit {
         this.location.saveCount = (this.location.saveCount || 0) + 1;
       }
     }
-    this.openAuthModal();
+    localStorage.setItem('guest_saved_ids', JSON.stringify(saved));
     setTimeout(() => (this.saveMessage = ''), 3000);
     this.cdr.markForCheck();
   }
@@ -409,7 +412,6 @@ export class LocationDetailsComponent implements OnInit {
     this.router.navigate(['/map-home'], {
       queryParams: {
         planner: '1',
-        focusId: this.location.id,
       }
     });
   }
@@ -431,21 +433,7 @@ export class LocationDetailsComponent implements OnInit {
     this.router.navigate(['/map-home'], {
       queryParams: {
         planner: '1',
-        focusId: this.location.id,
       }
-    });
-  }
-
-  openExternalLink(): void {
-    const location = this.location;
-    const url = location?.externalUrl;
-    if (!url) return;
-    window.open(url, '_blank', 'noopener,noreferrer');
-    this.analytics.track('external_link_opened', {
-      source: 'location-details',
-      postId: location.id,
-      postType: location.postType,
-      regionName: location.regionName,
     });
   }
 
@@ -468,10 +456,6 @@ export class LocationDetailsComponent implements OnInit {
 
   addToCalendar(): void {
     if (!this.location) return;
-    if (!this.authService.isLoggedIn) {
-      this.openAuthModal();
-      return;
-    }
 
     this.userService.addLocationToCalendar(this.location).subscribe({
       next: (res) => {

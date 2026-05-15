@@ -306,53 +306,19 @@ namespace TouristGuide.Api.Controllers
                 }
             }
 
-            var locationQuery = _db.TouristLocationSamples
-                .Where(s => s.RegionId != null && s.Region != null)
-                .AsQueryable();
-
-            if (fromDate.HasValue)
-            {
-                locationQuery = locationQuery.Where(v => v.RecordedAt >= fromDate.Value);
-            }
-
-            var locationRaw = await locationQuery
-                .Select(s => new
-                {
-                    RegionId = s.RegionId,
-                    RegionName = s.Region!.Name,
-                    Lat = s.Region!.Lat,
-                    Lng = s.Region!.Lng,
-                    SessionId = s.SessionId
-                })
-                .ToListAsync();
-
-            if (locationRaw.Count > 0)
-            {
-                var heatmap = locationRaw
-                    .GroupBy(v => new { v.RegionId, v.RegionName, v.Lat, v.Lng })
-                    .Select(g => new
-                    {
-                        regionId = g.Key.RegionId,
-                        regionName = g.Key.RegionName,
-                        latitude = g.Key.Lat,
-                        longitude = g.Key.Lng,
-                        visitCount = g.Select(x => x.SessionId).Distinct().Count()
-                    })
-                    .OrderByDescending(m => m.visitCount)
-                    .ToList();
-
-                return Ok(new { data = heatmap, success = true, source = "tourist_location_sample" });
-            }
-
             var query = _db.PostViews
                 .Where(v => v.Post != null && v.Post.Region != null)
                 .AsQueryable();
 
             if (fromDate.HasValue)
+            {
                 query = query.Where(v => v.CreatedAt >= fromDate.Value);
+            }
 
             if (adminId.HasValue)
+            {
                 query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
+            }
 
             // EF Core / Npgsql cannot translate GroupBy with navigation-property keys to SQL.
             // Fetch the raw projection first, then group client-side.
@@ -379,56 +345,7 @@ namespace TouristGuide.Api.Controllers
                 .OrderByDescending(m => m.visitCount)
                 .ToList();
 
-            return Ok(new { data = movements, success = true, source = "post_views" });
-        }
-
-        // POST /api/analytics/tourist-location
-        [HttpPost("tourist-location")]
-        [AllowAnonymous]
-        public async Task<IActionResult> RecordTouristLocation([FromBody] TouristLocationRequest body)
-        {
-            if (body is null || string.IsNullOrWhiteSpace(body.SessionId) || body.SessionId.Length > 64)
-                return BadRequest(new { message = "Neispravan sessionId.", success = false });
-
-            if (body.Lat < -90 || body.Lat > 90 || body.Lng < -180 || body.Lng > 180)
-                return BadRequest(new { message = "Neispravne koordinate.", success = false });
-
-            var now = DateTime.UtcNow;
-            var touristId = GetAuthorizedTouristId();
-
-            var recentExists = await _db.TouristLocationSamples.AnyAsync(s =>
-                s.SessionId == body.SessionId &&
-                s.RecordedAt >= now.AddMinutes(-15));
-
-            if (recentExists)
-                return Ok(new { success = true, skipped = true });
-
-            var regions = await _db.Regions
-                .Where(r => r.IsActive && r.Lat != null && r.Lng != null)
-                .Select(r => new { r.Id, r.Lat, r.Lng })
-                .ToListAsync();
-
-            var nearest = regions
-                .Select(r => new
-                {
-                    r.Id,
-                    DistanceKm = HaversineKm((double)body.Lat, (double)body.Lng, (double)r.Lat!.Value, (double)r.Lng!.Value)
-                })
-                .OrderBy(r => r.DistanceKm)
-                .FirstOrDefault(r => r.DistanceKm <= 35);
-
-            _db.TouristLocationSamples.Add(new TouristLocationSample
-            {
-                TouristId = touristId,
-                SessionId = body.SessionId.Trim(),
-                RegionId = nearest?.Id,
-                Lat = body.Lat,
-                Lng = body.Lng,
-                RecordedAt = now
-            });
-
-            await _db.SaveChangesAsync();
-            return Ok(new { success = true, regionId = nearest?.Id });
+            return Ok(new { data = movements, success = true });
         }
 
         // ── POST /api/analytics/app-visit ────────────────────────────────────
@@ -527,42 +444,11 @@ namespace TouristGuide.Api.Controllers
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
         }
-
-        private uint? GetAuthorizedTouristId()
-        {
-            var role = User.FindFirstValue(ClaimTypes.Role);
-            if (!string.Equals(role, "tourist", StringComparison.OrdinalIgnoreCase))
-                return null;
-
-            var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-                   ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return uint.TryParse(val, out var id) ? id : null;
-        }
-
-        private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)
-        {
-            const double radiusKm = 6371;
-            var dLat = ToRadians(lat2 - lat1);
-            var dLon = ToRadians(lon2 - lon1);
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2)
-                + Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2))
-                * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            return radiusKm * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        }
-
-        private static double ToRadians(double value) => value * Math.PI / 180;
     }
 
     /// <summary>Tijelo zahtjeva za bilježenje sesije.</summary>
     public class AppVisitRequest
     {
         public string? SessionId { get; set; }
-    }
-
-    public class TouristLocationRequest
-    {
-        public string? SessionId { get; set; }
-        public decimal Lat { get; set; }
-        public decimal Lng { get; set; }
     }
 }

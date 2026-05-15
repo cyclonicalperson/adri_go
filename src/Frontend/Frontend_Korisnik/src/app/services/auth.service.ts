@@ -9,17 +9,12 @@ export interface Tourist {
   email: string;
   language?: string;
   isEmailVerified?: boolean;
-  profileImage?: string | null;
-  authProvider?: 'google' | 'apple' | 'password' | string;
 }
-
-export type AuthProvider = 'password' | 'google' | 'apple';
 
 export interface StoredSession {
   tourist: Tourist;
   token: string;
   expiresAtUtc?: string | null;
-  authProvider?: AuthProvider;
 }
 
 export interface TouristAuthResponse {
@@ -53,7 +48,7 @@ export class AuthService {
     name: string,
     email: string,
     password: string,
-    options?: { language?: string; interests?: string[]; profileImage?: string | null },
+    options?: { language?: string; interests?: string[] },
   ): Observable<TouristRegistrationResponse> {
     return this.http.post<any>(`${this.authApiUrl}/register`, {
       name,
@@ -61,12 +56,11 @@ export class AuthService {
       password,
       language: options?.language ?? 'en',
       interests: options?.interests ?? [],
-      profileImage: options?.profileImage ?? null,
     }).pipe(
       map(res => this.mapRegistrationResponse(res)),
       tap(res => {
         if (res.session) {
-          this.saveAuthSession(res.session, 'password');
+          this.saveAuthSession(res.session);
         }
       }),
     );
@@ -75,7 +69,7 @@ export class AuthService {
   login(email: string, password: string): Observable<TouristAuthResponse> {
     return this.http.post<any>(`${this.authApiUrl}/login`, { email, password }).pipe(
       map(res => this.mapAuthResponse(res)),
-      tap(res => this.saveAuthSession(res, 'password')),
+      tap(res => this.saveAuthSession(res)),
     );
   }
 
@@ -87,16 +81,7 @@ export class AuthService {
     return this.http
       .post<any>(`${this.authApiUrl}/social-login`, { provider, credential, displayName })
       .pipe(
-        map(res => {
-          const mapped = this.mapAuthResponse(res);
-          return {
-            ...mapped,
-            user: {
-              ...mapped.user,
-              authProvider: provider,
-            },
-          };
-        }),
+        map(res => this.mapAuthResponse(res)),
         tap(res => this.saveAuthSession(res)),
       );
   }
@@ -109,14 +94,6 @@ export class AuthService {
     interests: string[] = [],
   ): Observable<TouristRegistrationResponse> {
     return this.register(name, email, password, { language, interests });
-  }
-
-  uploadProfileImage(file: File): Observable<string> {
-    const formData = new FormData();
-    formData.append('file', file);
-    return this.http.post<{ url: string }>(`${environment.apiUrl}/images/upload/profile`, formData).pipe(
-      map(res => res.url),
-    );
   }
 
   loginWithToken(email: string, password: string): Observable<TouristAuthResponse> {
@@ -193,14 +170,6 @@ export class AuthService {
     return !!this.getValidSession()?.token;
   }
 
-  get authProvider(): AuthProvider {
-    return this.sessionSubject.value?.authProvider ?? 'password';
-  }
-
-  get isGoogleAccount(): boolean {
-    return this.authProvider === 'google';
-  }
-
   private mapRegistrationResponse(res: any): TouristRegistrationResponse {
     const session = res?.session
       ? this.mapAuthResponse(res.session)
@@ -234,18 +203,15 @@ export class AuthService {
         email: rawUser?.email ?? rawUser?.Email ?? '',
         language: rawUser?.language ?? rawUser?.Language ?? undefined,
         isEmailVerified: rawUser?.isEmailVerified ?? rawUser?.IsEmailVerified ?? undefined,
-        profileImage: rawUser?.profileImage ?? rawUser?.ProfileImage ?? null,
-        authProvider: rawUser?.authProvider ?? rawUser?.AuthProvider ?? res?.authProvider ?? res?.provider ?? 'password',
       },
     };
   }
 
-  private saveAuthSession(response: TouristAuthResponse, authProvider: AuthProvider = 'password'): void {
+  private saveAuthSession(response: TouristAuthResponse): void {
     const session: StoredSession = {
       tourist: response.user,
       token: response.token,
       expiresAtUtc: response.expiresAtUtc || null,
-      authProvider,
     };
 
     localStorage.setItem('tourist_session', JSON.stringify(session));

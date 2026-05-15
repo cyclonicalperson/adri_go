@@ -15,15 +15,12 @@
 .nav-desktop-only { display: none; }
 
 /* ── ARRIVED card (centred overlay) ─────────────────────────  */
-/* Re-enable interaction for all direct overlays */
 .nav-arrived-card,
 .nav-denied-bar,
 .nav-top-bar,
 .nav-then-bar,
 .nav-acquiring,
-.nav-rerouting,
 .nav-speed-badge,
-.nav-mode-switch,
 .nav-bottom-bar { pointer-events: auto; }
 
 .nav-arrived-card {
@@ -101,12 +98,11 @@
   align-items: center;
   gap: 16px;
   padding: 16px 20px 16px 16px;
-  background: #1e3a2f;           /* dark navigation green */
+  background: #1e3a2f;
   box-shadow: 0 4px 20px rgba(0,0,0,0.35);
   min-height: 80px;
 }
 
-/* Arrow box */
 .nav-arrow-box {
   width: 56px; height: 56px;
   border-radius: 14px;
@@ -115,7 +111,6 @@
   flex-shrink: 0;
 }
 
-/* Instruction text */
 .nav-instruction-box { flex: 1; min-width: 0; }
 
 .nav-dist-label {
@@ -136,7 +131,6 @@
   text-overflow: ellipsis;
 }
 
-/* Desktop-only close button in header (hidden on mobile) */
 .nav-exit-header { display: none; }
 
 /* ──────────────────────────────────────────────────────────── */
@@ -150,7 +144,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 20px;
-  background: #15302a;           /* slightly darker than top bar */
+  background: #15302a;
   font-size: 13px;
   color: rgba(255,255,255,0.75);
   font-family: var(--font-sans);
@@ -159,7 +153,6 @@
 .nav-then-arrow { fill: rgba(255,255,255,0.7); flex-shrink: 0; }
 .nav-then-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* GPS acquiring strip */
 .nav-acquiring,
 .nav-rerouting {
   position: fixed;
@@ -175,7 +168,7 @@
   font-family: var(--font-sans);
 }
 .nav-rerouting {
-  background: #1a2f4a;  /* different tint so it’s visually distinct */
+  background: #1a2f4a;
   color: rgba(255,255,255,0.8);
 }
 .nav-acquiring-spinner {
@@ -194,7 +187,14 @@
 .nav-speed-badge {
   position: fixed;
   left: 16px;
-  bottom: calc(68px + 60px + 14px);
+  /*
+   * Aligned with the locate-btn during navigation:
+   * nav-bottom-bar height = 68px (no app-footer since sidebar is gone).
+   * We sit 14px above it, centred on the same row as the locate btn.
+   * 68px (bottom bar) + 14px gap = 82px from the bottom.
+   * The badge is 58px tall, so its top edge is at bottom + 58px.
+   */
+  bottom: calc(68px + 14px);
   z-index: 3040;
   flex-direction: column;
   align-items: center;
@@ -204,6 +204,8 @@
   border-radius: 50%;
   box-shadow: 0 4px 16px rgba(0,0,0,0.22);
   gap: 0;
+  /* Smooth transition when value changes */
+  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .nav-speed-val  { font-size: 22px; font-weight: 800; color: #0f172a; line-height: 1; }
 .nav-speed-unit { font-size: 10px; font-weight: 600; color: #64748b; }
@@ -248,7 +250,7 @@
 .nav-bottom-eta {
   font-size: 22px;
   font-weight: 800;
-  color: #22c55e;               /* green ETA like Google Maps */
+  color: #22c55e;
   line-height: 1;
 }
 .nav-bottom-meta {
@@ -257,33 +259,11 @@
   font-weight: 500;
 }
 
-.nav-bottom-mode-switch {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: #f1f5f9;
+.nav-bottom-mode {
+  width: 44px;
+  text-align: center;
+  font-size: 24px;
   flex-shrink: 0;
-}
-
-.nav-mode-option {
-  min-width: 40px;
-  min-height: 34px;
-  border: none;
-  border-radius: 999px;
-  padding: 0 8px;
-  background: transparent;
-  color: #64748b;
-  font: 800 11px var(--font-sans);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.nav-mode-option.active {
-  background: #22c55e;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.22);
 }
 
 /* ──────────────────────────────────────────────────────────── */
@@ -293,7 +273,6 @@
   .nav-mobile-only  { display: none !important; }
   .nav-desktop-only { display: flex; }
 
-  /* Reset fixed overlays — on desktop everything lives in the sidebar slot */
   .nav-top-bar,
   .nav-then-bar,
   .nav-acquiring,
@@ -303,7 +282,6 @@
     border-radius: 0;
   }
 
-  /* Desktop top bar: compact header inside sidebar */
   .nav-top-bar {
     min-height: auto;
     padding: 18px 16px;
@@ -314,7 +292,6 @@
   .nav-dist-label  { font-size: 28px; }
   .nav-street-label { font-size: 15px; }
 
-  /* Show the close × in the header on desktop */
   .nav-exit-header {
     display: flex;
     align-items: center; justify-content: center;
@@ -330,27 +307,23 @@
   .nav-exit-header:hover { background: rgba(255,255,255,0.22); }
   .nav-exit-header svg { fill: currentColor; }
 
-  /* Sidebar shell wrapping all nav elements */
   :host {
     position: fixed;
     top: 64px; left: 0;
     width: 380px;
-    height: calc(100dvh - 64px);
+    height: calc(100dvh - 64px - 68px);
     z-index: 3000;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background: #1e3a2f;
-    pointer-events: auto;
   }
 
-  /* "Then" strip stays as is — just static inside sidebar */
   .nav-then-bar, .nav-acquiring, .nav-rerouting {
     padding: 10px 16px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
 
-  /* Step list */
   .nav-steps-list {
     flex: 1;
     overflow-y: auto;
@@ -395,7 +368,6 @@
   .nav-step-done { opacity: 0.38; }
   .nav-step-done .nav-step-text { text-decoration: line-through; }
 
-  /* Summary strip at bottom of sidebar */
   .nav-panel-summary {
     flex-direction: row;
     align-items: center;
@@ -422,33 +394,6 @@
   }
   .nav-exit-panel:hover { background: #fee2e2; }
 
-  .nav-mode-switch {
-    display: flex;
-    gap: 8px;
-    padding: 12px 16px;
-    background: #fff;
-    border-top: 1px solid #f1f5f9;
-    flex-shrink: 0;
-  }
-
-  .nav-mode-switch .nav-mode-option {
-    flex: 1;
-    min-height: 36px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: #fff;
-    color: #475569;
-    font-size: 12px;
-  }
-
-  .nav-mode-switch .nav-mode-option.active {
-    border-color: #22c55e;
-    background: #dcfce7;
-    color: #15803d;
-    box-shadow: none;
-  }
-
-  /* Arrived card: inside sidebar, not centred */
   .nav-arrived-card {
     position: static;
     transform: none;
@@ -461,4 +406,7 @@
   .nav-arrived-icon { background: rgba(255,255,255,0.12); color: #4ade80; }
   .nav-arrived-text strong { color: #fff; }
   .nav-arrived-text span   { color: rgba(255,255,255,0.6); }
+
+  /* Speed badge not shown on desktop */
+  .nav-speed-badge { display: none !important; }
 }

@@ -116,32 +116,6 @@
   padding: 24px;
 }
 
-.period-toggle {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  background: $gray-100;
-  border-radius: $radius-sm;
-}
-
-.period-toggle button {
-  border: 0;
-  background: transparent;
-  border-radius: $radius-sm;
-  padding: 6px 10px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  color: $gray-500;
-  cursor: pointer;
-}
-
-.period-toggle button.active {
-  background: $white;
-  color: $gray-900;
-  box-shadow: $shadow-sm;
-}
-
 // ── Chart ─────────────────────────────────────────────────────────────────
 .chart-select {
   border: 1px solid $gray-200;
@@ -431,8 +405,4 @@
   text-align: center;
   color: $gray-400;
   font-weight: 600;
-
-  &.compact {
-    padding: 24px;
-  }
 }

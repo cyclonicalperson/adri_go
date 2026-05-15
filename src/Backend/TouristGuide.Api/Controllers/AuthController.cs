@@ -257,7 +257,6 @@ namespace TouristGuide.Api.Controllers
                         AccountStatus = adminUser.AccountStatus,
                         OrganizationId = adminUser.OrganizationId,
                         IsIndividual = adminUser.IsIndividual,
-                        ProfileImage = adminUser.ProfileImage,
                         Permissions = permissions
                     }
                 });

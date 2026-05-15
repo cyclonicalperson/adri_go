@@ -43,7 +43,6 @@ export class CalendarComponent implements OnInit {
     if (!this.authService.isLoggedIn) {
       this.isGuest   = true;
       this.isLoading = false;
-      this.router.navigate(['/login']);
       this.cdr.detectChanges();
       return;
     }

@@ -3,7 +3,6 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
-import { AdminListStateService } from '@core/services/admin-list-state.service';
 import { ActivityService } from '@core/services/activity.service';
 import { CsvExportService } from '@core/services/csv-export.service';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
@@ -22,16 +21,6 @@ interface BackendActivity {
   color?: string;
   status?: string;
   viewCount?: number;
-}
-
-interface ActivitiesListState {
-  page?: number;
-  pageSize?: number;
-  searchQuery?: string;
-  activeCategory?: string;
-  activeStatus?: string;
-  sortBy?: string;
-  sortDir?: 'asc' | 'desc';
 }
 
 @Component({
@@ -80,18 +69,15 @@ export class AktivnostiListComponent implements OnInit {
   ];
 
   private search$ = new Subject<string>();
-  private readonly stateKey = 'activities';
 
   constructor(
     private activityService: ActivityService,
     private router: Router,
     private auth: AuthService,
     private csv: CsvExportService,
-    private listState: AdminListStateService,
   ) {}
 
   ngOnInit(): void {
-    this.restoreListState();
     this.initSearch();
     this.loadGlobalTotal();
     this.load();
@@ -118,7 +104,6 @@ export class AktivnostiListComponent implements OnInit {
 
   load(): void {
     this.loading = true;
-    this.persistListState();
 
     this.activityService.getAll({
       page: this.page,
@@ -165,7 +150,6 @@ export class AktivnostiListComponent implements OnInit {
   }
 
   onSearch(q: string): void {
-    this.searchQuery = q;
     this.search$.next(q);
   }
 
@@ -404,29 +388,6 @@ export class AktivnostiListComponent implements OnInit {
       return `${Number(activity.lat).toFixed(4)}°N, ${Number(activity.lng).toFixed(4)}°E`;
     }
     return '';
-  }
-
-  private restoreListState(): void {
-    const state = this.listState.read<ActivitiesListState>(this.stateKey);
-    this.page = Number(state.page ?? this.page) || 1;
-    this.pageSize = Number(state.pageSize ?? this.pageSize) || 10;
-    this.searchQuery = state.searchQuery ?? this.searchQuery;
-    this.activeCategory = state.activeCategory ?? this.activeCategory;
-    this.activeStatus = state.activeStatus ?? this.activeStatus;
-    this.sortBy = state.sortBy ?? this.sortBy;
-    this.sortDir = state.sortDir ?? this.sortDir;
-  }
-
-  private persistListState(): void {
-    this.listState.save<ActivitiesListState>(this.stateKey, {
-      page: this.page,
-      pageSize: this.pageSize,
-      searchQuery: this.searchQuery,
-      activeCategory: this.activeCategory,
-      activeStatus: this.activeStatus,
-      sortBy: this.sortBy,
-      sortDir: this.sortDir,
-    });
   }
 
   locationName(activity: BackendActivity): string {

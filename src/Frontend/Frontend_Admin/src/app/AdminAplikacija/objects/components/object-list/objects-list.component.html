@@ -2,7 +2,7 @@
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="!activeStatusFilter" (click)="onStatusFilter('')">
       <div class="num">{{ globalTotal }}</div>
-      <div class="lbl">Ukupno destinacija</div>
+      <div class="lbl">Ukupno lokacija</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeStatusFilter === 'active'" (click)="onStatusFilter('active')">
       <div class="num" style="color:#15803d">{{ activeCount }}</div>
@@ -79,21 +79,21 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
-    <select class="filter-select" [value]="req.regionId ?? ''" (change)="onDestinationChange($any($event.target).value)">
+    <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Svi regioni</option>
       @for (r of regions; track r.regionId) {
       <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
 
-    <select class="filter-select" [value]="activeStatusFilter" (change)="onStatusFilter($any($event.target).value)">
+    <select class="filter-select" (change)="onStatusFilter($any($event.target).value)">
       <option value="">Svi statusi</option>
       <option value="active">✅ Aktivna</option>
       <option value="pending">⏳ Na čekanju</option>
       <option value="inactive">❌ Neaktivna</option>
     </select>
 
-    <select class="filter-select" [value]="activeSortValue" (change)="onSort($any($event.target).value)">
+    <select class="filter-select" (change)="onSort($any($event.target).value)">
       <option value="createdAt:desc">Sortiraj: Najnovije</option>
       <option value="name:asc">Naziv A–Z</option>
       <option value="averageRating:desc">Ocena ↓</option>
@@ -119,7 +119,7 @@
   <div class="panel">
     <div class="panel-header">
       <div>
-        <div class="panel-title">Sve destinacije</div>
+        <div class="panel-title">Sve lokacije</div>
         <div class="panel-sub">{{ total }} rezultata · stranica {{ req.page }} od {{ totalPages }}</div>
       </div>
       <div class="view-toggle">
@@ -130,7 +130,7 @@
     <table>
       <thead>
         <tr>
-          <th (click)="onSortCol('name')">Destinacija <span class="sort">↕</span></th>
+          <th (click)="onSortCol('name')">Lokacija <span class="sort">↕</span></th>
           <th>Kategorija</th>
           <th>Region / GPS</th>
           <th>Aktivnosti</th>
@@ -224,7 +224,7 @@
     </table>
 
     <div class="pagination">
-  <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} destinacija</div>
+      <div class="pg-info">Prikazano {{ pageStart }}–{{ pageEnd }} od {{ total }} lokacija</div>
       <div class="pg-btns">
         <button class="pg-btn" [disabled]="req.page === 1" (click)="onPage(req.page - 1)">←</button>
         @for (p of pageNumbers; track p) {

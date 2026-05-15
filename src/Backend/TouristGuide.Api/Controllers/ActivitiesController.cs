@@ -14,20 +14,17 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _context;
         private readonly AdminIdentityService _adminIdentityService;
         private readonly AdminPermissionService _permissionService;
-        private readonly NotificationService _notificationService;
         private const char SEP = '|';
         private const string INNER_SEP = "\u2630";
 
         public ActivitiesController(
             AppDbContext context,
             AdminIdentityService adminIdentityService,
-            AdminPermissionService permissionService,
-            NotificationService notificationService)
+            AdminPermissionService permissionService)
         {
             _context = context;
             _adminIdentityService = adminIdentityService;
             _permissionService = permissionService;
-            _notificationService = notificationService;
         }
 
         private static readonly Dictionary<string, string> ColorMap = new()
@@ -92,33 +89,23 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? category, [FromQuery] string? search, [FromQuery] string? status,
             [FromQuery] string? sortBy, [FromQuery] string? sortDir,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var isAdminRequest = User.IsInRole("admin") || User.IsInRole("superadmin");
+            if (!await _permissionService.CanManageTagsAsync())
+                return Forbid();
+
             var query = _context.Tags.Where(t => t.Category == "aktivnost").AsQueryable();
 
-            if (isAdminRequest)
+            if (!_adminIdentityService.IsSuperAdmin())
             {
-                if (!await _permissionService.CanManageTagsAsync())
-                    return Forbid();
-
-                if (!_adminIdentityService.IsSuperAdmin())
-                {
-                    var adminId = _adminIdentityService.GetAdminId();
-                    if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
-                    var adminTagIds = await _context.PostTags
-                        .Where(pt => pt.Post.AdminId == adminId.Value).Select(pt => pt.TagId).Distinct().ToListAsync();
-                    query = query.Where(t => adminTagIds.Contains(t.Id));
-                }
-            }
-            else
-            {
-                query = query.Where(t => t.Color == null
-                    || (!t.Color.ToLower().Contains("|pending|") && !t.Color.ToLower().EndsWith("|pending")));
+                var adminId = _adminIdentityService.GetAdminId();
+                if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
+                var adminTagIds = await _context.PostTags
+                    .Where(pt => pt.Post.AdminId == adminId.Value).Select(pt => pt.TagId).Distinct().ToListAsync();
+                query = query.Where(t => adminTagIds.Contains(t.Id));
             }
 
             var adminFilteredQuery = query;
@@ -134,7 +121,7 @@ namespace TouristGuide.Api.Controllers
                 foreach (var k in known)
                     query = query.Where(t => t.Color == null || !t.Color.ToUpper().StartsWith(k));
             }
-            if (!string.IsNullOrWhiteSpace(status) && isAdminRequest)
+            if (!string.IsNullOrWhiteSpace(status))
             {
                 var sl = status.ToLower();
                 query = query.Where(t => t.Color != null &&
@@ -198,11 +185,9 @@ namespace TouristGuide.Api.Controllers
         }
 
         [HttpGet("{id}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetById(uint id)
         {
-            var isAdminRequest = User.IsInRole("admin") || User.IsInRole("superadmin");
-            if (isAdminRequest && !await _permissionService.CanManageTagsAsync())
+            if (!await _permissionService.CanManageTagsAsync())
                 return Forbid();
 
             var tag = await _context.Tags
@@ -210,7 +195,7 @@ namespace TouristGuide.Api.Controllers
                 .FirstOrDefaultAsync(t => t.Id == id && t.Category == "aktivnost");
             if (tag == null) return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
-            if (isAdminRequest && !_adminIdentityService.IsSuperAdmin())
+            if (!_adminIdentityService.IsSuperAdmin())
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
@@ -219,8 +204,6 @@ namespace TouristGuide.Api.Controllers
 
             var prviPost = tag.PostTags.FirstOrDefault()?.Post;
             var d = DecodeColor(tag.Color);
-            if (!isAdminRequest && d.Status == "pending")
-                return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
             return Ok(new
             {
                 data = new
@@ -278,14 +261,6 @@ namespace TouristGuide.Api.Controllers
                     await _context.SaveChangesAsync();
                 }
             }
-            if (statusFlag == "pending")
-            {
-                await _notificationService.BroadcastToSuperAdminsAsync(
-                    "activity_pending",
-                    "Nova aktivnost ceka pregled",
-                    $"Aktivnost \"{noviTag.Name}\" je poslata na odobrenje.",
-                    new { activityId = noviTag.Id, postId = dto.PostId, url = "/admin/aktivnosti" });
-            }
             return Ok(new { data = new { activityId = noviTag.Id, id = noviTag.Id }, success = true });
         }
 
@@ -342,15 +317,6 @@ namespace TouristGuide.Api.Controllers
                 if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
                     _context.PostTags.Add(new PostTag { PostId = dto.PostId.Value, TagId = id });
                 await _context.SaveChangesAsync();
-            }
-
-            if (statusFlag == "pending" && existing.Status != "pending")
-            {
-                await _notificationService.BroadcastToSuperAdminsAsync(
-                    "activity_pending",
-                    "Aktivnost ceka pregled",
-                    $"Aktivnost \"{tag.Name}\" je prebacena na odobrenje.",
-                    new { activityId = tag.Id, postId = dto.PostId, url = "/admin/aktivnosti" });
             }
 
             return Ok(new { success = true });

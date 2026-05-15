@@ -6,13 +6,13 @@
       <div class="modal-icon-wrap">
         <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
       </div>
-      <h2 class="modal-title">Deactivate Account?</h2>
+      <h2 class="modal-title">Delete Account?</h2>
       <p class="modal-body">
-        This will deactivate your account. Your saved locations, reviews, and history will stay stored, but you will no longer be able to log in.
+        This will permanently delete your account and all associated data — saved locations, reviews, and history. <strong>This cannot be undone.</strong>
       </p>
       <div class="modal-actions">
         <button class="modal-cancel-btn" (click)="cancelDelete()">Keep Account</button>
-        <button class="modal-delete-btn" (click)="confirmDelete()">Yes, Deactivate</button>
+        <button class="modal-delete-btn" (click)="confirmDelete()">Yes, Delete</button>
       </div>
     </div>
   </div>
@@ -120,11 +120,11 @@
           <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
           Danger Zone
         </div>
-        <p class="danger-zone-desc">Deactivate your account while keeping existing account data stored.</p>
+        <p class="danger-zone-desc">Permanently delete your account and all your data. This action cannot be undone.</p>
         <div *ngIf="deleteError" style="color:#dc2626;font-size:13px;margin-bottom:10px;padding:10px 14px;background:#fef2f2;border-radius:10px;">{{ deleteError }}</div>
         <button class="delete-account-btn" (click)="deleteAccount()" [disabled]="isDeleting">
           <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          {{ isDeleting ? 'Deactivating...' : 'Deactivate My Account' }}
+          {{ isDeleting ? 'Deleting...' : 'Delete My Account' }}
         </button>
       </div>
 

@@ -5,11 +5,9 @@ import {
   EventEmitter,
   Input,
   NgZone,
-  OnChanges,
   OnDestroy,
   OnInit,
   Output,
-  SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationStep } from '../../../services/routing.service';
@@ -24,7 +22,7 @@ import { TravelMode } from '../../../services/tourist-preferences.service';
   styleUrls: ['./map-navigation-panel.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges {
+export class MapNavigationPanelComponent implements OnInit, OnDestroy {
   @Input() steps: NavigationStep[] = [];
   @Input() routeGeometry: [number, number][] = [];
   @Input() travelMode: TravelMode = 'driving';
@@ -40,14 +38,6 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   @Output() routeTrailUpdated = new EventEmitter<[number, number][]>();
   /** Emits a fully recalculated route when the user goes off-route */
   @Output() routeRecalculated = new EventEmitter<{ steps: NavigationStep[]; geometry: [number, number][] }>();
-  @Output() navigationArrived = new EventEmitter<void>();
-  @Output() travelModeChanged = new EventEmitter<TravelMode>();
-
-  readonly travelModes: Array<{ mode: TravelMode; label: string }> = [
-    { mode: 'driving', label: 'Car' },
-    { mode: 'walking', label: 'Walk' },
-    { mode: 'cycling', label: 'Cycle' },
-  ];
 
   currentStepIndex = 0;
   distanceToNextM = 0;
@@ -104,10 +94,6 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  get modeLabel(): string {
-    return this.travelModes.find(option => option.mode === this.travelMode)?.label ?? 'Car';
-  }
-
   /** CSS rotation (degrees) for the arrow SVG based on the current maneuver. */
   maneuverRotation(step: NavigationStep | null): number {
     if (!step) return 0;
@@ -152,18 +138,6 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     this.startHeadingWatch();
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['steps'] || changes['routeGeometry'] || changes['travelMode']) {
-      this.resetNavigationProgress();
-      return;
-    }
-
-    if (changes['totalDistanceKm'] || changes['totalDurationMin']) {
-      this.remainingDistanceKm = this.totalDistanceKm;
-      this.remainingMin = this.totalDurationMin;
-    }
-  }
-
   ngOnDestroy(): void {
     this.stopWatching();
     this.stopHeadingWatch();
@@ -179,11 +153,6 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     const h = Math.floor(minutes / 60);
     const m = Math.round(minutes % 60);
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
-  }
-
-  selectTravelMode(mode: TravelMode): void {
-    if (mode === this.travelMode || this.isRerouting) return;
-    this.travelModeChanged.emit(mode);
   }
 
   maneuverIcon(step: NavigationStep | null): string {
@@ -471,7 +440,6 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
       this.arrived = true;
       this.remainingDistanceKm = 0;
       this.remainingMin = 0;
-      this.navigationArrived.emit();
       return;
     }
 

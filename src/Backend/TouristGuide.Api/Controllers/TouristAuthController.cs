@@ -63,7 +63,6 @@ namespace TouristGuide.Api.Controllers
                 PasswordHash = PasswordHelper.Hash(request.Password),
                 Language = string.IsNullOrWhiteSpace(request.Language) ? "en" : request.Language.Trim().ToLowerInvariant(),
                 Interests = SerializeInterests(request.Interests),
-                ProfileImage = string.IsNullOrWhiteSpace(request.ProfileImage) ? null : request.ProfileImage.Trim(),
                 IsActive = true,
                 IsEmailVerified = !smtpConfigured, // auto-verified when no SMTP
                 EmailVerificationToken = verificationToken,
@@ -228,12 +227,18 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("me")]
         public async Task<ActionResult<TouristMeDto>> Me()
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null)
+            var touristId = GetTouristId();
+            if (touristId is null)
                 return Unauthorized(new { message = "Turista nije autentifikovan." });
 
-            var savedCount = await _db.SavedPosts.CountAsync(sp => sp.TouristId == tourist.Id);
-            var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == tourist.Id);
+            var tourist = await _db.Tourists
+                .FirstOrDefaultAsync(t => t.Id == touristId.Value);
+
+            if (tourist is null)
+                return NotFound(new { message = "Turista nije pronadjen." });
+
+            var savedCount = await _db.SavedPosts.CountAsync(sp => sp.TouristId == touristId.Value);
+            var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == touristId.Value);
 
             return Ok(MapToMeDto(tourist, savedCount, reviewCount));
         }
@@ -243,15 +248,18 @@ namespace TouristGuide.Api.Controllers
         [HttpDelete("account")]
         public async Task<IActionResult> DeleteAccount()
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null)
+            var touristId = GetTouristId();
+            if (touristId is null)
                 return Unauthorized(new { message = "Not authenticated." });
 
-            tourist.IsActive = false;
-            tourist.UpdatedAt = DateTime.UtcNow;
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
+            if (tourist is null)
+                return NotFound(new { message = "Account not found." });
+
+            _db.Tourists.Remove(tourist);
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Account deactivated." });
+            return Ok(new { message = "Account permanently deleted." });
         }
 
         // PUT /api/tourist-auth/profile
@@ -259,9 +267,13 @@ namespace TouristGuide.Api.Controllers
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateTouristProfileDto dto)
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null)
+            var touristId = GetTouristId();
+            if (touristId is null)
                 return Unauthorized(new { message = "Not authenticated." });
+
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
+            if (tourist is null)
+                return NotFound(new { message = "Tourist not found." });
 
             if (dto.Name is not null)
                 tourist.Name = dto.Name.Trim();
@@ -278,14 +290,11 @@ namespace TouristGuide.Api.Controllers
             if (dto.Interests is not null)
                 tourist.Interests = System.Text.Json.JsonSerializer.Serialize(dto.Interests);
 
-            if (dto.ProfileImage is not null)
-                tourist.ProfileImage = string.IsNullOrWhiteSpace(dto.ProfileImage) ? null : dto.ProfileImage.Trim();
-
             tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            var savedCount = await _db.SavedPosts.CountAsync(sp => sp.TouristId == tourist.Id);
-            var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == tourist.Id);
+            var savedCount = await _db.SavedPosts.CountAsync(sp => sp.TouristId == touristId.Value);
+            var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == touristId.Value);
 
             return Ok(MapToMeDto(tourist, savedCount, reviewCount));
         }
@@ -297,13 +306,13 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("calendar")]
         public async Task<IActionResult> GetCalendar()
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null)
+            var touristId = GetTouristId();
+            if (touristId is null)
                 return Unauthorized();
 
             // Find (or create) the tourist's single "My Calendar" planner
             var planner = await _db.VisitPlanners
-                .FirstOrDefaultAsync(p => p.TouristId == tourist.Id);
+                .FirstOrDefaultAsync(p => p.TouristId == touristId.Value);
 
             if (planner is null)
                 return Ok(new List<object>());
@@ -336,8 +345,8 @@ namespace TouristGuide.Api.Controllers
         [HttpPost("calendar/{postId:int}")]
         public async Task<IActionResult> AddToCalendar(int postId)
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null)
+            var touristId = GetTouristId();
+            if (touristId is null)
                 return Unauthorized();
 
             var post = await _db.Posts.FindAsync((uint)postId);
@@ -346,13 +355,13 @@ namespace TouristGuide.Api.Controllers
 
             // Get or create the tourist's "My Calendar" planner
             var planner = await _db.VisitPlanners
-                .FirstOrDefaultAsync(p => p.TouristId == tourist.Id);
+                .FirstOrDefaultAsync(p => p.TouristId == touristId.Value);
 
             if (planner is null)
             {
                 planner = new VisitPlanner
                 {
-                    TouristId = tourist.Id,
+                    TouristId = touristId.Value,
                     Title = "My Calendar",
                     IsPublic = false,
                     CreatedAt = DateTime.UtcNow,
@@ -380,15 +389,6 @@ namespace TouristGuide.Api.Controllers
                 Notes = null,
                 ScheduledTime = null
             });
-            _db.Notifications.Add(new Notification
-            {
-                TouristId = tourist.Id,
-                Type = "calendar",
-                Title = "Added to calendar",
-                Body = $"{post.Title} is now in your travel calendar.",
-                Payload = System.Text.Json.JsonSerializer.Serialize(new { postId }),
-                CreatedAt = DateTime.UtcNow
-            });
 
             await _db.SaveChangesAsync();
             return Ok(new { message = "Added to calendar." });
@@ -399,12 +399,12 @@ namespace TouristGuide.Api.Controllers
         [HttpDelete("calendar/{postId:int}")]
         public async Task<IActionResult> RemoveFromCalendar(int postId)
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null)
+            var touristId = GetTouristId();
+            if (touristId is null)
                 return Unauthorized();
 
             var planner = await _db.VisitPlanners
-                .FirstOrDefaultAsync(p => p.TouristId == tourist.Id);
+                .FirstOrDefaultAsync(p => p.TouristId == touristId.Value);
 
             if (planner is null)
                 return NotFound(new { message = "Calendar not found." });
@@ -427,11 +427,11 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("notifications")]
         public async Task<IActionResult> GetNotifications([FromQuery] int limit = 30)
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null) return Unauthorized();
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
 
             var items = await _db.Notifications
-                .Where(n => n.TouristId == tourist.Id)
+                .Where(n => n.TouristId == touristId.Value)
                 .OrderByDescending(n => n.CreatedAt)
                 .Take(Math.Min(limit, 100))
                 .Select(n => new
@@ -448,7 +448,7 @@ namespace TouristGuide.Api.Controllers
                 .ToListAsync();
 
             var unreadCount = await _db.Notifications
-                .CountAsync(n => n.TouristId == tourist.Id && !n.IsRead);
+                .CountAsync(n => n.TouristId == touristId.Value && !n.IsRead);
 
             return Ok(new { data = items, unreadCount, success = true });
         }
@@ -458,11 +458,11 @@ namespace TouristGuide.Api.Controllers
         [HttpPatch("notifications/{id}/read")]
         public async Task<IActionResult> MarkNotificationRead(uint id)
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null) return Unauthorized();
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
 
             var notif = await _db.Notifications
-                .FirstOrDefaultAsync(n => n.Id == id && n.TouristId == tourist.Id);
+                .FirstOrDefaultAsync(n => n.Id == id && n.TouristId == touristId.Value);
 
             if (notif is null) return NotFound();
 
@@ -481,11 +481,11 @@ namespace TouristGuide.Api.Controllers
         [HttpPatch("notifications/read-all")]
         public async Task<IActionResult> MarkAllNotificationsRead()
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null) return Unauthorized();
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
 
             var unread = await _db.Notifications
-                .Where(n => n.TouristId == tourist.Id && !n.IsRead)
+                .Where(n => n.TouristId == touristId.Value && !n.IsRead)
                 .ToListAsync();
 
             foreach (var n in unread)
@@ -503,11 +503,11 @@ namespace TouristGuide.Api.Controllers
         [HttpDelete("notifications/{id}")]
         public async Task<IActionResult> DeleteNotification(uint id)
         {
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null) return Unauthorized();
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
 
             var notif = await _db.Notifications
-                .FirstOrDefaultAsync(n => n.Id == id && n.TouristId == tourist.Id);
+                .FirstOrDefaultAsync(n => n.Id == id && n.TouristId == touristId.Value);
 
             if (notif is null) return NotFound();
 
@@ -526,11 +526,15 @@ namespace TouristGuide.Api.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var tourist = await GetCurrentTouristAsync();
-            if (tourist is null) return Unauthorized();
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
 
-            if (string.IsNullOrWhiteSpace(tourist.PasswordHash))
-                return BadRequest(new { message = "Password change is not available for this account." });
+            var tourist = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
+            if (tourist is null) return NotFound(new { message = "Tourist not found." });
+
+            if (string.IsNullOrWhiteSpace(tourist.PasswordHash) ||
+                !PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
+                return BadRequest(new { message = "Current password is incorrect." });
 
             if (!PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
                 return BadRequest(new { message = "Current password is incorrect." });
@@ -756,25 +760,6 @@ namespace TouristGuide.Api.Controllers
             var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
                      ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             return uint.TryParse(value, out var id) ? id : null;
-        }
-
-        private async Task<TouristGuide.Api.Models.Tourist?> GetCurrentTouristAsync()
-        {
-            var touristId = GetTouristId();
-            if (touristId is not null)
-            {
-                var touristById = await _db.Tourists.FirstOrDefaultAsync(t => t.Id == touristId.Value);
-                if (touristById is not null)
-                    return touristById;
-            }
-
-            var email = User.FindFirstValue(ClaimTypes.Email);
-            if (string.IsNullOrWhiteSpace(email))
-                return null;
-
-            var normalizedEmail = email.Trim().ToLowerInvariant();
-            return await _db.Tourists
-                .FirstOrDefaultAsync(t => t.Email != null && t.Email.ToLower() == normalizedEmail);
         }
 
         private static string? ExtractFirstImage(string? imagesJson)

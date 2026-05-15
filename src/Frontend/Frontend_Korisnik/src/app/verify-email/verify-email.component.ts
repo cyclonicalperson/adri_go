@@ -75,11 +75,6 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token');
-    const lang = this.route.snapshot.queryParamMap.get('lang');
-    if (lang) {
-      localStorage.setItem('adrigo_user_language', lang);
-      localStorage.setItem('site_language', lang);
-    }
     if (!token) {
       this.state = 'error';
       return;

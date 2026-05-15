@@ -162,7 +162,7 @@
         <div class="user-name">{{ auth.currentUser?.fullName }}</div>
         <div class="user-role">{{ roleLabel }}</div>
       </div>
-      <img class="header-avatar" [src]="auth.currentUser?.profileImage || 'assets/default-profile.svg'" alt="Profil">
+      <div class="header-avatar">{{ initials }}</div>
     </a>
   </div>
 </header>

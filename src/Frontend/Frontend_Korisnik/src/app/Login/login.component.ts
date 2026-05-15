@@ -111,12 +111,12 @@ export class LoginComponent implements OnInit {
     this.authService.resendVerification(this.verificationPendingEmail).subscribe({
       next: res => {
         this.isResendingVerification = false;
-        this.resendMessage = this.localizedResendMessage('success');
+        this.resendMessage = res.message || 'A new verification email has been sent.';
         this.cdr.detectChanges();
       },
       error: err => {
         this.isResendingVerification = false;
-        this.resendError = this.localizedResendMessage('error');
+        this.resendError = err?.error?.message || 'Could not resend the verification email.';
         this.cdr.detectChanges();
       },
     });
