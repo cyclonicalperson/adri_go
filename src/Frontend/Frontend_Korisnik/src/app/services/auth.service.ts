@@ -143,8 +143,9 @@ export class AuthService {
     });
   }
 
-  changePassword(newPassword: string): Observable<{ message: string }> {
+  changePassword(currentPassword: string, newPassword: string): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.authApiUrl}/change-password`, {
+      currentPassword,
       newPassword,
     });
   }
@@ -154,8 +155,7 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem('tourist_session');
-    localStorage.removeItem('tourist');
+    this.clearStoredSession();
     this.sessionSubject.next(null);
   }
 
@@ -178,19 +178,19 @@ export class AuthService {
   }
 
   get currentTourist(): Tourist | null {
-    return this.sessionSubject.value?.tourist ?? null;
+    return this.getValidSession()?.tourist ?? null;
   }
 
   get touristId(): number | null {
-    return this.sessionSubject.value?.tourist?.id ?? null;
+    return this.getValidSession()?.tourist?.id ?? null;
   }
 
   get token(): string {
-    return this.sessionSubject.value?.token ?? '';
+    return this.getValidSession()?.token ?? '';
   }
 
   get isLoggedIn(): boolean {
-    return !!this.sessionSubject.value?.token;
+    return !!this.getValidSession()?.token;
   }
 
   get authProvider(): AuthProvider {
@@ -257,14 +257,48 @@ export class AuthService {
       const stored = localStorage.getItem('tourist_session');
       if (stored) {
         const parsed = JSON.parse(stored) as StoredSession;
-        if (parsed?.tourist?.id && parsed?.token) {
+        if (parsed?.tourist?.id && parsed?.token && !this.isSessionExpired(parsed)) {
           return parsed;
         }
       }
-      localStorage.removeItem('tourist');
+      this.clearStoredSession();
       return null;
     } catch {
+      this.clearStoredSession();
       return null;
     }
+  }
+
+  private getValidSession(): StoredSession | null {
+    const session = this.sessionSubject.value;
+    if (!session?.token) {
+      return null;
+    }
+
+    if (this.isSessionExpired(session)) {
+      this.clearStoredSession();
+      this.sessionSubject.next(null);
+      return null;
+    }
+
+    return session;
+  }
+
+  private isSessionExpired(session: StoredSession): boolean {
+    if (!session.expiresAtUtc) {
+      return false;
+    }
+
+    const expiresAt = Date.parse(session.expiresAtUtc);
+    if (Number.isNaN(expiresAt)) {
+      return false;
+    }
+
+    return Date.now() >= expiresAt - 30_000;
+  }
+
+  private clearStoredSession(): void {
+    localStorage.removeItem('tourist_session');
+    localStorage.removeItem('tourist');
   }
 }

@@ -177,6 +177,7 @@ export class PersonalInfoComponent implements OnInit {
             this.authService.updateCurrentTourist({ profileImage: this.userData?.profilePic ?? url });
             this.isUploadingPhoto = false;
             this.saveSuccess = true;
+            input.value = '';
             setTimeout(() => (this.saveSuccess = false), 2500);
             this.cdr.detectChanges();
           },
@@ -185,6 +186,7 @@ export class PersonalInfoComponent implements OnInit {
               this.userData.profilePic = previousProfilePic;
             }
             this.isUploadingPhoto = false;
+            input.value = '';
             this.saveError = err?.error?.message || 'Photo uploaded, but the profile could not be updated.';
             this.cdr.detectChanges();
           }
@@ -192,6 +194,7 @@ export class PersonalInfoComponent implements OnInit {
       },
       error: () => {
         this.isUploadingPhoto = false;
+        input.value = '';
         this.saveError = 'Could not upload profile photo. Please try another image.';
         this.cdr.detectChanges();
       }

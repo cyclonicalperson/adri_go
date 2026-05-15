@@ -716,6 +716,10 @@ export class DashboardComponent implements OnInit {
     return '#3b82f6';
   }
 
+  get movementMaxVisits(): number {
+    return Math.max(...this.movements.map(item => item.visitCount), 0);
+  }
+
   topBarWidth(value: number, list: DashboardPost[]): number {
     const max = Math.max(...list.map(item => item.viewCount), 1);
     return Math.round((value / max) * 100);

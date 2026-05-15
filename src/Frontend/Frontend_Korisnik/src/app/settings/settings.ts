@@ -46,7 +46,7 @@ export class SettingsComponent implements OnInit {
   ];
 
   showPasswordModal = false;
-  changePasswordForm = { newPassword: '', confirmPassword: '' };
+  changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
   passwordError = '';
   passwordSuccess = '';
   isSavingPassword = false;
@@ -423,7 +423,7 @@ export class SettingsComponent implements OnInit {
     }
 
     this.showPasswordModal = true;
-    this.changePasswordForm = { newPassword: '', confirmPassword: '' };
+    this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
     this.passwordError = '';
     this.passwordSuccess = '';
     this.changePasswordSubmitted = false;
@@ -474,6 +474,7 @@ export class SettingsComponent implements OnInit {
 
     if (
       !this.changePasswordForm.newPassword
+      || !this.changePasswordForm.currentPassword
       || !this.changePasswordForm.confirmPassword
       || !this.isNewPasswordValid
       || this.hasConfirmPasswordMismatch
@@ -482,7 +483,10 @@ export class SettingsComponent implements OnInit {
     }
 
     this.isSavingPassword = true;
-    this.authService.changePassword(this.changePasswordForm.newPassword).subscribe({
+    this.authService.changePassword(
+      this.changePasswordForm.currentPassword,
+      this.changePasswordForm.newPassword,
+    ).subscribe({
       next: () => {
         this.passwordSuccess = '✓ Password changed successfully!';
         this.isSavingPassword = false;
