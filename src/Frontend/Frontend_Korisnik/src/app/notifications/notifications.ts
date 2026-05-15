@@ -107,8 +107,17 @@ export class NotificationsComponent implements OnInit {
     });
   }
 
+  openNotification(notif: TouristNotification): void {
+    this.markRead(notif);
+    const target = this.getNotificationTarget(notif);
+    if (target) {
+      this.router.navigateByUrl(target);
+    }
+  }
+
   getIcon(type: string): string {
     const t = (type || '').toLowerCase();
+    if (t.includes('review')) return t.includes('rejected') ? 'X' : 'OK';
     if (t.includes('alert') || t.includes('warning')) return '⚠️';
     if (t.includes('recommendation') || t.includes('promo')) return '✨';
     if (t.includes('support') || t.includes('message')) return '💬';
@@ -119,6 +128,7 @@ export class NotificationsComponent implements OnInit {
 
   getTypeClass(type: string): string {
     const t = (type || '').toLowerCase();
+    if (t.includes('review')) return t.includes('rejected') ? 'alert' : 'recommendation';
     if (t.includes('alert') || t.includes('warning')) return 'alert';
     if (t.includes('recommendation') || t.includes('promo')) return 'recommendation';
     if (t.includes('support') || t.includes('message')) return 'support';
@@ -137,5 +147,45 @@ export class NotificationsComponent implements OnInit {
     if (diffHour < 24)  return `${diffHour}H AGO`;
     if (diffDay < 7)    return `${diffDay}D AGO`;
     return date.toLocaleDateString();
+  }
+
+  private getNotificationTarget(notif: TouristNotification): string | null {
+    const payload = this.parsePayload(notif.payload);
+    const postId = this.readPayloadNumber(payload, 'postId', 'post_id');
+    if (postId) {
+      return `/location-details/${postId}`;
+    }
+
+    const routeId = this.readPayloadNumber(payload, 'routeId', 'route_id');
+    if (routeId) {
+      return '/routes';
+    }
+
+    const url = this.readPayloadString(payload, 'url');
+    return url && url.startsWith('/') ? url : null;
+  }
+
+  private parsePayload(payload?: string): Record<string, unknown> {
+    if (!payload) return {};
+    try {
+      const parsed = JSON.parse(payload);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private readPayloadNumber(payload: Record<string, unknown>, ...keys: string[]): number | null {
+    for (const key of keys) {
+      const value = payload[key];
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string' && value.trim() && !Number.isNaN(Number(value))) return Number(value);
+    }
+    return null;
+  }
+
+  private readPayloadString(payload: Record<string, unknown>, key: string): string | null {
+    const value = payload[key];
+    return typeof value === 'string' && value.trim() ? value : null;
   }
 }

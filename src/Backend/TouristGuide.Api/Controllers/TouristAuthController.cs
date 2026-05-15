@@ -143,9 +143,9 @@ namespace TouristGuide.Api.Controllers
                     expired = true
                 });
 
+            // Keep the token until expiry so the same email link can be reopened
+            // from the browser where the registration/login flow is active.
             tourist.IsEmailVerified = true;
-            tourist.EmailVerificationToken = null;
-            tourist.EmailVerificationTokenExpiresAt = null;
             tourist.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -534,6 +534,9 @@ namespace TouristGuide.Api.Controllers
 
             if (string.IsNullOrWhiteSpace(tourist.PasswordHash) ||
                 !PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
+                return BadRequest(new { message = "Current password is incorrect." });
+
+            if (!PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
                 return BadRequest(new { message = "Current password is incorrect." });
 
             tourist.PasswordHash = PasswordHelper.Hash(dto.NewPassword);

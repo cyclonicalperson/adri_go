@@ -49,6 +49,7 @@ export class RoutingService {
     travelMode: TravelMode,
     options: RouteComputeOptions = {},
   ): Promise<ComputedRoute> {
+    coordinates = this.normalizeCoordinates(coordinates);
     if (coordinates.length < 2) {
       return {
         geometry: [...coordinates],
@@ -185,6 +186,7 @@ export class RoutingService {
     coordinates: [number, number][],
     travelMode: TravelMode,
   ): Promise<ComputedRoute> {
+    coordinates = this.normalizeCoordinates(coordinates);
     if (coordinates.length < 2) {
       return { geometry: [...coordinates], distanceKm: 0, durationMin: 0, usedFallback: false, steps: [] };
     }
@@ -398,6 +400,14 @@ export class RoutingService {
 
   private buildCacheKey(coordinates: [number, number][], travelMode: TravelMode): string {
     return `${travelMode}|${coordinates.map(point => `${point[0].toFixed(5)},${point[1].toFixed(5)}`).join('|')}`;
+  }
+
+  private normalizeCoordinates(coordinates: [number, number][]): [number, number][] {
+    return coordinates.filter(([lat, lng]) =>
+      Number.isFinite(lat) && Number.isFinite(lng)
+      && lat >= -90 && lat <= 90
+      && lng >= -180 && lng <= 180
+    );
   }
 
   private serializeCoordinate([lat, lng]: [number, number]): string {

@@ -151,4 +151,49 @@ export class PersonalInfoComponent implements OnInit {
     if (!this.userData?.fullName) return '?';
     return this.userData.fullName.trim().charAt(0).toUpperCase();
   }
+
+  onProfilePhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || this.isUploadingPhoto) return;
+
+    const previousProfilePic = this.userData?.profilePic;
+    this.isUploadingPhoto = true;
+    this.saveError = '';
+    this.userService.uploadProfileImage(file).subscribe({
+      next: (url) => {
+        if (this.userData) {
+          this.userData.profilePic = url;
+        }
+        this.userService.updateProfile({ profileImage: url }).subscribe({
+          next: (updated) => {
+            if (this.userData) {
+              this.userData.profilePic = updated.profilePic ?? url;
+            }
+            this.authService.updateCurrentTourist({ profileImage: this.userData?.profilePic ?? url });
+            this.isUploadingPhoto = false;
+            this.saveSuccess = true;
+            input.value = '';
+            setTimeout(() => (this.saveSuccess = false), 2500);
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            if (this.userData) {
+              this.userData.profilePic = previousProfilePic;
+            }
+            this.isUploadingPhoto = false;
+            input.value = '';
+            this.saveError = err?.error?.message || 'Photo uploaded, but the profile could not be updated.';
+            this.cdr.detectChanges();
+          }
+        });
+      },
+      error: () => {
+        this.isUploadingPhoto = false;
+        input.value = '';
+        this.saveError = 'Could not upload profile photo. Please try another image.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
 }

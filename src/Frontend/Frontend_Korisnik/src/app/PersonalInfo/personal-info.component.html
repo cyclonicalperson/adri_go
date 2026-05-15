@@ -33,10 +33,18 @@
         <img *ngIf="userData?.profilePic" [src]="userData!.profilePic" class="avatar-img" alt="Profile">
         <div *ngIf="!userData?.profilePic" class="avatar-initials">{{ getInitials() }}</div>
       </div>
-      <button class="change-photo-btn" *ngIf="editMode">
-        <svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 0 1 8.8 12 3.2 3.2 0 0 1 12 8.8 3.2 3.2 0 0 1 15.2 12 3.2 3.2 0 0 1 12 15.2M18.2 12c0-.36-.03-.72-.08-1.06l2.3-1.8c.21-.16.27-.46.13-.69l-2.19-3.78a.5.5 0 0 0-.67-.19l-2.71 1.09a7.5 7.5 0 0 0-1.82-1.05l-.41-2.88a.49.49 0 0 0-.5-.42h-4.38a.49.49 0 0 0-.5.42l-.41 2.88A7.5 7.5 0 0 0 5.54 6.57L2.83 5.48a.5.5 0 0 0-.67.19L-.03 9.45c-.14.23-.07.53.13.69l2.3 1.8A7.5 7.5 0 0 0 2.4 12c0 .36.03.72.08 1.06l-2.3 1.8c-.2.16-.27.46-.13.69l2.19 3.78c.14.23.44.3.67.19l2.71-1.09c.58.4 1.18.74 1.82 1.05l.41 2.88c.07.22.27.42.5.42h4.38c.23 0 .43-.2.5-.42l.41-2.88a7.5 7.5 0 0 0 1.82-1.05l2.71 1.09c.23.11.53.04.67-.19l2.19-3.78c.14-.23.07-.53-.13-.69l-2.3-1.8c.05-.34.08-.7.08-1.06z"/></svg>
-        Change Photo
-      </button>
+      <input #profilePhotoInput type="file" accept="image/*" hidden (change)="onProfilePhotoSelected($event)">
+      <input #cameraPhotoInput type="file" accept="image/*" capture="user" hidden (change)="onProfilePhotoSelected($event)">
+      <div class="photo-actions" *ngIf="editMode">
+        <button class="change-photo-btn" (click)="profilePhotoInput.click()" [disabled]="isUploadingPhoto">
+          <svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 0 1 8.8 12 3.2 3.2 0 0 1 12 8.8 3.2 3.2 0 0 1 15.2 12 3.2 3.2 0 0 1 12 15.2M18.2 12c0-.36-.03-.72-.08-1.06l2.3-1.8c.21-.16.27-.46.13-.69l-2.19-3.78a.5.5 0 0 0-.67-.19l-2.71 1.09a7.5 7.5 0 0 0-1.82-1.05l-.41-2.88a.49.49 0 0 0-.5-.42h-4.38a.49.49 0 0 0-.5.42l-.41 2.88A7.5 7.5 0 0 0 5.54 6.57L2.83 5.48a.5.5 0 0 0-.67.19L-.03 9.45c-.14.23-.07.53.13.69l2.3 1.8A7.5 7.5 0 0 0 2.4 12c0 .36.03.72.08 1.06l-2.3 1.8c-.2.16-.27.46-.13.69l2.19 3.78c.14.23.44.3.67.19l2.71-1.09c.58.4 1.18.74 1.82 1.05l.41 2.88c.07.22.27.42.5.42h4.38c.23 0 .43-.2.5-.42l.41-2.88a7.5 7.5 0 0 0 1.82-1.05l2.71 1.09c.23.11.53.04.67-.19l2.19-3.78c.14-.23.07-.53-.13-.69l-2.3-1.8c.05-.34.08-.7.08-1.06z"/></svg>
+          {{ isUploadingPhoto ? 'Uploading...' : 'Change Photo' }}
+        </button>
+        <button class="change-photo-btn camera-photo-btn" (click)="cameraPhotoInput.click()" [disabled]="isUploadingPhoto">
+          <svg viewBox="0 0 24 24"><path d="M20 5h-3.17l-1.84-2H9.01L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+          Take Photo
+        </button>
+      </div>
     </div>
 
     <!-- VIEW MODE -->

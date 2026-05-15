@@ -117,7 +117,7 @@
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
 }
 .top-search-strip .search-wrapper { pointer-events: auto; }
 .top-search-strip .category-chips-row { pointer-events: auto; }
@@ -264,6 +264,34 @@
   fill: var(--green-500);
 }
 
+.search-suggestions {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 2px 0;
+}
+
+.search-suggestion-chip {
+  background: #fff;
+  color: var(--gray-700);
+  border-radius: var(--radius-pill);
+  padding: 7px 11px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+}
+
+.search-intent-summary {
+  margin: 7px 6px 0;
+  display: inline-block;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
 /* ── SEARCH RESULTS DROPDOWN ─────────────────────────────────── */
 .search-results-dropdown {
   position: absolute;
@@ -332,6 +360,12 @@
   margin-top: 2px;
 }
 
+.search-result-reason {
+  margin-top: 3px;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
 .search-result-rating {
   display: flex;
   align-items: center;
@@ -363,10 +397,9 @@
   gap: 6px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 6px 4px 4px;
+  padding: 2px 4px 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  margin-top: 6px;
 }
 .category-chips-row::-webkit-scrollbar { display: none; }
 .category-chips-row .cat-chip { flex-shrink: 0; }
@@ -749,8 +782,7 @@ app-location-details-card {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     scrollbar-width: none;
-    padding: 6px 4px 4px;
-    margin-top: 6px;
+    padding: 2px 4px 4px;
     cursor: grab;
   }
   .category-chips-row::-webkit-scrollbar { display: none; }
@@ -1058,7 +1090,7 @@ app-location-details-card {
 .locate-btn {
   position: fixed;
   right: 16px;
-  bottom: calc(68px + 60px + 14px);
+  bottom: calc(68px + 60px + 14px + env(safe-area-inset-bottom, 0px));
   z-index: 500;
   width: 48px;
   height: 48px;
@@ -1072,6 +1104,9 @@ app-location-details-card {
   cursor: pointer;
   color: #3b82f6;
   transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s, bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.map-wrapper.navigating .locate-btn {
+  bottom: calc(68px + 14px + env(safe-area-inset-bottom, 0px));
 }
 .locate-btn:hover:not(.locate-loading) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22); transform: scale(1.06); }
 .locate-btn:active:not(.locate-loading) { transform: scale(0.96); }

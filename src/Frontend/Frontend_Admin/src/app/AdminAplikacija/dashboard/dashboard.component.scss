@@ -896,19 +896,30 @@
   box-shadow: $shadow-md;
 }
 
-.heat-legend {
+.heat-scale-legend {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid $gray-100;
 }
 
-.heat-legend-item {
+.heat-scale-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(34, 0, 94, 0.4) 0%,
+    rgba(34, 99, 94, 0.55) 50%,
+    rgba(34, 197, 94, 0.8) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.heat-scale-labels {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  justify-content: space-between;
   font-size: 11px;
   font-weight: 600;
   color: $gray-600;
