@@ -125,7 +125,7 @@
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
 }
 .top-search-strip .search-wrapper { pointer-events: auto; }
 /* Chip row also needs pointer-events — it's a sibling of search-wrapper */
@@ -307,6 +307,34 @@
   fill: var(--green-500);
 }
 
+.search-suggestions {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 2px 0;
+}
+
+.search-suggestion-chip {
+  background: #fff;
+  color: var(--gray-700);
+  border-radius: var(--radius-pill);
+  padding: 7px 11px;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+}
+
+.search-intent-summary {
+  margin: 7px 6px 0;
+  display: inline-block;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
 /* ── SEARCH RESULTS DROPDOWN ─────────────────────────────────── */
 .search-results-dropdown {
   position: absolute;
@@ -377,6 +405,12 @@
   margin-top: 2px;
 }
 
+.search-result-reason {
+  margin-top: 3px;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
 .search-result-rating {
   display: flex;
   align-items: center;
@@ -408,10 +442,9 @@
   gap: 6px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 6px 4px 4px;
+  padding: 2px 4px 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  margin-top: 6px;
 }
 .category-chips-row::-webkit-scrollbar { display: none; }
 /* Chips must never shrink — they overflow so the row scrolls */
@@ -803,8 +836,7 @@ app-location-details-card {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     scrollbar-width: none;
-    padding: 6px 4px 4px;
-    margin-top: 6px;
+    padding: 2px 4px 4px;
     cursor: grab;
   }
   .category-chips-row::-webkit-scrollbar { display: none; }

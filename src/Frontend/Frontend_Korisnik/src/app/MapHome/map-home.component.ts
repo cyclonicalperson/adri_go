@@ -34,6 +34,26 @@ type MapLocation = Location & {
   distanceKm?: number | null;
 };
 
+type SearchIntent = {
+  normalizedQuery: string;
+  terms: string[];
+  categoryKeys: string[];
+  nearMe: boolean;
+  openNow: boolean;
+  highRated: boolean;
+  savedOnly: boolean;
+  familyFriendly: boolean;
+  timeSensitive: boolean;
+  scenic: boolean;
+  personalized: boolean;
+  matchedPhrases: string[];
+};
+
+type SearchResult = MapLocation & {
+  searchReason?: string;
+  searchBadges?: string[];
+};
+
 @Component({
   selector: 'app-map-home',
   standalone: true,
@@ -77,7 +97,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isSavingTrip = false;
 
   searchQuery = '';
-  searchResults: MapLocation[] = [];
+  searchResults: SearchResult[] = [];
+  searchIntentSummary = '';
   globalRecommendations: LocationRecommendation[] = [];
   personalizedRecommendations: LocationRecommendation[] = [];
   activeRecommendationTab: RecommendationTab = 'personalized';
@@ -190,6 +211,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get hasPersonalizedRecommendations(): boolean {
     return this.personalizedRecommendations.length > 0;
+  }
+
+  get searchPromptSuggestions(): string[] {
+    const suggestions = ['Open now near me', 'Best rated beaches', 'Culture this weekend'];
+
+    if (this.savedLocationsContext.length > 0) {
+      suggestions.unshift('My saved places nearby');
+    }
+
+    const preferred = this.preferences.snapshot.contentPreferences[0] ?? this.userProfile?.interests?.[0];
+    if (preferred) {
+      suggestions.push(`${preferred} recommendations`);
+    }
+
+    if (this.userPosition) {
+      suggestions.push('Quick walk nearby');
+    }
+
+    return Array.from(new Set(suggestions)).slice(0, 5);
   }
 
   // ─── Category colors (used for map pins AND chip active state) ───────────
@@ -1952,22 +1992,33 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onSearchInput(query: string): void {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
+    const intent = this.parseSearchIntent(query);
+    if (!intent.normalizedQuery) {
       this.searchResults = [];
+      this.searchIntentSummary = '';
       return;
     }
 
     this.searchResults = this.locationsList
-      .map(loc => ({ loc, score: this.scoreSearchResult(loc, normalized) }))
+      .map(loc => this.buildSearchMatch(loc, intent))
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
-      .map(item => item.loc)
+      .map(item => ({
+        ...item.loc,
+        searchReason: item.reason,
+        searchBadges: item.badges,
+      }))
       .slice(0, 8);
+    this.searchIntentSummary = this.describeSearchIntent(intent, this.searchResults.length);
   }
 
-  private scoreSearchResult(loc: MapLocation, query: string): number {
-    const terms = query.split(/\s+/).filter(Boolean);
+  applySearchSuggestion(suggestion: string): void {
+    this.searchQuery = suggestion;
+    this.onSearchInput(suggestion);
+  }
+
+  private buildSearchMatch(loc: MapLocation, intent: SearchIntent): { loc: MapLocation; score: number; reason: string; badges: string[] } {
+    const terms = intent.terms;
     const fields = [
       loc.title,
       loc.regionName,
@@ -1976,11 +2027,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       loc.postType,
       loc.category,
       ...(Array.isArray((loc as any).tagNames) ? (loc as any).tagNames : []),
-    ].filter(Boolean).map(value => String(value).toLowerCase());
+    ].filter(Boolean).map(value => this.normalizeSearchText(String(value)));
 
     let score = 0;
+    const badges: string[] = [];
+    const title = this.normalizeSearchText(loc.title || '');
+    const typeKey = this.normalizeTypeKey(loc.postType || loc.category || '');
+    const savedIds = new Set([
+      ...this.savedLocationsContext.map(item => item.id),
+      ...this.filterSavedPostIds,
+    ]);
+
     for (const term of terms) {
-      const title = (loc.title || '').toLowerCase();
       if (title === term) score += 120;
       else if (title.startsWith(term)) score += 80;
       else if (title.includes(term)) score += 55;
@@ -1989,14 +2047,187 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (fields.some(field => field.includes(term))) score += 15;
     }
 
+    if (intent.categoryKeys.includes(typeKey)) {
+      score += terms.length > 0 ? 70 : 45;
+      badges.push(this.formatPostType(loc.postType || loc.category));
+    }
+
+    if (intent.openNow) {
+      if (!this.isLocationOpen(loc)) return { loc, score: 0, reason: '', badges: [] };
+      score += 35;
+      badges.push('Open now');
+    }
+
+    if (intent.savedOnly) {
+      if (!savedIds.has(loc.id)) return { loc, score: 0, reason: '', badges: [] };
+      score += 45;
+      badges.push('Saved');
+    }
+
+    if (intent.highRated) {
+      const rating = Number(loc.avgRating || loc.rating || 0);
+      if (rating < 4) score -= 20;
+      score += Math.min(35, rating * 7);
+      badges.push('Top rated');
+    }
+
+    if (intent.nearMe) {
+      if (loc.distanceKm == null) {
+        score += 4;
+      } else {
+        score += Math.max(0, 45 - loc.distanceKm * 7);
+        if (loc.distanceKm <= 2) badges.push('Very close');
+        else if (loc.distanceKm <= 8) badges.push('Nearby');
+      }
+    }
+
+    if (intent.familyFriendly && fields.some(field => /(family|kids|children|porodic|deca|djeca|mirno|park)/.test(field))) {
+      score += 25;
+      badges.push('Family fit');
+    }
+
+    if (intent.timeSensitive && (typeKey === 'event' || this.isLocationOpen(loc))) {
+      score += 20;
+      badges.push(typeKey === 'event' ? 'Event' : 'Good timing');
+    }
+
+    if (intent.scenic && fields.some(field => /(view|scenic|panorama|vidikovac|nature|priroda|sunset|zalazak|photo|foto)/.test(field))) {
+      score += 22;
+      badges.push('Scenic');
+    }
+
+    if (intent.personalized) {
+      const personalTokens = [
+        ...this.preferences.snapshot.contentPreferences,
+        ...(this.userProfile?.interests ?? []),
+        ...this.serverPreferenceTypes,
+      ].map(value => this.normalizeSearchText(value));
+
+      if (personalTokens.some(token => fields.some(field => field.includes(token)))) {
+        score += 18;
+        badges.push('For you');
+      }
+    }
+
     const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
-    const typeKey = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');
     if (activeKeys.includes(typeKey)) score += 8;
-    if (this.userProfile?.interests?.some(interest => fields.some(field => field.includes(interest.toLowerCase())))) score += 6;
+    if (this.userProfile?.interests?.some(interest => fields.some(field => field.includes(this.normalizeSearchText(interest))))) score += 6;
     if (loc.distanceKm != null) score += Math.max(0, 10 - loc.distanceKm);
     score += Math.min(10, Number(loc.avgRating || loc.rating || 0));
 
-    return score;
+    if (terms.length === 0 && !intent.categoryKeys.length && !intent.nearMe && !intent.openNow && !intent.highRated && !intent.savedOnly && !intent.timeSensitive && !intent.scenic && !intent.personalized) {
+      score = 0;
+    }
+
+    const uniqueBadges = Array.from(new Set(badges.filter(Boolean))).slice(0, 3);
+    return {
+      loc,
+      score,
+      reason: this.getSearchReason(loc, intent, uniqueBadges),
+      badges: uniqueBadges,
+    };
+  }
+
+  private parseSearchIntent(query: string): SearchIntent {
+    const normalizedQuery = this.normalizeSearchText(query);
+    const phrases: string[] = [];
+    const categoryKeys = new Set<string>();
+
+    const phraseIncludes = (...values: string[]) => values.some(value => normalizedQuery.includes(value));
+    const addCategory = (key: string, ...values: string[]) => {
+      if (phraseIncludes(...values)) {
+        categoryKeys.add(key);
+        phrases.push(this.formatPostType(key));
+      }
+    };
+
+    addCategory('attraction', 'beach', 'plaza', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
+    addCategory('restaurant', 'restaurant', 'restoran', 'food', 'hrana', 'dinner', 'lunch', 'kafa', 'cafe');
+    addCategory('cultural_site', 'culture', 'cultural', 'kultura', 'museum', 'muzej', 'history', 'istorija');
+    addCategory('monument', 'monument', 'spomenik');
+    addCategory('club', 'nightlife', 'club', 'bar', 'party', 'nocni', 'nocu');
+    addCategory('sports_facility', 'sport', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure');
+    addCategory('event', 'event', 'dogadjaj', 'festival', 'concert', 'koncert', 'tonight', 'veceras', 'weekend', 'vikend');
+    addCategory('accommodation', 'hotel', 'accommodation', 'smestaj', 'smjestaj', 'stay');
+    addCategory('shop', 'shop', 'shopping', 'prodavnica', 'market');
+
+    const nearMe = phraseIncludes('near me', 'nearby', 'close', 'blizu', 'u blizini', 'oko mene');
+    const openNow = phraseIncludes('open now', 'opened', 'otvoreno', 'radi sada', 'sad otvoreno');
+    const highRated = phraseIncludes('best', 'top', 'rated', 'najbolje', 'najbolji', 'visoko ocen', 'visoko ocjen');
+    const savedOnly = phraseIncludes('saved', 'sacuvano', 'sacuvane', 'omiljeno', 'favorites', 'favourites');
+    const familyFriendly = phraseIncludes('family', 'kids', 'children', 'porodic', 'deca', 'djeca');
+    const timeSensitive = phraseIncludes('today', 'tonight', 'tomorrow', 'weekend', 'danas', 'veceras', 'sutra', 'vikend');
+    const scenic = phraseIncludes('scenic', 'view', 'photo', 'foto', 'panorama', 'vidikovac', 'zalazak');
+    const personalized = phraseIncludes('for me', 'recommended', 'recommendation', 'preporuci', 'preporuke', 'za mene');
+
+    const stopWords = new Set([
+      'near', 'me', 'nearby', 'open', 'now', 'best', 'top', 'rated', 'for', 'today', 'tonight',
+      'tomorrow', 'weekend', 'blizu', 'mene', 'sada', 'sad', 'najbolje', 'najbolji', 'danas',
+      'veceras', 'sutra', 'vikend', 'preporuci', 'preporuke', 'saved', 'sacuvano', 'sacuvane',
+    ]);
+    const terms = normalizedQuery
+      .split(/\s+/)
+      .filter(term => term.length > 1 && !stopWords.has(term));
+
+    return {
+      normalizedQuery,
+      terms,
+      categoryKeys: Array.from(categoryKeys),
+      nearMe,
+      openNow,
+      highRated,
+      savedOnly,
+      familyFriendly,
+      timeSensitive,
+      scenic,
+      personalized,
+      matchedPhrases: phrases,
+    };
+  }
+
+  private describeSearchIntent(intent: SearchIntent, resultCount: number): string {
+    const parts = [
+      intent.nearMe ? 'near you' : '',
+      intent.openNow ? 'open now' : '',
+      intent.highRated ? 'high rated' : '',
+      intent.savedOnly ? 'saved places' : '',
+      intent.timeSensitive ? 'time-aware' : '',
+      intent.scenic ? 'scenic' : '',
+      intent.personalized ? 'personalized' : '',
+      ...intent.matchedPhrases,
+    ].filter(Boolean);
+
+    if (parts.length === 0) {
+      return `${resultCount} result${resultCount === 1 ? '' : 's'} ranked by text, rating and context.`;
+    }
+
+    return `${resultCount} result${resultCount === 1 ? '' : 's'} for ${Array.from(new Set(parts)).slice(0, 4).join(', ')}.`;
+  }
+
+  private getSearchReason(loc: MapLocation, intent: SearchIntent, badges: string[]): string {
+    if (badges.includes('Very close') || badges.includes('Nearby')) {
+      return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
+    }
+    if (badges.includes('Open now')) return 'Available now based on opening hours.';
+    if (badges.includes('Saved')) return 'Already in your saved destinations.';
+    if (badges.includes('For you')) return 'Matches your interests and recent context.';
+    if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
+    if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
+    return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
+  }
+
+  private normalizeSearchText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private normalizeTypeKey(value: string): string {
+    return this.normalizeSearchText(value).replace(/\s+/g, '_');
   }
 
   selectSearchResult(loc: MapLocation): void {

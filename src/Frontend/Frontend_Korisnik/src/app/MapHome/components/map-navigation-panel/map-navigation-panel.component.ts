@@ -77,6 +77,8 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   isRerouting = false;
   /** Timestamp of the last successful reroute */
   private lastRerouteAt = 0;
+  /** Last route segment already reached; prevents GPS jitter from restoring passed trail. */
+  private lastRemainingSegmentIndex = 0;
 
   get currentStep(): NavigationStep | null {
     return this.steps[this.currentStepIndex] ?? null;
@@ -315,7 +317,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     let bestSegIdx = 0;
     let bestDist = Infinity;
 
-    for (let i = 0; i < this.routeGeometry.length - 1; i++) {
+    for (let i = this.lastRemainingSegmentIndex; i < this.routeGeometry.length - 1; i++) {
       const d = this.pointToSegmentM(
         lat, lng,
         this.routeGeometry[i][0],   this.routeGeometry[i][1],
@@ -326,6 +328,9 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
         bestSegIdx = i;
       }
     }
+
+    bestSegIdx = Math.max(bestSegIdx, this.lastRemainingSegmentIndex);
+    this.lastRemainingSegmentIndex = bestSegIdx;
 
     // Emit from the END of the matched segment onward so the already-
     // travelled part of that segment is also removed from the overlay.
@@ -517,6 +522,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     this.remainingMin = this.totalDurationMin;
     this.arrived = false;
     this.offRouteTicks = 0;
+    this.lastRemainingSegmentIndex = 0;
     this.cdr.markForCheck();
   }
 }
