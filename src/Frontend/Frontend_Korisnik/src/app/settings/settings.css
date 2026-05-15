@@ -619,3 +619,64 @@ input:checked + .slider:before { transform: translateX(21px); }
     min-height: 62px;
   }
 }
+
+.field-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.password-rules {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.password-rule {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #dc2626;
+}
+
+.password-rule-valid {
+  display: none;
+}
+
+.password-valid-message {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.password-control-invalid {
+  border-color: #ef4444 !important;
+  background: #fff !important;
+}
+
+.password-control-valid {
+  border-color: #16a34a !important;
+  background: #fff !important;
+}
+
+.password-control-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important;
+  outline: none;
+}
+
+.password-control-valid:focus {
+  box-shadow: 0 0 0 3px rgba(22,163,74,.12) !important;
+  outline: none;
+}
+
+.password-control-valid:disabled,
+.password-control-invalid:disabled,
+.password-control-disabled,
+input:disabled.password-control-valid,
+input:disabled.password-control-invalid {
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+}

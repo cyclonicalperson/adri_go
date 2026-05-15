@@ -50,6 +50,11 @@ export class SettingsComponent implements OnInit {
   passwordError = '';
   passwordSuccess = '';
   isSavingPassword = false;
+  changePasswordSubmitted = false;
+  newPasswordInteracted = false;
+  currentPasswordTouched = false;
+  newPasswordTouched = false;
+  confirmPasswordTouched = false;
 
   showDeleteModal = false;
   deleteError = '';
@@ -125,6 +130,78 @@ export class SettingsComponent implements OnInit {
       .filter(option => this.settings.contentPreferences.includes(option.id))
       .map(option => option.label);
     return enabled.length > 0 ? enabled.join(', ') : 'Use general discovery mode';
+  }
+
+  get passwordRulesVisible(): boolean {
+    return this.newPasswordInteracted
+      && this.changePasswordForm.newPassword.trim().length > 0
+      && !this.isNewPasswordValid;
+  }
+
+  get passwordHasMinLength(): boolean {
+    return this.changePasswordForm.newPassword.length >= 8;
+  }
+
+  get passwordHasUppercase(): boolean {
+    return /[A-Z]/.test(this.changePasswordForm.newPassword);
+  }
+
+  get passwordHasNumberOrSpecial(): boolean {
+    return /[\d\W_]/.test(this.changePasswordForm.newPassword);
+  }
+
+  get isNewPasswordValid(): boolean {
+    return this.passwordHasMinLength && this.passwordHasUppercase && this.passwordHasNumberOrSpecial;
+  }
+
+  get showPasswordValidMessage(): boolean {
+    return this.newPasswordInteracted
+      && this.changePasswordForm.newPassword.length > 0
+      && this.isNewPasswordValid;
+  }
+
+  get passwordInputInvalid(): boolean {
+    return this.newPasswordInteracted && !this.isNewPasswordValid;
+  }
+
+  get passwordInputValid(): boolean {
+    return this.newPasswordInteracted
+      && this.changePasswordForm.newPassword.length > 0
+      && this.isNewPasswordValid;
+  }
+
+  get hasCurrentPasswordError(): boolean {
+    return (this.changePasswordSubmitted || this.currentPasswordTouched) && !this.changePasswordForm.currentPassword;
+  }
+
+  get hasNewPasswordRequiredError(): boolean {
+    return (this.changePasswordSubmitted || this.newPasswordTouched) && !this.changePasswordForm.newPassword;
+  }
+
+  get hasConfirmPasswordRequiredError(): boolean {
+    return this.confirmPasswordEnabled
+      && (this.changePasswordSubmitted || this.confirmPasswordTouched)
+      && !this.changePasswordForm.confirmPassword;
+  }
+
+  get hasConfirmPasswordMismatch(): boolean {
+    return this.confirmPasswordEnabled
+      && this.changePasswordForm.confirmPassword.length > 0
+      && this.changePasswordForm.newPassword !== this.changePasswordForm.confirmPassword;
+  }
+
+  get confirmPasswordEnabled(): boolean {
+    return this.isNewPasswordValid;
+  }
+
+  get confirmPasswordInvalid(): boolean {
+    return this.hasConfirmPasswordMismatch || this.hasConfirmPasswordRequiredError;
+  }
+
+  get confirmPasswordValid(): boolean {
+    return this.confirmPasswordEnabled
+      && this.changePasswordForm.confirmPassword.length > 0
+      && !this.hasConfirmPasswordMismatch;
   }
 
   goBack(): void {
@@ -349,6 +426,11 @@ export class SettingsComponent implements OnInit {
     this.changePasswordForm = { newPassword: '', confirmPassword: '' };
     this.passwordError = '';
     this.passwordSuccess = '';
+    this.changePasswordSubmitted = false;
+    this.newPasswordInteracted = false;
+    this.currentPasswordTouched = false;
+    this.newPasswordTouched = false;
+    this.confirmPasswordTouched = false;
   }
 
   openGoogleAccount(): void {
@@ -359,16 +441,43 @@ export class SettingsComponent implements OnInit {
     this.showPasswordModal = false;
   }
 
+  onNewPasswordInteract(): void {
+    this.newPasswordInteracted = true;
+  }
+
+  onCurrentPasswordBlur(): void {
+    this.currentPasswordTouched = true;
+  }
+
+  onNewPasswordBlur(): void {
+    this.newPasswordTouched = true;
+  }
+
+  onConfirmPasswordBlur(): void {
+    this.confirmPasswordTouched = true;
+  }
+
+  onNewPasswordChange(value: string): void {
+    this.changePasswordForm.newPassword = value;
+    this.newPasswordInteracted = true;
+
+    if (!this.isNewPasswordValid && this.changePasswordForm.confirmPassword) {
+      this.changePasswordForm.confirmPassword = '';
+      this.confirmPasswordTouched = false;
+    }
+  }
+
   submitChangePassword(): void {
     this.passwordError = '';
     this.passwordSuccess = '';
+    this.changePasswordSubmitted = true;
 
-    if (this.changePasswordForm.newPassword.length < 6) {
-      this.passwordError = 'New password must be at least 6 characters.';
-      return;
-    }
-    if (this.changePasswordForm.newPassword !== this.changePasswordForm.confirmPassword) {
-      this.passwordError = 'New passwords do not match.';
+    if (
+      !this.changePasswordForm.newPassword
+      || !this.changePasswordForm.confirmPassword
+      || !this.isNewPasswordValid
+      || this.hasConfirmPasswordMismatch
+    ) {
       return;
     }
 

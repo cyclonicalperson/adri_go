@@ -277,14 +277,39 @@
     </div>
 
     <div style="margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">New Password</label>
-      <input type="password" [(ngModel)]="changePasswordForm.newPassword" placeholder="Min. 6 characters"
+      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Current Password</label>
+      <input type="password" [(ngModel)]="changePasswordForm.currentPassword"
+             (blur)="onCurrentPasswordBlur()"
              style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+      <p class="field-error" *ngIf="hasCurrentPasswordError">Current password is required.</p>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">New Password</label>
+      <input type="password" [ngModel]="changePasswordForm.newPassword" (ngModelChange)="onNewPasswordChange($event)"
+             [class.password-control-invalid]="passwordInputInvalid"
+             [class.password-control-valid]="passwordInputValid"
+             (focus)="onNewPasswordInteract()" (input)="onNewPasswordInteract()"
+             (blur)="onNewPasswordBlur()"
+             style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+      <div class="password-rules" *ngIf="passwordRulesVisible">
+        <p class="password-rule" *ngIf="!passwordHasMinLength">Password must be at least 8 characters.</p>
+        <p class="password-rule" *ngIf="!passwordHasUppercase">Password must contain an uppercase letter.</p>
+        <p class="password-rule" *ngIf="!passwordHasNumberOrSpecial">Password must contain a number or special character.</p>
+      </div>
+      <p class="password-valid-message" *ngIf="showPasswordValidMessage">Password is valid.</p>
+      <p class="field-error" *ngIf="hasNewPasswordRequiredError">New password is required.</p>
     </div>
     <div style="margin-bottom:24px;">
       <label style="font-size:12px;font-weight:700;color:#64748b;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Confirm New Password</label>
-      <input type="password" [(ngModel)]="changePasswordForm.confirmPassword" placeholder="••••••••"
+      <input type="password" [(ngModel)]="changePasswordForm.confirmPassword"
+             [class.password-control-invalid]="confirmPasswordInvalid"
+             [class.password-control-valid]="confirmPasswordValid"
+             [class.password-control-disabled]="!confirmPasswordEnabled"
+             [disabled]="!confirmPasswordEnabled"
+             (blur)="onConfirmPasswordBlur()"
              style="width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;">
+      <p class="field-error" *ngIf="confirmPasswordEnabled && hasConfirmPasswordRequiredError">Please confirm your new password.</p>
+      <p class="field-error" *ngIf="hasConfirmPasswordMismatch">New passwords do not match.</p>
     </div>
 
     <div style="display:flex;gap:10px;">

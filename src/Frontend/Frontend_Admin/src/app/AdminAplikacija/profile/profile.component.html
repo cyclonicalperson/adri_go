@@ -204,28 +204,47 @@
           <label class="label">Trenutna lozinka *</label>
           <input class="input" type="password" formControlName="currentPassword"
                  [class.invalid]="pw('currentPassword').invalid && pw('currentPassword').touched"
-                 placeholder="Unesite trenutnu lozinku" />
+                 />
           @if (pw('currentPassword').invalid && pw('currentPassword').touched) {
           <div class="field-error">Trenutna lozinka je obavezna.</div>
           }
         </div>
         <div class="field">
-          <label class="label">Nova lozinka * (min. 8 karaktera)</label>
+          <label class="label">Nova lozinka *</label>
           <input class="input" type="password" formControlName="newPassword"
-                 [class.invalid]="pw('newPassword').invalid && pw('newPassword').touched"
-                 placeholder="Nova lozinka" />
+                 (focus)="onPwNewPasswordInteract()" (input)="onPwNewPasswordInteract()"
+                 [class.password-control-invalid]="pwInputInvalid"
+                 [class.password-control-valid]="pwInputValid"
+                 />
           @if (pw('newPassword').hasError('required') && pw('newPassword').touched) {
           <div class="field-error">Nova lozinka je obavezna.</div>
-          } @else if (pw('newPassword').hasError('minlength') && pw('newPassword').touched) {
-          <div class="field-error">Lozinka mora imati najmanje 8 karaktera.</div>
+          }
+          @if (pwRulesVisible) {
+          <div class="password-rules">
+            @if (!pwHasMinLength) {
+            <div class="password-rule">Lozinka mora imati najmanje 8 karaktera</div>
+            }
+            @if (!pwHasUppercase) {
+            <div class="password-rule">Lozinka mora sadržati veliko slovo</div>
+            }
+            @if (!pwHasNumberOrSpecial) {
+            <div class="password-rule">Lozinka mora sadržati broj ili specijalni karakter</div>
+            }
+          </div>
+          }
+          @if (showPwValidMessage) {
+          <div class="password-valid-message">Lozinka je validna</div>
           }
         </div>
         <div class="field">
           <label class="label">Potvrdi novu lozinku *</label>
           <input class="input" type="password" formControlName="confirmPassword"
-                 [class.invalid]="(pw('confirmPassword').invalid || pwForm.hasError('mismatch')) && pw('confirmPassword').touched"
-                 placeholder="Ponovi novu lozinku" />
-          @if (pwForm.hasError('mismatch') && pw('confirmPassword').touched) {
+                 [class.password-control-invalid]="pwConfirmMismatchVisible || (pwConfirmEnabled && pw('confirmPassword').hasError('required') && pw('confirmPassword').touched)"
+                 [class.password-control-valid]="pwConfirmValid"
+                 />
+          @if (pwConfirmEnabled && pw('confirmPassword').hasError('required') && pw('confirmPassword').touched) {
+          <div class="field-error">Potvrda lozinke je obavezna.</div>
+          } @else if (pwConfirmMismatchVisible) {
           <div class="field-error">Lozinke se ne podudaraju.</div>
           }
         </div>

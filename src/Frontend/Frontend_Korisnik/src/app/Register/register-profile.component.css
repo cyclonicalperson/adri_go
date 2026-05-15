@@ -231,15 +231,55 @@ input::placeholder { color: var(--gray-400); }
   gap: 4px;
 }
 
-.field-message {
-  font-size: 12px;
-  color: #dc2626;
-  font-weight: 600;
-  margin: 4px 0 0 2px;
+.password-rules {
+  margin: 8px 0 0 2px;
 }
 
-.field-message-valid {
+.password-rule,
+.password-valid-message {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.password-rule {
+  color: #dc2626;
+  margin: 0;
+}
+
+.password-rule + .password-rule,
+.password-valid-message {
+  margin-top: 4px;
+}
+
+.password-valid-message {
   color: #15803d;
+}
+
+.password-control-wrapper.password-control-invalid input {
+  border-color: #ef4444;
+  background: #fff;
+}
+
+.password-control-wrapper.password-control-invalid input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.12);
+}
+
+.password-control-wrapper.password-control-valid input {
+  border-color: #16a34a;
+  background: #fff;
+}
+
+.password-control-wrapper.password-control-valid input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+}
+
+.password-control-wrapper input:disabled {
+  background: #f8fafc;
+  color: var(--gray-400);
+  cursor: not-allowed;
 }
 
 .input-wrapper.input-error input,

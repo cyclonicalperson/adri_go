@@ -97,16 +97,34 @@
         <label class="label" for="password">Lozinka</label>
         <div class="input-wrap">
           <input id="password" class="input"
-                 [class.invalid]="password.invalid && password.touched"
+                 [class.password-control-invalid]="passwordInputInvalid"
+                 [class.password-control-valid]="passwordInputValid"
                  [type]="showPassword ? 'text' : 'password'"
-                 placeholder="min. 8 karaktera"
+                
+                 (focus)="onPasswordInteract()" (input)="onPasswordInteract()"
                  formControlName="password" />
           <button type="button" class="toggle-pw" (click)="showPassword = !showPassword">
             {{ showPassword ? 'Sakrij' : 'Prikaži' }}
           </button>
         </div>
-        @if (password.invalid && password.touched) {
-        <span class="hint error">Lozinka mora imati najmanje 8 karaktera.</span>
+        @if (password.hasError('required') && password.touched) {
+        <span class="hint error">Lozinka je obavezna.</span>
+        }
+        @if (passwordRulesVisible) {
+        <div class="password-rules">
+          @if (!passwordHasMinLength) {
+          <div class="password-rule">Lozinka mora imati najmanje 8 karaktera</div>
+          }
+          @if (!passwordHasUppercase) {
+          <div class="password-rule">Lozinka mora sadržati veliko slovo</div>
+          }
+          @if (!passwordHasNumberOrSpecial) {
+          <div class="password-rule">Lozinka mora sadržati broj ili specijalni karakter</div>
+          }
+        </div>
+        }
+        @if (showPasswordValidMessage) {
+        <div class="password-valid-message">Lozinka je validna</div>
         }
       </div>
 
@@ -114,12 +132,14 @@
         <label class="label" for="confirmPassword">Ponovi lozinku</label>
         <div class="input-wrap">
           <input id="confirmPassword" class="input"
-                 [class.invalid]="(confirmPassword.invalid || form.hasError('mismatch')) && confirmPassword.touched"
+                 [class.password-control-invalid]="confirmPasswordMismatchVisible || (confirmPasswordEnabled && confirmPassword.hasError('required') && confirmPassword.touched)"
+                 [class.password-control-valid]="confirmPasswordValid"
                  [type]="showPassword ? 'text' : 'password'"
-                 placeholder="••••••••"
                  formControlName="confirmPassword" />
         </div>
-        @if (form.hasError('mismatch') && confirmPassword.touched) {
+        @if (confirmPasswordEnabled && confirmPassword.hasError('required') && confirmPassword.touched) {
+        <span class="hint error">Potvrda lozinke je obavezna.</span>
+        } @else if (confirmPasswordMismatchVisible) {
         <span class="hint error">Lozinke se ne poklapaju.</span>
         }
       </div>
