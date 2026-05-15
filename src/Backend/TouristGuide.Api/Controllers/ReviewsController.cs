@@ -133,12 +133,9 @@ namespace TouristGuide.Api.Controllers
             if (!await CanManageReviewAsync(review))
                 return Forbid();
 
-            var previousStatus = review.Status;
             review.Status = dto.Status.ToUpperInvariant();
             review.IsApproved = review.Status == "APPROVED";
             var postId = review.PostId;
-
-            AddTouristReviewStatusNotification(review, previousStatus, dto.RejectionReason);
 
             await _db.SaveChangesAsync();
 
@@ -200,43 +197,6 @@ namespace TouristGuide.Api.Controllers
             post.ReviewCount = (uint)await _db.Reviews.CountAsync(r => r.PostId == post.Id && r.Status == "APPROVED");
             post.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-        }
-
-        private void AddTouristReviewStatusNotification(Review review, string? previousStatus, string? rejectionReason)
-        {
-            if (review.TouristId is null)
-                return;
-
-            if (string.Equals(previousStatus, review.Status, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            if (review.Status != "APPROVED" && review.Status != "REJECTED")
-                return;
-
-            var entityTitle = review.Post?.Title ?? review.Route?.Name ?? "your contribution";
-            var approved = review.Status == "APPROVED";
-            var title = approved ? "Review approved" : "Review needs changes";
-            var body = approved
-                ? $"Your review for {entityTitle} is now visible to travelers."
-                : string.IsNullOrWhiteSpace(rejectionReason)
-                    ? $"Your review for {entityTitle} was not approved by moderation."
-                    : $"Your review for {entityTitle} was not approved: {rejectionReason.Trim()}";
-
-            _db.Notifications.Add(new Notification
-            {
-                TouristId = review.TouristId.Value,
-                Type = approved ? "review_approved" : "review_rejected",
-                Title = title,
-                Body = body,
-                Payload = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    reviewId = review.Id,
-                    postId = review.PostId,
-                    routeId = review.RouteId,
-                    status = review.Status,
-                }),
-                CreatedAt = DateTime.UtcNow,
-            });
         }
     }
 

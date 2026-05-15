@@ -155,7 +155,8 @@ export class AuthService {
   }
 
   logout(): void {
-    this.clearStoredSession();
+    localStorage.removeItem('tourist_session');
+    localStorage.removeItem('tourist');
     this.sessionSubject.next(null);
   }
 
@@ -178,19 +179,19 @@ export class AuthService {
   }
 
   get currentTourist(): Tourist | null {
-    return this.getValidSession()?.tourist ?? null;
+    return this.sessionSubject.value?.tourist ?? null;
   }
 
   get touristId(): number | null {
-    return this.getValidSession()?.tourist?.id ?? null;
+    return this.sessionSubject.value?.tourist?.id ?? null;
   }
 
   get token(): string {
-    return this.getValidSession()?.token ?? '';
+    return this.sessionSubject.value?.token ?? '';
   }
 
   get isLoggedIn(): boolean {
-    return !!this.getValidSession()?.token;
+    return !!this.sessionSubject.value?.token;
   }
 
   get authProvider(): AuthProvider {
@@ -257,48 +258,14 @@ export class AuthService {
       const stored = localStorage.getItem('tourist_session');
       if (stored) {
         const parsed = JSON.parse(stored) as StoredSession;
-        if (parsed?.tourist?.id && parsed?.token && !this.isSessionExpired(parsed)) {
+        if (parsed?.tourist?.id && parsed?.token) {
           return parsed;
         }
       }
-      this.clearStoredSession();
+      localStorage.removeItem('tourist');
       return null;
     } catch {
-      this.clearStoredSession();
       return null;
     }
-  }
-
-  private getValidSession(): StoredSession | null {
-    const session = this.sessionSubject.value;
-    if (!session?.token) {
-      return null;
-    }
-
-    if (this.isSessionExpired(session)) {
-      this.clearStoredSession();
-      this.sessionSubject.next(null);
-      return null;
-    }
-
-    return session;
-  }
-
-  private isSessionExpired(session: StoredSession): boolean {
-    if (!session.expiresAtUtc) {
-      return false;
-    }
-
-    const expiresAt = Date.parse(session.expiresAtUtc);
-    if (Number.isNaN(expiresAt)) {
-      return false;
-    }
-
-    return Date.now() >= expiresAt - 30_000;
-  }
-
-  private clearStoredSession(): void {
-    localStorage.removeItem('tourist_session');
-    localStorage.removeItem('tourist');
   }
 }

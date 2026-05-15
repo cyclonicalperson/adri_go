@@ -473,8 +473,8 @@ export class SettingsComponent implements OnInit {
     this.changePasswordSubmitted = true;
 
     if (
-      !this.changePasswordForm.newPassword
-      || !this.changePasswordForm.currentPassword
+      !this.changePasswordForm.currentPassword
+      || !this.changePasswordForm.newPassword
       || !this.changePasswordForm.confirmPassword
       || !this.isNewPasswordValid
       || this.hasConfirmPasswordMismatch

@@ -36,7 +36,7 @@
     <div class="notif-card"
          *ngFor="let n of filteredNotifications"
          [class.unread]="!n.isRead"
-         (click)="openNotification(n)">
+         (click)="markRead(n)">
       <div class="card-header">
         <div class="icon-box" [ngClass]="getTypeClass(n.type)">
           {{ getIcon(n.type) }}

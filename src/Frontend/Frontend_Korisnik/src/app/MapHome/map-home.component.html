@@ -77,20 +77,6 @@
         </div>
 
         <!-- ── Search results dropdown ── -->
-        <div class="search-suggestions" *ngIf="!searchQuery && searchPromptSuggestions.length > 0">
-          <button
-            *ngFor="let suggestion of searchPromptSuggestions"
-            class="search-suggestion-chip"
-            type="button"
-            (click)="applySearchSuggestion(suggestion)">
-            {{ suggestion }}
-          </button>
-        </div>
-
-        <div class="search-intent-summary" *ngIf="searchQuery && searchIntentSummary">
-          {{ searchIntentSummary }}
-        </div>
-
         <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
           <div
             *ngFor="let result of searchResults"
@@ -113,7 +99,6 @@
                 {{ formatPostType(result.postType || result.category) }}
                 <span *ngIf="formatDistance(result.distanceKm)"> &bull; {{ formatDistance(result.distanceKm) }} away</span>
               </div>
-              <div class="search-result-reason" *ngIf="result.searchReason">{{ result.searchReason }}</div>
             </div>
             <div class="search-result-rating" *ngIf="result.avgRating || result.rating">
               <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>

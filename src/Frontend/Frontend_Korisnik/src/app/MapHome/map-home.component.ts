@@ -33,26 +33,6 @@ type MapLocation = Location & {
   distanceKm?: number | null;
 };
 
-type SearchIntent = {
-  normalizedQuery: string;
-  terms: string[];
-  categoryKeys: string[];
-  nearMe: boolean;
-  openNow: boolean;
-  highRated: boolean;
-  savedOnly: boolean;
-  familyFriendly: boolean;
-  timeSensitive: boolean;
-  scenic: boolean;
-  personalized: boolean;
-  matchedPhrases: string[];
-};
-
-type SearchResult = MapLocation & {
-  searchReason?: string;
-  searchBadges?: string[];
-};
-
 @Component({
   selector: 'app-map-home',
   standalone: true,
@@ -97,8 +77,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isSavingTrip = false;
 
   searchQuery = '';
-  searchResults: SearchResult[] = [];
-  searchIntentSummary = '';
+  searchResults: MapLocation[] = [];
   globalRecommendations: LocationRecommendation[] = [];
   personalizedRecommendations: LocationRecommendation[] = [];
   activeRecommendationTab: RecommendationTab = 'personalized';
@@ -208,25 +187,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get hasPersonalizedRecommendations(): boolean {
     return false;
-  }
-
-  get searchPromptSuggestions(): string[] {
-    const suggestions = ['Open now near me', 'Best rated beaches', 'Culture this weekend'];
-
-    if (this.savedLocationsContext.length > 0) {
-      suggestions.unshift('My saved places nearby');
-    }
-
-    const preferred = this.preferences.snapshot.contentPreferences[0] ?? this.userProfile?.interests?.[0];
-    if (preferred) {
-      suggestions.push(`${preferred} recommendations`);
-    }
-
-    if (this.userPosition) {
-      suggestions.push('Quick walk nearby');
-    }
-
-    return Array.from(new Set(suggestions)).slice(0, 5);
   }
 
   // ─── Category colors (used for map pins AND chip active state) ───────────
@@ -995,11 +955,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   clearRoute(): void {
-    if (this.isNavigating) {
-      this.stopNavigation();
-      return;
-    }
-    this.resetRouteState();
+    this.plannerRenderToken++;
+    this.routePlanner.clear();
+    this.plannerStops = [];
+    this.plannerMode = false;
+    this.scenicMode = true;
+    this.scenicSuggestions = [];
+    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
+    this.showRoutePanel = false;
+    this.routeDestTitle = '';
+    this.plannerMessage = '';
+    this.isNavigating = false;
+    this.navigationSteps = [];
+    this.clearRouteVisuals();
+    this.router.navigate([], { queryParams: {}, replaceUrl: true });
     this.cdr.detectChanges();
   }
 
@@ -1102,6 +1071,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   stopNavigation(): void {
+    this.isNavigating = false;
+    this.navigationSteps = [];
     this.navFollowMode = true;
     this.navMapRotation = 0;
     if (this.navUserMarkerEl) {
@@ -1112,104 +1083,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.setNavigationMapLock(false);
     void this.releaseScreenWakeLock();
 
-    this.resetRouteState();
+    // Remove the remaining-route overlay
+    if (this.navRemainingPolyline && this.map) {
+      this.map.removeLayer(this.navRemainingPolyline);
+      this.navRemainingPolyline = null;
+    }
 
     // Reset map rotation back to North
     this.applyMapRotation(0, '0.4s ease');
 
     this.cdr.detectChanges();
-  }
-
-  private resetRouteState(): void {
-    this.plannerRenderToken++;
-    this.routePlanner.clear();
-    this.latestQueryParams = {};
-    this.plannerStops = [];
-    this.plannerMode = false;
-    this.scenicMode = true;
-    this.scenicSuggestions = [];
-    this.routeSummary = { distanceKm: 0, durationMin: 0, stopCount: 0 };
-    this.routeDestTitle = '';
-    this.plannerMessage = '';
-    this.showRoutePanel = false;
-    this.isRenderingRoute = false;
-    this.isNavigating = false;
-    this.navigationSteps = [];
-    this.navigationRouteGeometry = [];
-    this.selectedLocation = null;
-    this.clearRouteVisuals();
-    this.router.navigate([], { queryParams: {}, replaceUrl: true });
-  }
-
-  onNavigationArrived(): void {
-    this.clearRoute();
-  }
-
-  private setNavigationMapLock(locked: boolean): void {
-    if (!this.map) return;
-
-    if (locked) {
-      this.navFollowMode = true;
-      if (!this.previousNavigationZoomOptions) {
-        this.previousNavigationZoomOptions = {
-          scrollWheelZoom: this.map.options.scrollWheelZoom,
-          doubleClickZoom: this.map.options.doubleClickZoom,
-          touchZoom: this.map.options.touchZoom,
-        };
-      }
-      this.map.options.scrollWheelZoom = 'center';
-      this.map.options.doubleClickZoom = 'center';
-      this.map.options.touchZoom = 'center';
-      this.map.dragging.disable();
-      this.map.boxZoom.disable();
-      this.map.keyboard.disable();
-      this.map.scrollWheelZoom.enable();
-      this.map.doubleClickZoom.enable();
-      this.map.touchZoom.enable();
-      this.map.on('zoomstart zoomend', this.handleNavigationZoomRecenter);
-      this.centerNavigationOnUser(false);
-      return;
-    }
-
-    if (this.previousNavigationZoomOptions) {
-      this.map.options.scrollWheelZoom = this.previousNavigationZoomOptions.scrollWheelZoom;
-      this.map.options.doubleClickZoom = this.previousNavigationZoomOptions.doubleClickZoom;
-      this.map.options.touchZoom = this.previousNavigationZoomOptions.touchZoom;
-      this.previousNavigationZoomOptions = null;
-    }
-    this.map.off('zoomstart zoomend', this.handleNavigationZoomRecenter);
-    this.map.dragging.enable();
-    this.map.boxZoom.enable();
-    this.map.keyboard.enable();
-  }
-
-  private async requestScreenWakeLock(): Promise<void> {
-    if (!('wakeLock' in navigator) || this.wakeLock) {
-      return;
-    }
-
-    try {
-      this.wakeLock = await (navigator as any).wakeLock.request('screen');
-      this.wakeLock?.addEventListener?.('release', () => {
-        this.wakeLock = null;
-      });
-    } catch {
-      this.wakeLock = null;
-    }
-  }
-
-  private async releaseScreenWakeLock(): Promise<void> {
-    if (!this.wakeLock) {
-      return;
-    }
-
-    const lock = this.wakeLock;
-    this.wakeLock = null;
-    try {
-      await lock.release?.();
-    } catch {
-      // The browser may have already released it when the tab lost focus.
-    }
   }
 
   onNavigationPositionUpdated(position: [number, number]): void {
@@ -1976,11 +1859,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private showUserLocation(position: UserPosition, fly: boolean): void {
-    this.userPosition = [position.lat, position.lng];
-    if (!this.map || !this.map.getPane('markerPane')) {
-      return;
-    }
-
     const userIcon = L.divIcon({
       html: `<div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25);"></div>`,
       className: 'user-location-marker',
@@ -1996,6 +1874,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         .addTo(this.map!);
     }
 
+    this.userMarker = L.marker([position.lat, position.lng], { icon: userIcon, zIndexOffset: 1000 })
+      .bindPopup('<b>You are here</b>')
+      .addTo(this.map!);
+
+    this.userPosition = [position.lat, position.lng];
     if (fly) {
       this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
     }
@@ -2066,286 +1949,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onSearchInput(query: string): void {
-    const intent = this.parseSearchIntent(query);
-    if (!intent.normalizedQuery) {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) {
       this.searchResults = [];
-      this.searchIntentSummary = '';
       return;
     }
 
     const normalized = query.toLowerCase().trim();
 
     this.searchResults = this.locationsList
-      .map(loc => this.buildSearchMatch(loc, intent))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(item => ({
-        ...item.loc,
-        searchReason: item.reason,
-        searchBadges: item.badges,
-      }))
+      .filter(loc =>
+        (loc.title || '').toLowerCase().includes(normalized) ||
+        (loc.postType || loc.category || '').toLowerCase().includes(normalized)
+      )
       .slice(0, 8);
-    this.searchIntentSummary = this.describeSearchIntent(intent, this.searchResults.length);
-  }
-
-  applySearchSuggestion(suggestion: string): void {
-    this.searchQuery = suggestion;
-    this.onSearchInput(suggestion);
-  }
-
-  private buildSearchMatch(loc: MapLocation, intent: SearchIntent): { loc: MapLocation; score: number; reason: string; badges: string[] } {
-    const terms = intent.terms;
-    const fields = [
-      loc.title,
-      loc.regionName,
-      loc.address,
-      loc.description,
-      loc.postType,
-      loc.category,
-      ...(Array.isArray((loc as any).tagNames) ? (loc as any).tagNames : []),
-    ].filter(Boolean).map(value => this.normalizeSearchText(String(value)));
-
-    let score = 0;
-    const badges: string[] = [];
-    const title = this.normalizeSearchText(loc.title || '');
-    const typeKey = this.normalizeTypeKey(loc.postType || loc.category || '');
-    const savedIds = new Set([
-      ...this.savedLocationsContext.map(item => item.id),
-      ...this.filterSavedPostIds,
-    ]);
-
-    for (const term of terms) {
-      if (title === term) score += 120;
-      else if (title.startsWith(term)) score += 80;
-      else if (title.includes(term)) score += 55;
-
-      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
-      if (fields.some(field => field.includes(term))) score += 15;
-    }
-
-    if (intent.categoryKeys.includes(typeKey)) {
-      score += terms.length > 0 ? 70 : 45;
-      badges.push(this.formatPostType(loc.postType || loc.category));
-    }
-
-    if (intent.openNow) {
-      if (!this.isLocationOpen(loc)) return { loc, score: 0, reason: '', badges: [] };
-      score += 35;
-      badges.push('Open now');
-    }
-
-    if (intent.savedOnly) {
-      if (!savedIds.has(loc.id)) return { loc, score: 0, reason: '', badges: [] };
-      score += 45;
-      badges.push('Saved');
-    }
-
-    if (intent.highRated) {
-      const rating = Number(loc.avgRating || loc.rating || 0);
-      if (rating < 4) score -= 20;
-      score += Math.min(35, rating * 7);
-      badges.push('Top rated');
-    }
-
-    if (intent.nearMe) {
-      if (loc.distanceKm == null) {
-        score += 4;
-      } else {
-        score += Math.max(0, 45 - loc.distanceKm * 7);
-        if (loc.distanceKm <= 2) badges.push('Very close');
-        else if (loc.distanceKm <= 8) badges.push('Nearby');
-      }
-    }
-
-    if (intent.familyFriendly && fields.some(field => /(family|kids|children|porodic|deca|djeca|mirno|park)/.test(field))) {
-      score += 25;
-      badges.push('Family fit');
-    }
-
-    if (intent.timeSensitive && (typeKey === 'event' || this.isLocationOpen(loc))) {
-      score += 20;
-      badges.push(typeKey === 'event' ? 'Event' : 'Good timing');
-    }
-
-    if (intent.scenic && fields.some(field => /(view|scenic|panorama|vidikovac|nature|priroda|sunset|zalazak|photo|foto)/.test(field))) {
-      score += 22;
-      badges.push('Scenic');
-    }
-
-    if (intent.personalized) {
-      const personalTokens = [
-        ...this.preferences.snapshot.contentPreferences,
-        ...(this.userProfile?.interests ?? []),
-        ...this.serverPreferenceTypes,
-      ].map(value => this.normalizeSearchText(value));
-
-      if (personalTokens.some(token => fields.some(field => field.includes(token)))) {
-        score += 18;
-        badges.push('For you');
-      }
-    }
-
-    const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
-    if (activeKeys.includes(typeKey)) score += 8;
-    if (this.userProfile?.interests?.some(interest => fields.some(field => field.includes(this.normalizeSearchText(interest))))) score += 6;
-    if (loc.distanceKm != null) score += Math.max(0, 10 - loc.distanceKm);
-    score += Math.min(10, Number(loc.avgRating || loc.rating || 0));
-
-    if (terms.length === 0 && !intent.categoryKeys.length && !intent.nearMe && !intent.openNow && !intent.highRated && !intent.savedOnly && !intent.timeSensitive && !intent.scenic && !intent.personalized) {
-      score = 0;
-    }
-
-    const uniqueBadges = Array.from(new Set(badges.filter(Boolean))).slice(0, 3);
-    return {
-      loc,
-      score,
-      reason: this.getSearchReason(loc, intent, uniqueBadges),
-      badges: uniqueBadges,
-    };
-  }
-
-  private parseSearchIntent(query: string): SearchIntent {
-    const normalizedQuery = this.normalizeSearchText(query);
-    const phrases: string[] = [];
-    const categoryKeys = new Set<string>();
-
-    const phraseIncludes = (...values: string[]) => values.some(value => normalizedQuery.includes(value));
-    const addCategory = (key: string, ...values: string[]) => {
-      if (phraseIncludes(...values)) {
-        categoryKeys.add(key);
-        phrases.push(this.formatPostType(key));
-      }
-    };
-
-    addCategory('attraction', 'beach', 'plaza', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
-    addCategory('restaurant', 'restaurant', 'restoran', 'food', 'hrana', 'dinner', 'lunch', 'kafa', 'cafe');
-    addCategory('cultural_site', 'culture', 'cultural', 'kultura', 'museum', 'muzej', 'history', 'istorija');
-    addCategory('monument', 'monument', 'spomenik');
-    addCategory('club', 'nightlife', 'club', 'bar', 'party', 'nocni', 'nocu');
-    addCategory('sports_facility', 'sport', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure');
-    addCategory('event', 'event', 'dogadjaj', 'festival', 'concert', 'koncert', 'tonight', 'veceras', 'weekend', 'vikend');
-    addCategory('accommodation', 'hotel', 'accommodation', 'smestaj', 'smjestaj', 'stay');
-    addCategory('shop', 'shop', 'shopping', 'prodavnica', 'market');
-
-    const nearMe = phraseIncludes('near me', 'nearby', 'close', 'blizu', 'u blizini', 'oko mene');
-    const openNow = phraseIncludes('open now', 'opened', 'otvoreno', 'radi sada', 'sad otvoreno');
-    const highRated = phraseIncludes('best', 'top', 'rated', 'najbolje', 'najbolji', 'visoko ocen', 'visoko ocjen');
-    const savedOnly = phraseIncludes('saved', 'sacuvano', 'sacuvane', 'omiljeno', 'favorites', 'favourites');
-    const familyFriendly = phraseIncludes('family', 'kids', 'children', 'porodic', 'deca', 'djeca');
-    const timeSensitive = phraseIncludes('today', 'tonight', 'tomorrow', 'weekend', 'danas', 'veceras', 'sutra', 'vikend');
-    const scenic = phraseIncludes('scenic', 'view', 'photo', 'foto', 'panorama', 'vidikovac', 'zalazak');
-    const personalized = phraseIncludes('for me', 'recommended', 'recommendation', 'preporuci', 'preporuke', 'za mene');
-
-    const stopWords = new Set([
-      'near', 'me', 'nearby', 'open', 'now', 'best', 'top', 'rated', 'for', 'today', 'tonight',
-      'tomorrow', 'weekend', 'blizu', 'mene', 'sada', 'sad', 'najbolje', 'najbolji', 'danas',
-      'veceras', 'sutra', 'vikend', 'preporuci', 'preporuke', 'saved', 'sacuvano', 'sacuvane',
-    ]);
-    const terms = normalizedQuery
-      .split(/\s+/)
-      .filter(term => term.length > 1 && !stopWords.has(term));
-
-    return {
-      normalizedQuery,
-      terms,
-      categoryKeys: Array.from(categoryKeys),
-      nearMe,
-      openNow,
-      highRated,
-      savedOnly,
-      familyFriendly,
-      timeSensitive,
-      scenic,
-      personalized,
-      matchedPhrases: phrases,
-    };
-  }
-
-  private describeSearchIntent(intent: SearchIntent, resultCount: number): string {
-    const parts = [
-      intent.nearMe ? 'near you' : '',
-      intent.openNow ? 'open now' : '',
-      intent.highRated ? 'high rated' : '',
-      intent.savedOnly ? 'saved places' : '',
-      intent.timeSensitive ? 'time-aware' : '',
-      intent.scenic ? 'scenic' : '',
-      intent.personalized ? 'personalized' : '',
-      ...intent.matchedPhrases,
-    ].filter(Boolean);
-
-    if (parts.length === 0) {
-      return `${resultCount} result${resultCount === 1 ? '' : 's'} ranked by text, rating and context.`;
-    }
-
-    return `${resultCount} result${resultCount === 1 ? '' : 's'} for ${Array.from(new Set(parts)).slice(0, 4).join(', ')}.`;
-  }
-
-  private getSearchReason(loc: MapLocation, intent: SearchIntent, badges: string[]): string {
-    if (badges.includes('Very close') || badges.includes('Nearby')) {
-      return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
-    }
-    if (badges.includes('Open now')) return 'Available now based on opening hours.';
-    if (badges.includes('Saved')) return 'Already in your saved destinations.';
-    if (badges.includes('For you')) return 'Matches your interests and recent context.';
-    if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
-    if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
-    return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
-  }
-
-  private normalizeSearchText(value: string): string {
-    return value
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^\w\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  private normalizeTypeKey(value: string): string {
-    return this.normalizeSearchText(value).replace(/\s+/g, '_');
-  }
-
-  private tokenizeSearch(value: string): string[] {
-    return this.normalizeSearchValue(value)
-      .split(' ')
-      .filter(term => term.length > 1);
-  }
-
-  private expandSearchTerms(terms: string[]): string[] {
-    const synonyms: Record<string, string[]> = {
-      food: ['restaurant', 'restoran', 'cafe'],
-      eat: ['restaurant', 'food'],
-      restoran: ['restaurant', 'food'],
-      plaza: ['beach', 'attraction'],
-      beach: ['plaza', 'attraction'],
-      culture: ['cultural', 'monument'],
-      kultura: ['cultural', 'monument'],
-      history: ['cultural', 'monument'],
-      night: ['club', 'nightlife'],
-      nightlife: ['club'],
-      hotel: ['accommodation'],
-      stay: ['accommodation'],
-      shop: ['shopping'],
-      shopping: ['shop'],
-    };
-
-    return Array.from(new Set(
-      terms
-        .flatMap(term => [term, ...(synonyms[term] ?? [])])
-        .map(term => this.normalizeSearchValue(term))
-        .filter(Boolean)
-    ));
-  }
-
-  private normalizeSearchValue(value: string | null | undefined): string {
-    return (value ?? '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'dj')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
   }
 
   selectSearchResult(loc: MapLocation): void {

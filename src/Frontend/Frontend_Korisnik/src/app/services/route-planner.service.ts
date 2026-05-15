@@ -100,8 +100,7 @@ export class RoutePlannerService {
   }
 
   clear(): PlannerState {
-    localStorage.removeItem(this.storageKey);
-    return { ...DEFAULT_STATE, stops: [] };
+    return this.persist(DEFAULT_STATE);
   }
 
   serializeTripQuery(): string {
