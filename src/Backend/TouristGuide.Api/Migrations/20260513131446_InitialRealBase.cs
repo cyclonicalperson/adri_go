@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace TouristGuide.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialRealBase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -26,6 +26,21 @@ namespace TouristGuide.Api.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_admin_permission", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "app_visit",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    session_id = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    visit_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_app_visit", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -100,10 +115,15 @@ namespace TouristGuide.Api.Migrations
                     password_hash = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
                     language = table.Column<string>(type: "character varying(5)", maxLength: 5, nullable: false),
                     interests = table.Column<string>(type: "text", nullable: true),
+                    bio = table.Column<string>(type: "text", nullable: true),
+                    location = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                     home_lat = table.Column<decimal>(type: "numeric", nullable: true),
                     home_lng = table.Column<decimal>(type: "numeric", nullable: true),
                     profile_image = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    is_email_verified = table.Column<bool>(type: "boolean", nullable: false),
+                    email_verification_token = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    email_verification_token_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -190,6 +210,36 @@ namespace TouristGuide.Api.Migrations
                         principalTable: "tourist",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tourist_location_sample",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    tourist_id = table.Column<long>(type: "bigint", nullable: true),
+                    session_id = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    region_id = table.Column<long>(type: "bigint", nullable: true),
+                    lat = table.Column<decimal>(type: "numeric", nullable: false),
+                    lng = table.Column<decimal>(type: "numeric", nullable: false),
+                    recorded_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tourist_location_sample", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_tourist_location_sample_region_region_id",
+                        column: x => x.region_id,
+                        principalTable: "region",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_tourist_location_sample_tourist_tourist_id",
+                        column: x => x.tourist_id,
+                        principalTable: "tourist",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -287,6 +337,7 @@ namespace TouristGuide.Api.Migrations
                     email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     password_hash = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     email_verification_token = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    email_verification_token_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     email_verified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     is_organization = table.Column<bool>(type: "boolean", nullable: false),
                     is_individual = table.Column<bool>(type: "boolean", nullable: false),
@@ -675,38 +726,6 @@ namespace TouristGuide.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ticket",
-                columns: table => new
-                {
-                    id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    post_id = table.Column<long>(type: "bigint", nullable: false),
-                    tourist_id = table.Column<long>(type: "bigint", nullable: true),
-                    ticket_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    qr_code = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    price_paid = table.Column<decimal>(type: "numeric", nullable: false),
-                    status = table.Column<string>(type: "text", nullable: false),
-                    issued_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    used_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ticket", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_ticket_post_post_id",
-                        column: x => x.post_id,
-                        principalTable: "post",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ticket_tourist_tourist_id",
-                        column: x => x.tourist_id,
-                        principalTable: "tourist",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "content_share",
                 columns: table => new
                 {
@@ -1057,22 +1076,6 @@ namespace TouristGuide.Api.Migrations
                 column: "registration_request_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ticket_post_id",
-                table: "ticket",
-                column: "post_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ticket_ticket_code",
-                table: "ticket",
-                column: "ticket_code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ticket_tourist_id",
-                table: "ticket",
-                column: "tourist_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_tourist_email",
                 table: "tourist",
                 column: "email",
@@ -1094,6 +1097,21 @@ namespace TouristGuide.Api.Migrations
                 column: "tourist_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_tourist_location_sample_recorded_at_region_id",
+                table: "tourist_location_sample",
+                columns: new[] { "recorded_at", "region_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tourist_location_sample_region_id",
+                table: "tourist_location_sample",
+                column: "region_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tourist_location_sample_tourist_id",
+                table: "tourist_location_sample",
+                column: "tourist_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_verification_document_registration_request_id",
                 table: "verification_document",
                 column: "registration_request_id");
@@ -1102,154 +1120,6 @@ namespace TouristGuide.Api.Migrations
                 name: "IX_visit_planner_tourist_id",
                 table: "visit_planner",
                 column: "tourist_id");
-
-            // ── VIEWOVI ──────────────────────────────────────────────────
-
-            migrationBuilder.Sql(@"
-                CREATE OR REPLACE VIEW v_posts_full AS
-                SELECT
-                    p.id            AS ""postId"",
-                    p.admin_id      AS ""adminId"",
-                    p.region_id     AS ""regionId"",
-                    p.title,
-                    p.post_type     AS ""postType"",
-                    p.description,
-                    p.lat,
-                    p.lng,
-                    p.address,
-                    p.external_url        AS ""externalUrl"",
-                    p.external_url_label  AS ""externalUrlLabel"",
-                    p.images,
-                    p.opening_hours       AS ""openingHours"",
-                    p.details,
-                    p.status,
-                    p.view_count    AS ""viewCount"",
-                    p.like_count    AS ""likeCount"",
-                    p.save_count    AS ""saveCount"",
-                    p.review_count  AS ""reviewCount"",
-                    p.avg_rating    AS ""avgRating"",
-                    p.published_at  AS ""publishedAt"",
-                    p.created_at    AS ""createdAt"",
-                    p.updated_at    AS ""updatedAt"",
-                    a.full_name     AS ""adminName"",
-                    a.role          AS ""adminRole"",
-                    r.name          AS ""regionName"",
-                    r.type          AS ""regionType"",
-                    r.lat           AS ""regionLat"",
-                    r.lng           AS ""regionLng""
-                FROM post p
-                JOIN admin_user a ON p.admin_id  = a.id
-                LEFT JOIN region r ON p.region_id = r.id;
-                ");
-
-            migrationBuilder.Sql(@"
-                CREATE OR REPLACE VIEW v_routes_full AS
-                SELECT
-                    rt.id            AS ""routeId"",
-                    rt.admin_id      AS ""adminId"",
-                    rt.region_id     AS ""regionId"",
-                    rt.name,
-                    rt.difficulty,
-                    rt.distance_km   AS ""distanceKm"",
-                    rt.duration_min  AS ""durationMin"",
-                    rt.elevation_gain AS ""elevationGainM"",
-                    rt.description,
-                    rt.waypoints,
-                    rt.images,
-                    rt.status,
-                    rt.view_count    AS ""viewCount"",
-                    rt.save_count    AS ""saveCount"",
-                    rt.created_at    AS ""createdAt"",
-                    rt.updated_at    AS ""updatedAt"",
-                    a.full_name      AS ""adminName"",
-                    r.name           AS ""regionName""
-                FROM route rt
-                JOIN admin_user a  ON rt.admin_id  = a.id
-                LEFT JOIN region r ON rt.region_id = r.id;
-                ");
-
-            migrationBuilder.Sql(@"
-                CREATE OR REPLACE VIEW v_reviews_full AS
-                SELECT
-                    rv.id           AS ""reviewId"",
-                    rv.tourist_id   AS ""touristId"",
-                    rv.post_id      AS ""postId"",
-                    rv.route_id     AS ""routeId"",
-                    rv.rating,
-                    rv.comment,
-                    rv.status,
-                    rv.is_approved  AS ""isApproved"",
-                    rv.created_at   AS ""createdAt"",
-                    t.name          AS ""touristName"",
-                    p.title         AS ""postTitle"",
-                    p.post_type     AS ""postType"",
-                    ro.name         AS ""routeName"",
-                    CASE
-                        WHEN rv.post_id IS NOT NULL AND p.post_type = 'event' THEN 'EVENT'
-                        WHEN rv.route_id IS NOT NULL THEN 'ROUTE'
-                        WHEN rv.post_id IS NOT NULL THEN 'OBJECT'
-                        ELSE NULL
-                    END AS ""entityType"",
-                    COALESCE(p.title, ro.name) AS ""entityName""
-                FROM review rv
-                LEFT JOIN tourist t  ON rv.tourist_id = t.id
-                LEFT JOIN post    p  ON rv.post_id    = p.id
-                LEFT JOIN route   ro ON rv.route_id   = ro.id;
-                ");
-
-            migrationBuilder.Sql(@"
-                CREATE OR REPLACE VIEW v_admin_users_full AS
-                SELECT
-                    au.id                 AS ""userId"",
-                    au.organization_id    AS ""organizationId"",
-                    au.full_name          AS ""fullName"",
-                    au.email,
-                    au.email_verified_at  AS ""emailVerifiedAt"",
-                    au.role,
-                    au.is_individual      AS ""isIndividual"",
-                    au.account_status     AS ""accountStatus"",
-                    au.profile_image      AS ""profileImage"",
-                    au.last_login_at      AS ""lastLoginAt"",
-                    au.created_at         AS ""createdAt"",
-                    o.name                AS ""organizationName"",
-                    o.type                AS ""organizationType"",
-                    o.contact_email       AS ""organizationEmail"",
-                    o.website             AS ""organizationWebsite"",
-                    o.is_verified         AS ""organizationIsVerified"",
-                    (SELECT COUNT(*) FROM admin_user_permission aup
-                     WHERE aup.admin_user_id = au.id) AS ""permissionCount"",
-                    CASE WHEN au.account_status = 'active' THEN true ELSE false END AS ""isActive""
-                FROM admin_user au
-                LEFT JOIN organization o ON au.organization_id = o.id;
-                ");
-
-            migrationBuilder.Sql(@"
-                CREATE OR REPLACE VIEW v_superadmin_overview AS
-                SELECT
-                    (SELECT COUNT(*) FROM tourist      WHERE is_active = true)                                    AS ""totalTourists"",
-                    (SELECT COUNT(*) FROM admin_user   WHERE role = 'admin' AND account_status = 'active')        AS ""totalAdmins"",
-                    (SELECT COUNT(*) FROM post         WHERE status = 'published')                                AS ""totalPosts"",
-                    (SELECT COUNT(*) FROM route        WHERE status = 'published')                                AS ""totalRoutes"",
-                    (SELECT COUNT(*) FROM admin_registration_request WHERE status = 'pending')                    AS ""pendingRegistrations"",
-                    (SELECT COUNT(*) FROM review       WHERE status = 'PENDING')                                  AS ""pendingReviews"",
-                    (SELECT COUNT(*) FROM ticket       WHERE status = 'issued')                                   AS ""ticketsIssued"",
-                    (SELECT COUNT(*) FROM admin_notification WHERE is_read = false)                               AS ""unreadNotifications"";
-                ");
-
-            migrationBuilder.Sql(@"
-                CREATE OR REPLACE VIEW v_region_popularity AS
-                SELECT
-                    r.id   AS ""regionId"",
-                    r.name,
-                    r.type,
-                    COUNT(DISTINCT p.id)            AS ""numPosts"",
-                    COALESCE(SUM(p.view_count), 0)  AS ""totalViews"",
-                    COALESCE(SUM(p.like_count), 0)  AS ""totalLikes"",
-                    AVG(p.avg_rating)               AS ""avgRating""
-                FROM region r
-                LEFT JOIN post p ON p.region_id = r.id AND p.status = 'published'
-                GROUP BY r.id, r.name, r.type;
-                ");
         }
 
         /// <inheritdoc />
@@ -1263,6 +1133,9 @@ namespace TouristGuide.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "admin_user_permission");
+
+            migrationBuilder.DropTable(
+                name: "app_visit");
 
             migrationBuilder.DropTable(
                 name: "content_share");
@@ -1304,10 +1177,10 @@ namespace TouristGuide.Api.Migrations
                 name: "terms_acceptance");
 
             migrationBuilder.DropTable(
-                name: "ticket");
+                name: "tourist_favorite");
 
             migrationBuilder.DropTable(
-                name: "tourist_favorite");
+                name: "tourist_location_sample");
 
             migrationBuilder.DropTable(
                 name: "verification_document");
@@ -1341,13 +1214,6 @@ namespace TouristGuide.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "organization");
-
-            migrationBuilder.Sql("DROP VIEW IF EXISTS v_posts_full;");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS v_routes_full;");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS v_reviews_full;");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS v_admin_users_full;");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS v_superadmin_overview;");
-            migrationBuilder.Sql("DROP VIEW IF EXISTS v_region_popularity;");
         }
     }
 }

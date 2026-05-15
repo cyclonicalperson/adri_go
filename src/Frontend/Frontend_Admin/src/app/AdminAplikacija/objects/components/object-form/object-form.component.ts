@@ -30,6 +30,7 @@ export class ObjectFormComponent implements OnInit {
   destinations: Region[] = [];
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
+  resolvingAddress = false;
 
   readonly categoryOptions: { value: ObjectCategory; label: string }[] = [
     { value: 'HOTEL', label: '🏔️ Hotel' },
@@ -95,8 +96,9 @@ export class ObjectFormComponent implements OnInit {
     }
   }
 
-  onLocationPicked(loc: { lat: number; lng: number }): void {
+  async onLocationPicked(loc: { lat: number; lng: number }): Promise<void> {
     this.form.patchValue({ latitude: loc.lat, longitude: loc.lng });
+    await this.resolveAddress(loc.lat, loc.lng);
   }
 
   get lat(): number { return this.form.get('latitude')?.value ?? 43.85; }
@@ -122,4 +124,82 @@ export class ObjectFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
+
+  private async resolveAddress(lat: number, lng: number): Promise<void> {
+    this.resolvingAddress = true;
+    try {
+      const params = new URLSearchParams({
+        format: 'jsonv2',
+        lat: String(lat),
+        lon: String(lng),
+        zoom: '18',
+        addressdetails: '1',
+        'accept-language': 'sr,en',
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const address = typeof data?.display_name === 'string' ? data.display_name : '';
+      if (address) this.form.patchValue({ address });
+      this.tryAutoSelectRegion(lat, lng, data);
+    } catch {
+      // Reverse geocoding is best-effort; coordinates remain selected.
+    } finally {
+      this.resolvingAddress = false;
+    }
+  }
+
+  private tryAutoSelectRegion(lat: number, lng: number, geocoded: any): void {
+    if (this.form.get('regionId')?.value || this.destinations.length === 0) {
+      return;
+    }
+
+    const addressParts = Object.values(geocoded?.address ?? {})
+      .filter((value): value is string => typeof value === 'string');
+    const haystack = this.normalizeText([
+      geocoded?.display_name,
+      ...addressParts,
+    ].filter(Boolean).join(' '));
+
+    const textMatch = this.destinations.find(region => {
+      const regionName = this.normalizeText(region.name);
+      return !!regionName && haystack.includes(regionName);
+    });
+
+    if (textMatch) {
+      this.form.patchValue({ regionId: textMatch.regionId });
+      return;
+    }
+
+    const nearest = this.destinations
+      .filter(region => region.lat != null && region.lng != null)
+      .map(region => ({
+        region,
+        distanceKm: this.distanceKm(lat, lng, Number(region.lat), Number(region.lng)),
+      }))
+      .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+
+    if (nearest && nearest.distanceKm <= 75) {
+      this.form.patchValue({ regionId: nearest.region.regionId });
+    }
+  }
+
+  private normalizeText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'dj');
+  }
+
+  private distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const radiusKm = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180)
+      * Math.cos(lat2 * Math.PI / 180)
+      * Math.sin(dLng / 2) ** 2;
+    return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
 }

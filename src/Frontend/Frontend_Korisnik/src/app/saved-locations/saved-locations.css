@@ -148,6 +148,14 @@
 }
 .badge .dot { width: 7px; height: 7px; border-radius: 50%; }
 
+.badge.accommodation { color: #1d4ed8; } .badge.accommodation .dot { background: #3b82f6; }
+.badge.restaurant    { color: #b91c1c; } .badge.restaurant .dot    { background: #ef4444; }
+.badge.cultural_site { color: #92400e; } .badge.cultural_site .dot { background: #f59e0b; }
+.badge.monument      { color: #a16207; } .badge.monument .dot      { background: #d97706; }
+.badge.sports_facility { color: #15803d; } .badge.sports_facility .dot { background: #22c55e; }
+.badge.event         { color: #be185d; } .badge.event .dot         { background: #ec4899; }
+.badge.attraction    { color: #047857; } .badge.attraction .dot    { background: #10b981; }
+.badge.shop          { color: #c2410c; } .badge.shop .dot          { background: #f97316; }
 .badge.nature   { color: var(--green-700); } .badge.nature .dot   { background: var(--green-500); }
 .badge.culture  { color: #92400e; }          .badge.culture .dot  { background: var(--warning); }
 .badge.food     { color: #b91c1c; }          .badge.food .dot     { background: var(--danger); }
@@ -256,6 +264,46 @@
 .arrow-icon svg { width: 13px; height: 13px; fill: var(--green-700); }
 .view-link:hover .arrow-icon { background: var(--green-500); transform: translateX(2px); }
 .view-link:hover .arrow-icon svg { fill: #fff; }
+
+:host-context(html[data-theme='dark']) .badge {
+  background: rgba(31, 41, 55, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .badge.accommodation { color: #bfdbfe; }
+:host-context(html[data-theme='dark']) .badge.restaurant { color: #fecaca; }
+:host-context(html[data-theme='dark']) .badge.cultural_site,
+:host-context(html[data-theme='dark']) .badge.monument,
+:host-context(html[data-theme='dark']) .badge.culture { color: #fde68a; }
+:host-context(html[data-theme='dark']) .badge.sports_facility,
+:host-context(html[data-theme='dark']) .badge.attraction,
+:host-context(html[data-theme='dark']) .badge.nature { color: #bbf7d0; }
+:host-context(html[data-theme='dark']) .badge.event { color: #fbcfe8; }
+:host-context(html[data-theme='dark']) .badge.shop { color: #fed7aa; }
+
+:host-context(html[data-theme='dark']) .heart-btn {
+  background: rgba(31, 41, 55, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26);
+}
+
+:host-context(html[data-theme='dark']) .heart-btn:hover {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+:host-context(html[data-theme='dark']) .like-btn svg {
+  fill: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .like-btn.liked svg {
+  fill: #ef4444;
+}
+
+:host-context(html[data-theme='dark']) .unsave-btn svg {
+  fill: #22c55e;
+}
 
 /* -- STATES -- */
 .empty-state {

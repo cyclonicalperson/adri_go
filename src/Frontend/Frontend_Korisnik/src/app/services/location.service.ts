@@ -108,7 +108,9 @@ export class LocationService {
         .set('lng', context.lng.toString());
     }
 
-    return this.http.get<LocationsResponse>(`${this.apiUrl}/posts/search`, { params });
+    return this.http.get<LocationsResponse>(`${this.apiUrl}/posts/search`, { params }).pipe(
+      map(res => ({ ...res, data: res.data.map(loc => this.normalize(loc)) }))
+    );
   }
 
   getLocationById(id: number): Observable<Location> {

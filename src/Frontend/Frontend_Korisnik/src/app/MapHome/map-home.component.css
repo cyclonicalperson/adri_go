@@ -104,6 +104,10 @@
   will-change: transform;
 }
 
+:host ::ng-deep .user-location-marker {
+  transition: none !important;
+}
+
 
 .leaflet-map-pane {
   will-change: transform;
@@ -174,7 +178,8 @@
   position: sticky;
   top: 0;
   background: #fff;
-  z-index: 1;
+  z-index: 30;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.8);
 }
 .sheet-header:hover { background: var(--gray-50, #f9fafb); }
 .sheet-header:active { background: var(--gray-100); }
@@ -211,6 +216,9 @@
   padding: 10px 16px;
   box-shadow: var(--shadow-lg);
   gap: 10px;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
 }
 
 .search-icon {
@@ -222,6 +230,7 @@
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   font-size: 14px;
@@ -239,6 +248,7 @@
   padding: 0;
   cursor: pointer;
   color: var(--gray-400);
+  flex-shrink: 0;
 }
 .search-clear-btn svg { width: 18px; height: 18px; fill: var(--gray-400); }
 .search-clear-btn:hover svg { fill: var(--gray-600); }
@@ -265,6 +275,34 @@
   white-space: nowrap;
   transition: color 0.15s;
   flex-shrink: 0;
+}
+
+.map-wrapper.filters-open .top-search-strip,
+.map-wrapper.filters-open .top-ui-layer,
+.map-wrapper.filters-open .locate-btn,
+.map-wrapper.filters-open app-location-details-card {
+  pointer-events: none;
+}
+
+.map-wrapper app-filters {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2500;
+}
+
+.map-wrapper.navigating .top-search-strip,
+.map-wrapper.navigating .top-ui-layer,
+.map-wrapper.navigating .sidebar,
+.map-wrapper.navigating .app-footer,
+.map-wrapper.navigating app-location-details-card,
+.map-wrapper.navigating .route-pill {
+  pointer-events: none;
+}
+
+@media (max-width: 899px) {
+  .map-wrapper.navigating .top-ui-layer {
+    display: none;
+  }
 }
 .search-filter-btn:hover { color: var(--green-500); }
 .search-filter-btn svg {
@@ -384,62 +422,75 @@
 .category-chips-row .cat-chip { flex-shrink: 0; }
 
 /*
- * Base chip — inactive state.
- * --cat-color is set inline per chip from getCategoryColor().
+ * Base chip — inactive: outline u boji kategorije, beo background
+ * --cat-color je postavljen inline per chip iz getCategoryColor().
  */
 .cat-chip {
   display: flex;
   align-items: center;
   gap: 4px;
   background: #fff;
-  border: 1.5px solid var(--gray-200);
+  border: 2px solid var(--cat-color, var(--gray-300));
   border-radius: var(--radius-pill);
-  padding: 6px 12px;
+  padding: 5px 12px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--gray-500);
+  color: var(--gray-600);
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   flex-shrink: 0;
 }
-.cat-chip:hover { background: var(--gray-50); border-color: var(--gray-300); }
+.cat-chip:not(.active) {
+  background: #fff !important;
+  border-color: var(--cat-color, var(--gray-300));
+  color: var(--gray-600);
+}
+.cat-chip:hover {
+  background: #fff !important;
+  color: var(--gray-800);
+}
 
 /*
- * Active category chip — uses the exact same colour as its map pin.
- * --cat-color is bound per element in the template.
+ * Active: fill u boji kategorije
  */
 .cat-chip.active {
-  background: var(--cat-color, #22c55e);
+  background: var(--cat-color, #22c55e) !important;
   border-color: var(--cat-color, #22c55e);
   color: #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
 
-/* "All" chip — outlined (dark border, white bg) when inactive */
-.cat-chip-all {
-  background: #fff;
-  border-color: #1e293b;
-  color: #1e293b;
+.builder-mode-pill {
+  align-self: flex-start;
+  pointer-events: auto;
+  margin: -2px 4px 0;
+  border: none;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-sans);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
 }
-.cat-chip-all:hover {
-  background: #f1f5f9;
-  border-color: #1e293b;
-  color: #1e293b;
+.builder-mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
 }
-/* Filled (dark bg, white text) when active */
-.cat-chip-all.active {
-  background: #1e293b !important;
-  border-color: #1e293b !important;
-  color: #fff !important;
-}
-
-/* Svi filteri su ugaseni — narandzasti chip kao upozorenje */
-.cat-chip-all.all-none {
-  background: #fff7ed !important;
-  border-color: #f97316 !important;
-  color: #c2410c !important;
+.builder-mode-pill svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 
 /* Filter badge dot */
@@ -586,7 +637,7 @@
   gap: 4px;
   background: none;
   border: none;
-  padding: 8px 4px;
+  padding: 8px 2px;
   border-radius: var(--radius-md);
   color: var(--gray-400);
   transition: color 0.15s, background 0.15s;
@@ -597,18 +648,18 @@
 .footer-btn.active { color: var(--green-500); }
 
 .footer-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.2s;
 }
-.footer-icon svg { width: 22px; height: 22px; fill: currentColor; }
+.footer-icon svg { width: 20px; height: 20px; fill: currentColor; }
 .footer-btn.active .footer-icon { transform: scale(1.1); }
 
 .footer-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.3px;
   line-height: 1;
@@ -1146,6 +1197,34 @@ app-location-details-card {
   animation: locate-spin 0.75s linear infinite;
 }
 @keyframes locate-spin { to { transform: rotate(360deg); } }
+
+:host-context(html[data-theme='dark']) .locate-btn {
+  background: #1f2937;
+  color: #60a5fa;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .locate-btn:hover:not(.locate-loading) {
+  background: #111827;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+:host-context(html[data-theme='dark']) .locate-btn.locate-loading {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .locate-btn.locate-refollow {
+  background: #22c55e;
+  color: #fff;
+  border-color: rgba(134, 239, 172, 0.55);
+  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.38);
+}
+
+:host-context(html[data-theme='dark']) .locate-spinner {
+  border-color: #334155;
+  border-top-color: #60a5fa;
+}
 
 @media (min-width: 900px) {
   .locate-btn {

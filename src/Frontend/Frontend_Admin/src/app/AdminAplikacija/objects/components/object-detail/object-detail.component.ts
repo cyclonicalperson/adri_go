@@ -110,14 +110,14 @@ export class ObjectDetailComponent implements OnInit {
     return map[this.object?.category ?? ''] ?? 'default';
   }
 
-  goEdit(): void { this.router.navigate(['/admin/objects', this.object!.objectId, 'edit']); }
-  goBack(): void { this.router.navigate(['/admin/objects']); }
+  goEdit(): void { this.router.navigate(['/admin/lokacije', this.object!.objectId, 'edit']); }
+  goBack(): void { this.router.navigate(['/admin/lokacije']); }
   confirmDelete(): void { this.showDeleteDialog = true; }
   cancelDelete(): void { this.showDeleteDialog = false; }
 
   doDelete(): void {
     this.objService.delete(this.object!.objectId).subscribe(() => {
-      this.router.navigate(['/admin/objects']);
+      this.router.navigate(['/admin/lokacije']);
     });
   }
 }

@@ -79,9 +79,17 @@ export class UserService {
   }
 
   /** Update own profile (any admin, calls PATCH /admin-users/me) */
-  updateSelf(payload: { fullName?: string; email?: string }): Observable<ApiResponse<User>> {
+  updateSelf(payload: { fullName?: string; email?: string; profileImage?: string | null }): Observable<ApiResponse<User>> {
     return this.http.patch<any>(`${this.url}/me`, payload).pipe(
       map(res => ({ data: mapUser(res.data ?? res), success: true }))
+    );
+  }
+
+  uploadProfileImage(file: File): Observable<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ url: string }>(`${environment.apiUrl}/images/upload/profile`, formData).pipe(
+      map(res => res.url),
     );
   }
 

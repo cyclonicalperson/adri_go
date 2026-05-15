@@ -56,7 +56,8 @@ export class SavedLocationsComponent implements OnInit {
       this.loadSavedLocations();
     } else {
       this.isGuest = true;
-      this.loadGuestSavedLocations();
+      this.isLoading = false;
+      this.router.navigate(['/login']);
     }
   }
 
@@ -134,39 +135,6 @@ export class SavedLocationsComponent implements OnInit {
     });
   }
 
-  // ── Guest: load from localStorage ────────────────────────────
-  loadGuestSavedLocations() {
-    this.isLoading = true;
-    const savedIds: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-
-    if (savedIds.length === 0) {
-      this.isLoading = false;
-      this.cdr.detectChanges();
-      return;
-    }
-
-    let completed = 0;
-    savedIds.forEach(id => {
-      this.locationService.getLocationById(id).subscribe({
-        next: (post) => {
-          this.savedItems.push(this.mapToItem(post));
-          completed++;
-          if (completed === savedIds.length) {
-            this.isLoading = false;
-            this.cdr.detectChanges();
-          }
-        },
-        error: () => {
-          completed++;
-          if (completed === savedIds.length) {
-            this.isLoading = false;
-            this.cdr.detectChanges();
-          }
-        }
-      });
-    });
-  }
-
   private mapToItem(post: Location): any {
     const imagesArr = this.locationService.parseImages(post.images);
     const firstImage = resolveBackendAssetUrl(
@@ -233,8 +201,7 @@ export class SavedLocationsComponent implements OnInit {
     this.savedItems = this.savedItems.filter(item => item.id !== id);
 
     if (this.isGuest) {
-      const saved: number[] = JSON.parse(localStorage.getItem('guest_saved_ids') || '[]');
-      localStorage.setItem('guest_saved_ids', JSON.stringify(saved.filter(i => i !== id)));
+      this.router.navigate(['/login']);
       this.cdr.detectChanges();
       return;
     }
@@ -252,19 +219,7 @@ export class SavedLocationsComponent implements OnInit {
     event.stopPropagation();
 
     if (this.isGuest) {
-      // Guest: toggle in localStorage
-      const liked: number[] = JSON.parse(localStorage.getItem('guest_liked_ids') || '[]');
-      const idx = liked.indexOf(item.id);
-      if (idx >= 0) {
-        liked.splice(idx, 1);
-        item.isLiked = false;
-        item.likeCount = Math.max(0, (item.likeCount || 0) - 1);
-      } else {
-        liked.push(item.id);
-        item.isLiked = true;
-        item.likeCount = (item.likeCount || 0) + 1;
-      }
-      localStorage.setItem('guest_liked_ids', JSON.stringify(liked));
+      this.router.navigate(['/login']);
       this.cdr.detectChanges();
       return;
     }

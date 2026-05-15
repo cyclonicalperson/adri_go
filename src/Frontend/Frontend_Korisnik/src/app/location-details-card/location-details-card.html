@@ -52,4 +52,15 @@
     </div>
 
   </div>
+
+  <div class="auth-modal-overlay" *ngIf="showAuthModal" (click)="closeAuthModal($event)">
+    <div class="auth-modal" (click)="$event.stopPropagation()">
+      <h3>Login Required</h3>
+      <p>Please log in to add locations to your calendar.</p>
+      <div class="auth-modal-actions">
+        <button class="btn-cancel" (click)="closeAuthModal($event)">Cancel</button>
+        <button class="btn-login" (click)="goToLogin($event)">Login</button>
+      </div>
+    </div>
+  </div>
 </div>

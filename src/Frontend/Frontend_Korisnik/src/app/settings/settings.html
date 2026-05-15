@@ -9,7 +9,7 @@
 
   <div class="scroll-content">
 
-    <div class="settings-group">
+    <div class="settings-group settings-group-account">
       <p class="group-label">Account &amp; Security</p>
       <div class="group-items">
         <button class="setting-row" (click)="goToEditProfile()">
@@ -19,7 +19,7 @@
         </button>
         <button class="setting-row" (click)="openChangePassword()">
           <span class="row-icon icon-password"><svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
-          <div class="row-text"><span class="label">Change Password</span></div>
+          <div class="row-text"><span class="label">{{ authService.isGoogleAccount ? 'Google Account' : 'Change Password' }}</span></div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
         <button class="setting-row" (click)="openSheet('accounts')">
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group settings-group-language">
       <p class="group-label">Language &amp; Content</p>
       <div class="group-items">
         <button class="setting-row" (click)="toggleLanguage()">
@@ -55,18 +55,13 @@
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group settings-group-privacy">
       <p class="group-label">Privacy &amp; Tracking</p>
       <div class="group-items">
         <div class="setting-row no-hover">
           <span class="row-icon icon-location"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></span>
           <div class="row-text"><span class="label">Location Sharing</span><span class="desc">Allow AdriGo to access your live location for maps.</span></div>
           <label class="switch"><input type="checkbox" [(ngModel)]="settings.locationSharing" (change)="onLocationSharingToggle()"><span class="slider round"></span></label>
-        </div>
-        <div class="setting-row no-hover">
-          <span class="row-icon icon-analytics"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></span>
-          <div class="row-text"><span class="label">Anonymous Analytics</span><span class="desc">Help us improve by sharing usage data.</span></div>
-          <label class="switch"><input type="checkbox" [(ngModel)]="settings.anonymousAnalytics" (change)="onAnalyticsToggle()"><span class="slider round"></span></label>
         </div>
         <div class="setting-row no-hover">
           <span class="row-icon icon-recommend"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></span>
@@ -76,23 +71,23 @@
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group settings-group-notifications">
       <p class="group-label">Notifications</p>
       <div class="group-items">
         <div class="setting-row no-hover">
           <span class="row-icon icon-push"><svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></span>
-          <div class="row-text"><span class="label">Push Notifications</span><span class="desc">Real-time alerts for bookings and tickets.</span></div>
+          <div class="row-text"><span class="label">Push Notifications</span><span class="desc">Browser alerts for saved trips, calendar changes and account activity.</span></div>
           <label class="switch"><input type="checkbox" [(ngModel)]="settings.pushNotifications" (change)="onPushNotificationsToggle()"><span class="slider round"></span></label>
         </div>
         <div class="setting-row no-hover">
           <span class="row-icon icon-email"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
-          <div class="row-text"><span class="label">Email Notifications</span><span class="desc">Summary of your trips and receipts.</span></div>
+          <div class="row-text"><span class="label">Email Notifications</span><span class="desc">Account security messages and optional trip digest emails.</span></div>
           <label class="switch"><input type="checkbox" [(ngModel)]="settings.emailNotifications" (change)="onEmailNotificationsToggle()"><span class="slider round"></span></label>
         </div>
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group settings-group-integrations">
       <p class="group-label">Integrations &amp; Bookings</p>
       <div class="group-items">
         <button class="setting-row" (click)="openSheet('booking')">
@@ -107,7 +102,7 @@
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group settings-group-about">
       <p class="group-label">About &amp; Support</p>
       <div class="group-items">
         <button class="setting-row" (click)="openSheet('support')">
@@ -142,7 +137,7 @@
       </button>
       <button class="delete-account-link" *ngIf="authService.isLoggedIn" (click)="openDeleteAccount()">
         <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        Delete Account
+        Deactivate Account
       </button>
     </div>
 
@@ -150,9 +145,9 @@
     <div *ngIf="showDeleteModal"
          style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
       <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-        <h2 style="font-size:18px;font-weight:800;margin:0 0 8px;color:#0f172a;">Delete Account</h2>
+        <h2 style="font-size:18px;font-weight:800;margin:0 0 8px;color:#0f172a;">Deactivate Account</h2>
         <p style="font-size:13px;color:#64748b;margin:0 0 20px;line-height:1.6;">
-          This action is <strong>permanent and cannot be undone</strong>. All your saved locations, calendar events, and reviews will be deleted.
+          Your account will be deactivated. Your saved locations, calendar events, and reviews stay stored but you will no longer be able to log in.
         </p>
         <div *ngIf="deleteError"
              style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;">
@@ -166,7 +161,7 @@
           <button (click)="confirmDeleteAccount()" [disabled]="isDeletingAccount"
                   style="flex:1;padding:13px;background:#ef4444;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;"
                   [style.opacity]="isDeletingAccount ? '0.6' : '1'">
-            {{ isDeletingAccount ? 'Deleting...' : 'Yes, delete' }}
+            {{ isDeletingAccount ? 'Deactivating...' : 'Yes, deactivate' }}
           </button>
         </div>
       </div>
@@ -191,13 +186,24 @@
 
     <div class="sheet-body" *ngIf="activeSheet === 'accounts'">
       <p class="sheet-copy">Choose which sign-in providers AdriGo should prioritize for this device.</p>
-      <button class="sheet-option" *ngFor="let option of accountOptions" (click)="toggleConnectedAccount(option.id)">
+
+      <!-- Google: if logged in via Google, show as read-only Enabled -->
+      <div class="sheet-option" *ngIf="isGoogleAccount" style="cursor:default;opacity:1;">
         <div>
-          <strong>{{ option.label }}</strong>
-          <span>{{ option.desc }}</span>
+          <strong>Google</strong>
+          <span>Your account is connected via Google sign-in.</span>
         </div>
-        <span class="sheet-pill" [class.active]="settings.connectedAccounts[option.id]">
-          {{ settings.connectedAccounts[option.id] ? 'Enabled' : 'Disabled' }}
+        <span class="sheet-pill active" style="pointer-events:none;">Enabled</span>
+      </div>
+
+      <!-- Google: if NOT logged in via Google, allow toggle -->
+      <button class="sheet-option" *ngIf="!isGoogleAccount" (click)="toggleConnectedAccount('google')">
+        <div>
+          <strong>Google</strong>
+          <span>Use Google as your preferred sign-in method.</span>
+        </div>
+        <span class="sheet-pill" [class.active]="settings.connectedAccounts['google']">
+          {{ settings.connectedAccounts['google'] ? 'Enabled' : 'Disabled' }}
         </span>
       </button>
     </div>
@@ -248,7 +254,7 @@
       </button>
     </div>
 
-    <div class="sheet-footer" *ngIf="activeSheet !== 'support' && activeSheet !== 'language'">
+    <div class="sheet-footer" *ngIf="activeSheet !== 'support' && activeSheet !== 'language' && activeSheet !== 'accounts'">
       <button class="sheet-secondary" (click)="closeSheet()">Cancel</button>
       <button class="sheet-primary" (click)="saveSheet()">Save</button>
     </div>
@@ -259,7 +265,7 @@
      style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
     <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:#0f172a;">Change Password</h2>
-    <p style="font-size:13px;color:#94a3b8;margin:0 0 20px;">Enter your current password and choose a new one.</p>
+    <p style="font-size:13px;color:#94a3b8;margin:0 0 20px;">Choose a new password and confirm it below.</p>
 
     <div *ngIf="passwordError"
          style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;">

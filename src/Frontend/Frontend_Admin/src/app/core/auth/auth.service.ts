@@ -31,6 +31,7 @@ export interface AuthUser {
   organizationId: number | null;
   isIndividual: boolean;
   accountStatus: 'active' | 'suspended' | 'pending';
+  profileImage?: string | null;
   permissions?: string[];  // Nova polja iz backenda (permission codes)
 }
 
@@ -71,6 +72,7 @@ export class AuthService {
           organizationId: raw.organizationId ?? raw.OrganizationId ?? null,
           isIndividual: raw.isIndividual ?? raw.IsIndividual ?? true,
           accountStatus: (raw.accountStatus ?? raw.AccountStatus ?? 'active') as any,
+          profileImage: raw.profileImage ?? raw.ProfileImage ?? null,
           permissions: raw.permissions ?? raw.Permissions ?? [],
         };
         return {

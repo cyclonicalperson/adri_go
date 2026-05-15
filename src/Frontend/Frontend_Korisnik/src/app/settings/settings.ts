@@ -36,7 +36,6 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
-    { id: 'apple' as const, label: 'Apple', desc: 'Keep Apple ready as a private sign-in option.' },
   ];
 
   bookingOptions = [
@@ -47,7 +46,7 @@ export class SettingsComponent implements OnInit {
   ];
 
   showPasswordModal = false;
-  changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+  changePasswordForm = { newPassword: '', confirmPassword: '' };
   passwordError = '';
   passwordSuccess = '';
   isSavingPassword = false;
@@ -112,6 +111,11 @@ export class SettingsComponent implements OnInit {
       .filter(option => this.settings.connectedAccounts[option.id])
       .map(option => option.label);
     return linked.length > 0 ? linked.join(', ') : 'Not configured';
+  }
+
+  get isGoogleAccount(): boolean {
+    return this.authService.currentTourist?.authProvider === 'google'
+      || this.settings.connectedAccounts.google;
   }
 
   get bookingServicesSummary(): string {
@@ -243,15 +247,15 @@ export class SettingsComponent implements OnInit {
   onEmailNotificationsToggle(): void {
     this.saveChanges(
       this.settings.emailNotifications
-        ? 'Trip email summaries enabled'
-        : 'Trip email summaries disabled'
+        ? 'Trip email digests enabled'
+        : 'Trip email digests disabled'
     );
   }
 
   onPushNotificationsToggle(): void {
     if (!('Notification' in window)) {
       this.settings.pushNotifications = false;
-      this.showSavedMessage('Push notifications are not supported in this browser.');
+      this.saveChanges('Push notifications are not supported in this browser.');
       return;
     }
 
@@ -263,7 +267,7 @@ export class SettingsComponent implements OnInit {
 
       if (Notification.permission === 'denied') {
         this.settings.pushNotifications = false;
-        this.showSavedMessage('Notifications are blocked. Please allow them in browser settings.');
+        this.saveChanges('Notifications are blocked. Please allow them in browser settings.');
         return;
       }
 
@@ -275,6 +279,9 @@ export class SettingsComponent implements OnInit {
             ? 'Push notifications enabled'
             : 'Notification permission was not granted'
         );
+      }).catch(() => {
+        this.settings.pushNotifications = false;
+        this.saveChanges('Notification permission was not granted');
       });
       return;
     }
@@ -286,7 +293,7 @@ export class SettingsComponent implements OnInit {
     if (this.settings.locationSharing) {
       if (!navigator.geolocation) {
         this.settings.locationSharing = false;
-        this.showSavedMessage('Geolocation is not supported in this browser.');
+        this.saveChanges('Geolocation is not supported in this browser.');
         return;
       }
 
@@ -294,7 +301,7 @@ export class SettingsComponent implements OnInit {
         () => this.saveChanges('Location sharing enabled'),
         () => {
           this.settings.locationSharing = false;
-          this.showSavedMessage('Location permission denied. Please allow it in browser settings.');
+          this.saveChanges('Location permission denied. Please allow it in browser settings.');
         }
       );
       return;
@@ -330,6 +337,7 @@ export class SettingsComponent implements OnInit {
         [provider]: !this.settings.connectedAccounts[provider],
       }
     };
+    this.saveChanges('Connected account preferences updated');
   }
 
   isBookingServiceEnabled(id: string): boolean {
@@ -409,8 +417,13 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
+    if (this.authService.isGoogleAccount) {
+      window.location.href = 'https://myaccount.google.com/';
+      return;
+    }
+
     this.showPasswordModal = true;
-    this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    this.changePasswordForm = { newPassword: '', confirmPassword: '' };
     this.passwordError = '';
     this.passwordSuccess = '';
     this.changePasswordSubmitted = false;
@@ -418,6 +431,10 @@ export class SettingsComponent implements OnInit {
     this.currentPasswordTouched = false;
     this.newPasswordTouched = false;
     this.confirmPasswordTouched = false;
+  }
+
+  openGoogleAccount(): void {
+    window.open('https://myaccount.google.com/', '_blank', 'noopener,noreferrer');
   }
 
   closePasswordModal(): void {
@@ -456,8 +473,7 @@ export class SettingsComponent implements OnInit {
     this.changePasswordSubmitted = true;
 
     if (
-      !this.changePasswordForm.currentPassword
-      || !this.changePasswordForm.newPassword
+      !this.changePasswordForm.newPassword
       || !this.changePasswordForm.confirmPassword
       || !this.isNewPasswordValid
       || this.hasConfirmPasswordMismatch
@@ -466,10 +482,7 @@ export class SettingsComponent implements OnInit {
     }
 
     this.isSavingPassword = true;
-    this.authService.changePassword(
-      this.changePasswordForm.currentPassword,
-      this.changePasswordForm.newPassword,
-    ).subscribe({
+    this.authService.changePassword(this.changePasswordForm.newPassword).subscribe({
       next: () => {
         this.passwordSuccess = '✓ Password changed successfully!';
         this.isSavingPassword = false;

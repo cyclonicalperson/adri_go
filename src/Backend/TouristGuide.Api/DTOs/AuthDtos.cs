@@ -28,6 +28,7 @@ namespace TouristGuide.Api.DTOs
         public string AccountStatus { get; set; } = string.Empty;
         public uint? OrganizationId { get; set; }
         public bool IsIndividual { get; set; }
+        public string? ProfileImage { get; set; }
         public List<string> Permissions { get; set; } = new();
     }
 
@@ -62,6 +63,9 @@ namespace TouristGuide.Api.DTOs
         public string Language { get; set; } = "en";
 
         public List<string>? Interests { get; set; }
+
+        [MaxLength(500)]
+        public string? ProfileImage { get; set; }
     }
 
     /// <summary>
@@ -115,6 +119,9 @@ namespace TouristGuide.Api.DTOs
 
         /// <summary>Lista interesa kao string array (npr. ["nature","food"])</summary>
         public List<string>? Interests { get; set; }
+
+        [MaxLength(500)]
+        public string? ProfileImage { get; set; }
     }
 
     /// <summary>
@@ -154,13 +161,10 @@ public class EmailVerificationResultDto
     }
 
     /// <summary>
-    /// DTO za promenu lozinke turiste (zahteva staru lozinku).
+    /// DTO za promenu lozinke turiste.
     /// </summary>
     public class ChangePasswordDto
     {
-        [Required]
-        public string CurrentPassword { get; set; } = string.Empty;
-
         [Required]
         [MinLength(6)]
         public string NewPassword { get; set; } = string.Empty;
