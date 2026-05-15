@@ -532,6 +532,9 @@ namespace TouristGuide.Api.Controllers
             if (string.IsNullOrWhiteSpace(tourist.PasswordHash))
                 return BadRequest(new { message = "Password change is not available for this account." });
 
+            if (!PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
+                return BadRequest(new { message = "Current password is incorrect." });
+
             tourist.PasswordHash = PasswordHelper.Hash(dto.NewPassword);
             tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
