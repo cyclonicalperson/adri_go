@@ -33,6 +33,10 @@ import { PrivacyPolicyComponent } from './privacy-policy/privacy-policy.componen
 // 6. OAuth callback (Google sign-in popup redirect target)
 import { AuthCallbackComponent } from './auth-callback/auth-callback.component';
 
+import { ExploreSectionComponent } from './explore-section/explore-section.component';
+import { RoutesComponent } from './routes/routes.component';
+import { ActivitiesComponent } from './activities/activities.component';
+
 export const routes: Routes = [
   // POČETNA RUTA
   { path: '', redirectTo: '/map-home', pathMatch: 'full' },
@@ -48,6 +52,9 @@ export const routes: Routes = [
   // MAPA I LISTA
   { path: 'map-home', component: MapHomeComponent },
   { path: 'location-list', component: LocationListComponent },
+  { path: 'explore-section', component: ExploreSectionComponent },
+  { path: 'routes', component: RoutesComponent },
+  { path: 'activities', component: ActivitiesComponent },
   { path: 'filters', component: FiltersComponent },
 
   // DETALJI LOKACIJE

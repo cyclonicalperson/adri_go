@@ -30,8 +30,7 @@
 
     <div class="avatar-section">
       <div class="avatar-wrapper">
-        <img *ngIf="userData?.profilePic" [src]="userData!.profilePic" class="avatar-img" alt="Profile">
-        <div *ngIf="!userData?.profilePic" class="avatar-initials">{{ getInitials() }}</div>
+        <img [src]="userData?.profilePic || 'assets/default-profile.svg'" class="avatar-img" alt="Profile">
       </div>
       <input #profilePhotoInput type="file" accept="image/*" hidden (change)="onProfilePhotoSelected($event)">
       <input #cameraPhotoInput type="file" accept="image/*" capture="user" hidden (change)="onProfilePhotoSelected($event)">

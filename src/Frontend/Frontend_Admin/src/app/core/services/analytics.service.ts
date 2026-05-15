@@ -92,8 +92,9 @@ export class AnalyticsService {
     return this.http.get<ApiResponse<RegionPopularity[]>>(`${this.url}/regions`);
   }
 
-  getTouristMovements(): Observable<ApiResponse<TouristMovement[]>> {
-    return this.http.get<ApiResponse<TouristMovement[]>>(`${this.url}/movements`);
+  getTouristMovements(fromDate?: string): Observable<ApiResponse<TouristMovement[]>> {
+    const params = fromDate ? new HttpParams().set('fromDate', fromDate) : undefined;
+    return this.http.get<ApiResponse<TouristMovement[]>>(`${this.url}/movements`, { params });
   }
 
   /** Dnevni broj jedinstvenih sesija (otvaranja turističke aplikacije) */

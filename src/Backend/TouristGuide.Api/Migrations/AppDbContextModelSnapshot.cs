@@ -22,39 +22,6 @@ namespace TouristGuide.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("TouristGuide.Api.Models.AppVisit", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("SessionId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("session_id");
-
-                    b.Property<DateTime>("VisitDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("visit_date");
-
-                    b.HasKey("Id")
-                        .HasName("PK_app_visit");
-
-                    b.HasIndex("SessionId", "VisitDate")
-                        .IsUnique()
-                        .HasDatabaseName("IX_app_visit_session_id_visit_date");
-
-                    b.ToTable("app_visit");
-                });
-
             modelBuilder.Entity("TouristGuide.Api.Models.AdminAuditLog", b =>
                 {
                     b.Property<long>("Id")
@@ -406,6 +373,34 @@ namespace TouristGuide.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("admin_user_permission");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.AppVisit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("session_id");
+
+                    b.Property<DateTime>("VisitDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("visit_date");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("app_visit");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.ContentShare", b =>
@@ -1400,6 +1395,52 @@ namespace TouristGuide.Api.Migrations
                     b.ToTable("tourist_favorite");
                 });
 
+            modelBuilder.Entity("TouristGuide.Api.Models.TouristLocationSample", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Lat")
+                        .HasColumnType("numeric")
+                        .HasColumnName("lat");
+
+                    b.Property<decimal>("Lng")
+                        .HasColumnType("numeric")
+                        .HasColumnName("lng");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<long?>("RegionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("region_id");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("session_id");
+
+                    b.Property<long?>("TouristId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tourist_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RegionId");
+
+                    b.HasIndex("TouristId");
+
+                    b.HasIndex("RecordedAt", "RegionId");
+
+                    b.ToTable("tourist_location_sample");
+                });
+
             modelBuilder.Entity("TouristGuide.Api.Models.VerificationDocument", b =>
                 {
                     b.Property<long>("Id")
@@ -1867,6 +1908,23 @@ namespace TouristGuide.Api.Migrations
                     b.Navigation("Post");
 
                     b.Navigation("Route");
+
+                    b.Navigation("Tourist");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.TouristLocationSample", b =>
+                {
+                    b.HasOne("TouristGuide.Api.Models.Region", "Region")
+                        .WithMany()
+                        .HasForeignKey("RegionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TouristGuide.Api.Models.Tourist", "Tourist")
+                        .WithMany()
+                        .HasForeignKey("TouristId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Region");
 
                     b.Navigation("Tourist");
                 });

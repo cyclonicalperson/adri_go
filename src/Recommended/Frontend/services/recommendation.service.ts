@@ -212,7 +212,7 @@ export function optimizeStopOrder<S extends PlannerStopLike>(
     optimized.push(next);
   }
 
-  return optimized;
+  return twoOpt(optimized);
 }
 
 // ── Private helpers ──────────────────────────────────────────────────────────
@@ -239,6 +239,45 @@ function scoreLocation(location: RecommendableLocation, userPosition?: [number, 
   }
 
   return score;
+}
+
+function twoOpt<S extends PlannerStopLike>(stops: S[]): S[] {
+  if (stops.length < 4) return stops;
+
+  let best = [...stops];
+  let improved = true;
+  let guard = 0;
+
+  while (improved && guard < 40) {
+    improved = false;
+    guard++;
+
+    for (let i = 1; i < best.length - 2; i++) {
+      for (let k = i + 1; k < best.length - 1; k++) {
+        const current =
+          distanceBetween(best[i - 1], best[i]) +
+          distanceBetween(best[k], best[k + 1]);
+        const swapped =
+          distanceBetween(best[i - 1], best[k]) +
+          distanceBetween(best[i], best[k + 1]);
+
+        if (swapped + 0.01 < current) {
+          best = [
+            ...best.slice(0, i),
+            ...best.slice(i, k + 1).reverse(),
+            ...best.slice(k + 1),
+          ];
+          improved = true;
+        }
+      }
+    }
+  }
+
+  return best;
+}
+
+function distanceBetween(a: PlannerStopLike, b: PlannerStopLike): number {
+  return haversineKm(a.lat, a.lng, b.lat, b.lng);
 }
 
 function mapInterestsToTypes(interests: string[]): Set<string> {

@@ -17,6 +17,7 @@ export class PersonalInfoComponent implements OnInit {
   userData: UserProfile | null = null;
   loading    = true;
   isSaving   = false;
+  isUploadingPhoto = false;
   editMode   = false;
   saveSuccess = false;
   saveError   = '';
@@ -116,7 +117,8 @@ export class PersonalInfoComponent implements OnInit {
       name:      this.form.fullName.trim(),
       bio:       this.form.bio.trim(),
       location:  this.form.location.trim(),
-      interests: [...this.selectedInterests]
+      interests: [...this.selectedInterests],
+      profileImage: this.userData?.profilePic ?? null,
     };
 
     this.userService.updateProfile(payload).subscribe({
@@ -127,11 +129,13 @@ export class PersonalInfoComponent implements OnInit {
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
+          this.userData.profilePic = updated.profilePic ?? this.userData.profilePic;
         }
         this.authService.updateCurrentTourist({
           name: updated.fullName || this.form.fullName,
           email: updated.emailOrPhone || this.form.emailOrPhone,
           language: updated.language || this.userData?.language,
+          profileImage: updated.profilePic ?? this.userData?.profilePic ?? null,
         });
         this.isSaving    = false;
         this.editMode    = false;

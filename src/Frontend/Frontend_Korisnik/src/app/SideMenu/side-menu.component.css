@@ -56,8 +56,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  cursor: pointer;
 }
+.user-avatar:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .user-avatar svg { width: 24px; height: 24px; fill: #fff; }
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
 
 .user-info { flex: 1; min-width: 0; }
 .user-info h3 { margin: 0; font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -139,6 +142,10 @@
 .menu-item:hover .item-icon.icon-saved svg { fill: var(--green-600); }
 .menu-item:hover .item-icon.icon-calendar  { background: #fef9c3; }
 .menu-item:hover .item-icon.icon-calendar svg { fill: #78350f; }
+.menu-item:hover .item-icon.icon-routes { background: #e0f2fe; }
+.menu-item:hover .item-icon.icon-routes svg { fill: #0284c7; }
+.menu-item:hover .item-icon.icon-activities { background: #dcfce7; }
+.menu-item:hover .item-icon.icon-activities svg { fill: #16a34a; }
 .menu-item:hover .item-icon.icon-tickets   { background: #fce7f3; }
 .menu-item:hover .item-icon.icon-tickets svg { fill: #9d174d; }
 .menu-item:hover .item-icon.icon-notif     { background: #ffedd5; }

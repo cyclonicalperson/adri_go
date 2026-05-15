@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
+import { AdminListStateService } from '@core/services/admin-list-state.service';
 import { CsvExportService } from '@core/services/csv-export.service';
 import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
@@ -9,6 +10,11 @@ import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+
+interface ObjectsListState {
+  req?: Partial<PageRequest & { category?: string; regionId?: number; status?: string }>;
+  activeStatusFilter?: string;
+}
 
 @Component({
   selector: 'app-objects-list',
@@ -36,6 +42,7 @@ export class ObjectsListComponent implements OnInit {
     sortBy: 'createdAt',
     sortDir: 'desc',
   };
+  private readonly stateKey = 'objects';
 
   constructor(
     private service: ObjectService,
@@ -43,9 +50,11 @@ export class ObjectsListComponent implements OnInit {
     private router: Router,
     private auth: AuthService,
     private csv: CsvExportService,
+    private listState: AdminListStateService,
   ) {}
 
   ngOnInit(): void {
+    this.restoreListState();
     this.regionService.getAll({ page: 1, pageSize: 100 }).subscribe(res => {
       this.regions = res.data;
     });
@@ -63,6 +72,7 @@ export class ObjectsListComponent implements OnInit {
 
   load(): void {
     this.loading = true;
+    this.persistListState();
     this.service.getAll(this.req).subscribe({
       next: res => {
         this.objects = res.data;
@@ -149,8 +159,14 @@ export class ObjectsListComponent implements OnInit {
     this.router.navigate(['/admin/lokacije', objectItem.objectId]);
   }
 
-  goMap(_: TouristObject): void {
-    this.router.navigate(['/admin/map-admin']);
+  goMap(objectItem: TouristObject): void {
+    this.router.navigate(['/admin/map-admin'], {
+      queryParams: { focusPostId: objectItem.objectId },
+    });
+  }
+
+  get activeSortValue(): string {
+    return `${this.req.sortBy ?? 'createdAt'}:${this.req.sortDir ?? 'desc'}`;
   }
 
   confirmDelete(objectItem: TouristObject): void {
@@ -327,5 +343,35 @@ export class ObjectsListComponent implements OnInit {
 
   objectStatus(objectItem: TouristObject): string {
     return (objectItem as any).status ?? 'published';
+  }
+
+  private restoreListState(): void {
+    const state = this.listState.read<ObjectsListState>(this.stateKey);
+    if (state.req) {
+      this.req = {
+        ...this.req,
+        ...state.req,
+        page: Number(state.req.page ?? this.req.page) || 1,
+        pageSize: Number(state.req.pageSize ?? this.req.pageSize) || 10,
+      };
+    }
+
+    this.activeStatusFilter = state.activeStatusFilter ?? this.statusFilterFromApiStatus(this.req.status);
+  }
+
+  private persistListState(): void {
+    this.listState.save<ObjectsListState>(this.stateKey, {
+      req: this.req,
+      activeStatusFilter: this.activeStatusFilter,
+    });
+  }
+
+  private statusFilterFromApiStatus(status?: string): string {
+    const map: Record<string, string> = {
+      published: 'active',
+      draft: 'pending',
+      archived: 'inactive',
+    };
+    return status ? (map[status] ?? '') : '';
   }
 }

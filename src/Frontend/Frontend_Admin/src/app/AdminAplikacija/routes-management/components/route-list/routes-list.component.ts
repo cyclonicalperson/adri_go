@@ -6,12 +6,17 @@ import { AuthService } from '@core/auth/auth.service';
 import { PageRequest } from '@core/models/api-response.model';
 import { Region } from '@core/models/region.model';
 import { RouteDifficulty, RouteStatus, TouristRoute } from '@core/models/route.model';
+import { AdminListStateService } from '@core/services/admin-list-state.service';
 import { RegionService } from '@core/services/region.service';
 import { RouteService } from '@core/services/route.service';
 import { BadgeComponent, BadgeVariant } from '@shared/components/badge/badge.component';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 
 type StatusFilter = '' | RouteStatus;
+
+interface RoutesListState {
+  req?: Partial<PageRequest & { regionId?: number; difficulty?: string; status?: StatusFilter }>;
+}
 
 @Component({
   selector: 'app-routes-list',
@@ -35,6 +40,7 @@ export class RoutesListComponent implements OnInit {
     difficulty?: string;
     status?: StatusFilter;
   } = { page: 1, pageSize: 12, sortBy: 'name', sortDir: 'asc' };
+  private readonly stateKey = 'routes-management';
 
   summary = {
     total: 0,
@@ -71,9 +77,11 @@ export class RoutesListComponent implements OnInit {
     private destService: RegionService,
     private router: Router,
     private auth: AuthService,
+    private listState: AdminListStateService,
   ) {}
 
   ngOnInit(): void {
+    this.restoreListState();
     this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[] }) => {
       this.destinations = res.data;
     });
@@ -82,6 +90,7 @@ export class RoutesListComponent implements OnInit {
 
   load(): void {
     this.loading = true;
+    this.persistListState();
 
     const baseSummaryRequest = this.buildBaseRequest();
 
@@ -319,5 +328,22 @@ export class RoutesListComponent implements OnInit {
       sortBy: 'name',
       sortDir: 'asc' as const,
     };
+  }
+
+  private restoreListState(): void {
+    const state = this.listState.read<RoutesListState>(this.stateKey);
+    if (!state.req) return;
+
+    this.req = {
+      ...this.req,
+      ...state.req,
+      page: Number(state.req.page ?? this.req.page) || 1,
+      pageSize: Number(state.req.pageSize ?? this.req.pageSize) || 12,
+      status: (state.req.status ?? this.req.status) as StatusFilter,
+    };
+  }
+
+  private persistListState(): void {
+    this.listState.save<RoutesListState>(this.stateKey, { req: this.req });
   }
 }

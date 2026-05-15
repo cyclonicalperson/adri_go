@@ -1,4 +1,4 @@
-<div class="map-wrapper" [class.filters-open]="isFiltersOpen">
+<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating">
 
   <div class="app-header">
     <div class="header-left">
@@ -14,9 +14,9 @@
         </svg>
         Login
       </button>
-      <button class="header-menu-btn" (click)="toggleMenu()">
+      <button *ngIf="!isNavigating" class="header-menu-btn" (click)="goToNotifications()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
         </svg>
       </button>
     </div>
@@ -26,7 +26,7 @@
     <div id="map"></div>
   </div>
 
-  <div *ngIf="showRoutePanel" class="route-pill">
+  <div *ngIf="showRoutePanel && !isNavigating" class="route-pill">
     <div class="route-pill-icon">
       <svg viewBox="0 0 24 24">
         <path d="M7 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm10 8a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM9.5 8h5v2h-5zm0 8h5v-2h-5z"/>
@@ -47,7 +47,7 @@
 
   <div class="sidebar">
 
-    <div class="top-search-strip" *ngIf="!isNavigating">
+    <div class="top-search-strip">
       <div class="search-wrapper">
         <div class="search-container">
           <span class="search-icon">
@@ -96,14 +96,12 @@
             *ngFor="let result of searchResults"
             class="search-result-item"
             (click)="selectSearchResult(result)">
-            <!-- Thumbnail: naslovna slika umesto emoji ikone -->
             <div class="search-result-thumb">
               <img
                 [src]="getFirstImage(result)"
                 [alt]="result.title"
                 class="search-result-img"
                 (error)="$any($event.target).src='assets/placeholder.jpg'">
-              <!-- Mala kategorija-boja traka na dnu slike -->
               <span
                 class="search-result-cat-dot"
                 [style.background]="getCategoryColor(result.postType || result.category || '')">
@@ -132,20 +130,6 @@
       <!-- ── Category chip row ── -->
       <div class="category-chips-row">
         <button
-          class="cat-chip cat-chip-all"
-          [class.active]="allCategoriesActive"
-          [class.all-none]="noCategoriesActive"
-          [title]="allCategoriesActive ? 'Klikni da ugasis sve kategorije' : 'Klikni da upalis sve kategorije'"
-          (click)="toggleAllCategories()">
-          <svg *ngIf="allCategoriesActive" viewBox="0 0 24 24" width="11" height="11" style="fill:currentColor;flex-shrink:0">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
-          <svg *ngIf="noCategoriesActive" viewBox="0 0 24 24" width="11" height="11" style="fill:currentColor;flex-shrink:0">
-            <path d="M19 13H5v-2h14v2z"/>
-          </svg>
-          All
-        </button>
-        <button
           *ngFor="let cat of categories"
           class="cat-chip"
           [class.active]="cat.active"
@@ -154,9 +138,14 @@
           {{ cat.label }}
         </button>
       </div>
+      <button class="builder-mode-pill" *ngIf="plannerMode" (click)="clearRoute()">
+        <span class="builder-mode-dot"></span>
+        Route builder on
+        <svg viewBox="0 0 24 24"><path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"/></svg>
+      </button>
     </div>
 
-    <div class="top-ui-layer" *ngIf="!isNavigating" [class.sheet-expanded]="sheetExpanded">
+    <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded">
       <div class="sheet-header" (click)="toggleSheet()">
         <div class="sheet-header-left">
           <span class="sheet-title">{{ showRoutePanel ? (routeDestTitle || 'Route') : 'Explore nearby' }}</span>
@@ -171,7 +160,6 @@
         </svg>
       </div>
 
-      <!-- Save route confirmation toast -->
       <div class="save-route-toast" *ngIf="saveRouteMessage">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
         {{ saveRouteMessage }}
@@ -200,9 +188,8 @@
         (navigationStarted)="startNavigation()">
       </app-trip-planner-panel>
 
-      <!-- Saved routes toggle button -->
       <div class="saved-routes-toggle-row">
-        <button class="saved-routes-toggle-btn" (click)="showSavedRoutes = true">
+        <button class="saved-routes-toggle-btn" (click)="openSavedRoutes()">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
           Saved routes<span *ngIf="savedRoutes.length > 0"> ({{ savedRoutes.length }})</span>
         </button>
@@ -225,12 +212,11 @@
 
   </div>
 
-  <!-- ── LOCATE-ME FAB ──────────────────────────────────────────────────── -->
+  <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
-          [class.locate-hidden]="sheetExpanded"
+          [class.locate-hidden]="sheetExpanded || isFiltersOpen"
           [class.locate-refollow]="isNavigating && !navFollowMode"
-          [class.locate-navigating]="isNavigating"
           (click)="locateMeOrRefollow()"
           aria-label="Show my location">
     <div class="locate-spinner" *ngIf="isLocating"></div>
@@ -250,7 +236,6 @@
     (onAddToRoute)="addSelectedLocationToPlanner()">
   </app-location-details-card>
 
-  <!-- Turn-by-turn navigation panel -->
   <app-map-navigation-panel
     *ngIf="isNavigating"
     [steps]="navigationSteps"
@@ -262,10 +247,11 @@
     (mapRotationUpdated)="onNavigationMapRotation($event)"
     (routeTrailUpdated)="onNavigationRouteTrailUpdated($event)"
     (routeRecalculated)="onNavigationRouteRecalculated($event)"
+    (navigationArrived)="onNavigationArrived()"
+    (travelModeChanged)="changeNavigationMode($event)"
     (exitNavigation)="stopNavigation()">
   </app-map-navigation-panel>
 
-  <!-- Clear route confirmation dialog -->
   <div class="modal-overlay" *ngIf="showClearRouteConfirm" (click)="cancelClearRoute()">
     <div class="modal-dialog" (click)="$event.stopPropagation()">
       <div class="modal-icon">
@@ -280,8 +266,7 @@
     </div>
   </div>
 
-  <div class="app-footer" [class.footer-nav-hidden]="isNavigating">
-
+  <div class="app-footer">
     <button class="footer-btn" [class.active]="activeTab === 'map'" (click)="activeTab = 'map'">
       <span class="footer-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -309,6 +294,33 @@
       <span class="footer-label">Saved</span>
     </button>
 
+    <button class="footer-btn" [class.active]="activeTab === 'calendar'" (click)="goToCalendar()">
+      <span class="footer-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+        </svg>
+      </span>
+      <span class="footer-label">Calendar</span>
+    </button>
+
+    <button class="footer-btn" [class.active]="activeTab === 'activities'" (click)="goToActivities()">
+      <span class="footer-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+        </svg>
+      </span>
+      <span class="footer-label">Activities</span>
+    </button>
+
+    <button class="footer-btn" [class.active]="activeTab === 'routes'" (click)="goToRoutes()">
+      <span class="footer-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/>
+        </svg>
+      </span>
+      <span class="footer-label">Routes</span>
+    </button>
+
     <button class="footer-btn" [class.active]="activeTab === 'account'" (click)="goToAccount()">
       <span class="footer-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -317,10 +329,9 @@
       </span>
       <span class="footer-label">Account</span>
     </button>
-
   </div>
 
-  <!-- ── SAVED ROUTES OVERLAY ──────────────────────────────────────────── -->
+  <!-- ── SAVED ROUTES OVERLAY ── -->
   <div class="saved-routes-overlay" [class.overlay-open]="showSavedRoutes" (click)="showSavedRoutes = false">
     <div class="saved-routes-sheet" (click)="$event.stopPropagation()">
       <div class="saved-routes-sheet-header">
@@ -371,21 +382,20 @@
     </div>
   </div>
 
-  <app-side-menu *ngIf="isMenuOpen" (onClose)="isMenuOpen = false"></app-side-menu>
 
-  <!-- ── DESKTOP INLINE FILTER PANEL ────────────────────────────── -->
-  <!-- Prikazujemo samo na desktopu (≫900px) kao overlay pored mape -->
+
+  <!-- ── INLINE FILTER PANEL (map context: sidebar on desktop, fullscreen on mobile) ── -->
   <app-filters
     *ngIf="isFiltersOpen"
-    [inlineMode]="true"
+    context="map"
     (closed)="closeInlineFilters()"
-    (applied)="onInlineFiltersApplied()">
+    (applied)="onFiltersChanged($event)">
   </app-filters>
 
   <div class="auth-modal-overlay" *ngIf="showAuthPopup">
     <div class="auth-modal">
       <h3>Login Required</h3>
-      <p>You need to be logged in to access your account settings.</p>
+      <p>Please log in to save items, use your calendar, and access your account.</p>
       <div class="auth-modal-actions">
         <button class="btn-cancel" (click)="showAuthPopup = false">Cancel</button>
         <button class="btn-login" (click)="goToLogin()">Login</button>

@@ -64,7 +64,7 @@
 
   <div class="sidebar-footer">
     <a class="user-row" routerLink="/admin/profile" title="Moj profil" (click)="navClick.emit()">
-      <div class="avatar">{{ initials }}</div>
+      <img class="avatar" [src]="auth.currentUser?.profileImage || 'assets/default-profile.svg'" alt="Profil">
       @if (!collapsed) {
       <div class="user-info">
         <div class="name">{{ auth.currentUser?.fullName }}</div>

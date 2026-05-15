@@ -145,9 +145,21 @@
     <div class="nav-sum-divider"></div>
     <div class="nav-panel-summary-item">
       <span class="nav-sum-kicker">Mode</span>
-      <strong>{{ modeIcon }}</strong>
+      <strong>{{ modeLabel }}</strong>
     </div>
     <button class="nav-exit-panel" (click)="exitNavigation.emit()">Exit</button>
+  </div>
+
+  <div class="nav-mode-switch nav-desktop-only" aria-label="Navigation mode">
+    <button
+      type="button"
+      *ngFor="let option of travelModes"
+      class="nav-mode-option"
+      [class.active]="travelMode === option.mode"
+      [attr.aria-pressed]="travelMode === option.mode"
+      (click)="selectTravelMode(option.mode)">
+      {{ option.label }}
+    </button>
   </div>
 
   <!-- MOBILE-ONLY: speed badge (bottom-left of map) -->
@@ -170,7 +182,17 @@
         <ng-container *ngIf="remainingMin > 0"> · {{ formatDuration(remainingMin) }}</ng-container>
       </span>
     </div>
-    <div class="nav-bottom-mode">{{ modeIcon }}</div>
+    <div class="nav-bottom-mode-switch" aria-label="Navigation mode">
+      <button
+        type="button"
+        *ngFor="let option of travelModes"
+        class="nav-mode-option"
+        [class.active]="travelMode === option.mode"
+        [attr.aria-pressed]="travelMode === option.mode"
+        (click)="selectTravelMode(option.mode)">
+        {{ option.label }}
+      </button>
+    </div>
   </div>
 
 </ng-container>

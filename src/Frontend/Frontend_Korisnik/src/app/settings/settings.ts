@@ -8,7 +8,7 @@ import { TouristAppPreferences, TouristPreferencesService } from '../services/to
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 
-type SettingsSheet = 'accounts' | 'content' | 'support' | 'language' | null;
+type SettingsSheet = 'accounts' | 'content' | 'booking' | 'support' | 'language' | null;
 
 @Component({
   selector: 'app-settings',
@@ -36,7 +36,13 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
-    { id: 'apple' as const, label: 'Apple', desc: 'Keep Apple ready as a private sign-in option.' },
+  ];
+
+  bookingOptions = [
+    { id: 'booking', label: 'Booking.com' },
+    { id: 'airbnb', label: 'Airbnb' },
+    { id: 'tripadvisor', label: 'Tripadvisor' },
+    { id: 'getyourguide', label: 'GetYourGuide' },
   ];
 
   showPasswordModal = false;
@@ -105,6 +111,18 @@ export class SettingsComponent implements OnInit {
       .filter(option => this.settings.connectedAccounts[option.id])
       .map(option => option.label);
     return linked.length > 0 ? linked.join(', ') : 'Not configured';
+  }
+
+  get isGoogleAccount(): boolean {
+    return this.authService.currentTourist?.authProvider === 'google'
+      || this.settings.connectedAccounts.google;
+  }
+
+  get bookingServicesSummary(): string {
+    const enabled = this.bookingOptions
+      .filter(option => this.settings.bookingServices.includes(option.id))
+      .map(option => option.label);
+    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
   }
 
   get contentPreferencesSummary(): string {
@@ -229,15 +247,15 @@ export class SettingsComponent implements OnInit {
   onEmailNotificationsToggle(): void {
     this.saveChanges(
       this.settings.emailNotifications
-        ? 'Trip email summaries enabled'
-        : 'Trip email summaries disabled'
+        ? 'Trip email digests enabled'
+        : 'Trip email digests disabled'
     );
   }
 
   onPushNotificationsToggle(): void {
     if (!('Notification' in window)) {
       this.settings.pushNotifications = false;
-      this.showSavedMessage('Push notifications are not supported in this browser.');
+      this.saveChanges('Push notifications are not supported in this browser.');
       return;
     }
 
@@ -249,7 +267,7 @@ export class SettingsComponent implements OnInit {
 
       if (Notification.permission === 'denied') {
         this.settings.pushNotifications = false;
-        this.showSavedMessage('Notifications are blocked. Please allow them in browser settings.');
+        this.saveChanges('Notifications are blocked. Please allow them in browser settings.');
         return;
       }
 
@@ -261,6 +279,9 @@ export class SettingsComponent implements OnInit {
             ? 'Push notifications enabled'
             : 'Notification permission was not granted'
         );
+      }).catch(() => {
+        this.settings.pushNotifications = false;
+        this.saveChanges('Notification permission was not granted');
       });
       return;
     }
@@ -272,7 +293,7 @@ export class SettingsComponent implements OnInit {
     if (this.settings.locationSharing) {
       if (!navigator.geolocation) {
         this.settings.locationSharing = false;
-        this.showSavedMessage('Geolocation is not supported in this browser.');
+        this.saveChanges('Geolocation is not supported in this browser.');
         return;
       }
 
@@ -280,7 +301,7 @@ export class SettingsComponent implements OnInit {
         () => this.saveChanges('Location sharing enabled'),
         () => {
           this.settings.locationSharing = false;
-          this.showSavedMessage('Location permission denied. Please allow it in browser settings.');
+          this.saveChanges('Location permission denied. Please allow it in browser settings.');
         }
       );
       return;
@@ -316,6 +337,18 @@ export class SettingsComponent implements OnInit {
         [provider]: !this.settings.connectedAccounts[provider],
       }
     };
+    this.saveChanges('Connected account preferences updated');
+  }
+
+  isBookingServiceEnabled(id: string): boolean {
+    return this.settings.bookingServices.includes(id);
+  }
+
+  toggleBookingService(id: string): void {
+    this.settings = {
+      ...this.settings,
+      bookingServices: this.toggleArrayValue(this.settings.bookingServices, id),
+    };
   }
 
   saveSheet(): void {
@@ -342,6 +375,8 @@ export class SettingsComponent implements OnInit {
 
     const label = this.activeSheet === 'accounts'
       ? 'Connected account preferences updated'
+      : this.activeSheet === 'booking'
+      ? 'Booking service preferences updated'
       : 'Settings saved';
 
     this.saveChanges(label);
@@ -363,6 +398,11 @@ export class SettingsComponent implements OnInit {
     window.location.href = 'mailto:support@adrigo.app?subject=AdriGo%20Support';
   }
 
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
   goToEditProfile(): void {
     if (!this.authService.isLoggedIn) {
       this.router.navigate(['/login']);
@@ -377,6 +417,11 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
+    if (this.authService.isGoogleAccount) {
+      window.location.href = 'https://myaccount.google.com/';
+      return;
+    }
+
     this.showPasswordModal = true;
     this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
     this.passwordError = '';
@@ -386,6 +431,10 @@ export class SettingsComponent implements OnInit {
     this.currentPasswordTouched = false;
     this.newPasswordTouched = false;
     this.confirmPasswordTouched = false;
+  }
+
+  openGoogleAccount(): void {
+    window.open('https://myaccount.google.com/', '_blank', 'noopener,noreferrer');
   }
 
   closePasswordModal(): void {

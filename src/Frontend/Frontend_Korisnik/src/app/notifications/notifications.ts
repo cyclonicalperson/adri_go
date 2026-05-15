@@ -65,7 +65,7 @@ export class NotificationsComponent implements OnInit {
     const filterType = this.activeFilter.toLowerCase();
     return this.notifications.filter(n => {
       const t = (n.type || '').toLowerCase();
-      if (filterType === 'alerts')          return t.includes('alert') || t.includes('system') || t.includes('warning') || t.includes('reminder');
+      if (filterType === 'alerts')          return t.includes('alert') || t.includes('system') || t.includes('warning') || t.includes('reminder') || t.includes('calendar') || t.includes('trip');
       if (filterType === 'recommendations') return t.includes('recommendation') || t.includes('promo') || t.includes('new_event');
       if (filterType === 'messages')        return t.includes('support') || t.includes('message');
       return true;
@@ -132,6 +132,7 @@ export class NotificationsComponent implements OnInit {
     if (t.includes('alert') || t.includes('warning')) return 'alert';
     if (t.includes('recommendation') || t.includes('promo')) return 'recommendation';
     if (t.includes('support') || t.includes('message')) return 'support';
+    if (t.includes('calendar') || t.includes('trip')) return 'booking';
     return 'booking';
   }
 
