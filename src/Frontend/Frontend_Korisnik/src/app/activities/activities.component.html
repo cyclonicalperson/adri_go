@@ -39,7 +39,7 @@
         <span *ngIf="activity.difficulty">{{ activity.difficulty }}</span>
         <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} places</span>
       </div>
-      <button class="primary-btn" (click)="openActivity(activity)" [disabled]="!activity.postId && (activity.lat == null || activity.lng == null)">
+      <button class="primary-btn" (click)="openActivity(activity)" [disabled]="!activity.postId && !hasUsableCoordinates(activity)">
         Open
       </button>
     </article>

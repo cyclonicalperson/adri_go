@@ -23,7 +23,6 @@ export class LoginComponent implements OnInit {
   isSocialLoading    = false;
   errorMessage       = '';
   socialError        = '';
-  showRegisteredBanner       = false;
   verificationPendingEmail   = '';
   resendMessage      = '';
   resendError        = '';
@@ -46,7 +45,6 @@ export class LoginComponent implements OnInit {
 
     this.route.queryParams.subscribe(params => {
       const registeredEmail = params['email'];
-      this.showRegisteredBanner = params['registered'] === '1';
       if (registeredEmail) {
         this.loginForm.patchValue({ emailOrPhone: registeredEmail });
       }
@@ -93,8 +91,7 @@ export class LoginComponent implements OnInit {
         this.isLoading = false;
         if (err?.error?.emailNotVerified) {
           this.verificationPendingEmail = emailOrPhone;
-          this.errorMessage =
-            err?.error?.message || 'Please verify your email address before logging in.';
+          this.errorMessage = this.localizedEmailNotVerifiedMessage();
         } else {
           this.errorMessage =
             err?.error?.message || 'Incorrect email or password. Please try again.';
@@ -125,22 +122,69 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  // ─── Social login (shared) ────────────────────────────────────────────────
-
-  private localizedResendMessage(type: 'success' | 'error'): string {
-    const lang = localStorage.getItem('adrigo_user_language') || localStorage.getItem('site_language') || 'en';
+  private localizedResendMessage(kind: 'success' | 'error'): string {
+    const lang = this.currentLanguageCode();
     const messages: Record<string, Record<'success' | 'error', string>> = {
       en: {
-        success: 'Verification email sent. Please check your inbox.',
-        error: 'Could not resend the verification email. Please try again.',
+        success: 'A new verification email has been sent.',
+        error: 'Could not resend the verification email.',
       },
       sr: {
-        success: 'Verifikacioni email je poslat. Provjerite inbox.',
-        error: 'Nije moguce poslati verifikacioni email. Pokusajte ponovo.',
+        success: 'Novi verifikacioni mejl je poslat.',
+        error: 'Verifikacioni mejl nije mogao biti poslat.',
+      },
+      de: {
+        success: 'Eine neue Bestatigungs-E-Mail wurde gesendet.',
+        error: 'Die Bestatigungs-E-Mail konnte nicht erneut gesendet werden.',
+      },
+      fr: {
+        success: 'Un nouvel e-mail de verification a ete envoye.',
+        error: "Impossible de renvoyer l'e-mail de verification.",
+      },
+      it: {
+        success: 'Una nuova email di verifica e stata inviata.',
+        error: "Impossibile inviare di nuovo l'email di verifica.",
+      },
+      es: {
+        success: 'Se ha enviado un nuevo correo de verificacion.',
+        error: 'No se pudo reenviar el correo de verificacion.',
+      },
+      nl: {
+        success: 'Er is een nieuwe verificatie-e-mail verzonden.',
+        error: 'De verificatie-e-mail kon niet opnieuw worden verzonden.',
+      },
+      ru: {
+        success: 'Новое письмо для подтверждения отправлено.',
+        error: 'Не удалось повторно отправить письмо для подтверждения.',
       },
     };
+    return (messages[lang] ?? messages['en'])[kind];
+  }
 
-    return (messages[lang] ?? messages['en'])[type];
+  // ─── Social login (shared) ────────────────────────────────────────────────
+
+  private localizedEmailNotVerifiedMessage(): string {
+    const lang = this.currentLanguageCode();
+    const messages: Record<string, string> = {
+      en: 'Your email address is not verified. Please check your inbox and click the verification link.',
+      sr: 'Email adresa nije potvrdjena. Proverite inbox i kliknite na link za verifikaciju.',
+      de: 'Ihre E-Mail-Adresse ist nicht bestatigt. Bitte prufen Sie Ihren Posteingang und klicken Sie auf den Bestatigungslink.',
+      fr: "Votre adresse e-mail n'est pas verifiee. Consultez votre boite de reception et cliquez sur le lien de verification.",
+      it: "Il tuo indirizzo email non e verificato. Controlla la posta in arrivo e clicca sul link di verifica.",
+      es: 'Tu direccion de correo no esta verificada. Revisa tu bandeja de entrada y haz clic en el enlace de verificacion.',
+      nl: 'Je e-mailadres is niet geverifieerd. Controleer je inbox en klik op de verificatielink.',
+      ru: 'Email adresa nije potvrdjena. Proverite inbox i kliknite na link za verifikaciju.',
+    };
+    return messages[lang] ?? messages['en'];
+  }
+
+  private currentLanguageCode(): string {
+    return (
+      localStorage.getItem('adrigo_user_language')
+      || localStorage.getItem('site_language')
+      || navigator.language
+      || 'en'
+    ).slice(0, 2).toLowerCase();
   }
 
   /** Called after Google returns a credential ID token. */

@@ -1,5 +1,6 @@
 import { AsyncPipe } from '@angular/common';
 import { Component, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 import { Subscription } from 'rxjs';
@@ -13,7 +14,7 @@ import { SiteLanguageCode, SiteTranslateService } from '@core/services/site-tran
   selector: 'app-topbar',
   templateUrl: './topbar.component.html',
   styleUrl: './topbar.component.scss',
-  imports: [RouterModule, AsyncPipe],
+  imports: [RouterModule, AsyncPipe, FormsModule],
 })
 export class TopbarComponent implements OnInit, OnDestroy {
   @Output() toggleSidebar = new EventEmitter<void>();
@@ -30,6 +31,9 @@ export class TopbarComponent implements OnInit, OnDestroy {
   languageMenuOpen = false;
   showUnreadOnly = false;
   unreadCount = 0;
+  adminSearchQuery = '';
+  adminSearchOpen = false;
+  adminSearchResults: AdminSearchSuggestion[] = [];
   readonly languages = this.i18n.languages;
 
   private subs: Subscription[] = [];
@@ -70,6 +74,7 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   toggleNotifications(): void {
     this.languageMenuOpen = false;
+    this.adminSearchOpen = false;
     this.notifOpen = !this.notifOpen;
     if (this.notifOpen) {
       this.loadNotifications();
@@ -78,6 +83,7 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   toggleLanguageMenu(): void {
     this.notifOpen = false;
+    this.adminSearchOpen = false;
     this.languageMenuOpen = !this.languageMenuOpen;
   }
 
@@ -153,6 +159,34 @@ export class TopbarComponent implements OnInit, OnDestroy {
         this.notifHub.unreadCount$.next(0);
       },
     });
+  }
+
+  onAdminSearchInput(query: string): void {
+    this.adminSearchQuery = query;
+    const normalized = this.normalizeAdminSearch(query);
+    if (!normalized) {
+      this.adminSearchResults = [];
+      this.adminSearchOpen = false;
+      return;
+    }
+
+    this.notifOpen = false;
+    this.languageMenuOpen = false;
+    this.adminSearchResults = this.buildAdminSearchResults(normalized);
+    this.adminSearchOpen = this.adminSearchResults.length > 0;
+  }
+
+  clearAdminSearch(): void {
+    this.adminSearchQuery = '';
+    this.adminSearchResults = [];
+    this.adminSearchOpen = false;
+  }
+
+  openAdminSearchResult(result: AdminSearchSuggestion): void {
+    this.adminSearchOpen = false;
+    this.adminSearchQuery = '';
+    this.adminSearchResults = [];
+    void this.router.navigate([result.url], { queryParams: result.queryParams ?? undefined });
   }
 
   private readonly titleMap: Record<string, { title: string; sub: string }> = {
@@ -302,4 +336,147 @@ export class TopbarComponent implements OnInit, OnDestroy {
         return null;
     }
   }
+
+  private buildAdminSearchResults(query: string): AdminSearchSuggestion[] {
+    const role = this.auth.currentUser?.role ?? '';
+    const canSeeSuperAdmin = role === 'superadmin';
+    const catalog: AdminSearchSuggestion[] = [
+      {
+        title: 'Dashboard',
+        subtitle: 'Pregled platforme, brojevi, nedavne aktivnosti',
+        url: '/admin/dashboard',
+        intent: 'Pregled sistema',
+        keywords: ['dashboard', 'home', 'statistika', 'pregled', 'analytics', 'analitika'],
+      },
+      {
+        title: 'Destinacije i lokacije',
+        subtitle: 'Objave, objekti, eventi, filtriranje po regionu i tipu',
+        url: '/admin/lokacije',
+        intent: 'Upravljanje sadrzajem',
+        keywords: ['lokacije', 'destinacije', 'objave', 'posts', 'objects', 'plaza', 'restoran', 'hotel', 'event', 'mapa'],
+      },
+      {
+        title: 'Recenzije na cekanju',
+        subtitle: 'Moderacija komentara i ocena turista',
+        url: '/admin/reviews',
+        queryParams: { status: 'PENDING' },
+        intent: 'Moderacija',
+        keywords: ['recenzije', 'reviews', 'pending', 'cekanju', 'odobri', 'odbij', 'komentari', 'rating'],
+      },
+      {
+        title: 'Rute',
+        subtitle: 'Kreiranje i uredjivanje turistickih ruta',
+        url: '/admin/routes-management',
+        intent: 'Planiranje ruta',
+        keywords: ['rute', 'routes', 'itinerary', 'ruta', 'stajalista', 'waypoints'],
+      },
+      {
+        title: 'Aktivnosti i tagovi',
+        subtitle: 'Kategorije, aktivnosti i oznake za preporuke',
+        url: '/admin/aktivnosti',
+        intent: 'Katalog aktivnosti',
+        keywords: ['aktivnosti', 'activity', 'tag', 'tags', 'kategorije', 'interesovanja'],
+      },
+      {
+        title: 'Interaktivna mapa',
+        subtitle: 'Vizuelni pregled destinacija i lokacija',
+        url: '/admin/map-admin',
+        intent: 'Mapa',
+        keywords: ['mapa', 'map', 'geografija', 'koordinate', 'region'],
+      },
+      {
+        title: 'Turisti',
+        subtitle: 'Korisnicki nalozi turista i detalji naloga',
+        url: '/admin/turisti',
+        intent: 'Korisnici',
+        keywords: ['turisti', 'tourists', 'korisnici', 'nalog', 'account'],
+      },
+      {
+        title: 'Moj profil',
+        subtitle: 'Licni podaci i podesavanja admin naloga',
+        url: '/admin/profile',
+        intent: 'Nalog',
+        keywords: ['profil', 'profile', 'moj nalog', 'settings', 'podesavanja'],
+      },
+    ];
+
+    if (canSeeSuperAdmin) {
+      catalog.push(
+        {
+          title: 'Zahtevi za registraciju',
+          subtitle: 'Odobravanje i odbijanje novih admin naloga',
+          url: '/admin/zahtevi',
+          intent: 'Superadmin tok',
+          keywords: ['zahtevi', 'registracija', 'admin request', 'new registration', 'odobravanje', 'pending admins'],
+        },
+        {
+          title: 'Admin korisnici',
+          subtitle: 'Uloge, pristup i administratori',
+          url: '/admin/users',
+          intent: 'Administracija',
+          keywords: ['admini', 'users', 'korisnici', 'uloge', 'roles', 'permission', 'dozvole'],
+        },
+        {
+          title: 'Dozvole',
+          subtitle: 'Pregled i upravljanje permisijama',
+          url: '/admin/permissions',
+          intent: 'Kontrola pristupa',
+          keywords: ['dozvole', 'permissions', 'role', 'access', 'pristup'],
+        },
+      );
+    }
+
+    return catalog
+      .map(item => ({ item, score: this.scoreAdminSearchItem(item, query) }))
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ item }) => item)
+      .slice(0, 6);
+  }
+
+  private scoreAdminSearchItem(item: AdminSearchSuggestion, query: string): number {
+    const terms = query.split(/\s+/).filter(Boolean);
+    const haystack = this.normalizeAdminSearch([
+      item.title,
+      item.subtitle,
+      item.intent,
+      ...item.keywords,
+    ].join(' '));
+
+    let score = 0;
+    for (const term of terms) {
+      if (this.normalizeAdminSearch(item.title).startsWith(term)) score += 35;
+      if (haystack.split(/\s+/).some(part => part.startsWith(term))) score += 18;
+      if (haystack.includes(term)) score += 10;
+    }
+
+    if (query.includes('pending') || query.includes('cekanj') || query.includes('odob')) {
+      if (item.url.includes('reviews') || item.url.includes('zahtevi')) score += 12;
+    }
+
+    if (query.includes('map') || query.includes('mapa')) {
+      if (item.url.includes('map-admin') || item.url.includes('lokacije')) score += 10;
+    }
+
+    return score;
+  }
+
+  private normalizeAdminSearch(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+}
+
+interface AdminSearchSuggestion {
+  title: string;
+  subtitle: string;
+  url: string;
+  intent: string;
+  keywords: string[];
+  queryParams?: Record<string, string>;
 }

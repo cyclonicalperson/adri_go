@@ -13,6 +13,42 @@
   </div>
 
   <div class="right">
+    <div class="admin-command-search">
+      <span class="admin-search-icon">&#128269;</span>
+      <input
+        class="admin-search-input"
+        type="text"
+        placeholder="Pretrazi admin..."
+        [(ngModel)]="adminSearchQuery"
+        (ngModelChange)="onAdminSearchInput($event)"
+        (focus)="adminSearchOpen = adminSearchResults.length > 0"
+        (keydown.escape)="clearAdminSearch()"
+        autocomplete="off" />
+      @if (adminSearchQuery) {
+      <button class="admin-search-clear"
+              type="button"
+              aria-label="Ocisti pretragu"
+              (click)="clearAdminSearch()">
+        &#10005;
+      </button>
+      }
+
+      @if (adminSearchOpen) {
+      <div class="notif-backdrop" (click)="adminSearchOpen = false"></div>
+      <div class="admin-search-panel">
+        @for (result of adminSearchResults; track result.url + result.title) {
+        <button class="admin-search-result"
+                type="button"
+                (click)="openAdminSearchResult(result)">
+          <span class="admin-search-result-intent">{{ result.intent }}</span>
+          <strong>{{ result.title }}</strong>
+          <span>{{ result.subtitle }}</span>
+        </button>
+        }
+      </div>
+      }
+    </div>
+
     <div class="lang-switch" data-no-translate="true">
       <button class="lang-btn"
               type="button"

@@ -77,6 +77,123 @@
   position: relative; // anchor for notif-panel
 }
 
+.admin-command-search {
+  position: relative;
+  width: min(340px, 34vw);
+  height: 38px;
+  border: 1px solid $gray-200;
+  border-radius: 10px;
+  background: $white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  transition: border-color .15s, box-shadow .15s;
+
+  &:focus-within {
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, .12);
+  }
+}
+
+.admin-search-icon {
+  color: $gray-400;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.admin-search-input {
+  border: none;
+  outline: none;
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 600;
+  color: $gray-700;
+  background: transparent;
+
+  &::placeholder {
+    color: $gray-400;
+    font-weight: 600;
+  }
+}
+
+.admin-search-clear {
+  border: none;
+  background: transparent;
+  color: $gray-400;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: $danger;
+    background: #fee2e2;
+  }
+}
+
+.admin-search-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: min(420px, 88vw);
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: $radius-lg;
+  box-shadow: 0 12px 40px rgba(0,0,0,.12);
+  z-index: 150;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.admin-search-result {
+  border: none;
+  background: $white;
+  text-align: left;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: $font-sans;
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+
+  &:hover {
+    background: $surface-green;
+  }
+
+  strong {
+    font-size: 13px;
+    color: $gray-900;
+  }
+
+  span {
+    font-size: 12px;
+    color: $gray-500;
+    line-height: 1.35;
+  }
+}
+
+.admin-search-result-intent {
+  width: fit-content;
+  border-radius: 999px;
+  background: $gray-100;
+  color: $primary-dark !important;
+  padding: 3px 7px;
+  font-size: 10px !important;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
 .lang-switch {
   position: relative;
 }
@@ -566,6 +683,10 @@
     display: none;
   }
 
+  .admin-command-search {
+    width: min(220px, 42vw);
+  }
+
 
   // Notification panel: full-width on mobile
   .notif-panel {
@@ -586,6 +707,14 @@
     top: 56px;
     right: 16px;
     left: 16px;
+    width: auto;
+  }
+
+  .admin-search-panel {
+    position: fixed;
+    top: 56px;
+    left: 12px;
+    right: 12px;
     width: auto;
   }
 }
