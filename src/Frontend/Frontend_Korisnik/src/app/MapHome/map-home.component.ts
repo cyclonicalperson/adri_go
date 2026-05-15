@@ -1073,6 +1073,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   stopNavigation(): void {
     this.isNavigating = false;
     this.navigationSteps = [];
+    this.navigationRouteGeometry = [];
     this.navFollowMode = true;
     this.navMapRotation = 0;
     if (this.navUserMarkerEl) {
@@ -1093,6 +1094,70 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.applyMapRotation(0, '0.4s ease');
 
     this.cdr.detectChanges();
+  }
+
+  onNavigationArrived(): void {
+    this.navFollowMode = false;
+    this.clearNavRefollowTimer();
+    void this.releaseScreenWakeLock();
+    this.setNavigationMapLock(false);
+    this.applyMapRotation(0, '0.4s ease');
+    this.cdr.detectChanges();
+  }
+
+  private setNavigationMapLock(locked: boolean): void {
+    if (!this.map) return;
+
+    const mapAny = this.map as any;
+    if (locked) {
+      this.previousNavigationZoomOptions ??= {
+        scrollWheelZoom: this.map.options.scrollWheelZoom,
+        doubleClickZoom: this.map.options.doubleClickZoom,
+        touchZoom: this.map.options.touchZoom,
+      };
+
+      this.map.scrollWheelZoom.disable();
+      this.map.doubleClickZoom.disable();
+      mapAny.touchZoom?.disable?.();
+      return;
+    }
+
+    if (this.previousNavigationZoomOptions?.scrollWheelZoom !== false) {
+      this.map.scrollWheelZoom.enable();
+    }
+    if (this.previousNavigationZoomOptions?.doubleClickZoom !== false) {
+      this.map.doubleClickZoom.enable();
+    }
+    if (this.previousNavigationZoomOptions?.touchZoom !== false) {
+      mapAny.touchZoom?.enable?.();
+    }
+    this.previousNavigationZoomOptions = null;
+  }
+
+  private async requestScreenWakeLock(): Promise<void> {
+    if (this.wakeLock || document.visibilityState !== 'visible') return;
+
+    const wakeLock = (navigator as any).wakeLock;
+    if (!wakeLock?.request) return;
+
+    try {
+      this.wakeLock = await wakeLock.request('screen');
+      this.wakeLock?.addEventListener?.('release', () => {
+        this.wakeLock = null;
+      });
+    } catch {
+      this.wakeLock = null;
+    }
+  }
+
+  private async releaseScreenWakeLock(): Promise<void> {
+    const lock = this.wakeLock;
+    this.wakeLock = null;
+    try {
+      await lock?.release?.();
+    } catch {
+      // Some browsers revoke the lock before explicit release.
+    }
   }
 
   onNavigationPositionUpdated(position: [number, number]): void {
@@ -1880,7 +1945,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.userPosition = [position.lat, position.lng];
     if (fly) {
-      this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
+      this.map?.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
     }
   }
 
@@ -1954,8 +2019,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchResults = [];
       return;
     }
-
-    const normalized = query.toLowerCase().trim();
 
     this.searchResults = this.locationsList
       .filter(loc =>

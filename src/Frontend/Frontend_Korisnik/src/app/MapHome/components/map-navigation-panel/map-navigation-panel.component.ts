@@ -167,6 +167,19 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     this.stopHeadingWatch();
   }
 
+  private resetNavigationProgress(): void {
+    this.currentStepIndex = 0;
+    this.distanceToNextM = 0;
+    this.remainingDistanceKm = this.totalDistanceKm;
+    this.remainingMin = this.totalDurationMin;
+    this.arrived = false;
+    this.offRouteTicks = 0;
+    this.isRerouting = false;
+    this.lastRerouteAt = 0;
+    this.routeTrailUpdated.emit(this.routeGeometry);
+    this.cdr.markForCheck();
+  }
+
   formatDistance(meters: number): string {
     if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
     return `${Math.round(meters)} m`;

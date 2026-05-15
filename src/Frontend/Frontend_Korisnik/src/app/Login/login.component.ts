@@ -127,6 +127,22 @@ export class LoginComponent implements OnInit {
 
   // ─── Social login (shared) ────────────────────────────────────────────────
 
+  private localizedResendMessage(type: 'success' | 'error'): string {
+    const lang = localStorage.getItem('adrigo_user_language') || localStorage.getItem('site_language') || 'en';
+    const messages: Record<string, Record<'success' | 'error', string>> = {
+      en: {
+        success: 'Verification email sent. Please check your inbox.',
+        error: 'Could not resend the verification email. Please try again.',
+      },
+      sr: {
+        success: 'Verifikacioni email je poslat. Provjerite inbox.',
+        error: 'Nije moguce poslati verifikacioni email. Pokusajte ponovo.',
+      },
+    };
+
+    return (messages[lang] ?? messages['en'])[type];
+  }
+
   /** Called after Google returns a credential ID token. */
   private handleSocialLogin(
     provider: 'google' | 'apple',
