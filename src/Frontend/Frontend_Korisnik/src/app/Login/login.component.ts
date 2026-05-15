@@ -114,59 +114,15 @@ export class LoginComponent implements OnInit {
     this.authService.resendVerification(this.verificationPendingEmail).subscribe({
       next: res => {
         this.isResendingVerification = false;
-        this.resendMessage = this.localizedResendMessage('success');
+        this.resendMessage = res.message || 'A new verification email has been sent.';
         this.cdr.detectChanges();
       },
       error: err => {
         this.isResendingVerification = false;
-        this.resendError = this.localizedResendMessage('error');
+        this.resendError = err?.error?.message || 'Could not resend the verification email.';
         this.cdr.detectChanges();
       },
     });
-  }
-
-  private localizedResendMessage(kind: 'success' | 'error'): string {
-    const lang = (
-      localStorage.getItem('adrigo_user_language')
-      || localStorage.getItem('site_language')
-      || navigator.language
-      || 'en'
-    ).slice(0, 2).toLowerCase();
-    const messages: Record<string, Record<'success' | 'error', string>> = {
-      en: {
-        success: 'A new verification email has been sent.',
-        error: 'Could not resend the verification email.',
-      },
-      sr: {
-        success: 'Novi verifikacioni mejl je poslat.',
-        error: 'Verifikacioni mejl nije mogao biti poslat.',
-      },
-      de: {
-        success: 'Eine neue Bestatigungs-E-Mail wurde gesendet.',
-        error: 'Die Bestatigungs-E-Mail konnte nicht erneut gesendet werden.',
-      },
-      fr: {
-        success: 'Un nouvel e-mail de verification a ete envoye.',
-        error: "Impossible de renvoyer l'e-mail de verification.",
-      },
-      it: {
-        success: 'Una nuova email di verifica e stata inviata.',
-        error: "Impossibile inviare di nuovo l'email di verifica.",
-      },
-      es: {
-        success: 'Se ha enviado un nuevo correo de verificacion.',
-        error: 'No se pudo reenviar el correo de verificacion.',
-      },
-      nl: {
-        success: 'Er is een nieuwe verificatie-e-mail verzonden.',
-        error: 'De verificatie-e-mail kon niet opnieuw worden verzonden.',
-      },
-      ru: {
-        success: 'Новое письмо для подтверждения отправлено.',
-        error: 'Не удалось повторно отправить письмо для подтверждения.',
-      },
-    };
-    return (messages[lang] ?? messages['en'])[kind];
   }
 
   // ─── Social login (shared) ────────────────────────────────────────────────

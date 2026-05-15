@@ -50,7 +50,6 @@ namespace TouristGuide.Api.Data
 
         // Analitika
         public DbSet<AppVisit> AppVisits { get; set; }
-        public DbSet<TouristLocationSample> TouristLocationSamples { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -451,21 +450,6 @@ namespace TouristGuide.Api.Data
                 .HasOne(m => m.Tourist)
                 .WithMany(t => t.MailingListEntries)
                 .HasForeignKey(m => m.TouristId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<TouristLocationSample>()
-                .HasIndex(x => new { x.RecordedAt, x.RegionId });
-
-            modelBuilder.Entity<TouristLocationSample>()
-                .HasOne(x => x.Tourist)
-                .WithMany()
-                .HasForeignKey(x => x.TouristId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<TouristLocationSample>()
-                .HasOne(x => x.Region)
-                .WithMany()
-                .HasForeignKey(x => x.RegionId)
                 .OnDelete(DeleteBehavior.SetNull);
         }
     }

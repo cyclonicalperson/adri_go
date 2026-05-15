@@ -1,10 +1,14 @@
 <div class="recommended-panel">
   <div class="recommended-header">
     <div>
-      <span class="recommended-title">Near by</span>
+      <span class="recommended-title">Recommended</span>
       <span class="recommended-subtitle">
-        Closest locations around your current map context
+        {{ activeRecommendationTab === 'personalized' ? 'Personalized for your interests and travel history' : 'Best rated and strongest traveler signals' }}
       </span>
+    </div>
+    <div class="recommendation-tabs" *ngIf="hasPersonalizedRecommendations">
+      <button type="button" [class.active]="activeRecommendationTab === 'personalized'" (click)="tabSelected.emit('personalized')">For you</button>
+      <button type="button" [class.active]="activeRecommendationTab === 'global'" (click)="tabSelected.emit('global')">Global</button>
     </div>
   </div>
 

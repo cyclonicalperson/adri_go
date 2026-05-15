@@ -79,16 +79,7 @@ namespace TouristGuide.Api.Controllers
 
             // Search filter
             if (!string.IsNullOrWhiteSpace(search))
-            {
-                var terms = SplitSearchTerms(search);
-                query = terms.Count > 0
-                    ? ApplyPostSearchTerms(query!, terms)
-                    : query!.Where(p =>
-                        p.Title.Contains(search) ||
-                        (p.Description != null && p.Description.Contains(search)) ||
-                        (p.Address != null && p.Address.Contains(search)) ||
-                        (p.Region != null && p.Region.Name.Contains(search)));
-            }
+                query = query!.Where(p => p.Title.Contains(search) || (p.Description != null && p.Description.Contains(search)));
 
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize, sortBy, sortDir));
         }
@@ -384,12 +375,8 @@ namespace TouristGuide.Api.Controllers
             _context.Posts.Add(post);
             await _context.SaveChangesAsync();
 
-            if (dto.TagIds is not null)
-                await ReplacePostTagsAsync(post.Id, dto.TagIds);
-
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
-            await _context.Entry(post).Collection(p => p.PostTags).Query().Include(pt => pt.Tag).LoadAsync();
 
             return CreatedAtAction(
                 nameof(GetById),
@@ -510,7 +497,17 @@ namespace TouristGuide.Api.Controllers
 
             // Ažuriranje tag veza
             if (dto.TagIds is not null)
-                await ReplacePostTagsAsync(id, dto.TagIds);
+            {
+                var existingTags = await _context.PostTags.Where(pt => pt.PostId == id).ToListAsync();
+                _context.PostTags.RemoveRange(existingTags);
+
+                foreach (var tagId in dto.TagIds.Distinct())
+                {
+                    var tagExists = await _context.Tags.AnyAsync(t => t.Id == tagId);
+                    if (tagExists)
+                        _context.PostTags.Add(new PostTag { PostId = id, TagId = tagId });
+                }
+            }
 
             post.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
@@ -796,7 +793,7 @@ namespace TouristGuide.Api.Controllers
         }
 
         private static int NormalizePageSize(int pageSize) =>
-            pageSize < 1 ? 20 : Math.Min(pageSize, 500);
+            pageSize < 1 || pageSize > 100 ? 20 : pageSize;
 
         private static double ToRadians(double value) => value * Math.PI / 180;
 
@@ -844,29 +841,6 @@ namespace TouristGuide.Api.Controllers
                 return term.Replace("đ", "dj", StringComparison.OrdinalIgnoreCase);
 
             return null;
-        }
-
-        private async Task ReplacePostTagsAsync(uint postId, IEnumerable<uint> tagIds)
-        {
-            var normalizedIds = tagIds
-                .Where(id => id > 0)
-                .Distinct()
-                .ToList();
-
-            var validTagIds = await _context.Tags
-                .Where(t => normalizedIds.Contains(t.Id))
-                .Select(t => t.Id)
-                .ToListAsync();
-
-            var existingTags = await _context.PostTags
-                .Where(pt => pt.PostId == postId)
-                .ToListAsync();
-
-            _context.PostTags.RemoveRange(existingTags);
-            foreach (var tagId in validTagIds)
-                _context.PostTags.Add(new PostTag { PostId = postId, TagId = tagId });
-
-            await _context.SaveChangesAsync();
         }
 
         private static List<string> SplitSearchTerms(string value) =>

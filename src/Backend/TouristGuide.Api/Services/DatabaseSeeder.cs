@@ -33,7 +33,6 @@ namespace TouristGuide.Api.Services
             await SeedRoutesAsync();
             await SeedInteractionsAsync();
             await SeedPostViewsAsync();
-            await SeedTouristLocationSamplesAsync();
             await SeedReviewsAsync();
             await SeedNotificationsAsync();
             await SeedRegistrationRequestsAsync();
@@ -230,12 +229,10 @@ namespace TouristGuide.Api.Services
         // ────────────────────────────────────────────────────────────────────
         private async Task SeedRegionsAsync()
         {
-            var hasRegions = await _db.Regions.AnyAsync();
+            if (await _db.Regions.AnyAsync()) return;
             _logger.LogInformation("[Seed] Regije...");
 
-            if (!hasRegions)
-            {
-                _db.Regions.AddRange(
+            _db.Regions.AddRange(
                 new Region { Name = "Žabljak", Type = "city", Description = "Planinski grad na Durmitoru, najviši grad na Balkanu.", Country = "Montenegro", Lat = 43.1556m, Lng = 19.1225m, CoverImage = "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817714/zabljak1_vuzqhy.jpg" },
                 new Region { Name = "Durmitor", Type = "national_park", Description = "Nacionalni park UNESCO svjetske baštine sa 18 ledničkih jezera.", Country = "Montenegro", Lat = 43.1500m, Lng = 19.0167m, CoverImage = "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817710/durmitor_gmcxfb.webp" },
                 new Region { Name = "Crno jezero", Type = "lake", Description = "Najpoznatije jezero Durmitora.", Country = "Montenegro", Lat = 43.1378m, Lng = 19.0644m, CoverImage = "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776794182/crnojezero1_zzmhcv.jpg" },
@@ -248,45 +245,8 @@ namespace TouristGuide.Api.Services
                 new Region { Name = "Podgorica", Type = "city", Description = "Glavni grad Crne Gore.", Country = "Montenegro", Lat = 42.4304m, Lng = 19.2594m, CoverImage = "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817712/podgorica_eal9hm.webp" },
                 new Region { Name = "Skadarsko jezero", Type = "lake", Description = "Najveće jezero na Balkanu, raj za ptice.", Country = "Montenegro", Lat = 42.1667m, Lng = 19.2833m, CoverImage = "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817712/skadar_znw1cm.jpg" },
                 new Region { Name = "Cetinje", Type = "city", Description = "Stara prijestolnica Crne Gore.", Country = "Montenegro", Lat = 42.3906m, Lng = 18.9228m, CoverImage = "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817710/cetinje_nkzcot.jpg" }
-                );
-                await _db.SaveChangesAsync();
-            }
-
-            var existingNames = await _db.Regions
-                .Select(r => r.Name.ToLower())
-                .ToListAsync();
-
-            var allMontenegroRegions = new[]
-            {
-                new Region { Name = "Andrijevica", Type = "city", Description = "Sjeveroistočna opština u dolini Lima.", Country = "Montenegro", Lat = 42.7339m, Lng = 19.7919m },
-                new Region { Name = "Bar", Type = "city", Description = "Primorski grad i najveća crnogorska luka.", Country = "Montenegro", Lat = 42.0931m, Lng = 19.1003m },
-                new Region { Name = "Berane", Type = "city", Description = "Centar Polimlja i važna tačka sjevera.", Country = "Montenegro", Lat = 42.8425m, Lng = 19.8733m },
-                new Region { Name = "Bijelo Polje", Type = "city", Description = "Grad na sjeveru Crne Gore uz rijeku Lim.", Country = "Montenegro", Lat = 43.0383m, Lng = 19.7476m },
-                new Region { Name = "Danilovgrad", Type = "city", Description = "Grad u Bjelopavlićkoj ravnici.", Country = "Montenegro", Lat = 42.5538m, Lng = 19.1461m },
-                new Region { Name = "Gusinje", Type = "city", Description = "Planinski kraj pod Prokletijama.", Country = "Montenegro", Lat = 42.5619m, Lng = 19.8339m },
-                new Region { Name = "Kolašin", Type = "city", Description = "Planinski turistički centar Bjelasice.", Country = "Montenegro", Lat = 42.8242m, Lng = 19.5225m },
-                new Region { Name = "Mojkovac", Type = "city", Description = "Grad između Bjelasice i Sinjajevine.", Country = "Montenegro", Lat = 42.9604m, Lng = 19.5833m },
-                new Region { Name = "Nikšić", Type = "city", Description = "Drugi najveći grad Crne Gore.", Country = "Montenegro", Lat = 42.7731m, Lng = 18.9445m },
-                new Region { Name = "Petnjica", Type = "city", Description = "Bihorski kraj bogat prirodom i tradicijom.", Country = "Montenegro", Lat = 42.9089m, Lng = 19.9644m },
-                new Region { Name = "Plav", Type = "city", Description = "Planinsko-jezerski kraj ispod Prokletija.", Country = "Montenegro", Lat = 42.5969m, Lng = 19.9456m },
-                new Region { Name = "Pljevlja", Type = "city", Description = "Sjeverni grad sa bogatom istorijom.", Country = "Montenegro", Lat = 43.3567m, Lng = 19.3584m },
-                new Region { Name = "Plužine", Type = "city", Description = "Pivski kraj i kapija kanjona Pive.", Country = "Montenegro", Lat = 43.1528m, Lng = 18.8394m },
-                new Region { Name = "Rožaje", Type = "city", Description = "Grad na sjeveroistoku okružen planinama.", Country = "Montenegro", Lat = 42.8325m, Lng = 20.1667m },
-                new Region { Name = "Šavnik", Type = "city", Description = "Mala opština u srcu crnogorskih planina.", Country = "Montenegro", Lat = 42.9564m, Lng = 19.0967m },
-                new Region { Name = "Tivat", Type = "city", Description = "Primorski grad u Bokokotorskom zalivu.", Country = "Montenegro", Lat = 42.4319m, Lng = 18.7064m },
-                new Region { Name = "Tuzi", Type = "city", Description = "Opština u Zeti i Malesiji.", Country = "Montenegro", Lat = 42.3656m, Lng = 19.3314m },
-                new Region { Name = "Zeta", Type = "city", Description = "Ravničarska opština između Podgorice i Skadarskog jezera.", Country = "Montenegro", Lat = 42.3167m, Lng = 19.2000m }
-            };
-
-            var missingRegions = allMontenegroRegions
-                .Where(r => !existingNames.Contains(r.Name.ToLower()))
-                .ToList();
-
-            if (missingRegions.Count > 0)
-            {
-                _db.Regions.AddRange(missingRegions);
-                await _db.SaveChangesAsync();
-            }
+            );
+            await _db.SaveChangesAsync();
         }
 
         // ────────────────────────────────────────────────────────────────────
@@ -1048,47 +1008,6 @@ namespace TouristGuide.Api.Services
             await _db.SaveChangesAsync();
         }
 
-        private async Task SeedTouristLocationSamplesAsync()
-        {
-            if (await _db.TouristLocationSamples.AnyAsync()) return;
-            _logger.LogInformation("[Seed] Uzorci lokacija turista...");
-
-            var now = DateTime.UtcNow;
-            var regions = await _db.Regions
-                .Where(r => r.IsActive && r.Lat != null && r.Lng != null)
-                .OrderBy(r => r.Id)
-                .ToListAsync();
-
-            var tourists = await _db.Tourists
-                .OrderBy(t => t.Id)
-                .Select(t => t.Id)
-                .ToListAsync();
-
-            if (regions.Count == 0) return;
-
-            var sampleIndex = 0;
-            foreach (var region in regions)
-            {
-                var sampleCount = 2 + (int)(region.Id % 5);
-                for (var i = 0; i < sampleCount; i++)
-                {
-                    var touristId = tourists.Count == 0 ? (uint?)null : tourists[sampleIndex % tourists.Count];
-                    _db.TouristLocationSamples.Add(new TouristLocationSample
-                    {
-                        TouristId = touristId,
-                        SessionId = $"seed-{region.Id}-{i}",
-                        RegionId = region.Id,
-                        Lat = region.Lat!.Value,
-                        Lng = region.Lng!.Value,
-                        RecordedAt = now.AddDays(-(sampleIndex % 30)).AddHours(-(i * 3))
-                    });
-                    sampleIndex++;
-                }
-            }
-
-            await _db.SaveChangesAsync();
-        }
-
         // ────────────────────────────────────────────────────────────────────
         //  RECENZIJE
         // ────────────────────────────────────────────────────────────────────
@@ -1189,9 +1108,6 @@ namespace TouristGuide.Api.Services
 
             foreach (var doc in docs)
             {
-                if (Uri.TryCreate(doc.FilePath, UriKind.Absolute, out _))
-                    continue;
-
                 var rel = doc.FilePath.TrimStart('/').TrimStart('\\').Replace("\\", "/");
                 var abs = Path.Combine(_env.ContentRootPath, "images",
                     rel.Replace("/", Path.DirectorySeparatorChar.ToString()));
@@ -1212,98 +1128,71 @@ namespace TouristGuide.Api.Services
 
         private async Task SeedRegistrationRequestsAsync()
         {
-            if (!await _db.AdminRegistrationRequests.AnyAsync())
-            {
-                _logger.LogInformation("[Seed] Zahtjevi za registraciju...");
+            if (await _db.AdminRegistrationRequests.AnyAsync()) return;
+            _logger.LogInformation("[Seed] Zahtjevi za registraciju...");
 
-                string hash = BCrypt.Net.BCrypt.HashPassword("Admin123!", workFactor: 12);
+            string hash = BCrypt.Net.BCrypt.HashPassword("Admin123!", workFactor: 12);
 
-                _db.AdminRegistrationRequests.AddRange(
-                    new AdminRegistrationRequest
-                    {
-                        FullName = "Milica Stanković",
-                        Email = "milica.s@gmail.com",
-                        PasswordHash = hash,
-                        IsOrganization = false,
-                        IsIndividual = true,
-                        Status = "pending",
-                        SubmittedAt = DateTime.UtcNow.AddDays(-2)
-                    },
-                    new AdminRegistrationRequest
-                    {
-                        FullName = "Boris Nikolić",
-                        Email = "boris@adventureme.com",
-                        PasswordHash = hash,
-                        IsOrganization = true,
-                        IsIndividual = false,
-                        OrganizationName = "Adventure Montenegro",
-                        OrganizationEmail = "info@adventureme.com",
-                        Status = "pending",
-                        SubmittedAt = DateTime.UtcNow.AddDays(-1)
-                    },
-                    new AdminRegistrationRequest
-                    {
-                        FullName = "Tijana Jovanović",
-                        Email = "tijana.j@hercegnovi.me",
-                        PasswordHash = hash,
-                        IsOrganization = true,
-                        IsIndividual = false,
-                        OrganizationName = "TO Herceg Novi",
-                        OrganizationEmail = "info@hercegnovi.me",
-                        Status = "pending",
-                        SubmittedAt = DateTime.UtcNow.AddDays(-3)
-                    }
-                );
-                await _db.SaveChangesAsync();
-            }
+            _db.AdminRegistrationRequests.AddRange(
+                new AdminRegistrationRequest
+                {
+                    FullName = "Milica Stanković",
+                    Email = "milica.s@gmail.com",
+                    PasswordHash = hash,
+                    IsOrganization = false,
+                    IsIndividual = true,
+                    Status = "pending",
+                    SubmittedAt = DateTime.UtcNow.AddDays(-2)
+                },
+                new AdminRegistrationRequest
+                {
+                    FullName = "Boris Nikolić",
+                    Email = "boris@adventureme.com",
+                    PasswordHash = hash,
+                    IsOrganization = true,
+                    IsIndividual = false,
+                    OrganizationName = "Adventure Montenegro",
+                    OrganizationEmail = "info@adventureme.com",
+                    Status = "pending",
+                    SubmittedAt = DateTime.UtcNow.AddDays(-1)
+                },
+                new AdminRegistrationRequest
+                {
+                    FullName = "Tijana Jovanović",
+                    Email = "tijana.j@hercegnovi.me",
+                    PasswordHash = hash,
+                    IsOrganization = true,
+                    IsIndividual = false,
+                    OrganizationName = "TO Herceg Novi",
+                    OrganizationEmail = "info@hercegnovi.me",
+                    Status = "pending",
+                    SubmittedAt = DateTime.UtcNow.AddDays(-3)
+                }
+            );
+            await _db.SaveChangesAsync();
 
-            // Verification documents — seed samples point to hosted public document images.
+            // Verification documents — files are handled by EnsureVerificationFilesAsync at startup
             var requests = await _db.AdminRegistrationRequests.OrderBy(r => r.Id).ToListAsync();
-            if (requests.Count < 3) return;
 
-            (string url, string fileName, string fileType)[] docMeta =
+            (string relPath, string fileName, string fileType)[] docMeta =
             [
-                ("https://upload.wikimedia.org/wikipedia/commons/a/ab/Identity_card_of_the_State_of_Califorinia%2C_sample_%282010%29.jpg", "licna_karta_primjer.jpg", "jpg"),
-                ("https://commons.wikimedia.org/wiki/Special:Redirect/file/Certificate_of_incorporation.png", "rjesenje_o_registraciji_primjer.png", "png"),
-                ("https://commons.wikimedia.org/wiki/Special:Redirect/file/Sec-cert-template.png", "potvrda_organizacije_primjer.png", "png"),
+                ($"verification-documents/{requests[0].Id}-milica_licna.jpg",   "licna_karta.jpg",             "jpg"),
+                ($"verification-documents/{requests[1].Id}-boris_registracija.pdf", "rjesenje_o_registraciji.pdf", "pdf"),
+                ($"verification-documents/{requests[2].Id}-tijana_potvrda.png", "potvrda_org.png",             "png"),
             ];
 
-            for (var i = 0; i < 3; i++)
-            {
-                var requestId = requests[i].Id;
-                if (!await _db.VerificationDocuments.AnyAsync(d => d.RegistrationRequestId == requestId))
-                {
-                    _db.VerificationDocuments.Add(new VerificationDocument
-                    {
-                        RegistrationRequestId = requestId,
-                        FilePath = docMeta[i].url,
-                        FileName = docMeta[i].fileName,
-                        FileType = docMeta[i].fileType,
-                        FileSizeKb = 1
-                    });
-                }
-                else
-                {
-                    var existingDoc = await _db.VerificationDocuments
-                        .FirstAsync(d => d.RegistrationRequestId == requestId);
-                    if (!Uri.TryCreate(existingDoc.FilePath, UriKind.Absolute, out var currentUri) || currentUri.IsLoopback)
-                    {
-                        existingDoc.FilePath = docMeta[i].url;
-                        existingDoc.FileName = docMeta[i].fileName;
-                        existingDoc.FileType = docMeta[i].fileType;
-                        existingDoc.FileSizeKb = 1;
-                    }
-                }
-            }
+            _db.VerificationDocuments.AddRange(
+                new VerificationDocument { RegistrationRequestId = requests[0].Id, FilePath = docMeta[0].relPath, FileName = docMeta[0].fileName, FileType = docMeta[0].fileType, FileSizeKb = 1 },
+                new VerificationDocument { RegistrationRequestId = requests[1].Id, FilePath = docMeta[1].relPath, FileName = docMeta[1].fileName, FileType = docMeta[1].fileType, FileSizeKb = 1 },
+                new VerificationDocument { RegistrationRequestId = requests[2].Id, FilePath = docMeta[2].relPath, FileName = docMeta[2].fileName, FileType = docMeta[2].fileType, FileSizeKb = 1 }
+            );
 
             // Terms acceptances
-            var ips = new[] { "93.87.12.45", "178.220.45.11", "141.138.92.30" };
-            for (var i = 0; i < 3; i++)
-            {
-                var requestId = requests[i].Id;
-                if (!await _db.TermsAcceptances.AnyAsync(t => t.RegistrationRequestId == requestId))
-                    _db.TermsAcceptances.Add(new TermsAcceptance { RegistrationRequestId = requestId, TermsVersion = "1.0", IpAddress = ips[i] });
-            }
+            _db.TermsAcceptances.AddRange(
+                new TermsAcceptance { RegistrationRequestId = requests[0].Id, TermsVersion = "1.0", IpAddress = "93.87.12.45" },
+                new TermsAcceptance { RegistrationRequestId = requests[1].Id, TermsVersion = "1.0", IpAddress = "178.220.45.11" },
+                new TermsAcceptance { RegistrationRequestId = requests[2].Id, TermsVersion = "1.0", IpAddress = "141.138.92.30" }
+            );
             await _db.SaveChangesAsync();
         }
         private async Task SeedUserPermissionsAsync()
@@ -1353,34 +1242,20 @@ namespace TouristGuide.Api.Services
         }
         private async Task SeedAuditLogAsync()
         {
+            if (await _db.AdminAuditLogs.AnyAsync()) return;
             _logger.LogInformation("[Seed] Audit log...");
 
             var now = DateTime.UtcNow;
-            if (!await _db.AdminAuditLogs.AnyAsync())
-            {
-                _db.AdminAuditLogs.AddRange(
-                    new AdminAuditLog { AdminUserId = 1, PerformedBy = 1, Action = "approve", EntityType = "admin_registration_request", EntityId = 1, NewValue = """{"email":"ana.kovacevic@zabljak.travel","status":"approved"}""", PerformedAt = now.AddDays(-60) },
-                    new AdminAuditLog { AdminUserId = 1, PerformedBy = 1, Action = "approve", EntityType = "admin_registration_request", EntityId = 2, NewValue = """{"email":"nikola.djuric@npdurmitor.me","status":"approved"}""", PerformedAt = now.AddDays(-55) },
-                    new AdminAuditLog { AdminUserId = 1, PerformedBy = 1, Action = "suspend", EntityType = "admin_user", EntityId = 9, NewValue = """{"email":"dragan.lazovic@outdoorme.me","status":"suspended"}""", PerformedAt = now.AddDays(-10) },
-                    new AdminAuditLog { AdminUserId = 2, PerformedBy = 2, Action = "create", EntityType = "post", EntityId = 8, NewValue = """{"title":"Muzej Žabljaka","post_type":"cultural_site","status":"published"}""", PerformedAt = now.AddDays(-40) },
-                    new AdminAuditLog { AdminUserId = 3, PerformedBy = 3, Action = "create", EntityType = "route", EntityId = 1, NewValue = """{"name":"Staza oko Crnog jezera","difficulty":"easy"}""", PerformedAt = now.AddDays(-35) },
-                    new AdminAuditLog { AdminUserId = 4, PerformedBy = 4, Action = "create", EntityType = "post", EntityId = 18, NewValue = """{"title":"Durmitor Summer Fest 2025","post_type":"event"}""", PerformedAt = now.AddDays(-20) },
-                    new AdminAuditLog { AdminUserId = 7, PerformedBy = 7, Action = "create", EntityType = "post", EntityId = 3, NewValue = """{"title":"Hotel Avala Budva","post_type":"accommodation"}""", PerformedAt = now.AddDays(-15) },
-                    new AdminAuditLog { AdminUserId = 8, PerformedBy = 8, Action = "create", EntityType = "post", EntityId = 9, NewValue = """{"title":"Stari grad Kotor","post_type":"cultural_site"}""", PerformedAt = now.AddDays(-12) }
-                );
-            }
-
-            if (!await _db.AdminAuditLogs.AnyAsync(l => l.EntityType == "permission"))
-            {
-                var perms = await _db.AdminPermissions.ToDictionaryAsync(p => p.Code, p => p.Id);
-                _db.AdminAuditLogs.AddRange(
-                    new AdminAuditLog { AdminUserId = 2, PerformedBy = 1, Action = "grant", EntityType = "permission", EntityId = perms["manage_reviews"], NewValue = "manage_reviews", PerformedAt = now.AddHours(-5) },
-                    new AdminAuditLog { AdminUserId = 3, PerformedBy = 1, Action = "grant", EntityType = "permission", EntityId = perms["view_analytics"], NewValue = "view_analytics", PerformedAt = now.AddHours(-3) },
-                    new AdminAuditLog { AdminUserId = 7, PerformedBy = 1, Action = "grant", EntityType = "permission", EntityId = perms["create_club"], NewValue = "create_club", PerformedAt = now.AddHours(-2) },
-                    new AdminAuditLog { AdminUserId = 4, PerformedBy = 1, Action = "revoke", EntityType = "permission", EntityId = perms["create_shop"], OldValue = "create_shop", PerformedAt = now.AddMinutes(-45) }
-                );
-            }
-
+            _db.AdminAuditLogs.AddRange(
+                new AdminAuditLog { AdminUserId = 1, PerformedBy = 1, Action = "approve", EntityType = "admin_registration_request", EntityId = 1, NewValue = """{"email":"ana.kovacevic@zabljak.travel","status":"approved"}""", PerformedAt = now.AddDays(-60) },
+                new AdminAuditLog { AdminUserId = 1, PerformedBy = 1, Action = "approve", EntityType = "admin_registration_request", EntityId = 2, NewValue = """{"email":"nikola.djuric@npdurmitor.me","status":"approved"}""", PerformedAt = now.AddDays(-55) },
+                new AdminAuditLog { AdminUserId = 1, PerformedBy = 1, Action = "suspend", EntityType = "admin_user", EntityId = 9, NewValue = """{"email":"dragan.lazovic@outdoorme.me","status":"suspended"}""", PerformedAt = now.AddDays(-10) },
+                new AdminAuditLog { AdminUserId = 2, PerformedBy = 2, Action = "create", EntityType = "post", EntityId = 8, NewValue = """{"title":"Muzej Žabljaka","post_type":"cultural_site","status":"published"}""", PerformedAt = now.AddDays(-40) },
+                new AdminAuditLog { AdminUserId = 3, PerformedBy = 3, Action = "create", EntityType = "route", EntityId = 1, NewValue = """{"name":"Staza oko Crnog jezera","difficulty":"easy"}""", PerformedAt = now.AddDays(-35) },
+                new AdminAuditLog { AdminUserId = 4, PerformedBy = 4, Action = "create", EntityType = "post", EntityId = 18, NewValue = """{"title":"Durmitor Summer Fest 2025","post_type":"event"}""", PerformedAt = now.AddDays(-20) },
+                new AdminAuditLog { AdminUserId = 7, PerformedBy = 7, Action = "create", EntityType = "post", EntityId = 3, NewValue = """{"title":"Hotel Avala Budva","post_type":"accommodation"}""", PerformedAt = now.AddDays(-15) },
+                new AdminAuditLog { AdminUserId = 8, PerformedBy = 8, Action = "create", EntityType = "post", EntityId = 9, NewValue = """{"title":"Stari grad Kotor","post_type":"cultural_site"}""", PerformedAt = now.AddDays(-12) }
+            );
             await _db.SaveChangesAsync();
         }
         private async Task SeedTouristFavoritesAsync()

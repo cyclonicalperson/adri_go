@@ -16,11 +16,7 @@
     <div class="left-col">
 
       <div class="card identity-card">
-        <img class="avatar-large" [src]="user?.profileImage || 'assets/default-profile.svg'" alt="Profilna slika" />
-        <input #adminProfilePhoto type="file" accept="image/*" hidden (change)="onProfilePhotoSelected($event)">
-        <button class="btn-sec" type="button" (click)="adminProfilePhoto.click()" [disabled]="photoUploading">
-          {{ photoUploading ? 'Upload...' : 'Promeni sliku' }}
-        </button>
+        <div class="avatar-large">{{ initials }}</div>
         <div class="identity-name">{{ user?.fullName }}</div>
         <div class="identity-role">
           <span class="role-badge" [class]="roleBadgeClass">{{ roleLabel }}</span>

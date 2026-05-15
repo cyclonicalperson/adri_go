@@ -17,7 +17,6 @@ export class PersonalInfoComponent implements OnInit {
   userData: UserProfile | null = null;
   loading    = true;
   isSaving   = false;
-  isUploadingPhoto = false;
   editMode   = false;
   saveSuccess = false;
   saveError   = '';
@@ -117,8 +116,7 @@ export class PersonalInfoComponent implements OnInit {
       name:      this.form.fullName.trim(),
       bio:       this.form.bio.trim(),
       location:  this.form.location.trim(),
-      interests: [...this.selectedInterests],
-      profileImage: this.userData?.profilePic ?? null,
+      interests: [...this.selectedInterests]
     };
 
     this.userService.updateProfile(payload).subscribe({
@@ -129,13 +127,11 @@ export class PersonalInfoComponent implements OnInit {
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
-          this.userData.profilePic = updated.profilePic ?? this.userData.profilePic;
         }
         this.authService.updateCurrentTourist({
           name: updated.fullName || this.form.fullName,
           email: updated.emailOrPhone || this.form.emailOrPhone,
           language: updated.language || this.userData?.language,
-          profileImage: updated.profilePic ?? this.userData?.profilePic ?? null,
         });
         this.isSaving    = false;
         this.editMode    = false;
@@ -154,47 +150,5 @@ export class PersonalInfoComponent implements OnInit {
   getInitials(): string {
     if (!this.userData?.fullName) return '?';
     return this.userData.fullName.trim().charAt(0).toUpperCase();
-  }
-
-  onProfilePhotoSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file || this.isUploadingPhoto) return;
-
-    const previousProfilePic = this.userData?.profilePic;
-    this.isUploadingPhoto = true;
-    this.saveError = '';
-    this.userService.uploadProfileImage(file).subscribe({
-      next: (url) => {
-        if (this.userData) {
-          this.userData.profilePic = url;
-        }
-        this.userService.updateProfile({ profileImage: url }).subscribe({
-          next: (updated) => {
-            if (this.userData) {
-              this.userData.profilePic = updated.profilePic ?? url;
-            }
-            this.authService.updateCurrentTourist({ profileImage: this.userData?.profilePic ?? url });
-            this.isUploadingPhoto = false;
-            this.saveSuccess = true;
-            setTimeout(() => (this.saveSuccess = false), 2500);
-            this.cdr.detectChanges();
-          },
-          error: (err) => {
-            if (this.userData) {
-              this.userData.profilePic = previousProfilePic;
-            }
-            this.isUploadingPhoto = false;
-            this.saveError = err?.error?.message || 'Photo uploaded, but the profile could not be updated.';
-            this.cdr.detectChanges();
-          }
-        });
-      },
-      error: () => {
-        this.isUploadingPhoto = false;
-        this.saveError = 'Could not upload profile photo. Please try another image.';
-        this.cdr.detectChanges();
-      }
-    });
   }
 }

@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { environment } from '@env/environment';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { HeatPoint, MapComponent, MapMarker, MapPath } from '@shared/components/map/map.component';
@@ -41,13 +41,8 @@ export class MapAdminComponent implements OnInit {
   loading = true;
   showHeatmap = false;
   heatPoints: HeatPoint[] = [];
-  focusMarkerId: number | null = null;
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private activatedRoute: ActivatedRoute,
-  ) {}
+  constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit(): void {
     this.loadData();
@@ -118,7 +113,6 @@ export class MapAdminComponent implements OnInit {
           }));
 
         this.loading = false;
-        this.applyRequestedFocus();
       },
       error: () => {
         this.loading = false;
@@ -212,12 +206,10 @@ export class MapAdminComponent implements OnInit {
 
   onMarkerClicked(m: MapMarker): void {
     this.selectedMarker = m;
-    this.focusMarkerId = m.id;
   }
 
   clearSelection(): void {
     this.selectedMarker = null;
-    this.focusMarkerId = null;
   }
 
   toggleHeatmap(): void {
@@ -247,28 +239,7 @@ export class MapAdminComponent implements OnInit {
   setLayer(l: LayerType): void {
     this.layer = l;
     this.selectedMarker = null;
-    this.focusMarkerId = null;
     setTimeout(() => this.mapComp?.refresh(), 50);
-  }
-
-  private applyRequestedFocus(): void {
-    const params = this.activatedRoute.snapshot.queryParamMap;
-    const postId = Number(params.get('focusPostId'));
-    const routeId = Number(params.get('focusRouteId'));
-    const markerId = postId || (routeId ? 100000 + routeId : 0);
-    if (!markerId) return;
-
-    const marker = this.markers.find(item => item.id === markerId);
-    if (!marker) return;
-
-    this.layer = marker.id >= 100000
-      ? 'routes'
-      : marker.category === 'event'
-        ? 'events'
-        : 'locations';
-    this.selectedMarker = marker;
-    this.focusMarkerId = marker.id;
-    setTimeout(() => this.mapComp?.focusMarker(marker.id, 17), 80);
   }
 
   typeLabel(postType: string): string {

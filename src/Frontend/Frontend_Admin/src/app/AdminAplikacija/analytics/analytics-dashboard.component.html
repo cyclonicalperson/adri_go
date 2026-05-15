@@ -119,22 +119,11 @@
   <!-- ── TOURIST MOVEMENT MAP ──────────────────────────────────────── -->
   <div class="panel">
     <div class="panel-header">
-      <div>
-        <div class="panel-title">Kretanje turista</div>
-        <div class="panel-sub">Geografska distribucija poseta za {{ movementPeriodLabel() }}</div>
-      </div>
-      <div class="period-toggle">
-        <button type="button" [class.active]="movementPeriod === 'day'" (click)="setMovementPeriod('day')">24h</button>
-        <button type="button" [class.active]="movementPeriod === 'week'" (click)="setMovementPeriod('week')">7d</button>
-        <button type="button" [class.active]="movementPeriod === 'month'" (click)="setMovementPeriod('month')">30d</button>
-      </div>
+      <div class="panel-title">Kretanje turista</div>
+      <div class="panel-sub">Geografska distribucija poseta</div>
     </div>
     <div class="panel-body">
-      @if (movementsLoading) {
-      <div class="state-msg compact">Ucitavanje kretanja...</div>
-      } @else {
       <app-tourist-movements [movements]="movements" />
-      }
     </div>
   </div>
 

@@ -150,12 +150,12 @@ namespace TouristGuide.Api.Services
         /// </summary>
         public async Task SendVerificationEmailAsync(string toEmail, string toName, string verificationToken, string? language = null)
         {
-            var lang = NormalizeLanguage(language, VerificationStrings);
             var verificationLink = BuildFrontendUrl(
                 configKey: "Email:TouristBaseUrl",
                 fallbackBaseUrl: "http://localhost:4201",
-                pathAndQuery: $"/verify-email?token={Uri.EscapeDataString(verificationToken)}&lang={Uri.EscapeDataString(lang)}");
+                pathAndQuery: $"/verify-email?token={Uri.EscapeDataString(verificationToken)}");
 
+            var lang = NormalizeLanguage(language, VerificationStrings);
             var s = VerificationStrings[lang];
 
             var subject = s.Subject;

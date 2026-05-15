@@ -30,8 +30,6 @@ export class RegisterProfileComponent implements OnInit {
   registrationSuccess = false;
   registrationEmail = '';
   autoLoggedIn = false;
-  profileImageUrl: string | null = null;
-  isUploadingPhoto = false;
   passwordFocused = false;
 
   interests = [
@@ -253,7 +251,6 @@ export class RegisterProfileComponent implements OnInit {
     this.authService.register(fullName, emailOrPhone, password, {
       language,
       interests: this.selectedInterestsArray.value ?? [],
-      profileImage: this.profileImageUrl,
     }).subscribe({
       next: res => {
         this.isLoading = false;
@@ -265,27 +262,6 @@ export class RegisterProfileComponent implements OnInit {
       error: err => {
         this.isLoading = false;
         this.errorMessage = err?.error?.message || 'Registration failed. Please try again.';
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  onProfilePhotoSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file || this.isUploadingPhoto) return;
-
-    this.isUploadingPhoto = true;
-    this.errorMessage = '';
-    this.authService.uploadProfileImage(file).subscribe({
-      next: url => {
-        this.profileImageUrl = url;
-        this.isUploadingPhoto = false;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.isUploadingPhoto = false;
-        this.errorMessage = 'Profile photo upload failed. You can continue without it.';
         this.cdr.detectChanges();
       }
     });

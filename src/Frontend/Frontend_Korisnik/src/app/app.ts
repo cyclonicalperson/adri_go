@@ -18,11 +18,6 @@ export class App implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    if (localStorage.getItem('theme') === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
     this.translate.init();
     // Bilježi sesiju otvaranja aplikacije za "Posete platformi" widget
     this.appVisit.recordVisit();

@@ -35,8 +35,6 @@ export class AnalyticsDashboardComponent implements OnInit {
   popularObjects: PopularPost[] = [];
   popularEvents: PopularPost[] = [];
   movements: TouristMovement[] = [];
-  movementPeriod: 'day' | 'week' | 'month' = 'month';
-  movementsLoading = false;
   loading = true;
 
   /** Objekti s ispravnom `category` labelom za PreferencesChart */
@@ -62,7 +60,7 @@ export class AnalyticsDashboardComponent implements OnInit {
         .pipe(catchError(() => of({ data: [] as PopularPost[] }))),
       events: this.analytics.getPopularEvents(5)
         .pipe(catchError(() => of({ data: [] as PopularPost[] }))),
-      movements: this.analytics.getTouristMovements(this.periodFromDate(this.movementPeriod))
+      movements: this.analytics.getTouristMovements()
         .pipe(catchError(() => of({ data: [] as TouristMovement[] }))),
     }).subscribe({
       next: res => {
@@ -74,35 +72,6 @@ export class AnalyticsDashboardComponent implements OnInit {
       },
       error: () => { this.loading = false; },
     });
-  }
-
-  setMovementPeriod(period: 'day' | 'week' | 'month'): void {
-    if (this.movementPeriod === period) return;
-    this.movementPeriod = period;
-    this.movementsLoading = true;
-    this.analytics.getTouristMovements(this.periodFromDate(period))
-      .pipe(catchError(() => of({ data: [] as TouristMovement[] })))
-      .subscribe({
-        next: res => {
-          this.movements = res.data;
-          this.movementsLoading = false;
-        },
-        error: () => { this.movementsLoading = false; },
-      });
-  }
-
-  movementPeriodLabel(): string {
-    return this.movementPeriod === 'day'
-      ? 'zadnja 24 sata'
-      : this.movementPeriod === 'week'
-        ? 'zadnjih 7 dana'
-        : 'zadnjih mesec dana';
-  }
-
-  private periodFromDate(period: 'day' | 'week' | 'month'): string {
-    const from = new Date();
-    from.setDate(from.getDate() - (period === 'day' ? 1 : period === 'week' ? 7 : 30));
-    return from.toISOString().split('T')[0];
   }
 
   barHeight(count: number): number {

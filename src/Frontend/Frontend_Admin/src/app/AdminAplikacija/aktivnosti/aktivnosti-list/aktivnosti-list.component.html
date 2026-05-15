@@ -58,7 +58,7 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
-    <select class="filter-select" [value]="activeStatus" (change)="onStatusChange($any($event.target).value)">
+    <select class="filter-select" (change)="onStatusChange($any($event.target).value)">
       <option value="">Svi statusi</option>
       <option value="approved">✅ Odobreno</option>
       <option value="pending">⏳ Na čekanju</option>
