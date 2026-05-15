@@ -201,6 +201,8 @@ export class SavedLocationsComponent implements OnInit {
     this.savedItems = this.savedItems.filter(item => item.id !== id);
 
     if (this.isGuest) {
+      this.router.navigate(['/login']);
+      this.cdr.detectChanges();
       return;
     }
 
@@ -217,6 +219,8 @@ export class SavedLocationsComponent implements OnInit {
     event.stopPropagation();
 
     if (this.isGuest) {
+      this.router.navigate(['/login']);
+      this.cdr.detectChanges();
       return;
     }
 

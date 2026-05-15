@@ -14,9 +14,9 @@
         </svg>
         Login
       </button>
-      <button *ngIf="!isNavigating" class="header-menu-btn" (click)="toggleMenu()">
+      <button *ngIf="!isNavigating" class="header-menu-btn" (click)="goToNotifications()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
         </svg>
       </button>
     </div>
@@ -138,6 +138,11 @@
           {{ cat.label }}
         </button>
       </div>
+      <button class="builder-mode-pill" *ngIf="plannerMode" (click)="clearRoute()">
+        <span class="builder-mode-dot"></span>
+        Route builder on
+        <svg viewBox="0 0 24 24"><path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"/></svg>
+      </button>
     </div>
 
     <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded">
@@ -184,7 +189,7 @@
       </app-trip-planner-panel>
 
       <div class="saved-routes-toggle-row">
-        <button class="saved-routes-toggle-btn" (click)="showSavedRoutes = true">
+        <button class="saved-routes-toggle-btn" (click)="openSavedRoutes()">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
           Saved routes<span *ngIf="savedRoutes.length > 0"> ({{ savedRoutes.length }})</span>
         </button>
@@ -210,7 +215,7 @@
   <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
-          [class.locate-hidden]="sheetExpanded"
+          [class.locate-hidden]="sheetExpanded || isFiltersOpen"
           [class.locate-refollow]="isNavigating && !navFollowMode"
           (click)="locateMeOrRefollow()"
           aria-label="Show my location">
@@ -289,13 +294,13 @@
       <span class="footer-label">Saved</span>
     </button>
 
-    <button class="footer-btn" [class.active]="activeTab === 'routes'" (click)="goToRoutes()">
+    <button class="footer-btn" [class.active]="activeTab === 'calendar'" (click)="goToCalendar()">
       <span class="footer-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/>
+          <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
         </svg>
       </span>
-      <span class="footer-label">Routes</span>
+      <span class="footer-label">Calendar</span>
     </button>
 
     <button class="footer-btn" [class.active]="activeTab === 'activities'" (click)="goToActivities()">
@@ -305,6 +310,15 @@
         </svg>
       </span>
       <span class="footer-label">Activities</span>
+    </button>
+
+    <button class="footer-btn" [class.active]="activeTab === 'routes'" (click)="goToRoutes()">
+      <span class="footer-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/>
+        </svg>
+      </span>
+      <span class="footer-label">Routes</span>
     </button>
 
     <button class="footer-btn" [class.active]="activeTab === 'account'" (click)="goToAccount()">
@@ -368,7 +382,7 @@
     </div>
   </div>
 
-  <app-side-menu *ngIf="isMenuOpen" (onClose)="isMenuOpen = false"></app-side-menu>
+
 
   <!-- ── INLINE FILTER PANEL (map context: sidebar on desktop, fullscreen on mobile) ── -->
   <app-filters
@@ -381,7 +395,7 @@
   <div class="auth-modal-overlay" *ngIf="showAuthPopup">
     <div class="auth-modal">
       <h3>Login Required</h3>
-      <p>You need to be logged in to access your account settings.</p>
+      <p>Please log in to save items, use your calendar, and access your account.</p>
       <div class="auth-modal-actions">
         <button class="btn-cancel" (click)="showAuthPopup = false">Cancel</button>
         <button class="btn-login" (click)="goToLogin()">Login</button>

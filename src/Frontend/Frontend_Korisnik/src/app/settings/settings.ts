@@ -36,7 +36,6 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
-    { id: 'apple' as const, label: 'Apple', desc: 'Keep Apple ready as a private sign-in option.' },
   ];
 
   bookingOptions = [
@@ -47,7 +46,7 @@ export class SettingsComponent implements OnInit {
   ];
 
   showPasswordModal = false;
-  changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+  changePasswordForm = { newPassword: '', confirmPassword: '' };
   passwordError = '';
   passwordSuccess = '';
   isSavingPassword = false;
@@ -280,6 +279,9 @@ export class SettingsComponent implements OnInit {
             ? 'Push notifications enabled'
             : 'Notification permission was not granted'
         );
+      }).catch(() => {
+        this.settings.pushNotifications = false;
+        this.saveChanges('Notification permission was not granted');
       });
       return;
     }
@@ -335,6 +337,7 @@ export class SettingsComponent implements OnInit {
         [provider]: !this.settings.connectedAccounts[provider],
       }
     };
+    this.saveChanges('Connected account preferences updated');
   }
 
   isBookingServiceEnabled(id: string): boolean {
@@ -414,13 +417,13 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    if (this.isGoogleAccount) {
-      this.openGoogleAccount();
+    if (this.authService.isGoogleAccount) {
+      window.location.href = 'https://myaccount.google.com/';
       return;
     }
 
     this.showPasswordModal = true;
-    this.changePasswordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    this.changePasswordForm = { newPassword: '', confirmPassword: '' };
     this.passwordError = '';
     this.passwordSuccess = '';
     this.changePasswordSubmitted = false;
@@ -470,8 +473,7 @@ export class SettingsComponent implements OnInit {
     this.changePasswordSubmitted = true;
 
     if (
-      !this.changePasswordForm.currentPassword
-      || !this.changePasswordForm.newPassword
+      !this.changePasswordForm.newPassword
       || !this.changePasswordForm.confirmPassword
       || !this.isNewPasswordValid
       || this.hasConfirmPasswordMismatch
@@ -480,10 +482,7 @@ export class SettingsComponent implements OnInit {
     }
 
     this.isSavingPassword = true;
-    this.authService.changePassword(
-      this.changePasswordForm.currentPassword,
-      this.changePasswordForm.newPassword,
-    ).subscribe({
+    this.authService.changePassword(this.changePasswordForm.newPassword).subscribe({
       next: () => {
         this.passwordSuccess = '✓ Password changed successfully!';
         this.isSavingPassword = false;

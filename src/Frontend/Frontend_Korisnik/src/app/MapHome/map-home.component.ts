@@ -8,7 +8,6 @@ import { MapRecommendationsPanelComponent } from './components/map-recommendatio
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
 import { MapNavigationPanelComponent } from './components/map-navigation-panel/map-navigation-panel.component';
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
-import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-planner-panel.component';
 import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
@@ -61,7 +60,6 @@ type SearchResult = MapLocation & {
     CommonModule,
     FormsModule,
     LocationDetailsCardComponent,
-    SideMenuComponent,
     TripPlannerPanelComponent,
     RouteDetoursPanelComponent,
     MapRecommendationsPanelComponent,
@@ -85,6 +83,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private latestQueryParams: Record<string, string> = {};
   private lastHydratedQueryKey = '';
   private plannerRenderToken = 0;
+  private locationWatchId: number | null = null;
+  private hasCenteredOnUserLocation = false;
   private plannerRouteGeometry: [number, number][] = [];
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
 
@@ -203,14 +203,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get recommendationCards(): LocationRecommendation[] {
-    if (this.activeRecommendationTab === 'personalized' && this.personalizedRecommendations.length > 0) {
-      return this.personalizedRecommendations;
-    }
     return this.globalRecommendations;
   }
 
   get hasPersonalizedRecommendations(): boolean {
-    return this.personalizedRecommendations.length > 0;
+    return false;
   }
 
   get searchPromptSuggestions(): string[] {
@@ -284,6 +281,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.initMap();
+    this.startLocationTracking();
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     window.addEventListener('resize', this.handleWindowResize);
     this.tryAutoLocateUser();
@@ -305,6 +303,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       draggable._onMove = original;
     }
     this.map?.remove();
+    this.stopLocationTracking();
     this.clearNavRefollowTimer();
     this.clearMapResizeTimer();
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
@@ -392,37 +391,45 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const preferences = this.preferences.snapshot;
-    const analyticsEvents = this.analytics.getRecentEvents();
-    const contentPreferences = preferences.contentPreferences.length > 0
-      ? preferences.contentPreferences
-      : (this.userProfile?.interests ?? []).length > 0
-        ? (this.userProfile?.interests ?? [])
-        : this.serverPreferenceTypes;
+    this.globalRecommendations = this.buildNearbyCards();
+    this.personalizedRecommendations = [];
+    this.activeRecommendationTab = 'global';
+  }
 
-    this.globalRecommendations = this.recommendationService.buildGlobalRecommendations(this.locationsList, {
-      userPosition: this.userPosition,
-      limit: 6,
-    });
+  private buildNearbyCards(): LocationRecommendation[] {
+    const withDistance = this.locationsList
+      .filter(location => this.passesFilters(location))
+      .map(location => {
+        const coordinates = this.getLocationCoordinates(location);
+        const distanceKm = this.userPosition && coordinates
+          ? this.geolocationService.haversineKm(
+              { lat: this.userPosition[0], lng: this.userPosition[1] },
+              coordinates
+            )
+          : location.distanceKm ?? null;
 
-    this.personalizedRecommendations = preferences.personalizedRecs
-      ? this.recommendationService.buildPersonalizedRecommendations(
-          this.locationsList,
-          this.userProfile,
-          this.savedLocationsContext,
-          this.calendarItemsContext,
-          analyticsEvents,
-          {
-            userPosition: this.userPosition,
-            contentPreferences,
-            limit: 6,
-          }
-        )
-      : [];
+        const fallbackScore = (location.avgRating ?? 0) * 10
+          + (location.reviewCount ?? 0)
+          + (location.likeCount ?? 0) * 0.2;
 
-    if (this.personalizedRecommendations.length === 0) {
-      this.activeRecommendationTab = 'global';
-    }
+        return {
+          location: { ...location, distanceKm },
+          score: distanceKm == null ? fallbackScore : Math.max(0, 100 - distanceKm),
+          badge: distanceKm == null ? 'Nearby' : this.formatDistance(distanceKm),
+          reason: distanceKm == null
+            ? 'Enable location sharing to sort this spot by distance.'
+            : `${this.formatDistance(distanceKm)} from your current location.`,
+        };
+      });
+
+    return withDistance
+      .sort((a, b) => {
+        const da = a.location.distanceKm ?? Number.POSITIVE_INFINITY;
+        const db = b.location.distanceKm ?? Number.POSITIVE_INFINITY;
+        if (da !== db) return da - db;
+        return b.score - a.score;
+      })
+      .slice(0, 6);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -497,6 +504,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     cat.active = !cat.active;
     this.syncFilterState();
     this.applyMarkerFilter();
+    this.refreshRecommendations();
+    if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
   }
 
   toggleAllCategories(): void {
@@ -518,6 +527,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.plannerMessage = '';
       this.cdr.detectChanges();
     }, 2600);
+    this.cdr.detectChanges();
+  }
+
+  stopPlannerMode(): void {
+    this.plannerMode = false;
+    this.routePlanner.setPlannerMode(false);
+    this.plannerMessage = '';
     this.cdr.detectChanges();
   }
 
@@ -988,6 +1004,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   saveCurrentRoute(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
     if (this.plannerStops.length === 0) return;
     const title = this.routeDestTitle || this.getRouteTitle();
     const saved = this.savedRoutesService.save(
@@ -1004,6 +1024,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cdr.detectChanges();
     }, 2500);
     this.cdr.detectChanges();
+  }
+
+  openSavedRoutes(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
+    this.showSavedRoutes = true;
   }
 
   loadSavedRoute(route: SavedRoute): void {
@@ -1205,7 +1233,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       // Directly update the marker’s latlng (Leaflet API, no recreate)
       this.userMarker.setLatLng(position);
 
-      // Apply CSS transition on the inner element for sub-pixel smoothness
       if (!this.navUserMarkerEl) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.navUserMarkerEl = ((this.userMarker as any).getElement?.() as HTMLElement) ?? null;
@@ -1759,6 +1786,48 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   }
 
+  private startLocationTracking(): void {
+    this.stopLocationTracking();
+
+    this.locationWatchId = this.geolocationService.watchPosition(
+      (position) => {
+        const shouldFly = !this.hasCenteredOnUserLocation;
+        this.hasCenteredOnUserLocation = true;
+        this.showUserLocation(position, shouldFly);
+        this.updateDistancesAndRecommendations();
+        this.applyMarkerFilter();
+        this.refreshRecommendations();
+        if (this.searchQuery.trim()) {
+          this.onSearchInput(this.searchQuery);
+        }
+        this.cdr.detectChanges();
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          this.clearUserLocation();
+        }
+      },
+    );
+  }
+
+  private stopLocationTracking(): void {
+    this.geolocationService.clearWatch(this.locationWatchId);
+    this.locationWatchId = null;
+  }
+
+  private clearUserLocation(): void {
+    if (this.userMarker && this.map?.hasLayer(this.userMarker)) {
+      this.map.removeLayer(this.userMarker);
+    }
+    this.userMarker = null;
+    this.userPosition = null;
+    this.hasCenteredOnUserLocation = false;
+    this.updateDistancesAndRecommendations();
+    this.applyMarkerFilter();
+    this.refreshRecommendations();
+    this.cdr.detectChanges();
+  }
+
   /**
    * Installs a pointer-event handler that counter-rotates drag deltas by
    * navMapRotation so that dragging always moves the map in screen-space
@@ -1847,6 +1916,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.geolocationService.requestCurrentPosition({ maximumAge: 0 }).then((position) => {
       this.isLocating = false;
       if (position) {
+        this.hasCenteredOnUserLocation = true;
+        this.showUserLocation(position, true);
+        this.updateDistancesAndRecommendations();
+        this.applyMarkerFilter();
+        this.refreshRecommendations();
         this.handleUserPositionAvailable(position, { fly: true, rerenderRoute: true });
       }
       this.cdr.detectChanges();
@@ -1909,7 +1983,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const userIcon = L.divIcon({
       html: `<div style="width:18px;height:18px;background:#3b82f6;border-radius:50%;border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25);"></div>`,
-      className: '',
+      className: 'user-location-marker',
       iconSize: [18, 18],
       iconAnchor: [9, 9]
     });
@@ -1923,7 +1997,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (fly) {
-      this.map!.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
+      this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
     }
   }
 
@@ -1998,6 +2072,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchIntentSummary = '';
       return;
     }
+
+    const normalized = query.toLowerCase().trim();
 
     this.searchResults = this.locationsList
       .map(loc => this.buildSearchMatch(loc, intent))
@@ -2230,6 +2306,48 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.normalizeSearchText(value).replace(/\s+/g, '_');
   }
 
+  private tokenizeSearch(value: string): string[] {
+    return this.normalizeSearchValue(value)
+      .split(' ')
+      .filter(term => term.length > 1);
+  }
+
+  private expandSearchTerms(terms: string[]): string[] {
+    const synonyms: Record<string, string[]> = {
+      food: ['restaurant', 'restoran', 'cafe'],
+      eat: ['restaurant', 'food'],
+      restoran: ['restaurant', 'food'],
+      plaza: ['beach', 'attraction'],
+      beach: ['plaza', 'attraction'],
+      culture: ['cultural', 'monument'],
+      kultura: ['cultural', 'monument'],
+      history: ['cultural', 'monument'],
+      night: ['club', 'nightlife'],
+      nightlife: ['club'],
+      hotel: ['accommodation'],
+      stay: ['accommodation'],
+      shop: ['shopping'],
+      shopping: ['shop'],
+    };
+
+    return Array.from(new Set(
+      terms
+        .flatMap(term => [term, ...(synonyms[term] ?? [])])
+        .map(term => this.normalizeSearchValue(term))
+        .filter(Boolean)
+    ));
+  }
+
+  private normalizeSearchValue(value: string | null | undefined): string {
+    return (value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'dj')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
   selectSearchResult(loc: MapLocation): void {
     this.searchQuery = loc.title;
     this.searchResults = [];
@@ -2280,6 +2398,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isFiltersOpen = false;
     this.applyFilterState();
     this.applyMarkerFilter();
+    this.refreshRecommendations();
+    if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
     this.cdr.detectChanges();
   }
 
@@ -2287,6 +2407,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Reactive: called on every filter change while panel is open — panel stays open
     this.applyFilterState();
     this.applyMarkerFilter();
+    this.refreshRecommendations();
+    if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
     this.cdr.detectChanges();
   }
 
@@ -2303,6 +2425,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToSaved(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
     this.activeTab = 'saved';
     this.router.navigate(['/saved']);
   }
@@ -2315,6 +2441,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   goToActivities(): void {
     this.activeTab = 'activities';
     this.router.navigate(['/activities']);
+  }
+
+  goToNotifications(): void {
+    this.router.navigate(['/notifications']);
+  }
+
+  goToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
+    this.activeTab = 'calendar';
+    this.router.navigate(['/calendar']);
   }
 
   goToAccount(): void {

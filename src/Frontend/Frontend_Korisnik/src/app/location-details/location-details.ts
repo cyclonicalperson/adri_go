@@ -194,6 +194,29 @@ export class LocationDetailsComponent implements OnInit {
     }
   }
 
+  private toggleGuestLike(id: number): void {
+    const liked: number[] = [];
+    const idx = liked.indexOf(id);
+    if (idx >= 0) {
+      liked.splice(idx, 1);
+      this.likeMessage = 'Like removed';
+      if (this.location) {
+        this.location.isLiked = false;
+        this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
+      }
+    } else {
+      liked.push(id);
+      this.likeMessage = '❤️ Liked!';
+      if (this.location) {
+        this.location.isLiked = true;
+        this.location.likeCount = (this.location.likeCount || 0) + 1;
+      }
+    }
+    this.openAuthModal();
+    setTimeout(() => (this.likeMessage = ''), 3000);
+    this.cdr.markForCheck();
+  }
+
   // ── SAVE ─────────────────────────────────────────────────────────
   onSave(): void {
     if (!this.location) return;
@@ -226,6 +249,29 @@ export class LocationDetailsComponent implements OnInit {
         }
       }
     });
+  }
+
+  private toggleGuestSave(id: number): void {
+    const saved: number[] = [];
+    const idx = saved.indexOf(id);
+    if (idx >= 0) {
+      saved.splice(idx, 1);
+      this.saveMessage = 'Removed from saved';
+      if (this.location) {
+        (this.location as any).isSaved = false;
+        this.location.saveCount = Math.max(0, (this.location.saveCount || 0) - 1);
+      }
+    } else {
+      saved.push(id);
+      this.saveMessage = '🔖 Saved!';
+      if (this.location) {
+        (this.location as any).isSaved = true;
+        this.location.saveCount = (this.location.saveCount || 0) + 1;
+      }
+    }
+    this.openAuthModal();
+    setTimeout(() => (this.saveMessage = ''), 3000);
+    this.cdr.markForCheck();
   }
 
   // ── WORKING HOURS ─────────────────────────────────────────────────
@@ -422,6 +468,10 @@ export class LocationDetailsComponent implements OnInit {
 
   addToCalendar(): void {
     if (!this.location) return;
+    if (!this.authService.isLoggedIn) {
+      this.openAuthModal();
+      return;
+    }
 
     this.userService.addLocationToCalendar(this.location).subscribe({
       next: (res) => {

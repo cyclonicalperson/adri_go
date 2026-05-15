@@ -79,7 +79,16 @@ namespace TouristGuide.Api.Controllers
 
             // Search filter
             if (!string.IsNullOrWhiteSpace(search))
-                query = query!.Where(p => p.Title.Contains(search) || (p.Description != null && p.Description.Contains(search)));
+            {
+                var terms = SplitSearchTerms(search);
+                query = terms.Count > 0
+                    ? ApplyPostSearchTerms(query!, terms)
+                    : query!.Where(p =>
+                        p.Title.Contains(search) ||
+                        (p.Description != null && p.Description.Contains(search)) ||
+                        (p.Address != null && p.Address.Contains(search)) ||
+                        (p.Region != null && p.Region.Name.Contains(search)));
+            }
 
             return Ok(await BuildPagedPostsResponse(query!, page, pageSize, sortBy, sortDir));
         }

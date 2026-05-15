@@ -40,6 +40,26 @@
   color: var(--gray-900);
 }
 
+.sort-select {
+  min-width: 112px;
+  max-width: 132px;
+  height: 38px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--gray-700);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 10px;
+  outline: none;
+}
+
+.sort-select:focus {
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
 /* ── STATUS ── */
 .loading-state, .empty-state {
   text-align: center;
@@ -198,9 +218,174 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.25);
 }
 
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.auth-modal {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.auth-modal h3 { margin-top: 0; color: var(--gray-900); font-size: 1.2rem; font-family: var(--font-display); }
+.auth-modal p { color: var(--gray-500); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.4; }
+.auth-modal-actions { display: flex; gap: 12px; justify-content: center; }
+.btn-cancel,
+.btn-login {
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  font-family: var(--font-sans);
+}
+.btn-cancel { background: var(--gray-100); color: var(--gray-600); }
+.btn-login { background: var(--green-500); color: white; }
+
+/* ── HEADER ACTIONS ── */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── SORT DROPDOWN ── */
+.sort-dropdown {
+  position: relative;
+}
+
+.sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  color: var(--gray-700);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sort-btn:hover { border-color: var(--green-400); }
+.sort-btn.sort-btn-active {
+  border-color: var(--green-500);
+  color: var(--green-600);
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+}
+
+.sort-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  overflow: hidden;
+  z-index: 100;
+  min-width: 140px;
+}
+
+.sort-option {
+  display: block;
+  width: 100%;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.sort-option:hover { background: var(--gray-50); }
+.sort-option.sort-option-active {
+  background: var(--green-50);
+  color: var(--green-700);
+  font-weight: 800;
+}
+
+/* ── FOOTER (identical to map-home) ── */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 68px;
+  background: #fff;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 20;
+  padding: 0 4px env(safe-area-inset-bottom, 0);
+}
+
+.footer-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 8px 2px;
+  cursor: pointer;
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  color: var(--gray-400);
+  transition: color 0.15s, background 0.15s;
+  font-family: var(--font-sans);
+}
+.footer-btn:active { background: var(--green-50); }
+.footer-btn.active { color: var(--green-500); }
+
+.footer-icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.footer-icon svg { width: 20px; height: 20px; fill: currentColor; }
+.footer-btn.active .footer-icon { transform: scale(1.1); }
+
+.footer-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Make container not hide footer */
+.list-container { padding-bottom: 80px; }
+
 /* ── DESKTOP ── */
 @media (min-width: 900px) {
-  .header-bar { padding: 12px 32px; }
   .scroll-area {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

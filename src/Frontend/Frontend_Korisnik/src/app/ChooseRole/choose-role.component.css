@@ -135,6 +135,38 @@
 .continue-btn svg { width: 18px; height: 18px; fill: #fff; }
 
 /* ── DESKTOP ─────────────────────────────────────────────────── */
+:host-context(html[data-theme='dark']) .role-container {
+  color-scheme: light;
+  --green-50: #f0fdf4;
+  --green-100: #dcfce7;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  background: linear-gradient(180deg, #fff 60%, rgba(134, 239, 172, 0.4) 100%);
+  color: #0f172a;
+}
+
+:host-context(html[data-theme='dark']) .role-card {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .role-card.selected,
+:host-context(html[data-theme='dark']) .admin-note {
+  background: #f0fdf4;
+}
+
 @media (min-width: 900px) {
   .role-container {
     max-width: 500px;

@@ -1,8 +1,7 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { SideMenuComponent } from '../SideMenu/side-menu.component';
 import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
@@ -20,20 +19,23 @@ type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, SideMenuComponent, FiltersComponent],
+  imports: [CommonModule, FormsModule, FiltersComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
-export class LocationListComponent implements OnInit {
+export class LocationListComponent implements OnInit, OnDestroy {
   readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   isMenuOpen = false;
+  sortMenuOpen = false;
   isFiltersOpen = false;
   locations: Location[] = [];
   private allLocations: Location[] = [];
   isLoading = false;
   errorMessage = '';
   feedbackMessage = '';
+  showAuthPopup = false;
+  authPopupMessage = 'Please log in to save locations, like places, and add items to your calendar.';
   private userPosition: UserPosition | null = null;
   sortOption: SortOption = 'recommended';
   readonly sortOptions: { value: SortOption; label: string }[] = [
@@ -47,6 +49,7 @@ export class LocationListComponent implements OnInit {
   ];
 
   searchQuery = '';
+  submittedSearchQuery = '';
   isSearchActive = false;
   searchResults: Location[] = [];
   showDropdown = false;
@@ -106,6 +109,10 @@ export class LocationListComponent implements OnInit {
     this.loadUserPosition();
   }
 
+  ngOnDestroy(): void {
+    this.setPageScrollLock(false);
+  }
+
   loadLocations(): void {
     this.isLoading = true;
     this.locationService.getLocations(1, 100).subscribe({
@@ -132,6 +139,7 @@ export class LocationListComponent implements OnInit {
       this.searchResults = [];
       this.showDropdown = false;
       this.isSearchActive = false;
+      this.submittedSearchQuery = '';
       this.locations = this.applySort(this.allLocations);
       this.cdr.markForCheck();
       return;
@@ -144,12 +152,6 @@ export class LocationListComponent implements OnInit {
       )
       .slice(0, 8);
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
-    this.isSearchActive = true;
-    this.locations = this.applySort(this.allLocations.filter(loc =>
-      (loc.title || '').toLowerCase().includes(q) ||
-      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-      (loc.regionName || '').toLowerCase().includes(q)
-    ));
     this.showDropdown = this.searchResults.length > 0;
     this.cdr.markForCheck();
   }
@@ -158,6 +160,7 @@ export class LocationListComponent implements OnInit {
   selectSearchResult(loc: Location): void {
     this.searchQuery = loc.title || '';
     this.showDropdown = false;
+    this.submittedSearchQuery = this.searchQuery.trim();
     this.isSearchActive = true;
     const q = this.searchQuery.trim().toLowerCase();
     this.locations = this.applySort(this.allLocations.filter(l =>
@@ -169,14 +172,17 @@ export class LocationListComponent implements OnInit {
   }
 
   /** Called when user clicks Search button or presses Enter */
-  executeSearch(): void {
-    const q = this.searchQuery.trim().toLowerCase();
+  executeSearch(rawQuery = this.searchQuery): void {
+    this.searchQuery = rawQuery;
+    const q = rawQuery.trim().toLowerCase();
     this.showDropdown = false;
+    this.sortMenuOpen = false;
     if (!q) {
       this.clearSearch();
       return;
     }
     this.isSearchActive = true;
+    this.submittedSearchQuery = rawQuery.trim();
     this.locations = this.applySort(this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
@@ -187,6 +193,7 @@ export class LocationListComponent implements OnInit {
 
   clearSearch(): void {
     this.searchQuery = '';
+    this.submittedSearchQuery = '';
     this.isSearchActive = false;
     this.searchResults = [];
     this.showDropdown = false;
@@ -215,9 +222,10 @@ export class LocationListComponent implements OnInit {
     event.stopPropagation();
 
     if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+      this.openAuthPopup('Please log in to like locations.');
       return;
     }
+
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
     action$.subscribe({
       next: (res) => { loc.isLiked = !loc.isLiked; if (res.likeCount !== undefined) loc.likeCount = res.likeCount; this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed'); this.cdr.markForCheck(); },
@@ -229,9 +237,10 @@ export class LocationListComponent implements OnInit {
     event.stopPropagation();
 
     if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+      this.openAuthPopup('Please log in to save locations.');
       return;
     }
+
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
     action$.subscribe({
       next: (res) => { loc.isSaved = !loc.isSaved; if (res.saveCount !== undefined) loc.saveCount = res.saveCount; this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved'); this.cdr.markForCheck(); },
@@ -240,9 +249,18 @@ export class LocationListComponent implements OnInit {
   }
 
   toggleMenu(): void { this.isMenuOpen = !this.isMenuOpen; }
+  goToNotifications(): void { this.router.navigate(['/notifications']); }
   goToMap(): void { this.router.navigate(['/map-home']); }
-  openFilters(): void { this.isFiltersOpen = true; this.cdr.markForCheck(); }
-  closeFilters(): void { this.isFiltersOpen = false; this.cdr.markForCheck(); }
+  openFilters(): void {
+    this.isFiltersOpen = true;
+    this.setPageScrollLock(true);
+    this.cdr.markForCheck();
+  }
+  closeFilters(): void {
+    this.isFiltersOpen = false;
+    this.setPageScrollLock(false);
+    this.cdr.markForCheck();
+  }
 
   onFiltersApplied(state: FilterState): void {
     // NE zatvaramo panel — korisnik sam zatvara sa X
@@ -342,7 +360,7 @@ export class LocationListComponent implements OnInit {
   formatPostType(type?: string | null): string { return formatPostType(type); }
 
   get sectionTitle(): string {
-    if (this.isSearchActive) return `Results for "${this.searchQuery}"`;
+    if (this.isSearchActive) return `Results for "${this.submittedSearchQuery || this.searchQuery}"`;
     return 'Explore';
   }
 
@@ -360,7 +378,7 @@ export class LocationListComponent implements OnInit {
 
     // 2. Recommended for You: personalized recommendations
     try {
-      const calendarItems = JSON.parse(localStorage.getItem('adrigo_guest_calendar_v1') || '[]');
+      const calendarItems: any[] = [];
       const analytics = this.analyticsService.getRecentEvents();
       const recs = this.recommendationService.buildPersonalizedRecommendations(
         this.allLocations, null, [], calendarItems, analytics,
@@ -400,6 +418,62 @@ export class LocationListComponent implements OnInit {
   private showFeedback(msg: string): void {
     this.feedbackMessage = msg;
     setTimeout(() => (this.feedbackMessage = ''), 2500);
+  }
+
+  openAuthPopup(message = 'Please log in to continue.'): void {
+    this.authPopupMessage = message;
+    this.showAuthPopup = true;
+    this.cdr.markForCheck();
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+    this.cdr.markForCheck();
+  }
+
+  goToLogin(): void {
+    this.closeAuthPopup();
+    this.router.navigate(['/login']);
+  }
+
+  goToSaved(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view and manage saved locations.');
+      return;
+    }
+    this.router.navigate(['/saved']);
+  }
+
+  goToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your calendar.');
+      return;
+    }
+    this.router.navigate(['/calendar']);
+  }
+
+  goToActivities(): void {
+    this.router.navigate(['/activities']);
+  }
+
+  goToRoutes(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your routes.');
+      return;
+    }
+    this.router.navigate(['/routes']);
+  }
+
+  goToAccount(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your account.');
+      return;
+    }
+    this.router.navigate(['/account']);
+  }
+
+  private setPageScrollLock(locked: boolean): void {
+    document.body.style.overflow = locked ? 'hidden' : '';
   }
 
   private loadUserPosition(): void {

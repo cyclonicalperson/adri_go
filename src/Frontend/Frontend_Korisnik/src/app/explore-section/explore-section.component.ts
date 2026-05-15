@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
@@ -11,7 +12,7 @@ import { formatPostType } from '../utils/post-type.utils';
 @Component({
   selector: 'app-explore-section',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './explore-section.component.html',
   styleUrls: ['./explore-section.component.css']
 })
@@ -20,8 +21,13 @@ export class ExploreSectionComponent implements OnInit {
 
   section: 'near-you' | 'recommended' | 'top-rated' = 'near-you';
   locations: Location[] = [];
+  sortValue: 'distance:asc' | 'createdAt:desc' | 'title:asc' | 'rating:desc' | 'reviews:desc' = 'distance:asc';
+  hasSearched = true; // locations loaded = search already done
+  sortOpen = false;
   isLoading = false;
   feedbackMessage = '';
+  showAuthPopup = false;
+  authPopupMessage = 'Please log in to save locations, like places, and add items to your calendar.';
   private userPosition: UserPosition | null = null;
 
   get sectionLabel(): string {
@@ -33,7 +39,7 @@ export class ExploreSectionComponent implements OnInit {
   }
 
   constructor(
-    private router: Router,
+    public router: Router,
     private route: ActivatedRoute,
     private locationService: LocationService,
     private authService: AuthService,
@@ -68,7 +74,7 @@ export class ExploreSectionComponent implements OnInit {
         } catch { /* geo unavailable */ }
 
         const all = this.applyGuestState(decorated);
-        this.locations = this.buildSection(all);
+        this.locations = this.sortLocations(this.buildSection(all));
         this.isLoading = false;
         this.cdr.markForCheck();
       },
@@ -92,7 +98,7 @@ export class ExploreSectionComponent implements OnInit {
 
       case 'recommended':
         try {
-          const cal = JSON.parse(localStorage.getItem('adrigo_guest_calendar_v1') || '[]');
+          const cal: any[] = [];
           const ev = this.analyticsService.getRecentEvents();
           return this.recommendationService.buildPersonalizedRecommendations(
             all, null, [], cal, ev, { userPosition: pos }
@@ -111,6 +117,33 @@ export class ExploreSectionComponent implements OnInit {
     }
   }
 
+  onSort(value: typeof this.sortValue): void {
+    this.sortValue = value;
+    this.locations = this.sortLocations(this.locations);
+  }
+
+  private sortLocations(items: Location[]): Location[] {
+    const sorted = [...items];
+    switch (this.sortValue) {
+      case 'title:asc':
+        return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'rating:desc':
+        return sorted.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
+      case 'reviews:desc':
+        return sorted.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
+      case 'createdAt:desc':
+        return sorted.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      case 'distance:asc':
+      default:
+        return sorted.sort((a, b) => {
+          const da = a.distanceKm ?? Number.POSITIVE_INFINITY;
+          const db = b.distanceKm ?? Number.POSITIVE_INFINITY;
+          if (da !== db) return da - db;
+          return (b.avgRating ?? 0) - (a.avgRating ?? 0);
+        });
+    }
+  }
+
   private applyGuestState(locations: Location[]): Location[] {
     if (this.authService.isLoggedIn) return locations;
     return locations.map(loc => ({ ...loc, isLiked: false, isSaved: false }));
@@ -119,7 +152,7 @@ export class ExploreSectionComponent implements OnInit {
   onLike(loc: Location, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+      this.openAuthPopup('Please log in to like locations.');
       return;
     }
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
@@ -132,7 +165,7 @@ export class ExploreSectionComponent implements OnInit {
   onSave(loc: Location, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+      this.openAuthPopup('Please log in to save locations.');
       return;
     }
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
@@ -144,6 +177,7 @@ export class ExploreSectionComponent implements OnInit {
 
   goBack(): void { this.router.navigate(['/location-list']); }
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
+  goToLogin(): void { this.router.navigate(['/login']); }
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
   formatPostType(type?: string | null): string { return formatPostType(type); }
 
@@ -170,6 +204,17 @@ export class ExploreSectionComponent implements OnInit {
   private showFeedback(msg: string): void {
     this.feedbackMessage = msg;
     setTimeout(() => (this.feedbackMessage = ''), 2500);
+  }
+
+  openAuthPopup(message = 'Please log in to continue.'): void {
+    this.authPopupMessage = message;
+    this.showAuthPopup = true;
+    this.cdr.markForCheck();
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+    this.cdr.markForCheck();
   }
 
   private getCoords(location: Partial<Location>): UserPosition | null {
