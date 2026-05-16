@@ -41,6 +41,8 @@ export interface Location {
   isLiked?: boolean;
   isSaved?: boolean;
   distanceKm?: number | null;
+  tagIds?: number[];
+  tagNames?: string[];
 }
 
 export interface LocationsResponse {

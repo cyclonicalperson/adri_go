@@ -169,6 +169,27 @@
 .info-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .info-item svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
 
+.activity-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.activity-tag-chip {
+  max-width: 100%;
+  border-radius: var(--radius-pill);
+  background: #ecfdf5;
+  color: #047857;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .divider { height: 1px; background: var(--gray-100); margin: 12px 0; }
 
 .view-details-btn {

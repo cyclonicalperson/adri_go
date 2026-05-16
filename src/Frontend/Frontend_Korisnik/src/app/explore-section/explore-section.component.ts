@@ -181,6 +181,18 @@ export class ExploreSectionComponent implements OnInit {
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
   formatPostType(type?: string | null): string { return formatPostType(type); }
 
+  getActivityTags(loc: Partial<Location>, limit = 3): string[] {
+    const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? [];
+    const tags = Array.isArray(rawTags)
+      ? rawTags
+      : String(rawTags || '').split(/[;,]/);
+
+    return Array.from(new Set(tags
+      .map(tag => String(tag).trim())
+      .filter(Boolean)))
+      .slice(0, limit);
+  }
+
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
     if (!loc?.images) return 'assets/placeholder.jpg';
     let firstImg = '';

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FiltersComponent } from '../Filteri/filters.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
@@ -63,6 +63,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   isFilterActive = false;
   filteredLocations: Location[] = [];
   activeFilterState: FilterState | null = null;
+  private activeActivityFilter: { id: number | null; name: string } | null = null;
 
   get isFilterView(): boolean {
     return this.isFilterActive && !this.isSearchActive;
@@ -93,6 +94,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   constructor(
+    private route: ActivatedRoute,
     private router: Router,
     private locationService: LocationService,
     private authService: AuthService,
@@ -105,6 +107,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    this.readActivityFilterFromRoute();
     this.loadLocations();
     this.loadUserPosition();
   }
@@ -119,7 +122,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
       next: (res) => {
         const decorated = this.decorateLocations(res.data);
         this.allLocations = this.applyGuestState(decorated);
-        this.locations = this.applySort(this.allLocations);
+        if (this.activeActivityFilter) {
+          this.applyActivityFilter(this.activeActivityFilter);
+        } else {
+          this.locations = this.applySort(this.allLocations);
+        }
         this.buildSections();
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -139,6 +146,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       this.searchResults = [];
       this.showDropdown = false;
       this.isSearchActive = false;
+      this.clearActivityFilterState();
       this.submittedSearchQuery = '';
       this.locations = this.applySort(this.allLocations);
       this.cdr.markForCheck();
@@ -148,7 +156,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
       .filter(loc =>
         (loc.title || '').toLowerCase().includes(q) ||
         (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-        (loc.regionName || '').toLowerCase().includes(q)
+        (loc.regionName || '').toLowerCase().includes(q) ||
+        this.getActivityTags(loc, 20).some(tag => tag.toLowerCase().includes(q))
       )
       .slice(0, 8);
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
@@ -162,11 +171,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.showDropdown = false;
     this.submittedSearchQuery = this.searchQuery.trim();
     this.isSearchActive = true;
+    this.clearActivityFilterState();
     const q = this.searchQuery.trim().toLowerCase();
     this.locations = this.applySort(this.allLocations.filter(l =>
       (l.title || '').toLowerCase().includes(q) ||
       (l.postType || (l as any).category || '').toLowerCase().includes(q) ||
-      (l.regionName || '').toLowerCase().includes(q)
+      (l.regionName || '').toLowerCase().includes(q) ||
+      this.getActivityTags(l, 20).some(tag => tag.toLowerCase().includes(q))
     ));
     this.cdr.markForCheck();
   }
@@ -182,11 +193,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
       return;
     }
     this.isSearchActive = true;
+    this.clearActivityFilterState();
     this.submittedSearchQuery = rawQuery.trim();
     this.locations = this.applySort(this.allLocations.filter(loc =>
       (loc.title || '').toLowerCase().includes(q) ||
       (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-      (loc.regionName || '').toLowerCase().includes(q)
+      (loc.regionName || '').toLowerCase().includes(q) ||
+      this.getActivityTags(loc, 20).some(tag => tag.toLowerCase().includes(q))
     ));
     this.cdr.markForCheck();
   }
@@ -195,6 +208,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.searchQuery = '';
     this.submittedSearchQuery = '';
     this.isSearchActive = false;
+    this.clearActivityFilterState();
     this.searchResults = [];
     this.showDropdown = false;
     this.locations = this.applySort(this.allLocations);
@@ -359,6 +373,18 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   formatPostType(type?: string | null): string { return formatPostType(type); }
 
+  getActivityTags(loc: Partial<Location>, limit = 3): string[] {
+    const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? [];
+    const tags = Array.isArray(rawTags)
+      ? rawTags
+      : String(rawTags || '').split(/[;,]/);
+
+    return Array.from(new Set(tags
+      .map(tag => String(tag).trim())
+      .filter(Boolean)))
+      .slice(0, limit);
+  }
+
   get sectionTitle(): string {
     if (this.isSearchActive) return `Results for "${this.submittedSearchQuery || this.searchQuery}"`;
     return 'Explore';
@@ -481,9 +507,69 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if (!position) return;
       this.userPosition = position;
       this.allLocations = this.decorateLocations(this.allLocations);
-      if (!this.isSearchActive) this.locations = this.applySort(this.allLocations);
+      if (this.activeActivityFilter) {
+        this.applyActivityFilter(this.activeActivityFilter);
+      } else if (!this.isSearchActive) {
+        this.locations = this.applySort(this.allLocations);
+      }
       this.buildSections();
       this.cdr.markForCheck();
+    });
+  }
+
+  private readActivityFilterFromRoute(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const name = (params.get('activityTag') || '').trim();
+    const idParam = params.get('activityTagId');
+    const parsedId = idParam != null ? Number(idParam) : NaN;
+    if (!name && !Number.isFinite(parsedId)) return;
+
+    this.activeActivityFilter = {
+      id: Number.isFinite(parsedId) ? parsedId : null,
+      name,
+    };
+  }
+
+  private applyActivityFilter(filter: { id: number | null; name: string }): void {
+    const displayName = filter.name || 'Activity';
+    this.searchQuery = displayName;
+    this.submittedSearchQuery = displayName;
+    this.isSearchActive = true;
+    this.showDropdown = false;
+    this.searchResults = [];
+    this.isFilterActive = false;
+    this.filteredLocations = [];
+    this.activeSectionView = null;
+    this.locations = this.applySort(this.allLocations.filter(loc => this.matchesActivityFilter(loc, filter)));
+  }
+
+  private matchesActivityFilter(loc: Location, filter: { id: number | null; name: string }): boolean {
+    const ids = ((loc as any).tagIds ?? (loc as any).TagIds ?? []) as unknown[];
+    if (filter.id != null && ids.some(id => Number(id) === filter.id)) return true;
+
+    if (!filter.name) return false;
+    const target = this.normalizeSearchTerm(filter.name);
+    return this.getActivityTags(loc, 20).some(tag => this.normalizeSearchTerm(tag) === target);
+  }
+
+  private normalizeSearchTerm(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  private clearActivityFilterState(): void {
+    const hadActivityFilter = !!this.activeActivityFilter;
+    this.activeActivityFilter = null;
+    if (!hadActivityFilter) return;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { activityTagId: null, activityTag: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
   }
 
