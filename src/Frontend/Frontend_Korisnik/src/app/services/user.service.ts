@@ -36,6 +36,7 @@ export interface CalendarItem {
   id: number;
   postId: number | null;
   routeId?: number | null;
+  touristRouteId?: number | null;
   title: string;
   postType: string;
   address: string;
@@ -43,6 +44,31 @@ export interface CalendarItem {
   notes: string;
   scheduledTime: string;
   imageUrl: string | null;
+}
+
+export interface TouristRouteWaypoint {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+export interface TouristRouteDetails {
+  id: number;
+  title: string;
+  waypoints: TouristRouteWaypoint[];
+  travelMode: string;
+  scenicMode: boolean;
+}
+
+export interface PrivateRouteCalendarPayload {
+  touristRouteId?: number;
+  title?: string;
+  waypoints?: string;
+  travelMode?: string;
+  scenicMode?: boolean;
+  distanceKm?: number;
+  durationMin?: number;
+  scheduledAt: string;
 }
 
 export interface CalendarMutationResult {
@@ -158,6 +184,42 @@ export class UserService {
     }
 
     return this.http.post(`${this.authApiUrl}/calendar/route/${routeId}`, schedule ?? {});
+  }
+
+  addPrivateRouteToCalendar(payload: PrivateRouteCalendarPayload): Observable<any> {
+    if (!this.authService.isLoggedIn) {
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
+    }
+
+    return this.http.post(`${this.authApiUrl}/calendar/tourist-route`, payload);
+  }
+
+  getTouristRoute(id: number): Observable<TouristRouteDetails | null> {
+    if (!this.authService.isLoggedIn) {
+      return of(null);
+    }
+
+    return this.http.get<any>(`${this.authApiUrl}/tourist-routes/${id}`).pipe(
+      map(res => {
+        if (!res) return null;
+        let waypoints: TouristRouteWaypoint[] = [];
+        try {
+          const parsed = typeof res.waypoints === 'string' ? JSON.parse(res.waypoints) : res.waypoints;
+          waypoints = (Array.isArray(parsed) ? parsed : [])
+            .map((p: any) => ({ lat: Number(p.lat ?? p.latitude), lng: Number(p.lng ?? p.longitude), name: p.name ?? '' }))
+            .filter((p: TouristRouteWaypoint) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        } catch {
+          waypoints = [];
+        }
+        return {
+          id: Number(res.id),
+          title: res.title ?? '',
+          waypoints,
+          travelMode: res.travelMode ?? 'driving',
+          scenicMode: !!res.scenicMode,
+        };
+      }),
+    );
   }
 
   addLocationToCalendar(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }, schedule?: CalendarSchedulePayload): Observable<CalendarMutationResult> {

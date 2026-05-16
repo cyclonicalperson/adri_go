@@ -9,6 +9,7 @@ interface DisplayEvent {
   id: number;       // PlannerItem id — used for removal
   postId: number | null;
   routeId: number | null;
+  touristRouteId: number | null;
   title: string;
   date: string;
   time: string;
@@ -108,6 +109,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
       id:       item.id,
       postId:   item.postId,
       routeId:  item.routeId ?? null,
+      touristRouteId: item.touristRouteId ?? null,
       title:    item.title,
       date:     item.date,
       time:     item.scheduledTime,
@@ -330,6 +332,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (!ev) return;
     if (ev.routeId != null) {
       this.router.navigate(['/map-home'], { queryParams: { routeId: ev.routeId } });
+    } else if (ev.touristRouteId != null) {
+      this.router.navigate(['/map-home'], { queryParams: { touristRouteId: ev.touristRouteId } });
     } else if (ev.postId != null) {
       this.router.navigate(['/location-details', ev.postId]);
     }

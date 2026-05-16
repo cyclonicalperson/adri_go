@@ -21,6 +21,10 @@ namespace TouristGuide.Api.Models
         [Column("route_id")]
         public uint? RouteId { get; set; }
 
+        /// <summary>NULL osim ako je stavka privatna (turistom sastavljena) ruta</summary>
+        [Column("tourist_route_id")]
+        public uint? TouristRouteId { get; set; }
+
         [Column("day_number")]
         public byte DayNumber { get; set; } = 1;
 
@@ -37,5 +41,6 @@ namespace TouristGuide.Api.Models
         public VisitPlanner Planner { get; set; } = null!;
         public Post? Post { get; set; }
         public Route? Route { get; set; }
+        public TouristRoute? TouristRoute { get; set; }
     }
 }
