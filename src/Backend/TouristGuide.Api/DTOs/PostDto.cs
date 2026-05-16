@@ -45,4 +45,9 @@ namespace TouristGuide.Api.DTOs
         /// <summary>Da li je prijavljeni turista sacuvao ovu objavu (null = nepoznato/nije prijavljen)</summary>
         public bool? IsSaved { get; set; }
     }
+
+    public class AddCalendarItemDto
+    {
+        public DateTime? ScheduledAt { get; set; }
+    }
 }

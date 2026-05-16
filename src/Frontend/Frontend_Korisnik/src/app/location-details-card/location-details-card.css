@@ -394,3 +394,133 @@
 
   .location-title { font-size: 16px; }
 }
+
+/* ── Calendar scheduler popup ─────────────────────────────── */
+.card-scheduler-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+}
+
+.card-scheduler-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 26px 22px 22px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(15,23,42,0.25);
+}
+
+.card-scheduler-icon {
+  width: 56px;
+  height: 56px;
+  background: #fdf4ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.card-scheduler-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: #7e22ce;
+}
+
+.card-scheduler-title {
+  text-align: center;
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.card-scheduler-body {
+  text-align: center;
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.card-scheduler-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.card-scheduler-input-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.card-scheduler-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #e9d5ff;
+  border-radius: 14px;
+  color: #0f172a;
+  font: inherit;
+  font-size: 15px;
+  padding: 13px 14px;
+  outline: none;
+}
+
+.card-scheduler-input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168,85,247,0.14);
+}
+
+.card-scheduler-picker-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 56px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.card-scheduler-error {
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 700;
+  margin: -4px 0 12px;
+}
+
+.card-scheduler-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.card-scheduler-cancel,
+.card-scheduler-add {
+  flex: 1;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.card-scheduler-cancel {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.card-scheduler-add {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+}
