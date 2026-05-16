@@ -58,6 +58,7 @@ export class SideMenuComponent {
   }
   goToRoutes() { this.onClose.emit(); this.router.navigate(['/routes']); }
   goToActivities() { this.onClose.emit(); this.router.navigate(['/activities']); }
+  goToChat()       { this.onClose.emit(); this.router.navigate(['/chat']); }
   goToCalendar() { this.onClose.emit(); this.router.navigate(['/calendar']); }
   goToNotifications() { this.onClose.emit(); this.router.navigate(['/notifications']); }
   goToSettings() { this.onClose.emit(); this.router.navigate(['/settings']); }

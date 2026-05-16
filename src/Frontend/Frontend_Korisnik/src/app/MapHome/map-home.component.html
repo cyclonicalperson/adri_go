@@ -212,6 +212,29 @@
 
   </div>
 
+  <!-- ── CHAT FAB ── -->
+  <div class="chat-fab-wrap"
+       [class.chat-fab-hidden]="isNavigating || sheetExpanded || isFiltersOpen">
+    <div class="chat-fab-hint" *ngIf="showChatHint">
+      <button type="button"
+              class="chat-hint-close"
+              (click)="dismissChatHint($event)"
+              aria-label="Zatvori AI pomoć poruku">
+        ×
+      </button>
+      <strong>Treba Vam pomoć?</strong>
+      <span>Pošaljite poruku AI asistentu za preporuke, rute ili pitanja o destinacijama.</span>
+    </div>
+
+    <button class="chat-fab"
+            (click)="goToChat()"
+            aria-label="Otvori AI asistenta">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+      </svg>
+    </button>
+  </div>
+
   <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
