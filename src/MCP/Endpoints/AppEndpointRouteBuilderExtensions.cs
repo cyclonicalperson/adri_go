@@ -13,7 +13,8 @@ internal static class AppEndpointRouteBuilderExtensions
             version = "1.0.0",
             transport = "http",
             endpoint = "/mcp",
-            health = "/health"
+            health = "/health",
+            chat = "/api/chat"
         }));
 
         // Health check — provjera konekcije na bazu
@@ -41,8 +42,11 @@ internal static class AppEndpointRouteBuilderExtensions
             }
         });
 
-        // MCP endpoint
+        // MCP endpoint (SSE transport — višekorisnički)
         endpoints.MapMcp("/mcp");
+
+        // Gemini chat endpoint — REST, za direktnu AI integraciju
+        endpoints.MapGeminiChatEndpoints();
 
         return endpoints;
     }

@@ -16,4 +16,10 @@ internal interface ICurrentTouristContext
     /// True ako je zahtjev autentikovan sa validnim JWT tokenom.
     /// </summary>
     bool IsAuthenticated { get; }
+
+    /// <summary>
+    /// Sirovi JWT Bearer token iz Authorization headera.
+    /// Koristi se za prosljedjivanje poziva Backend API-ju u ime turiste.
+    /// </summary>
+    string? BearerToken { get; }
 }

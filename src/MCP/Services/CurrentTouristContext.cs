@@ -15,10 +15,17 @@ namespace Mcp.Services;
 internal sealed class CurrentTouristContext : ICurrentTouristContext
 {
     private readonly uint? _touristId;
+    private readonly string? _bearerToken;
 
     public CurrentTouristContext(IHttpContextAccessor httpContextAccessor)
     {
-        var user = httpContextAccessor.HttpContext?.User;
+        var httpContext = httpContextAccessor.HttpContext;
+        var user = httpContext?.User;
+
+        // Izvuci sirovi Bearer token za prosljedjivanje Backend API-ju
+        var authHeader = httpContext?.Request.Headers.Authorization.FirstOrDefault();
+        if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+            _bearerToken = authHeader["Bearer ".Length..].Trim();
 
         if (user?.Identity?.IsAuthenticated != true)
         {
@@ -36,4 +43,5 @@ internal sealed class CurrentTouristContext : ICurrentTouristContext
 
     public uint? TouristId => _touristId;
     public bool IsAuthenticated => _touristId.HasValue;
+    public string? BearerToken => _bearerToken;
 }

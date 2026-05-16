@@ -152,13 +152,80 @@ internal sealed class TourismQueryService : ITourismQueryService
                 x.Lng >= minLng && x.Lng <= maxLng);
         }
 
-        // Brojanje za paginaciju — SQL COUNT bez učitavanja entiteta
+        // ── GPS radius path: učitaj sve kandidate u memoriju, filtriraj precizno, paginiraj ──
+        // Bbox pre-filter u SQL-u je već primijenjen; ovdje radimo tačno Haversine filtriranje.
+        if (request.UserLatitude.HasValue && request.UserLongitude.HasValue && request.RadiusKm.HasValue)
+        {
+            List<PostEntity> gpsResults;
+            try
+            {
+                gpsResults = await query.ToListAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "tourism_search_posts (GPS): database query failed");
+                throw new InvalidOperationException(
+                    "Failed to search locations. Please try again or narrow your search criteria.", ex);
+            }
+
+            // Precizno Haversine filtriranje u memoriji
+            var withDist = gpsResults
+                .Where(x => x.Lat.HasValue && x.Lng.HasValue)
+                .Select(x =>
+                {
+                    var dist = CalculateDistanceKm(
+                        request.UserLatitude.Value, request.UserLongitude.Value,
+                        (double)x.Lat!.Value, (double)x.Lng!.Value);
+                    return (post: x, dist);
+                })
+                .Where(t => t.dist <= request.RadiusKm.Value)
+                .ToList();
+
+            // Sortiranje u memoriji
+            var geoSorted = (request.SortBy switch
+            {
+                "rating"  => withDist.OrderByDescending(t => t.post.AvgRating ?? 0),
+                "title"   => withDist.OrderBy(t => t.post.Title),
+                "newest"  => withDist.OrderByDescending(t => t.post.PublishedAt ?? DateTime.MinValue),
+                _         => withDist.OrderBy(t => t.dist)   // distance (default za GPS)
+            }).ToList();
+
+            var geoTotal = geoSorted.Count;
+            var geoPage  = geoSorted
+                .Skip(request.Offset)
+                .Take(request.Limit)
+                .Select(t => new PostSummary(
+                    t.post.Id, t.post.RegionId, t.post.Title, t.post.PostType,
+                    t.post.Description, t.post.Address, t.post.ExternalUrl, null,
+                    t.post.OpeningHours,
+                    t.post.AvgRating.HasValue ? (double?)t.post.AvgRating.Value : null,
+                    t.post.ReviewCount,
+                    t.post.Lat, t.post.Lng, t.dist,
+                    t.post.PostTags.Select(pt => pt.Tag.Name).ToList()))
+                .ToList();
+
+            return new PagedResult<PostSummary>(geoPage, geoTotal, request.Offset + geoPage.Count < geoTotal);
+        }
+
+        // ── Standardni path: paginacija i sortiranje ostaju u SQL-u ───────────
+        // Sortiranje
+        query = request.SortBy switch
+        {
+            "rating"  => query.OrderByDescending(x => x.AvgRating ?? 0),
+            "title"   => query.OrderBy(x => x.Title),
+            "newest"  => query.OrderByDescending(x => x.PublishedAt ?? DateTime.MinValue),
+            _         => query.OrderByDescending(x => x.AvgRating ?? 0)  // default: rating
+        };
+
         var total = await query.CountAsync(cancellationToken);
 
-        List<PostEntity> allResults;
+        List<PostEntity> pageResults;
         try
         {
-            allResults = await query.ToListAsync(cancellationToken);
+            pageResults = await query
+                .Skip(request.Offset)
+                .Take(request.Limit)
+                .ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -167,64 +234,16 @@ internal sealed class TourismQueryService : ITourismQueryService
                 "Failed to search locations. Please try again or narrow your search criteria.", ex);
         }
 
-        // Precizno GPS filtriranje u memoriji (bbox je već odradio grubo filtriranje u SQL-u)
-        if (request.UserLatitude.HasValue && request.UserLongitude.HasValue && request.RadiusKm.HasValue)
-        {
-            allResults = allResults.Where(x =>
-                x.Lat.HasValue && x.Lng.HasValue &&
-                CalculateDistanceKm(
-                    request.UserLatitude.Value, request.UserLongitude.Value,
-                    (double)x.Lat.Value, (double)x.Lng.Value) <= request.RadiusKm.Value
-            ).ToList();
-        }
+        var pageItems = pageResults.Select(x => new PostSummary(
+            x.Id, x.RegionId, x.Title, x.PostType,
+            x.Description, x.Address, x.ExternalUrl, null,
+            x.OpeningHours,
+            x.AvgRating.HasValue ? (double?)x.AvgRating.Value : null,
+            x.ReviewCount,
+            x.Lat, x.Lng, null,
+            x.PostTags.Select(pt => pt.Tag.Name).ToList())).ToList();
 
-        var mapped = allResults.Select(x =>
-        {
-            double? dist = null;
-            if (request.UserLatitude.HasValue && request.UserLongitude.HasValue
-                && x.Lat.HasValue && x.Lng.HasValue)
-            {
-                dist = CalculateDistanceKm(
-                    request.UserLatitude.Value, request.UserLongitude.Value,
-                    (double)x.Lat.Value, (double)x.Lng.Value);
-            }
-
-            return new PostSummary(
-                x.Id, x.RegionId, x.Title, x.PostType,
-                x.Description, x.Address, x.ExternalUrl, null,
-                x.OpeningHours,
-                x.AvgRating.HasValue ? (double?)x.AvgRating.Value : null,
-                x.ReviewCount,
-                x.Lat, x.Lng, dist,
-                x.PostTags.Select(pt => pt.Tag.Name).ToList());
-        });
-
-        // newest sort mora biti na entitetima (PublishedAt nije u PostSummary DTO-u)
-        if (request.SortBy == "newest")
-        {
-            allResults = allResults
-                .OrderByDescending(x => x.PublishedAt ?? DateTime.MinValue)
-                .ToList();
-        }
-
-        var sorted = (request.SortBy switch
-        {
-            "rating"   => mapped.OrderByDescending(x => x.Rating ?? 0),
-            "distance" => mapped.OrderBy(x => x.DistanceKm ?? double.MaxValue),
-            "title"    => mapped.OrderBy(x => x.Title),
-            "newest"   => mapped, // vec sortirano na allResults
-            _ when request.UserLatitude.HasValue => mapped.OrderBy(x => x.DistanceKm ?? double.MaxValue),
-            _          => mapped.OrderByDescending(x => x.Rating ?? 0)
-        }).ToList();
-
-        // total se bazira na GPS-filtriranom skupu, ne na SQL COUNT-u
-        var filteredTotal = request.UserLatitude.HasValue && request.RadiusKm.HasValue
-            ? sorted.Count
-            : total;
-
-        var page = sorted.Skip(request.Offset).Take(request.Limit).ToList();
-
-        return new PagedResult<PostSummary>(page, filteredTotal, request.Offset + page.Count < filteredTotal);
+        return new PagedResult<PostSummary>(pageItems, total, request.Offset + pageItems.Count < total);
     }
 
     public async Task<PostDetail?> GetPostDetailAsync(
@@ -232,6 +251,7 @@ internal sealed class TourismQueryService : ITourismQueryService
     {
         _logger.LogInformation("tourism_get_post_detail: postId={PostId}", request.PostId);
 
+        // Jedan upit: post + tagovi
         var post = await _db.Posts.AsNoTracking()
             .Include(x => x.PostTags).ThenInclude(pt => pt.Tag)
             .FirstOrDefaultAsync(x => x.Id == request.PostId && x.Status == "published", cancellationToken);
@@ -242,26 +262,28 @@ internal sealed class TourismQueryService : ITourismQueryService
             return null;
         }
 
-        string? regionName = null;
-        if (post.RegionId.HasValue)
-        {
-            var region = await _db.Regions.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == post.RegionId.Value, cancellationToken);
-            regionName = region?.Name;
-        }
+        // Ime regije + tri COUNT-a — sve paralelno (4 upita umjesto 4 sekvencijalna)
+        var regionTask = post.RegionId.HasValue
+            ? _db.Regions.AsNoTracking()
+                  .Where(x => x.Id == post.RegionId.Value)
+                  .Select(x => x.Name)
+                  .FirstOrDefaultAsync(cancellationToken)
+            : Task.FromResult<string?>(null);
 
-        var viewCount = await _db.PostViews.AsNoTracking().CountAsync(x => x.PostId == post.Id, cancellationToken);
-        var likeCount = await _db.PostLikes.AsNoTracking().CountAsync(x => x.PostId == post.Id, cancellationToken);
-        var reviewCount = await _db.Reviews.AsNoTracking()
-            .CountAsync(x => x.PostId == post.Id && x.IsApproved, cancellationToken);
+        var viewTask   = _db.PostViews.AsNoTracking().CountAsync(x => x.PostId == post.Id, cancellationToken);
+        var likeTask   = _db.PostLikes.AsNoTracking().CountAsync(x => x.PostId == post.Id, cancellationToken);
+        var reviewTask = _db.Reviews.AsNoTracking()
+                            .CountAsync(x => x.PostId == post.Id && x.IsApproved, cancellationToken);
+
+        await Task.WhenAll(regionTask, viewTask, likeTask, reviewTask);
 
         return new PostDetail(
-            post.Id, post.RegionId, regionName,
+            post.Id, post.RegionId, await regionTask,
             post.Title, post.PostType, post.Description,
             post.Address, post.ExternalUrl, null,
             post.OpeningHours, post.Details,
             post.AvgRating.HasValue ? (double?)post.AvgRating.Value : null,
-            (uint)reviewCount, (uint)viewCount, (uint)likeCount,
+            (uint)await reviewTask, (uint)await viewTask, (uint)await likeTask,
             post.Lat, post.Lng,
             post.PostTags.Select(pt => pt.Tag.Name).ToList(),
             ParseJsonStringArray(post.Images));

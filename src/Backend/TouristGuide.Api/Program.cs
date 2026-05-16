@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Net.Http.Headers;
 using Microsoft.Extensions.FileProviders;
 using System.IO;
 using TouristGuide.Api.Data;
@@ -98,6 +99,14 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
+
+// ── Anthropic HTTP klijent (za AI chat proxy) ──────────────────────────────
+builder.Services.AddHttpClient("AnthropicApi", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Accept.Add(
+        new MediaTypeWithQualityHeaderValue("application/json"));
+});
 
 // ── SignalR ────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
