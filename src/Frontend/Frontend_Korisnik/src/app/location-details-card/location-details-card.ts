@@ -166,6 +166,8 @@ export class LocationDetailsCardComponent implements OnDestroy {
   goToLogin(event: Event): void {
     event.stopPropagation();
     this.router.navigate(['/login']);
+  }
+
   get calendarMinDateTime(): string {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());

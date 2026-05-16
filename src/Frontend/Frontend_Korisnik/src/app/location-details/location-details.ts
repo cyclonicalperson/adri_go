@@ -494,6 +494,10 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
 
   openCalendarScheduler(): void {
     if (!this.location) return;
+    if (!this.authService.isLoggedIn) {
+      this.openAuthModal();
+      return;
+    }
     if (this.eventHasPassed) {
       this.calendarMessage = 'This event has already ended.';
       setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);

@@ -1619,7 +1619,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const validStops = this.plannerStops.filter(stop => stop.id > 0);
-    if (validStops.length === 0 || this.isSavingTrip) {
+    if (this.isSavingTrip) {
+      return;
+    }
+    if (validStops.length === 0) {
+      this.plannerMessage = 'Only curated routes can be added to the calendar.';
+      this.cdr.detectChanges();
       return;
     }
 
