@@ -23,6 +23,7 @@ export class RouteFormComponent implements OnInit {
 
   destinations: Region[] = [];
   waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[] = [];
+  submitted = false;
 
   readonly difficultyOptions: { value: RouteDifficulty; label: string }[] = [
     { value: 'EASY', label: 'Lako' },
@@ -47,7 +48,8 @@ export class RouteFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      regionId: [null, Validators.required],
+      regionId: [null],
+      proposedRegionName: [''],
       name: ['', Validators.required],
       difficulty: ['MODERATE', Validators.required],
       distanceKm: [null, [Validators.required, Validators.min(0.1)]],
@@ -69,6 +71,7 @@ export class RouteFormComponent implements OnInit {
         const r = res.data;
         this.form.patchValue({
           regionId: r.destinationId ?? r.regionId,
+          proposedRegionName: r.proposedRegionName ?? '',
           name: r.name,
           difficulty: r.difficulty,
           durationMin: r.durationMin,
@@ -121,8 +124,12 @@ export class RouteFormComponent implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid) {
+    this.submitted = true;
+    if (this.form.invalid || !this.hasRegionChoice()) {
       this.form.markAllAsTouched();
+      if (!this.hasRegionChoice()) {
+        this.error = 'Izaberite destinaciju/region ili upisite predlog novog regiona.';
+      }
       return;
     }
 
@@ -139,7 +146,9 @@ export class RouteFormComponent implements OnInit {
 
     const payload = {
       ...this.form.value,
-      destinationId: this.form.value.regionId,
+      regionId: this.proposedRegionName ? null : this.form.value.regionId,
+      destinationId: this.proposedRegionName ? null : this.form.value.regionId,
+      proposedRegionName: this.proposedRegionName,
       startLatitude: first.latitude,
       startLongitude: first.longitude,
       endLatitude: last.latitude,
@@ -162,6 +171,26 @@ export class RouteFormComponent implements OnInit {
 
   cancel(): void {
     void this.router.navigate(['/admin/routes-management']);
+  }
+
+  get regionChoiceInvalid(): boolean {
+    return this.submitted && !this.hasRegionChoice();
+  }
+
+  get proposedRegionName(): string | null {
+    return this.normalizeProposedRegionName(this.form?.get('proposedRegionName')?.value);
+  }
+
+  onRegionSelected(): void {
+    if (this.form.get('regionId')?.value) {
+      this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onProposedRegionInput(): void {
+    if (this.proposedRegionName) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
   }
 
   private setWaypoints(
@@ -209,5 +238,13 @@ export class RouteFormComponent implements OnInit {
 
   private toRadians(value: number): number {
     return value * (Math.PI / 180);
+  }
+
+  private hasRegionChoice(): boolean {
+    return !!this.form?.get('regionId')?.value || !!this.proposedRegionName;
+  }
+
+  private normalizeProposedRegionName(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 }

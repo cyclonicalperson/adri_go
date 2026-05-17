@@ -26,6 +26,15 @@ import {
 } from '../models/api-response.model';
 import { AdminRole } from '../auth/auth.service';
 
+export interface UniversalPasswordStatus {
+  isConfigured: boolean;
+  canReveal: boolean;
+  password: string | null;
+  source: 'database' | 'configuration' | 'none' | string;
+  updatedAt: string | null;
+  updatedBy: number | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly url = `${environment.apiUrl}/admin-users`;
@@ -97,6 +106,18 @@ export class UserService {
   changePassword(currentPassword: string, newPassword: string): Observable<ApiResponse<void>> {
     return this.http.patch<any>(`${this.url}/me/password`, { currentPassword, newPassword }).pipe(
       map(res => ({ data: undefined, success: res.success ?? true }))
+    );
+  }
+
+  getUniversalPassword(): Observable<ApiResponse<UniversalPasswordStatus>> {
+    return this.http.get<any>(`${this.url}/universal-password`).pipe(
+      map(res => ({ data: mapUniversalPasswordStatus(res.data ?? res), success: res.success ?? true }))
+    );
+  }
+
+  updateUniversalPassword(currentPassword: string, newPassword: string): Observable<ApiResponse<UniversalPasswordStatus>> {
+    return this.http.put<any>(`${this.url}/universal-password`, { currentPassword, newPassword }).pipe(
+      map(res => ({ data: mapUniversalPasswordStatus(res.data ?? res), success: res.success ?? true }))
     );
   }
 
@@ -244,6 +265,17 @@ function mapUser(u: any): User {
     isActive: u.isActive ?? u.accountStatus === 'active',
     permissionCount: u.permissionCount ?? 0,
     organization: u.organization ?? null,
+  };
+}
+
+function mapUniversalPasswordStatus(s: any): UniversalPasswordStatus {
+  return {
+    isConfigured: !!s?.isConfigured,
+    canReveal: !!s?.canReveal,
+    password: s?.password ?? null,
+    source: s?.source ?? 'none',
+    updatedAt: s?.updatedAt ?? null,
+    updatedBy: s?.updatedBy ?? null,
   };
 }
 

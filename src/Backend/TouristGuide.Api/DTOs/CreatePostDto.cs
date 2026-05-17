@@ -14,6 +14,9 @@ namespace TouristGuide.Api.DTOs
 
         public uint? RegionId { get; set; }
 
+        [MaxLength(200)]
+        public string? ProposedRegionName { get; set; }
+
         [Required(ErrorMessage = "Naslov je obavezan.")]
         [MaxLength(300, ErrorMessage = "Naslov ne smije biti duži od 300 znakova.")]
         public string Title { get; set; } = string.Empty;

@@ -94,6 +94,7 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<AdminPermissionService>();
+builder.Services.AddScoped<UniversalAdminPasswordService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();

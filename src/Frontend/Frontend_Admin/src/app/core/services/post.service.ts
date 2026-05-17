@@ -113,6 +113,7 @@ function normalizePost(item: any): Post {
     adminRole: item?.adminRole ?? undefined,
     adminOrganizationId: item?.adminOrganizationId ?? null,
     regionId: item?.regionId ?? null,
+    proposedRegionName: item?.proposedRegionName ?? null,
     region,
     title: item?.title ?? '',
     postType: (item?.postType ?? 'other') as PostType,

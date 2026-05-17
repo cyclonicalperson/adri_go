@@ -20,6 +20,7 @@ namespace TouristGuide.Api.Data
         public DbSet<TermsAcceptance> TermsAcceptances { get; set; }
         public DbSet<AdminNotification> AdminNotifications { get; set; }
         public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
+        public DbSet<AdminSecret> AdminSecrets { get; set; }
 
         // Sadržaj
         public DbSet<Region> Regions { get; set; }
@@ -210,6 +211,12 @@ namespace TouristGuide.Api.Data
                 .HasOne(l => l.PerformedByAdmin)
                 .WithMany()
                 .HasForeignKey(l => l.PerformedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AdminSecret>()
+                .HasOne(s => s.UpdatedByAdmin)
+                .WithMany()
+                .HasForeignKey(s => s.UpdatedBy)
                 .OnDelete(DeleteBehavior.SetNull);
 
             // ════════════════════════════════════════════════════════════════

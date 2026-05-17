@@ -31,8 +31,9 @@
           <div class="field">
             <label class="label">Destinacija / region *</label>
             <select class="input"
-                    [class.invalid]="f('regionId').invalid && f('regionId').touched"
-                    formControlName="regionId">
+                    [class.invalid]="regionChoiceInvalid"
+                    formControlName="regionId"
+                    (change)="onRegionSelected()">
               <option [ngValue]="null">Izaberite destinaciju</option>
               @for (r of destinations; track r.regionId) {
               <option [value]="r.regionId">{{ r.name }}</option>
@@ -49,6 +50,18 @@
             </select>
             <div class="field-help">{{ selectedStatusOption.hint }}</div>
           </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Predlog novog regiona</label>
+          <input class="input"
+                 [class.invalid]="regionChoiceInvalid"
+                 formControlName="proposedRegionName"
+                 (input)="onProposedRegionInput()"
+                 placeholder="Ako destinacija/region ne postoji, upisite naziv" />
+          @if (regionChoiceInvalid) {
+          <div class="field-error">Izaberite region ili upisite predlog novog regiona.</div>
+          }
         </div>
 
         <div class="row-3">

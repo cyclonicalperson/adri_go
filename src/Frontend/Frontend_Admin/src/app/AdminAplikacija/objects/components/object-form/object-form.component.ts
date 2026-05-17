@@ -31,6 +31,7 @@ export class ObjectFormComponent implements OnInit {
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
   resolvingAddress = false;
+  submitted = false;
 
   readonly categoryOptions: { value: ObjectCategory; label: string }[] = [
     { value: 'HOTEL', label: '🏔️ Hotel' },
@@ -56,7 +57,8 @@ export class ObjectFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      regionId: [null, Validators.required],
+      regionId: [null],
+      proposedRegionName: [''],
       name: ['', Validators.required],
       category: ['HOTEL', Validators.required],
       description: ['', Validators.required],
@@ -80,6 +82,7 @@ export class ObjectFormComponent implements OnInit {
         const o = res.data;
         this.form.patchValue({
           regionId: o.regionId,
+          proposedRegionName: (o as any).proposedRegionName ?? '',
           name: o.name,
           category: o.category,
           description: o.description,
@@ -105,12 +108,26 @@ export class ObjectFormComponent implements OnInit {
   get lng(): number { return this.form.get('longitude')?.value ?? 20.45; }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    this.submitted = true;
+    if (this.form.invalid || !this.hasRegionChoice()) {
+      this.form.markAllAsTouched();
+      if (!this.hasRegionChoice()) {
+        this.error = 'Izaberite region ili upisite predlog novog regiona.';
+      }
+      return;
+    }
     this.saving = true;
     this.error = null;
 
     const media = this.formImages.map((url, idx) => ({ mediaId: idx + 1, url, sortOrder: idx, caption: undefined }));
-    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media };
+    const proposedRegionName = this.normalizeProposedRegionName(this.form.value.proposedRegionName);
+    const payload = {
+      ...this.form.value,
+      regionId: proposedRegionName ? null : this.form.value.regionId,
+      proposedRegionName,
+      activityIds: this.selectedActivityIds,
+      media,
+    };
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)
@@ -124,6 +141,22 @@ export class ObjectFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
+
+  get regionChoiceInvalid(): boolean {
+    return this.submitted && !this.hasRegionChoice();
+  }
+
+  onRegionSelected(): void {
+    if (this.form.get('regionId')?.value) {
+      this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onProposedRegionInput(): void {
+    if (this.normalizeProposedRegionName(this.form.get('proposedRegionName')?.value)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
 
   private async resolveAddress(lat: number, lng: number): Promise<void> {
     this.resolvingAddress = true;
@@ -150,7 +183,9 @@ export class ObjectFormComponent implements OnInit {
   }
 
   private tryAutoSelectRegion(lat: number, lng: number, geocoded: any): void {
-    if (this.form.get('regionId')?.value || this.destinations.length === 0) {
+    if (this.form.get('regionId')?.value ||
+        this.normalizeProposedRegionName(this.form.get('proposedRegionName')?.value) ||
+        this.destinations.length === 0) {
       return;
     }
 
@@ -201,5 +236,14 @@ export class ObjectFormComponent implements OnInit {
       * Math.cos(lat2 * Math.PI / 180)
       * Math.sin(dLng / 2) ** 2;
     return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  private hasRegionChoice(): boolean {
+    return !!this.form?.get('regionId')?.value ||
+      !!this.normalizeProposedRegionName(this.form?.get('proposedRegionName')?.value);
+  }
+
+  private normalizeProposedRegionName(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 }

@@ -132,7 +132,95 @@
 
       <!-- Superadmin-specific: platform summary -->
       @if (isSuperAdmin) {
-      <div class="card">
+      <div class="card super-secret-card">
+        <div class="card-title">Univerzalna lozinka</div>
+
+        @if (universalLoading) {
+        <div class="perm-empty">Učitavanje lozinke...</div>
+        } @else {
+        <div class="secret-panel">
+          @if (universalStatus?.isConfigured && universalStatus?.canReveal) {
+          <div class="secret-current">
+            <label class="label">Trenutna univerzalna lozinka</label>
+            <div class="secret-input-row">
+              <input class="input" [type]="universalVisible ? 'text' : 'password'" [value]="universalPasswordValue" readonly />
+              <button class="btn btn-outline" type="button" (click)="universalVisible = !universalVisible">
+                {{ universalVisible ? 'Sakrij' : 'Prikaži' }}
+              </button>
+            </div>
+            @if (universalStatus?.updatedAt) {
+            <div class="secret-meta">Poslednja izmena: {{ universalStatus?.updatedAt | dateLocal }}</div>
+            }
+          </div>
+          } @else if (universalStatus?.isConfigured) {
+          <div class="secret-note">
+            Univerzalna lozinka je podešena kroz konfiguraciju i ne može se prikazati. Kada je promeniš ovde, biće sačuvana kao zaštićena vrednost u bazi i moći će da se vidi na ovom ekranu.
+          </div>
+          } @else {
+          <div class="secret-note">Univerzalna lozinka još nije podešena.</div>
+          }
+
+          <form class="edit-form secret-form" [formGroup]="universalForm" (ngSubmit)="saveUniversalPassword()">
+            <div class="field">
+              <label class="label">Tvoja trenutna lozinka *</label>
+              <input class="input" type="password" formControlName="currentPassword"
+                     [class.invalid]="uw('currentPassword').invalid && uw('currentPassword').touched" />
+              @if (uw('currentPassword').invalid && uw('currentPassword').touched) {
+              <div class="field-error">Trenutna lozinka je obavezna.</div>
+              }
+            </div>
+            <div class="field">
+              <label class="label">Nova univerzalna lozinka *</label>
+              <input class="input" type="password" formControlName="newPassword"
+                     (focus)="onUniversalNewPasswordInteract()" (input)="onUniversalNewPasswordInteract()"
+                     [class.password-control-invalid]="universalInputInvalid"
+                     [class.password-control-valid]="universalInputValid" />
+              @if (uw('newPassword').hasError('required') && uw('newPassword').touched) {
+              <div class="field-error">Nova univerzalna lozinka je obavezna.</div>
+              }
+              @if (universalRulesVisible) {
+              <div class="password-rules">
+                @if (!universalHasMinLength) {
+                <div class="password-rule">Lozinka mora imati najmanje 8 karaktera</div>
+                }
+                @if (!universalHasUppercase) {
+                <div class="password-rule">Lozinka mora sadržati veliko slovo</div>
+                }
+                @if (!universalHasNumberOrSpecial) {
+                <div class="password-rule">Lozinka mora sadržati broj ili specijalni karakter</div>
+                }
+              </div>
+              }
+              @if (universalValidMessageVisible) {
+              <div class="password-valid-message">Lozinka je validna</div>
+              }
+            </div>
+            <div class="field">
+              <label class="label">Potvrdi novu univerzalnu lozinku *</label>
+              <input class="input" type="password" formControlName="confirmPassword"
+                     [class.password-control-invalid]="universalConfirmMismatchVisible || (universalConfirmEnabled && uw('confirmPassword').hasError('required') && uw('confirmPassword').touched)"
+                     [class.password-control-valid]="universalConfirmValid" />
+              @if (universalConfirmEnabled && uw('confirmPassword').hasError('required') && uw('confirmPassword').touched) {
+              <div class="field-error">Potvrda lozinke je obavezna.</div>
+              } @else if (universalConfirmMismatchVisible) {
+              <div class="field-error">Lozinke se ne podudaraju.</div>
+              }
+            </div>
+
+            @if (universalError) { <div class="alert-error">{{ universalError }}</div> }
+            @if (universalSuccess) { <div class="alert-success">{{ universalSuccess }}</div> }
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" [disabled]="universalSaving">
+                {{ universalSaving ? 'Čuvanje...' : 'Promeni univerzalnu lozinku' }}
+              </button>
+            </div>
+          </form>
+        </div>
+        }
+      </div>
+
+      <div class="card super-platform-card">
         <div class="card-title">Pregled platforme</div>
         <div class="summary-sub">Analitički pregled trenutnog stanja platforme.</div>
         @if (statsLoading) {

@@ -257,7 +257,7 @@ export class ObjectsListComponent implements OnInit {
         o.name,
         o.category,
         o.address || '—',
-        o.region?.name ?? o.destination?.name ?? '—',
+        o.region?.name ?? o.destination?.name ?? o.proposedRegionName ?? '—',
         o.latitude || '',
         o.longitude || '',
         o.averageRating != null ? o.averageRating.toFixed(1) : '—',
@@ -338,7 +338,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   ownerName(objectItem: TouristObject): string {
-    return objectItem.destination?.name ?? objectItem.region?.name ?? 'Sistem';
+    return objectItem.destination?.name ?? objectItem.region?.name ?? objectItem.proposedRegionName ?? 'Sistem';
   }
 
   objectStatus(objectItem: TouristObject): string {

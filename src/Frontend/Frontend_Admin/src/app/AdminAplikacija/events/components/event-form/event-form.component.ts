@@ -62,6 +62,7 @@ export class EventFormComponent implements OnInit {
         Validators.maxLength(2000),
       ]],
       regionId: [null],
+      proposedRegionName: [''],
       objectId: [null],
       startAt: ['', Validators.required],
       endAt: ['', Validators.required],
@@ -99,6 +100,7 @@ export class EventFormComponent implements OnInit {
             category: details['category'] ?? 'OTHER',
             description: post.description ?? '',
             regionId: post.regionId ?? null,
+            proposedRegionName: (post as any).proposedRegionName ?? '',
             objectId: details['objectId'] ?? details['relatedObjectId'] ?? null,
             startAt: formatDateTime((details['startAt'] as string | null | undefined) ?? (details['eventStart'] as string | null | undefined)),
             endAt: formatDateTime((details['endAt'] as string | null | undefined) ?? (details['eventEnd'] as string | null | undefined)),
@@ -144,6 +146,7 @@ export class EventFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
+    const proposedRegionName = this.normalizeProposedRegionName(raw.proposedRegionName);
     const details = {
       category: raw.category,
       startAt: raw.startAt ? new Date(raw.startAt).toISOString() : null,
@@ -156,7 +159,8 @@ export class EventFormComponent implements OnInit {
       title: raw.title,
       postType: 'event' as const,
       description: raw.description,
-      regionId: raw.regionId || null,
+      regionId: proposedRegionName ? null : (raw.regionId || null),
+      proposedRegionName,
       lat: raw.lat || null,
       lng: raw.lng || null,
       externalUrl: raw.ticketUrl || raw.externalUrl || null,
@@ -180,4 +184,20 @@ export class EventFormComponent implements OnInit {
   }
 
   cancel(): void { this.router.navigate(['/admin/events']); }
+
+  onRegionSelected(): void {
+    if (this.form.get('regionId')?.value) {
+      this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onProposedRegionInput(): void {
+    if (this.normalizeProposedRegionName(this.form.get('proposedRegionName')?.value)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
+
+  private normalizeProposedRegionName(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
 }

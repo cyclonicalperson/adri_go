@@ -117,7 +117,7 @@
             </app-badge>
           </td>
           <td>
-            <div class="meta-primary">{{ r.destination?.name ?? '-' }}</div>
+            <div class="meta-primary">{{ r.destination?.name ?? r.proposedRegionName ?? '-' }}</div>
           </td>
           <td class="num">{{ (r.distanceKm ?? 0).toFixed(1) }} km</td>
           <td class="num">{{ formatDuration(r.durationMin ?? 0) }}</td>
