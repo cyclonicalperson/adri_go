@@ -351,22 +351,25 @@ internal sealed class GeminiChatService : IGeminiChatService
         {
             object? result = toolName switch
             {
-                "tourism_search_regions"    => await ExecuteSearchRegionsAsync(args, ct),
-                "tourism_get_region_summary"=> await ExecuteGetRegionSummaryAsync(args, ct),
-                "tourism_search_posts"      => await ExecuteSearchPostsAsync(args, ct),
-                "tourism_get_post_detail"   => await ExecuteGetPostDetailAsync(args, ct),
-                "tourism_search_routes"     => await ExecuteSearchRoutesAsync(args, ct),
-                "tourism_get_route_detail"  => await ExecuteGetRouteDetailAsync(args, ct),
-                "tourism_get_reviews"       => await ExecuteGetReviewsAsync(args, ct),
-                "tourism_search_tags"       => await ExecuteSearchTagsAsync(args, ct),
-                "tourism_get_nearby"        => await ExecuteGetNearbyAsync(args, ct),
-                "tourism_get_similar_posts" => await ExecuteGetSimilarPostsAsync(args, ct),
-                "tourism_get_top_content"   => await ExecuteGetTopContentAsync(args, ct),
-                "tourism_search_events"     => await ExecuteSearchEventsAsync(args, ct),
-                "tourism_get_recommendations"=> await ExecuteGetRecommendationsAsync(args, ct),
-                "tourism_get_new_content"   => await ExecuteGetNewContentAsync(args, ct),
-                "tourism_search_activities" => await ExecuteSearchActivitiesAsync(args, ct),
-                "tourism_get_visit_trends"  => await ExecuteGetVisitTrendsAsync(args, ct),
+                "tourism_search_regions"         => await ExecuteSearchRegionsAsync(args, ct),
+                "tourism_get_region_summary"      => await ExecuteGetRegionSummaryAsync(args, ct),
+                "tourism_search_posts"            => await ExecuteSearchPostsAsync(args, ct),
+                "tourism_get_post_detail"         => await ExecuteGetPostDetailAsync(args, ct),
+                "tourism_search_routes"           => await ExecuteSearchRoutesAsync(args, ct),
+                "tourism_get_route_detail"        => await ExecuteGetRouteDetailAsync(args, ct),
+                "tourism_get_reviews"             => await ExecuteGetReviewsAsync(args, ct),
+                "tourism_get_route_reviews"       => await ExecuteGetRouteReviewsAsync(args, ct),
+                "tourism_search_tags"             => await ExecuteSearchTagsAsync(args, ct),
+                "tourism_get_nearby"              => await ExecuteGetNearbyAsync(args, ct),
+                "tourism_get_similar_posts"       => await ExecuteGetSimilarPostsAsync(args, ct),
+                "tourism_get_top_content"         => await ExecuteGetTopContentAsync(args, ct),
+                "tourism_search_events"           => await ExecuteSearchEventsAsync(args, ct),
+                "tourism_get_recommendations"     => await ExecuteGetRecommendationsAsync(args, ct),
+                "tourism_get_new_content"         => await ExecuteGetNewContentAsync(args, ct),
+                "tourism_search_activities"       => await ExecuteSearchActivitiesAsync(args, ct),
+                "tourism_get_visit_trends"        => await ExecuteGetVisitTrendsAsync(args, ct),
+                "tourism_get_external_click_stats"=> await ExecuteGetExternalClickStatsAsync(args, ct),
+                "tourism_get_direction_stats"     => await ExecuteGetDirectionStatsAsync(args, ct),
                 _ => (object)new { error = $"Nepoznat alat: {toolName}" }
             };
 
@@ -393,13 +396,30 @@ internal sealed class GeminiChatService : IGeminiChatService
             Limit:          GetInt   (args, "limit")  ?? 10,
             Offset:         GetInt   (args, "offset") ?? 0), ct);
 
-    private Task<RegionFullSummary?> ExecuteGetRegionSummaryAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetRegionSummaryAsync(
-            new GetRegionSummaryRequest(GetUint(args, "regionId") ?? 0), ct);
+    private async Task<RegionFullSummary?> ExecuteGetRegionSummaryAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null || regionId == 0)
+        {
+            var name = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(name))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(name, ct);
+        }
+        if (regionId is null || regionId == 0) return null;
+        return await _tourismQueryService.GetRegionSummaryAsync(new GetRegionSummaryRequest(regionId.Value), ct);
+    }
 
-    private Task<PagedResult<PostSummary>> ExecuteSearchPostsAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.SearchPostsAsync(new SearchPostsRequest(
-            RegionId:       GetUint      (args, "regionId"),
+    private async Task<PagedResult<PostSummary>> ExecuteSearchPostsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.SearchPostsAsync(new SearchPostsRequest(
+            RegionId:       regionId,
             Query:          GetString    (args, "query"),
             PostTypes:      GetStringList(args, "postTypes"),
             MinRating:      GetDouble    (args, "minRating"),
@@ -413,14 +433,35 @@ internal sealed class GeminiChatService : IGeminiChatService
             SortBy:         GetString    (args, "sortBy"),
             Limit:          GetInt       (args, "limit")  ?? 10,
             Offset:         GetInt       (args, "offset") ?? 0), ct);
+    }
 
-    private Task<PostDetail?> ExecuteGetPostDetailAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetPostDetailAsync(
-            new PostDetailRequest(GetUint(args, "postId") ?? 0), ct);
+    private async Task<PostDetail?> ExecuteGetPostDetailAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = GetUint(args, "postId");
+        if (postId is null || postId == 0)
+        {
+            var name = GetString(args, "postName");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var resolved = await _tourismQueryService.ResolvePostAsync(name, ct);
+                if (resolved.Found) postId = resolved.Id;
+            }
+        }
+        if (postId is null || postId == 0) return null;
+        return await _tourismQueryService.GetPostDetailAsync(new PostDetailRequest(postId.Value), ct);
+    }
 
-    private Task<PagedResult<RouteSummary>> ExecuteSearchRoutesAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.SearchRoutesAsync(new SearchRoutesRequest(
-            RegionId:           GetUint      (args, "regionId"),
+    private async Task<PagedResult<RouteSummary>> ExecuteSearchRoutesAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.SearchRoutesAsync(new SearchRoutesRequest(
+            RegionId:           regionId,
             Query:              GetString    (args, "query"),
             Difficulties:       GetStringList(args, "difficulties"),
             MaxDistanceKm:      GetDecimal   (args, "maxDistanceKm"),
@@ -432,20 +473,69 @@ internal sealed class GeminiChatService : IGeminiChatService
             SortBy:             GetString    (args, "sortBy"),
             Limit:              GetInt       (args, "limit")  ?? 10,
             Offset:             GetInt       (args, "offset") ?? 0), ct);
+    }
 
-    private Task<RouteDetail?> ExecuteGetRouteDetailAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetRouteDetailAsync(
-            new RouteDetailRequest(GetUint(args, "routeId") ?? 0), ct);
+    private async Task<RouteDetail?> ExecuteGetRouteDetailAsync(JsonObject? args, CancellationToken ct)
+    {
+        var routeId = GetUint(args, "routeId");
+        if (routeId is null || routeId == 0)
+        {
+            var name = GetString(args, "routeName");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var resolved = await _tourismQueryService.ResolveRouteAsync(name, ct);
+                if (resolved.Found) routeId = resolved.Id;
+            }
+        }
+        if (routeId is null || routeId == 0) return null;
+        return await _tourismQueryService.GetRouteDetailAsync(new RouteDetailRequest(routeId.Value), ct);
+    }
 
-    private Task<PagedResult<ReviewSummary>> ExecuteGetReviewsAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetReviewsAsync(new GetReviewsRequest(
-            PostId:       GetUint  (args, "postId") ?? 0,
+    private async Task<PagedResult<ReviewSummary>> ExecuteGetReviewsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = GetUint(args, "postId");
+        if (postId is null || postId == 0)
+        {
+            var name = GetString(args, "postName");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var resolved = await _tourismQueryService.ResolvePostAsync(name, ct);
+                if (resolved.Found) postId = resolved.Id;
+            }
+        }
+        if (postId is null || postId == 0) return new PagedResult<ReviewSummary>([], 0, false);
+        return await _tourismQueryService.GetReviewsAsync(new GetReviewsRequest(
+            PostId:       postId.Value,
             OnlyApproved: GetBool  (args, "onlyApproved") ?? true,
             MinRating:    GetInt   (args, "minRating"),
             MaxRating:    GetInt   (args, "maxRating"),
             SortBy:       GetString(args, "sortBy"),
             Limit:        GetInt   (args, "limit")  ?? 20,
             Offset:       GetInt   (args, "offset") ?? 0), ct);
+    }
+
+    private async Task<PagedResult<ReviewSummary>> ExecuteGetRouteReviewsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var routeId = GetUint(args, "routeId");
+        if (routeId is null || routeId == 0)
+        {
+            var name = GetString(args, "routeName");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var resolved = await _tourismQueryService.ResolveRouteAsync(name, ct);
+                if (resolved.Found) routeId = resolved.Id;
+            }
+        }
+        if (routeId is null || routeId == 0) return new PagedResult<ReviewSummary>([], 0, false);
+        return await _tourismQueryService.GetRouteReviewsAsync(new GetRouteReviewsRequest(
+            RouteId:      routeId.Value,
+            OnlyApproved: GetBool  (args, "onlyApproved") ?? true,
+            MinRating:    GetInt   (args, "minRating"),
+            MaxRating:    GetInt   (args, "maxRating"),
+            SortBy:       GetString(args, "sortBy"),
+            Limit:        GetInt   (args, "limit")  ?? 20,
+            Offset:       GetInt   (args, "offset") ?? 0), ct);
+    }
 
     private Task<IReadOnlyList<TagSummary>> ExecuteSearchTagsAsync(JsonObject? args, CancellationToken ct) =>
         _tourismQueryService.SearchTagsAsync(new SearchTagsRequest(
@@ -464,21 +554,52 @@ internal sealed class GeminiChatService : IGeminiChatService
             MinRating: GetDouble    (args, "minRating"),
             Limit:     GetInt       (args, "limit") ?? 10), ct);
 
-    private Task<IReadOnlyList<PostSummary>> ExecuteGetSimilarPostsAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetSimilarPostsAsync(new GetSimilarPostsRequest(
-            PostId: GetUint(args, "postId") ?? 0,
-            Limit:  GetInt (args, "limit")  ?? 5), ct);
+    private async Task<IReadOnlyList<PostSummary>> ExecuteGetSimilarPostsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = GetUint(args, "postId");
+        if (postId is null || postId == 0)
+        {
+            var name = GetString(args, "postName");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var resolved = await _tourismQueryService.ResolvePostAsync(name, ct);
+                if (resolved.Found) postId = resolved.Id;
+            }
+        }
+        if (postId is null || postId == 0) return [];
+        return await _tourismQueryService.GetSimilarPostsAsync(new GetSimilarPostsRequest(
+            PostId: postId.Value,
+            Limit:  GetInt(args, "limit") ?? 5), ct);
+    }
 
-    private Task<IReadOnlyList<PostAnalyticsSummary>> ExecuteGetTopContentAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetTopContentAsync(new GetTopContentRequest(
-            SortBy:   GetString(args, "sortBy")   ?? "views",
-            PostType: GetString(args, "postType"),
-            RegionId: GetUint  (args, "regionId"),
-            Limit:    GetInt   (args, "limit") ?? 10), ct);
+    private async Task<IReadOnlyList<TopContentItem>> ExecuteGetTopContentAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.GetTopContentUnifiedAsync(new GetTopContentUnifiedRequest(
+            SortBy:        GetString(args, "sortBy")       ?? "views",
+            PostType:      GetString(args, "postType"),
+            IncludeRoutes: GetBool  (args, "includeRoutes") ?? true,
+            RegionId:      regionId,
+            Limit:         GetInt   (args, "limit") ?? 10), ct);
+    }
 
-    private Task<PagedResult<EventSummary>> ExecuteSearchEventsAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.SearchEventsAsync(new SearchEventsRequest(
-            RegionId:     GetUint    (args, "regionId"),
+    private async Task<PagedResult<EventSummary>> ExecuteSearchEventsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.SearchEventsAsync(new SearchEventsRequest(
+            RegionId:     regionId,
             Query:        GetString  (args, "query"),
             StartFrom:    GetDateTime(args, "startFrom"),
             StartTo:      GetDateTime(args, "startTo"),
@@ -487,19 +608,39 @@ internal sealed class GeminiChatService : IGeminiChatService
             SortBy:       GetString  (args, "sortBy"),
             Limit:        GetInt     (args, "limit")  ?? 10,
             Offset:       GetInt     (args, "offset") ?? 0), ct);
+    }
 
-    private Task<IReadOnlyList<RecommendationItem>> ExecuteGetRecommendationsAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetRecommendationsAsync(new GetRecommendationsRequest(
-            RegionId:    GetUint  (args, "regionId")    ?? 0,
+    private async Task<IReadOnlyList<RecommendationItem>> ExecuteGetRecommendationsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null || regionId == 0)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        if (regionId is null || regionId == 0) return [];
+        return await _tourismQueryService.GetRecommendationsAsync(new GetRecommendationsRequest(
+            RegionId:    regionId.Value,
             TouristId:   GetUint  (args, "touristId"),
             ContextMode: GetString(args, "contextMode") ?? "onsite",
             Limit:       Math.Clamp(GetInt(args, "limit") ?? 10, 1, 20)), ct);
+    }
 
-    private Task<IReadOnlyList<NewContentItem>> ExecuteGetNewContentAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetNewContentAsync(new GetNewContentRequest(
-            RegionId: GetUint(args, "regionId"),
-            DaysBack: GetInt (args, "daysBack") ?? 30,
-            Limit:    GetInt (args, "limit")    ?? 20), ct);
+    private async Task<IReadOnlyList<NewContentItem>> ExecuteGetNewContentAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.GetNewContentAsync(new GetNewContentRequest(
+            RegionId: regionId,
+            DaysBack: GetInt(args, "daysBack") ?? 30,
+            Limit:    GetInt(args, "limit")    ?? 20), ct);
+    }
 
     private Task<IReadOnlyList<TagSummary>> ExecuteSearchActivitiesAsync(JsonObject? args, CancellationToken ct) =>
         _tourismQueryService.SearchActivitiesAsync(new SearchActivitiesRequest(
@@ -510,11 +651,59 @@ internal sealed class GeminiChatService : IGeminiChatService
             MaxCapacity: GetInt   (args, "maxCapacity"),
             Limit:       GetInt   (args, "limit") ?? 50), ct);
 
-    private Task<IReadOnlyList<VisitTrendPoint>> ExecuteGetVisitTrendsAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.GetVisitTrendsAsync(new GetVisitTrendsRequest(
-            RegionId: GetUint    (args, "regionId"),
+    private async Task<IReadOnlyList<VisitTrendPoint>> ExecuteGetVisitTrendsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.GetVisitTrendsAsync(new GetVisitTrendsRequest(
+            RegionId: regionId,
             FromDate: GetDateTime(args, "fromDate"),
             ToDate:   GetDateTime(args, "toDate")), ct);
+    }
+
+    private async Task<IReadOnlyList<ExternalClickSummary>> ExecuteGetExternalClickStatsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        var postId = GetUint(args, "postId");
+        if (postId is null)
+        {
+            var postName = GetString(args, "postName");
+            if (!string.IsNullOrWhiteSpace(postName))
+            {
+                var resolved = await _tourismQueryService.ResolvePostAsync(postName, ct);
+                if (resolved.Found) postId = resolved.Id;
+            }
+        }
+        return await _tourismQueryService.GetExternalClickStatsAsync(new GetExternalClickStatsRequest(
+            PostId:   postId,
+            RegionId: regionId,
+            Limit:    GetInt(args, "limit") ?? 20), ct);
+    }
+
+    private async Task<IReadOnlyList<DirectionRequestSummary>> ExecuteGetDirectionStatsAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.GetDirectionStatsAsync(new GetDirectionStatsRequest(
+            RegionId: regionId,
+            Limit:    GetInt(args, "limit") ?? 20), ct);
+    }
 
     // ── Pomoćne metode za čitanje argumenata ─────────────────────────────────
 
@@ -698,26 +887,27 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_region_summary",
-                    Description = "Get a full overview of a specific region: total post count, route count, average rating, and breakdown of posts by type.",
+                    Description = "Get a full overview of a specific region: total post count, route count, average rating, and breakdown of posts by type. Provide regionId OR regionName — not both.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "regionId": { "type": "integer", "description": "The ID of the region to summarize." }
-                        },
-                        "required": ["regionId"]
+                            "regionId":   { "type": "integer", "description": "Numeric region ID (use if already known)." },
+                            "regionName": { "type": "string",  "description": "Region name or partial name (e.g. 'Zabljak', 'Durmitor'). Used when regionId is not provided." }
+                        }
                     }
                     """)
                 },
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_search_posts",
-                    Description = "Search published locations and points of interest. Post types: accommodation, restaurant, club, cultural_site, monument, sports_facility, event, attraction, shop, other. Sort options: rating (default), distance (requires coordinates), title, newest.",
+                    Description = "Search published locations and points of interest. Post types: accommodation, restaurant, club, cultural_site, monument, sports_facility, event, attraction, shop, other. Sort options: rating (default), distance (requires coordinates), title, newest. Use regionName instead of regionId when you only know the destination name.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "regionId":       { "type": "integer", "description": "Optional region ID to scope the search." },
+                            "regionId":       { "type": "integer", "description": "Optional region ID (use regionName if ID is unknown)." },
+                            "regionName":     { "type": "string",  "description": "Region name or partial name (e.g. 'Zabljak'). Resolved when regionId not provided." },
                             "query":          { "type": "string",  "description": "Optional free-text query matching title, description, or address." },
                             "postTypes":      { "type": "array", "items": { "type": "string" }, "description": "Optional post type list: accommodation, restaurant, club, cultural_site, monument, sports_facility, event, attraction, shop, other." },
                             "minRating":      { "type": "number",  "description": "Optional minimum average rating (0-5)." },
@@ -738,26 +928,27 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_post_detail",
-                    Description = "Get full details for a specific location by ID: description, opening hours, rating, view count, likes, review count, all tags, external booking URL, and image URLs.",
+                    Description = "Get full details for a specific location: description, opening hours, rating, views, likes, review count, tags, external booking URL, and images. Provide postId OR postName — not both.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "postId": { "type": "integer", "description": "The ID of the location to retrieve." }
-                        },
-                        "required": ["postId"]
+                            "postId":   { "type": "integer", "description": "Numeric ID of the location (use if already known)." },
+                            "postName": { "type": "string",  "description": "Location name or partial name (e.g. 'Hotel Durmitor'). Used when postId is not provided." }
+                        }
                     }
                     """)
                 },
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_search_routes",
-                    Description = "Search published tourist routes (hiking, cycling, walking). Difficulty levels: easy, moderate, hard, expert.",
+                    Description = "Search published tourist routes (hiking, cycling, walking). Difficulty: easy, moderate, hard, expert. Sort: distance_asc, distance_desc, duration_asc, duration_desc, elevation_asc, elevation_desc, popular.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "regionId":           { "type": "integer", "description": "Optional region ID." },
+                            "regionId":           { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName":         { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
                             "query":              { "type": "string",  "description": "Optional free-text query matching route name or description." },
                             "difficulties":       { "type": "array", "items": { "type": "string" }, "description": "Optional difficulty list: easy, moderate, hard, expert." },
                             "maxDistanceKm":      { "type": "number",  "description": "Optional maximum route distance in kilometers." },
@@ -765,7 +956,7 @@ internal sealed class GeminiChatService : IGeminiChatService
                             "maxDurationMinutes": { "type": "integer", "description": "Optional maximum duration in minutes." },
                             "minDurationMinutes": { "type": "integer", "description": "Optional minimum duration in minutes." },
                             "maxElevationGain":   { "type": "integer", "description": "Optional maximum elevation gain in meters." },
-                            "sortBy":             { "type": "string",  "description": "Sort order: distance_asc, distance_desc, duration_asc, duration_desc, elevation_asc, elevation_desc." },
+                            "sortBy":             { "type": "string",  "description": "Sort order: distance_asc, distance_desc, duration_asc, duration_desc, elevation_asc, elevation_desc, popular." },
                             "limit":              { "type": "integer", "description": "Maximum number of results (default 10)." },
                             "offset":             { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
                         }
@@ -775,34 +966,54 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_route_detail",
-                    Description = "Get full details for a specific route by ID: waypoints, GPX file path, view count, and save count.",
+                    Description = "Get full details for a specific route: waypoints, GPX path, distance, duration, elevation gain, view count, save count, and images. Provide routeId OR routeName — not both.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "routeId": { "type": "integer", "description": "The ID of the route to retrieve." }
-                        },
-                        "required": ["routeId"]
+                            "routeId":   { "type": "integer", "description": "Numeric ID of the route (use if already known)." },
+                            "routeName": { "type": "string",  "description": "Route name or partial name (e.g. 'Crno jezero'). Used when routeId is not provided." }
+                        }
                     }
                     """)
                 },
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_reviews",
-                    Description = "Get visitor reviews for a specific location by post ID.",
+                    Description = "Get visitor reviews for a specific location. Provide postId OR postName — not both.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "postId":       { "type": "integer", "description": "The ID of the location to get reviews for." },
+                            "postId":       { "type": "integer", "description": "Numeric ID of the location (use if already known)." },
+                            "postName":     { "type": "string",  "description": "Location name or partial name. Used when postId is not provided." },
                             "onlyApproved": { "type": "boolean", "description": "If true, returns only approved reviews (default true)." },
                             "minRating":    { "type": "integer", "description": "Optional minimum rating filter (1-5)." },
                             "maxRating":    { "type": "integer", "description": "Optional maximum rating filter (1-5)." },
                             "sortBy":       { "type": "string",  "description": "Sort order: rating_asc, rating_desc, or newest (default)." },
                             "limit":        { "type": "integer", "description": "Maximum number of results (default 20)." },
                             "offset":       { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
-                        },
-                        "required": ["postId"]
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_get_route_reviews",
+                    Description = "Get visitor reviews for a specific route. Provide routeId OR routeName — not both.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "routeId":      { "type": "integer", "description": "Numeric ID of the route (use if already known)." },
+                            "routeName":    { "type": "string",  "description": "Route name or partial name. Used when routeId is not provided." },
+                            "onlyApproved": { "type": "boolean", "description": "If true, returns only approved reviews (default true)." },
+                            "minRating":    { "type": "integer", "description": "Optional minimum rating filter (1-5)." },
+                            "maxRating":    { "type": "integer", "description": "Optional maximum rating filter (1-5)." },
+                            "sortBy":       { "type": "string",  "description": "Sort order: rating_asc, rating_desc, or newest (default)." },
+                            "limit":        { "type": "integer", "description": "Maximum number of results (default 20)." },
+                            "offset":       { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
+                        }
                     }
                     """)
                 },
@@ -845,30 +1056,32 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_similar_posts",
-                    Description = "Get locations similar to a given location, matched by shared tags, same type, and same region.",
+                    Description = "Get locations similar to a given location, matched by shared tags, same type, and same region. Provide postId OR postName — not both.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "postId": { "type": "integer", "description": "The ID of the reference location." },
-                            "limit":  { "type": "integer", "description": "Maximum number of similar results (default 5)." }
-                        },
-                        "required": ["postId"]
+                            "postId":   { "type": "integer", "description": "Numeric ID of the reference location (use if already known)." },
+                            "postName": { "type": "string",  "description": "Location name or partial name. Used when postId is not provided." },
+                            "limit":    { "type": "integer", "description": "Maximum number of similar results (default 5)." }
+                        }
                     }
                     """)
                 },
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_top_content",
-                    Description = "Get the most popular locations ranked by a specific metric. SortBy values: views, likes, shares, rating, review_count.",
+                    Description = "Get the most popular locations AND routes ranked by a specific metric. By default includes both. SortBy values: views, likes, shares, rating, review_count.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "sortBy":   { "type": "string",  "description": "Sort metric: views, likes, shares, rating, review_count." },
-                            "postType": { "type": "string",  "description": "Optional post type filter: accommodation, restaurant, attraction, etc." },
-                            "regionId": { "type": "integer", "description": "Optional region ID to narrow results." },
-                            "limit":    { "type": "integer", "description": "Maximum number of results (default 10)." }
+                            "sortBy":        { "type": "string",  "description": "Sort metric: views (default), likes, shares, rating, review_count." },
+                            "postType":      { "type": "string",  "description": "Optional post type filter. When set, routes are excluded." },
+                            "includeRoutes": { "type": "boolean", "description": "If true (default), includes routes alongside locations." },
+                            "regionId":      { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName":    { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
+                            "limit":         { "type": "integer", "description": "Maximum number of results (default 10)." }
                         }
                     }
                     """)
@@ -876,12 +1089,13 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_search_events",
-                    Description = "Search published events (concerts, festivals, sports, theatre, tours). Categories: CONCERT, SPORT, THEATER, FESTIVAL, OTHER.",
+                    Description = "Search published events (concerts, festivals, sports, theatre, tours). Categories: CONCERT, SPORT, THEATER, FESTIVAL, OTHER. Use regionName instead of regionId when you only know the destination name.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "regionId":     { "type": "integer", "description": "Optional region ID to scope the search." },
+                            "regionId":     { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName":   { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
                             "query":        { "type": "string",  "description": "Optional free-text query matching event title or description." },
                             "startFrom":    { "type": "string",  "description": "Optional start of date range (ISO 8601, e.g. 2025-07-01T00:00:00Z)." },
                             "startTo":      { "type": "string",  "description": "Optional end of date range (ISO 8601, e.g. 2025-07-31T23:59:59Z)." },
@@ -897,17 +1111,17 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_get_recommendations",
-                    Description = "Get personalized content recommendations for a specific region. contextMode: onsite (default, for visitors already at the destination) or planning (for trip planning).",
+                    Description = "Get personalized content recommendations for a specific region. Provide regionId OR regionName. contextMode: onsite (default) or planning.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
-                            "regionId":    { "type": "integer", "description": "The ID of the region to get recommendations for." },
+                            "regionId":    { "type": "integer", "description": "Numeric region ID (use if already known)." },
+                            "regionName":  { "type": "string",  "description": "Region name or partial name (e.g. 'Zabljak'). Used when regionId is not provided." },
                             "touristId":   { "type": "integer", "description": "Optional tourist ID for personalized recommendations." },
                             "contextMode": { "type": "string",  "description": "Context mode: onsite (default) or planning." },
                             "limit":       { "type": "integer", "description": "Maximum number of results (default 10, max 20)." }
-                        },
-                        "required": ["regionId"]
+                        }
                     }
                     """)
                 },
@@ -919,9 +1133,10 @@ internal sealed class GeminiChatService : IGeminiChatService
                     {
                         "type": "object",
                         "properties": {
-                            "regionId": { "type": "integer", "description": "Optional region ID to filter by destination." },
-                            "daysBack": { "type": "integer", "description": "How many days back to look for new content (default 30)." },
-                            "limit":    { "type": "integer", "description": "Maximum number of results (default 20)." }
+                            "regionId":   { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName": { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
+                            "daysBack":   { "type": "integer", "description": "How many days back to look for new content (default 30)." },
+                            "limit":      { "type": "integer", "description": "Maximum number of results (default 20)." }
                         }
                     }
                     """)
@@ -952,9 +1167,42 @@ internal sealed class GeminiChatService : IGeminiChatService
                     {
                         "type": "object",
                         "properties": {
-                            "regionId": { "type": "integer", "description": "Optional region ID to scope trends to a specific destination." },
-                            "fromDate": { "type": "string",  "description": "Start of date range (ISO 8601). Defaults to 30 days ago." },
-                            "toDate":   { "type": "string",  "description": "End of date range (ISO 8601). Defaults to now." }
+                            "regionId":   { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName": { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
+                            "fromDate":   { "type": "string",  "description": "Start of date range (ISO 8601). Defaults to 30 days ago." },
+                            "toDate":     { "type": "string",  "description": "End of date range (ISO 8601). Defaults to now." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_get_external_click_stats",
+                    Description = "Get statistics on how many times tourists clicked external booking/info links. Useful for understanding which locations drive the most booking interest. Results ordered by click count.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "regionId":   { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName": { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
+                            "postId":     { "type": "integer", "description": "Optional: filter by a specific location's ID." },
+                            "postName":   { "type": "string",  "description": "Optional: filter by a specific location's name." },
+                            "limit":      { "type": "integer", "description": "Maximum number of results (default 20)." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_get_direction_stats",
+                    Description = "Get statistics on how many times tourists requested directions to specific locations. Useful for identifying which locations tourists most want to navigate to. Results ordered by request count.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "regionId":   { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
+                            "regionName": { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
+                            "limit":      { "type": "integer", "description": "Maximum number of results (default 20)." }
                         }
                     }
                     """)
@@ -973,19 +1221,43 @@ internal sealed class GeminiChatService : IGeminiChatService
         You are a friendly and knowledgeable tourism assistant for the Globecode regional tourist guide application.
         You have access to a comprehensive database of tourist regions, locations (accommodation, restaurants,
         attractions, monuments, cultural sites, clubs, sports facilities, events, shops), hiking/tourist routes,
-        visitor reviews, activity tags, and more.
+        visitor reviews, activity tags, engagement analytics, and more.
 
         CRITICAL RULES:
         - ALWAYS use the provided tools to fetch real data — NEVER invent facts, names, ratings, or descriptions.
         - Call tools first, then formulate your answer based on what the tools return.
         - If a tool returns no results, honestly say so and suggest broadening the search.
         - Respond in the SAME LANGUAGE the user writes in (auto-detect language).
-        - For best/most popular places, use tourism_get_top_content.
-        - For hiking or outdoor activities, use tourism_search_routes with appropriate filters.
-        - For general exploration, start with tourism_search_regions then tourism_get_region_summary.
-        - For "what's nearby", use tourism_get_nearby with the user's coordinates.
         - Support pagination: if HasMore is true, offer to show more results.
         - Be concise but informative — highlight the most important details.
         - When listing multiple results, use a structured format (numbered list or table).
+
+        NAME-BASED LOOKUP — ALWAYS prefer this:
+        All tools that accept regionId, postId, or routeId ALSO accept regionName, postName, or routeName.
+        NEVER ask the user for a numeric ID. Pass names directly — the system resolves IDs automatically.
+        Examples:
+          - tourism_get_post_detail(postName='Hotel Durmitor')
+          - tourism_get_region_summary(regionName='Zabljak')
+          - tourism_search_routes(regionName='Durmitor', difficulties=['easy'])
+          - tourism_get_reviews(postName='Restoran Jezero')
+          - tourism_get_recommendations(regionName='Zabljak')
+
+        RECOMMENDED WORKFLOWS:
+        - "What is in region X?" → tourism_get_region_summary(regionName='X')
+        - "Find hotels/restaurants in X" → tourism_search_posts(regionName='X', postTypes=['accommodation'])
+        - "Tell me about location Y" → tourism_get_post_detail(postName='Y')
+        - "Reviews for Y" → tourism_get_reviews(postName='Y') or tourism_get_route_reviews(routeName='Y')
+        - "Best/most popular" → tourism_get_top_content(sortBy='views') — includes both locations AND routes
+        - "Popular routes" → tourism_search_routes(sortBy='popular', regionName='X')
+        - "Easy hikes" → tourism_search_routes(difficulties=['easy'], maxElevationGain=300)
+        - "What's nearby?" → tourism_get_nearby(latitude, longitude, radiusKm)
+        - "Similar to Y" → tourism_get_similar_posts(postName='Y')
+        - "New content in X" → tourism_get_new_content(regionName='X', daysBack=30)
+        - "Events in X" → tourism_search_events(regionName='X', category='CONCERT')
+        - "Activities for groups" → tourism_search_activities(minCapacity=10)
+        - "Peak season?" → tourism_get_visit_trends(regionName='X')
+        - "Most-booked locations?" → tourism_get_external_click_stats(regionName='X')
+        - "Where do tourists navigate to?" → tourism_get_direction_stats(regionName='X')
+        - "Hotel with pool" → tourism_search_tags(category='amenity', query='pool') then tourism_search_posts(tags=[result])
         """;
 }

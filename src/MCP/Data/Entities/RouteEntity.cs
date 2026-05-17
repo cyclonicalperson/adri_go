@@ -12,6 +12,7 @@ internal sealed class RouteEntity
     public string? Description { get; set; }
     public string? Waypoints { get; set; }
     public string? GpxFilePath { get; set; }
+    public string? Images { get; set; }
     public string Status { get; set; } = "draft";
     public uint ViewCount { get; set; }
     public uint SaveCount { get; set; }

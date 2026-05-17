@@ -11,6 +11,7 @@ internal sealed class PostEntity
     public decimal? Lng { get; set; }
     public string? Address { get; set; }
     public string? ExternalUrl { get; set; }
+    public string? ExternalUrlLabel { get; set; }
     public string? OpeningHours { get; set; }
     public string? Details { get; set; }
     public string? Images { get; set; }

@@ -53,6 +53,7 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.Lng).HasColumnName("lng");
             e.Property(x => x.Address).HasColumnName("address");
             e.Property(x => x.ExternalUrl).HasColumnName("external_url");
+            e.Property(x => x.ExternalUrlLabel).HasColumnName("external_url_label");
             e.Property(x => x.OpeningHours).HasColumnName("opening_hours");
             e.Property(x => x.Details).HasColumnName("details");
             e.Property(x => x.Images).HasColumnName("images");
@@ -80,6 +81,7 @@ internal sealed class McpDbContext : DbContext
             e.Property(x => x.Description).HasColumnName("description");
             e.Property(x => x.Waypoints).HasColumnName("waypoints");       
             e.Property(x => x.GpxFilePath).HasColumnName("gpx_file_path"); 
+            e.Property(x => x.Images).HasColumnName("images");
             e.Property(x => x.Status).HasColumnName("status");
             e.Property(x => x.ViewCount).HasColumnName("view_count");
             e.Property(x => x.SaveCount).HasColumnName("save_count");

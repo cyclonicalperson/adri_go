@@ -140,7 +140,8 @@ internal sealed record RouteDetail(
     string? Waypoints,
     string? GpxFilePath,
     uint ViewCount,
-    uint SaveCount);
+    uint SaveCount,
+    IReadOnlyList<string> Images);
 
 // ── Recenzije ─────────────────────────────────────────────────────────────────
 
@@ -457,3 +458,39 @@ internal sealed record PlannerItemSummary(
     string? Title,
     string? Notes,
     TimeOnly? ScheduledTime);
+
+// ── Top sadržaj (lokacije + rute) ─────────────────────────────────────────────────────
+
+/// <summary>
+/// Objedinjeni rezultat za tourism_get_top_content koji pokriva i postove i rute.
+/// </summary>
+internal sealed record TopContentItem(
+    uint EntityId,
+    string EntityType,
+    string Title,
+    string? PostType,
+    uint? RegionId,
+    int TotalViews,
+    int TotalLikes,
+    int TotalShares,
+    double? AvgRating,
+    int ReviewCount);
+
+internal sealed record GetTopContentUnifiedRequest(
+    string SortBy = "views",
+    string? PostType = null,
+    bool IncludeRoutes = true,
+    uint? RegionId = null,
+    int Limit = 10);
+
+// ── Name-resolution helper DTO-vi (interni) ─────────────────────────────────────────────
+
+internal sealed record ResolveEntityResult(
+    bool Found,
+    uint Id,
+    string Title,
+    string EntityType)
+{
+    public static ResolveEntityResult NotFound() =>
+        new(false, 0, string.Empty, string.Empty);
+}

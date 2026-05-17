@@ -69,4 +69,17 @@ internal interface ITourismQueryService
 
     // ── Analytics: zahtevi za pravac ─────────────────────────────────────────
     Task<IReadOnlyList<DirectionRequestSummary>> GetDirectionStatsAsync(GetDirectionStatsRequest request, CancellationToken cancellationToken);
+
+    // ── Top sadržaj (postovi + rute objedinjeno) ─────────────────────────────────
+    Task<IReadOnlyList<TopContentItem>> GetTopContentUnifiedAsync(GetTopContentUnifiedRequest request, CancellationToken cancellationToken);
+
+    // ── Name-resolution helperi (interno — koriste se u Tool sloju) ────────────────
+    /// <summary>Traži prvu aktivnu regiju čije ime sadrži zadati string (case-insensitive).</summary>
+    Task<uint?> ResolveRegionIdAsync(string regionName, CancellationToken cancellationToken);
+
+    /// <summary>Traži prvi objavljeni post čiji naslov sadrži zadati string (case-insensitive).</summary>
+    Task<ResolveEntityResult> ResolvePostAsync(string postName, CancellationToken cancellationToken);
+
+    /// <summary>Traži prvu objavljenu rutu čiji naziv sadrži zadati string (case-insensitive).</summary>
+    Task<ResolveEntityResult> ResolveRouteAsync(string routeName, CancellationToken cancellationToken);
 }

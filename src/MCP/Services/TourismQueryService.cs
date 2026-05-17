@@ -196,7 +196,7 @@ internal sealed class TourismQueryService : ITourismQueryService
                 .Take(request.Limit)
                 .Select(t => new PostSummary(
                     t.post.Id, t.post.RegionId, t.post.Title, t.post.PostType,
-                    t.post.Description, t.post.Address, t.post.ExternalUrl, null,
+                    t.post.Description, t.post.Address, t.post.ExternalUrl, t.post.ExternalUrlLabel,
                     t.post.OpeningHours,
                     t.post.AvgRating.HasValue ? (double?)t.post.AvgRating.Value : null,
                     t.post.ReviewCount,
@@ -236,7 +236,7 @@ internal sealed class TourismQueryService : ITourismQueryService
 
         var pageItems = pageResults.Select(x => new PostSummary(
             x.Id, x.RegionId, x.Title, x.PostType,
-            x.Description, x.Address, x.ExternalUrl, null,
+            x.Description, x.Address, x.ExternalUrl, x.ExternalUrlLabel,
             x.OpeningHours,
             x.AvgRating.HasValue ? (double?)x.AvgRating.Value : null,
             x.ReviewCount,
@@ -280,7 +280,7 @@ internal sealed class TourismQueryService : ITourismQueryService
         return new PostDetail(
             post.Id, post.RegionId, await regionTask,
             post.Title, post.PostType, post.Description,
-            post.Address, post.ExternalUrl, null,
+            post.Address, post.ExternalUrl, post.ExternalUrlLabel,
             post.OpeningHours, post.Details,
             post.AvgRating.HasValue ? (double?)post.AvgRating.Value : null,
             (uint)await reviewTask, (uint)await viewTask, (uint)await likeTask,
@@ -331,13 +331,14 @@ internal sealed class TourismQueryService : ITourismQueryService
 
         query = request.SortBy switch
         {
-            "distance_asc" => query.OrderBy(x => x.DistanceKm),
-            "distance_desc" => query.OrderByDescending(x => x.DistanceKm),
-            "duration_asc" => query.OrderBy(x => x.DurationMin),
-            "duration_desc" => query.OrderByDescending(x => x.DurationMin),
-            "elevation_asc" => query.OrderBy(x => x.ElevationGain),
+            "distance_asc"   => query.OrderBy(x => x.DistanceKm),
+            "distance_desc"  => query.OrderByDescending(x => x.DistanceKm),
+            "duration_asc"   => query.OrderBy(x => x.DurationMin),
+            "duration_desc"  => query.OrderByDescending(x => x.DurationMin),
+            "elevation_asc"  => query.OrderBy(x => x.ElevationGain),
             "elevation_desc" => query.OrderByDescending(x => x.ElevationGain),
-            _ => query.OrderBy(x => x.DistanceKm)
+            "popular"        => query.OrderByDescending(x => x.SaveCount).ThenByDescending(x => x.ViewCount),
+            _                => query.OrderBy(x => x.DistanceKm)
         };
 
         var total = await query.CountAsync(cancellationToken);
@@ -382,7 +383,8 @@ internal sealed class TourismQueryService : ITourismQueryService
             route.Name, route.Difficulty,
             route.DistanceKm, route.DurationMin, route.ElevationGain,
             route.Description, route.Waypoints, route.GpxFilePath,
-            route.ViewCount, route.SaveCount);
+            route.ViewCount, route.SaveCount,
+            ParseJsonStringArray(route.Images));
     }
 
     // ── Recenzije ─────────────────────────────────────────────────────────────
@@ -659,7 +661,7 @@ internal sealed class TourismQueryService : ITourismQueryService
             .Take(request.Limit)
             .Select(t => new PostSummary(
                 t.post.Id, t.post.RegionId, t.post.Title, t.post.PostType,
-                t.post.Description, t.post.Address, t.post.ExternalUrl, null,
+                t.post.Description, t.post.Address, t.post.ExternalUrl, t.post.ExternalUrlLabel,
                 t.post.OpeningHours,
                 t.post.AvgRating.HasValue ? (double?)t.post.AvgRating.Value : null,
                 null, t.post.Lat, t.post.Lng, t.dist,
@@ -699,7 +701,7 @@ internal sealed class TourismQueryService : ITourismQueryService
             .Take(request.Limit)
             .Select(t => new PostSummary(
                 t.post.Id, t.post.RegionId, t.post.Title, t.post.PostType,
-                t.post.Description, t.post.Address, t.post.ExternalUrl, null,
+                t.post.Description, t.post.Address, t.post.ExternalUrl, t.post.ExternalUrlLabel,
                 t.post.OpeningHours,
                 t.post.AvgRating.HasValue ? (double?)t.post.AvgRating.Value : null,
                 null, t.post.Lat, t.post.Lng, null,
@@ -1626,5 +1628,115 @@ internal sealed class TourismQueryService : ITourismQueryService
             .OrderByDescending(x => x.TotalRequests)
             .Take(request.Limit)
             .ToList();
+    }
+
+    // ── Name-resolution helperi ─────────────────────────────────────────────────────
+
+    public async Task<uint?> ResolveRegionIdAsync(string regionName, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("ResolveRegionId: name={Name}", regionName);
+        var s = regionName.Trim();
+        var region = await _db.Regions.AsNoTracking()
+            .Where(x => x.IsActive && EF.Functions.ILike(x.Name, $"%{s}%"))
+            .OrderBy(x => x.Name.Length)
+            .Select(x => (uint?)x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (region is null)
+            _logger.LogWarning("ResolveRegionId: region '{Name}' not found", regionName);
+
+        return region;
+    }
+
+    public async Task<ResolveEntityResult> ResolvePostAsync(string postName, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("ResolvePost: name={Name}", postName);
+        var s = postName.Trim();
+        var post = await _db.Posts.AsNoTracking()
+            .Where(x => x.Status == "published" && EF.Functions.ILike(x.Title, $"%{s}%"))
+            .OrderBy(x => x.Title.Length)
+            .Select(x => new { x.Id, x.Title, x.PostType })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (post is null)
+        {
+            _logger.LogWarning("ResolvePost: post '{Name}' not found", postName);
+            return ResolveEntityResult.NotFound();
+        }
+
+        return new ResolveEntityResult(true, post.Id, post.Title, post.PostType);
+    }
+
+    public async Task<ResolveEntityResult> ResolveRouteAsync(string routeName, CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("ResolveRoute: name={Name}", routeName);
+        var s = routeName.Trim();
+        var route = await _db.Routes.AsNoTracking()
+            .Where(x => x.Status == "published" && EF.Functions.ILike(x.Name, $"%{s}%"))
+            .OrderBy(x => x.Name.Length)
+            .Select(x => new { x.Id, x.Name })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (route is null)
+        {
+            _logger.LogWarning("ResolveRoute: route '{Name}' not found", routeName);
+            return ResolveEntityResult.NotFound();
+        }
+
+        return new ResolveEntityResult(true, route.Id, route.Name, "route");
+    }
+
+    // ── Top sadržaj – objedinjeno (postovi + rute) ────────────────────────────────
+
+    public async Task<IReadOnlyList<TopContentItem>> GetTopContentUnifiedAsync(
+        GetTopContentUnifiedRequest request, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "tourism_get_top_content_unified: sortBy={SortBy} postType={PostType} includeRoutes={IncludeRoutes} regionId={RegionId}",
+            request.SortBy, request.PostType, request.IncludeRoutes, request.RegionId);
+
+        var postAnalytics = await GetPostAnalyticsAsync(
+            new GetPostAnalyticsRequest(null, request.RegionId, 200), cancellationToken);
+
+        var filtered = request.PostType is not null
+            ? postAnalytics.Where(x => x.PostType == request.PostType)
+            : postAnalytics;
+
+        IEnumerable<TopContentItem> postItems = filtered.Select(p => new TopContentItem(
+            p.PostId, "post", p.PostTitle, p.PostType,
+            request.RegionId,
+            p.TotalViews, p.TotalLikes, p.TotalShares, p.AvgRating, p.ReviewCount));
+
+        IEnumerable<TopContentItem> routeItems = Enumerable.Empty<TopContentItem>();
+        if (request.IncludeRoutes && string.IsNullOrEmpty(request.PostType))
+        {
+            var routeQuery = _db.Routes.AsNoTracking()
+                .Where(x => x.Status == "published");
+
+            if (request.RegionId.HasValue)
+                routeQuery = routeQuery.Where(x => x.RegionId == request.RegionId.Value);
+
+            var routes = await routeQuery
+                .OrderByDescending(x => x.ViewCount + x.SaveCount)
+                .Take(100)
+                .ToListAsync(cancellationToken);
+
+            routeItems = routes.Select(r => new TopContentItem(
+                r.Id, "route", r.Name, null, r.RegionId,
+                (int)r.ViewCount, 0, 0, null, 0));
+        }
+
+        var combined = postItems.Concat(routeItems);
+
+        IOrderedEnumerable<TopContentItem> sorted = request.SortBy switch
+        {
+            "likes"        => combined.OrderByDescending(x => x.TotalLikes),
+            "shares"       => combined.OrderByDescending(x => x.TotalShares),
+            "rating"       => combined.OrderByDescending(x => x.AvgRating ?? 0),
+            "review_count" => combined.OrderByDescending(x => x.ReviewCount),
+            _              => combined.OrderByDescending(x => x.TotalViews)
+        };
+
+        return sorted.Take(request.Limit).ToList();
     }
 }
