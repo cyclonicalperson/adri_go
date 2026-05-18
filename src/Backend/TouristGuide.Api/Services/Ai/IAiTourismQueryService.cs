@@ -1,8 +1,8 @@
 using TouristGuide.Ai.Contracts;
 
-namespace Mcp.Services;
+namespace TouristGuide.Api.Services.Ai;
 
-internal interface ITourismQueryService
+public interface IAiTourismQueryService
 {
     // ── Regije ────────────────────────────────────────────────────────────────
     Task<PagedResult<RegionSummary>> SearchRegionsAsync(SearchRegionsRequest request, CancellationToken cancellationToken);

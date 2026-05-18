@@ -36,9 +36,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> SubmitReviewAsync(uint postId, int rating, string? comment, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni da biste ostavili recenziju.");
-
         if (rating < 1 || rating > 5)
             return Fail("Ocjena mora biti između 1 i 5.");
 
@@ -58,9 +55,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> SavePostAsync(uint postId, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni da biste sačuvali lokaciju.");
-
         var response = await SendAsync(HttpMethod.Post, $"api/posts/{postId}/save", null, ct);
 
         if (response.IsSuccessStatusCode)
@@ -74,9 +68,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> UnsavePostAsync(uint postId, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni.");
-
         var response = await SendAsync(HttpMethod.Delete, $"api/posts/{postId}/save", null, ct);
 
         if (response.IsSuccessStatusCode)
@@ -92,9 +83,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> LikePostAsync(uint postId, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni da biste lajkovali lokaciju.");
-
         var response = await SendAsync(HttpMethod.Post, $"api/posts/{postId}/like", null, ct);
 
         if (response.IsSuccessStatusCode)
@@ -108,9 +96,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> UnlikePostAsync(uint postId, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni.");
-
         var response = await SendAsync(HttpMethod.Delete, $"api/posts/{postId}/like", null, ct);
 
         if (response.IsSuccessStatusCode)
@@ -126,9 +111,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> AddToCalendarAsync(uint postId, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni da biste koristili planer putovanja.");
-
         var response = await SendAsync(HttpMethod.Post, $"api/tourist-auth/calendar/{postId}", null, ct);
 
         if (response.IsSuccessStatusCode)
@@ -146,9 +128,6 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     public async Task<WriteResult> RemoveFromCalendarAsync(uint postId, CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated)
-            return Fail("Morate biti prijavljeni.");
-
         var response = await SendAsync(HttpMethod.Delete, $"api/tourist-auth/calendar/{postId}", null, ct);
 
         if (response.IsSuccessStatusCode)
@@ -191,6 +170,9 @@ internal sealed class TourismWriteService : ITourismWriteService
 
     private static async Task<WriteResult> MapErrorAsync(HttpResponseMessage response, string context)
     {
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            return Fail("Morate biti prijavljeni da biste koristili ovu opciju.");
+
         var body = await response.Content.ReadAsStringAsync();
 
         try

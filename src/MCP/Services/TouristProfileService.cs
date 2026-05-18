@@ -120,7 +120,7 @@ internal sealed class TouristProfileService : ITouristProfileService
 
     public async Task<TouristProfileResult?> GetMyProfileAsync(CancellationToken ct)
     {
-        if (!_currentTourist.IsAuthenticated || _currentTourist.BearerToken is null)
+        if (_currentTourist.BearerToken is null)
             return null;
 
         var client = _httpClientFactory.CreateClient("BackendApi");

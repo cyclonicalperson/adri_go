@@ -1,11 +1,6 @@
-using Mcp.Data;
 using Mcp.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using ModelContextProtocol.Server;
 using System.Reflection;
-using System.Text;
 
 namespace Mcp.Infrastructure;
 
@@ -44,34 +39,9 @@ internal static class ServiceCollectionExtensions
                 }
             });
         });
-
-        // JWT autentikacija — verifikujemo tokene koje je izdao Backend
-        var jwtSecret = configuration["Jwt:Secret"]
-            ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
-
-        services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer           = true,
-                    ValidIssuer              = configuration["Jwt:Issuer"],
-                    ValidateAudience         = true,
-                    ValidAudience            = configuration["Jwt:Audience"],
-                    ValidateLifetime         = true,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-                    ClockSkew                = TimeSpan.Zero
-                };
-            });
-
-        services.AddAuthorization();
-
-        // IHttpContextAccessor — potreban CurrentTouristContext-u
         services.AddHttpContextAccessor();
 
-        // Trenutni kontekst turiste (čita tourist_id iz JWT-a)
+        // MCP only forwards the Bearer token. Backend validates identity and authorization.
         services.AddScoped<ICurrentTouristContext, CurrentTouristContext>();
 
         services
@@ -208,13 +178,6 @@ internal static class ServiceCollectionExtensions
             .WithToolsFromAssembly(Assembly.GetExecutingAssembly())
             .WithResourcesFromAssembly(Assembly.GetExecutingAssembly());
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' is not configured.");
-
-        services.AddDbContext<McpDbContext>(options =>
-            options.UseNpgsql(connectionString));
-
         services.AddScoped<ITourismQueryService, TourismQueryService>();
 
         // HTTP klijent za pozive Backend API-ja (write operacije)
@@ -251,3 +214,4 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 }
+

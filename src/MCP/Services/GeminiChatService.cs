@@ -1,4 +1,4 @@
-using Mcp.Dtos;
+using TouristGuide.Ai.Contracts;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -142,6 +142,8 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     // Maksimalan broj agentic petlji radi zaštite od beskonačnih petlji
     private const int MaxToolRounds = 8;
+    // Maksimalan broj poruka istorije koje se šalju modelu (context truncation)
+    private const int DefaultMaxHistoryMessages = 6;
     private const string UserFriendlyOverloadMessage =
         "Sistem je trenutno preopterećen velikim brojem zahteva. Molimo Vas pokušajte ponovo za minut.";
 
@@ -169,42 +171,57 @@ internal sealed class GeminiChatService : IGeminiChatService
             throw new InvalidOperationException(
                 "Gemini:ApiKey nije podešen. Unesite pravi API ključ u appsettings.json ili environment varijablu.");
 
-        var model         = _configuration["Gemini:Model"] ?? "gemini-2.5-flash-lite";
-        var fallbackModel = _configuration["Gemini:FallbackModel"] ?? "gemini-2.5-flash-lite";
-        var maxTokens     = _configuration.GetValue<int>   ("Gemini:MaxOutputTokens", 2048);
-        var temp          = _configuration.GetValue<double>("Gemini:Temperature",     0.7);
-        var client        = _httpClientFactory.CreateClient("GeminiApi");
-
-        try
+        // Uitaj niz modela iz konfiguracije. Prioritet: prvi = primarni (najveća kvota).
+        // Fallback na stari "Model" ključ radi backward-kompatibilnosti.
+        var models = _configuration.GetSection("Gemini:Models").Get<string[]>();
+        if (models is not { Length: > 0 })
         {
-            return await ChatWithModelAsync(request, client, apiKey, model, maxTokens, temp, ct);
+            var single = _configuration["Gemini:Model"] ?? "gemini-2.0-flash-lite";
+            models = [single];
         }
-        catch (GeminiApiException ex) when (
-            (ex.StatusCode == StatusCodes.Status429TooManyRequests || ex.StatusCode == StatusCodes.Status503ServiceUnavailable) &&
-            !NormalizeGeminiModelName(model).Equals(NormalizeGeminiModelName(fallbackModel), StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning(
-                ex,
-                "Gemini model {Model} je dostigao kvotu. Pokusavam fallback model {FallbackModel}",
-                model,
-                fallbackModel);
 
+        var maxTokens = _configuration.GetValue<int>   ("Gemini:MaxOutputTokens", 1024);
+        var temp      = _configuration.GetValue<double>("Gemini:Temperature",     0.7);
+        var client    = _httpClientFactory.CreateClient("GeminiApi");
+
+        // Model Fallback Chain: probaj svaki model redom; preskoči na sljedeći samo na 429/503.
+        for (int i = 0; i < models.Length; i++)
+        {
+            var model = models[i];
             try
             {
-                return await ChatWithModelAsync(request, client, apiKey, fallbackModel, maxTokens, temp, ct);
-            }
-            catch (Exception fallbackEx) when (fallbackEx is GeminiApiException or InvalidOperationException)
-            {
-                _logger.LogError(
-                    fallbackEx,
-                    "Gemini fallback model {FallbackModel} nije uspeo",
-                    fallbackModel);
+                _logger.LogInformation(
+                    "Gemini fallback chain: pokušaj {Attempt}/{Total} sa modelom '{Model}'",
+                    i + 1, models.Length, model);
 
-                throw new GeminiApiException(
-                    StatusCodes.Status429TooManyRequests,
-                    UserFriendlyOverloadMessage);
+                return await ChatWithModelAsync(request, client, apiKey, model, maxTokens, temp, ct);
+            }
+            catch (GeminiApiException ex) when (
+                ex.StatusCode == StatusCodes.Status429TooManyRequests ||
+                ex.StatusCode == StatusCodes.Status503ServiceUnavailable)
+            {
+                if (i < models.Length - 1)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Model '{Model}' vratio {Status} — prelazim na sljedeći model u lancu ({Next}).",
+                        model, ex.StatusCode, models[i + 1]);
+                }
+                else
+                {
+                    _logger.LogError(
+                        ex,
+                        "Svi modeli u lancu su iscrpljeni. Poslednji model koji je zakazao: '{Model}'.",
+                        model);
+                }
+                // Nastavi na sljedeći model u lancu
             }
         }
+
+        // Svi modeli su zakazali
+        throw new GeminiApiException(
+            StatusCodes.Status429TooManyRequests,
+            UserFriendlyOverloadMessage);
     }
 
     private async Task<ChatResponse> ChatWithModelAsync(
@@ -219,8 +236,9 @@ internal sealed class GeminiChatService : IGeminiChatService
         var normalizedModel = NormalizeGeminiModelName(model);
         _logger.LogInformation("Gemini chat koristi model {Model}", normalizedModel);
 
-        var contents  = BuildContents(request);
-        var toolsUsed = new List<string>();
+        var maxHistory = _configuration.GetValue<int>("Gemini:MaxHistoryMessages", DefaultMaxHistoryMessages);
+        var contents   = BuildContents(request, maxHistory);
+        var toolsUsed  = new List<string>();
 
         // Agentic petlja: Gemini može pozvati više alata pre finalnog odgovora
         for (int round = 0; round < MaxToolRounds; round++)
@@ -249,6 +267,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                 var errorBody = await httpResponse.Content.ReadAsStringAsync(ct);
                 var apiMessage = TryExtractGeminiErrorMessage(errorBody);
                 _logger.LogError("Gemini API greška {Status}: {Body}", httpResponse.StatusCode, errorBody);
+
+                // 429 (TooManyRequests) i 503 (ServiceUnavailable) — retryable, fallback chain će pokušati sljedeći model.
                 if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 {
                     var retryDelay = TryExtractGeminiRetryDelay(errorBody);
@@ -262,14 +282,25 @@ internal sealed class GeminiChatService : IGeminiChatService
                         UserFriendlyOverloadMessage);
                 }
 
-                if (apiMessage is not null)
+                if (httpResponse.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+                {
                     throw new GeminiApiException(
                         StatusCodes.Status503ServiceUnavailable,
-                        $"Gemini API je vratio gresku {(int)httpResponse.StatusCode}: {apiMessage}");
+                        apiMessage ?? $"Gemini servis je nedostupan (503). Model: {model}");
+                }
 
+                // 401, 403, 404, 400 i ostali statusi su non-retryable — baca se odmah bez fallbacka.
+                // Svi ti statusi se wrappuju u 401 kod koji catch(429 OR 503) filter NE hvata.
+                var friendlyMsg = (int)httpResponse.StatusCode switch
+                {
+                    401 => $"Gemini API ključ je nevažeći ili ne postoji. Proverite Gemini:ApiKey u konfiguraciji.",
+                    403 => $"Pristup odbijen za model '{model}'. Proverite da je model dostupan na vašem nalogu.",
+                    404 => $"Model '{model}' nije pronađen. Proverite naziv modela u Gemini:Models konfiguraciji.",
+                    _   => apiMessage ?? $"Gemini API je vratio grešku {(int)httpResponse.StatusCode}. Proverite API ključ i model."
+                };
                 throw new GeminiApiException(
-                    StatusCodes.Status503ServiceUnavailable,
-                    $"Gemini API je vratio grešku {(int)httpResponse.StatusCode}. Proverite API ključ i model.");
+                    StatusCodes.Status401Unauthorized,
+                    friendlyMsg);
             }
 
             var responseJson  = await httpResponse.Content.ReadAsStringAsync(ct);
@@ -312,10 +343,11 @@ internal sealed class GeminiChatService : IGeminiChatService
 
             foreach (var call in functionCalls)
             {
-                toolsUsed.Add(call.Name);
+                var canonicalToolName = NormalizeToolName(call.Name);
+                toolsUsed.Add(canonicalToolName);
                 _logger.LogInformation(
-                    "Runda {Round}: Gemini poziva alat [{Tool}] sa args: {Args}",
-                    round + 1, call.Name, call.Args?.ToJsonString() ?? "{}");
+                    "Runda {Round}: Gemini poziva alat [{Tool}] (canonical: {CanonicalTool}) sa args: {Args}",
+                    round + 1, call.Name, canonicalToolName, call.Args?.ToJsonString() ?? "{}");
 
                 var result = await ExecuteToolAsync(call.Name, call.Args, ct);
 
@@ -347,9 +379,11 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     private async Task<JsonObject> ExecuteToolAsync(string toolName, JsonObject? args, CancellationToken ct)
     {
+        var canonicalToolName = NormalizeToolName(toolName);
+
         try
         {
-            object? result = toolName switch
+            object? result = canonicalToolName switch
             {
                 "tourism_search_regions"         => await ExecuteSearchRegionsAsync(args, ct),
                 "tourism_get_region_summary"      => await ExecuteGetRegionSummaryAsync(args, ct),
@@ -373,8 +407,7 @@ internal sealed class GeminiChatService : IGeminiChatService
                 _ => (object)new { error = $"Nepoznat alat: {toolName}" }
             };
 
-            var json = JsonSerializer.Serialize(result, JsonOpts);
-            return JsonNode.Parse(json)?.AsObject() ?? new JsonObject();
+            return ToToolResponseObject(result);
         }
         catch (Exception ex)
         {
@@ -386,6 +419,47 @@ internal sealed class GeminiChatService : IGeminiChatService
     }
 
     // ── Implementacije poziva servisa ─────────────────────────────────────────
+
+    private static string NormalizeToolName(string toolName) => toolName switch
+    {
+        "search_regions"           => "tourism_search_regions",
+        "get_region_summary"       => "tourism_get_region_summary",
+        "search_posts"             => "tourism_search_posts",
+        "get_post_detail"          => "tourism_get_post_detail",
+        "search_routes"            => "tourism_search_routes",
+        "get_route_detail"         => "tourism_get_route_detail",
+        "get_reviews"              => "tourism_get_reviews",
+        "get_route_reviews"        => "tourism_get_route_reviews",
+        "search_tags"              => "tourism_search_tags",
+        "get_nearby"               => "tourism_get_nearby",
+        "get_similar_posts"        => "tourism_get_similar_posts",
+        "get_top_content"          => "tourism_get_top_content",
+        "search_events"            => "tourism_search_events",
+        "get_recommendations"      => "tourism_get_recommendations",
+        "get_new_content"          => "tourism_get_new_content",
+        "search_activities"        => "tourism_search_activities",
+        "get_visit_trends"         => "tourism_get_visit_trends",
+        "get_external_click_stats" => "tourism_get_external_click_stats",
+        "get_direction_stats"      => "tourism_get_direction_stats",
+        _                          => toolName
+    };
+
+    private static JsonObject ToToolResponseObject(object? result)
+    {
+        if (result is null)
+            return new JsonObject { ["result"] = null };
+
+        var node = JsonSerializer.SerializeToNode(result, JsonOpts);
+
+        return node switch
+        {
+            null             => new JsonObject { ["result"] = null },
+            JsonObject obj   => obj,
+            JsonArray array  => new JsonObject { ["result"] = array },
+            JsonValue value  => new JsonObject { ["result"] = value },
+            _                => new JsonObject { ["result"] = node }
+        };
+    }
 
     private Task<PagedResult<RegionSummary>> ExecuteSearchRegionsAsync(JsonObject? args, CancellationToken ct) =>
         _tourismQueryService.SearchRegionsAsync(new SearchRegionsRequest(
@@ -622,7 +696,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         if (regionId is null || regionId == 0) return [];
         return await _tourismQueryService.GetRecommendationsAsync(new GetRecommendationsRequest(
             RegionId:    regionId.Value,
-            TouristId:   GetUint  (args, "touristId"),
+            TouristId:   null,
             ContextMode: GetString(args, "contextMode") ?? "onsite",
             Limit:       Math.Clamp(GetInt(args, "limit") ?? 10, 1, 20)), ct);
     }
@@ -812,21 +886,37 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     // ── Gradnja istorije konverzacije ─────────────────────────────────────────
 
-    private static List<GeminiContent> BuildContents(ChatRequest request)
+    /// <summary>
+    /// Gradi listu Gemini content objekata iz zahteva.
+    /// <para>
+    /// Context truncation: čuva samo poslednjih <paramref name="maxHistoryMessages"/> poruka iz istorije.
+    /// MCP alati ubacuju obimne odgovore iz baze, pa duza istorija brzo troši tokene.
+    /// Sistemska poruka (SystemInstruction) se šalje odvojeno i nije deo ovog niza.
+    /// </para>
+    /// </summary>
+    private static List<GeminiContent> BuildContents(ChatRequest request, int maxHistoryMessages)
     {
         var contents = new List<GeminiContent>();
 
         if (request.History is { Count: > 0 })
         {
-            foreach (var msg in request.History)
+            // Context truncation: zadržavamo samo poslednjih maxHistoryMessages poruka.
+            // Poruke se čitaju od novijeg ka starijem, pa uzmemo kraj liste.
+            var history = request.History;
+            int startIndex = history.Count > maxHistoryMessages
+                ? history.Count - maxHistoryMessages
+                : 0;
+
+            for (int idx = startIndex; idx < history.Count; idx++)
             {
-                // FIX #9: Eksplicitno mapiranje rola — samo "user" i "model" su validni.
-                // Sve ostale vrednosti (npr. "assistant", "system") se normalizuju u "user".
+                var msg = history[idx];
+
+                // Eksplicitno mapiranje rola — samo "user" i "model" su validni za Gemini.
                 var role = msg.Role.Equals("model", StringComparison.OrdinalIgnoreCase)
                     ? "model"
                     : "user";
 
-                // Preskačemo prazne poruke iz istorije da ne bismo zbunili model
+                // Preskačemo prazne poruke
                 if (string.IsNullOrWhiteSpace(msg.Text)) continue;
 
                 contents.Add(new GeminiContent
@@ -836,8 +926,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                 });
             }
 
-            // FIX #10: Gemini zahteva da historija počinje sa "user" turn-om.
-            // Ako historija počinje sa "model" (edge case), dodajemo prazan user turn ispred.
+            // Gemini zahteva da historija počinje sa "user" turn-om.
+            // Ako je truncation odsjekao početne user poruke i ostali smo sa "model" turn-om, dodajemo placeholder.
             if (contents.Count > 0 && contents[0].Role == "model")
             {
                 contents.Insert(0, new GeminiContent
@@ -848,7 +938,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             }
         }
 
-        // Trenutna korisnička poruka
+        // Trenutna korisnička poruka uvek ide na kraj
         contents.Add(new GeminiContent
         {
             Role  = "user",
@@ -1118,7 +1208,6 @@ internal sealed class GeminiChatService : IGeminiChatService
                         "properties": {
                             "regionId":    { "type": "integer", "description": "Numeric region ID (use if already known)." },
                             "regionName":  { "type": "string",  "description": "Region name or partial name (e.g. 'Zabljak'). Used when regionId is not provided." },
-                            "touristId":   { "type": "integer", "description": "Optional tourist ID for personalized recommendations." },
                             "contextMode": { "type": "string",  "description": "Context mode: onsite (default) or planning." },
                             "limit":       { "type": "integer", "description": "Maximum number of results (default 10, max 20)." }
                         }
@@ -1244,6 +1333,9 @@ internal sealed class GeminiChatService : IGeminiChatService
 
         RECOMMENDED WORKFLOWS:
         - "What is in region X?" → tourism_get_region_summary(regionName='X')
+        - "What can I visit in X?" / "Sta mogu da posetim u X?" →
+          tourism_search_posts(regionName='X', postTypes=['attraction','monument','cultural_site'], sortBy='rating', limit=8)
+          and, when relevant, tourism_search_routes(regionName='X', sortBy='popular', limit=5)
         - "Find hotels/restaurants in X" → tourism_search_posts(regionName='X', postTypes=['accommodation'])
         - "Tell me about location Y" → tourism_get_post_detail(postName='Y')
         - "Reviews for Y" → tourism_get_reviews(postName='Y') or tourism_get_route_reviews(routeName='Y')

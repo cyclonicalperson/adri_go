@@ -1,12 +1,9 @@
-using Mcp.Data;
-
 namespace Mcp.Endpoints;
 
 internal static class AppEndpointRouteBuilderExtensions
 {
     public static IEndpointRouteBuilder MapAppEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // Info endpoint
         endpoints.MapGet("/", () => Results.Ok(new
         {
             name = "Tourism MCP Server",
@@ -17,35 +14,15 @@ internal static class AppEndpointRouteBuilderExtensions
             chat = "/api/chat"
         }));
 
-        // Health check — provjera konekcije na bazu
-        endpoints.MapGet("/health", async (McpDbContext db) =>
+        endpoints.MapGet("/health", () => Results.Ok(new
         {
-            try
-            {
-                var canConnect = await db.Database.CanConnectAsync();
-                if (!canConnect)
-                    return Results.Problem("Database connection failed.", statusCode: 503);
+            status = "healthy",
+            database = "not_configured",
+            backendCapabilities = "required",
+            time = DateTime.UtcNow
+        }));
 
-                return Results.Ok(new
-                {
-                    status = "healthy",
-                    database = "connected",
-                    time = DateTime.UtcNow
-                });
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem(
-                    detail: ex.Message,
-                    title: "Database unreachable",
-                    statusCode: 503);
-            }
-        });
-
-        // MCP endpoint (SSE transport — višekorisnički)
         endpoints.MapMcp("/mcp");
-
-        // Gemini chat endpoint — REST, za direktnu AI integraciju
         endpoints.MapGeminiChatEndpoints();
 
         return endpoints;
