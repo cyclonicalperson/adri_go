@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractContro
 import { ActivatedRoute, Router } from '@angular/router';
 import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
+import { AuthService } from '@core/auth/auth.service';
 import { Region } from '@core/models/region.model';
 import { ObjectCategory } from '@core/models/object.model';
 import { ObjectMapPickerComponent } from '../object-map-picker/object-map-picker.component';
@@ -30,6 +31,7 @@ export class ObjectFormComponent implements OnInit {
   destinations: Region[] = [];
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
+  private originalCategory: ObjectCategory | null = null;
   resolvingAddress = false;
   submitted = false;
 
@@ -51,6 +53,7 @@ export class ObjectFormComponent implements OnInit {
     private fb: FormBuilder,
     private service: ObjectService,
     private destService: RegionService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
@@ -77,9 +80,23 @@ export class ObjectFormComponent implements OnInit {
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
+    if (!this.isEdit) {
+      const firstAllowed = this.categoryOptions.find(opt => this.canUseCategory(opt.value));
+      if (!firstAllowed) {
+        this.router.navigate(['/admin/dashboard']);
+        return;
+      }
+      this.form.patchValue({ category: firstAllowed.value });
+    }
+
     if (this.isEdit) {
       this.service.getById(this.id!).subscribe(res => {
         const o = res.data;
+        if (!this.canEditObject(o.createdBy)) {
+          this.router.navigate(['/admin/dashboard']);
+          return;
+        }
+        this.originalCategory = o.category;
         this.form.patchValue({
           regionId: o.regionId,
           proposedRegionName: (o as any).proposedRegionName ?? '',
@@ -109,6 +126,11 @@ export class ObjectFormComponent implements OnInit {
 
   submit(): void {
     this.submitted = true;
+    if (!this.canUseCategory(this.form.value.category)) {
+      this.error = 'Nemate dozvolu za kreiranje ili promenu ove kategorije.';
+      return;
+    }
+
     if (this.form.invalid || !this.hasRegionChoice()) {
       this.form.markAllAsTouched();
       if (!this.hasRegionChoice()) {
@@ -141,6 +163,24 @@ export class ObjectFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
+
+  canUseCategory(category: ObjectCategory): boolean {
+    if (this.auth.isSuperAdmin) {
+      return true;
+    }
+
+    if (this.isEdit && category === this.originalCategory) {
+      return true;
+    }
+
+    const permission = this.createPermissionForCategory(category);
+    return !permission || this.auth.hasPermission(permission);
+  }
+
+  private canEditObject(createdBy: number): boolean {
+    return this.auth.isSuperAdmin ||
+      (this.auth.hasPermission('manage_own_posts') && createdBy === this.auth.currentUser?.userId);
+  }
 
   get regionChoiceInvalid(): boolean {
     return this.submitted && !this.hasRegionChoice();
@@ -245,5 +285,20 @@ export class ObjectFormComponent implements OnInit {
 
   private normalizeProposedRegionName(value: unknown): string | null {
     return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private createPermissionForCategory(category: ObjectCategory): string | null {
+    const map: Partial<Record<ObjectCategory, string>> = {
+      HOTEL: 'create_accommodation',
+      APARTMENT: 'create_accommodation',
+      RESTAURANT: 'create_restaurant',
+      CAFE: 'create_restaurant',
+      CLUB: 'create_club',
+      SHOP: 'create_shop',
+      CULTURAL: 'create_cultural_site',
+      MONUMENT: 'create_monument',
+      SPORT: 'create_sports',
+    };
+    return map[category] ?? null;
   }
 }

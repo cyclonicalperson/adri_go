@@ -28,5 +28,11 @@
   "Nova lozinka (ostavite prazno za istu)": "Nova lozinka (ostavite prazno za istu)",
   "Lozinka je uspešno promenjena.": "Lozinka je uspešno promenjena.",
   "Trenutna lozinka nije ispravna.": "Trenutna lozinka nije ispravna.",
-  "Greška pri promeni lozinke. Pokušajte ponovo.": "Greška pri promeni lozinke. Pokušajte ponovo."
+  "Greška pri promeni lozinke. Pokušajte ponovo.": "Greška pri promeni lozinke. Pokušajte ponovo.",
+  "Predlozi novu aktivnost": "Predloži novu aktivnost",
+  "Predlozi": "Predloži",
+  "Slanje...": "Slanje...",
+  "Predlog aktivnosti je poslat na odobrenje.": "Predlog aktivnosti je poslat na odobrenje.",
+  "Predlog aktivnosti nije moguce poslati.": "Predlog aktivnosti nije moguće poslati.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Nemate dozvolu za kreiranje ili promenu ove kategorije."
 }

@@ -43,6 +43,15 @@ export class ObjectsListComponent implements OnInit {
     sortDir: 'desc',
   };
   private readonly stateKey = 'objects';
+  private readonly objectCreatePermissions = [
+    'create_accommodation',
+    'create_restaurant',
+    'create_club',
+    'create_cultural_site',
+    'create_monument',
+    'create_sports',
+    'create_shop',
+  ];
 
   constructor(
     private service: ObjectService,
@@ -64,6 +73,15 @@ export class ObjectsListComponent implements OnInit {
 
   get canManageObjects(): boolean {
     return this.auth.hasPermission('manage_own_posts');
+  }
+
+  get canCreateObjects(): boolean {
+    return this.canManageObjects && this.auth.hasAnyPermission(...this.objectCreatePermissions);
+  }
+
+  canEditObject(objectItem: TouristObject): boolean {
+    return this.auth.isSuperAdmin ||
+      (this.canManageObjects && objectItem.createdBy === this.auth.currentUser?.userId);
   }
 
   private recomputeGlobalTotal(): void {
@@ -148,10 +166,12 @@ export class ObjectsListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateObjects) return;
     this.router.navigate(['/admin/lokacije/new']);
   }
 
   goEdit(objectItem: TouristObject): void {
+    if (!this.canEditObject(objectItem)) return;
     this.router.navigate(['/admin/lokacije', objectItem.objectId, 'edit']);
   }
 
@@ -170,6 +190,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   confirmDelete(objectItem: TouristObject): void {
+    if (!this.canEditObject(objectItem)) return;
     this.deleteTarget = objectItem;
   }
 
@@ -190,7 +211,7 @@ export class ObjectsListComponent implements OnInit {
   rejectTarget: TouristObject | null = null;
 
   confirmApprove(objectItem: TouristObject): void {
-    if (this.objectStatus(objectItem) === 'draft') {
+    if (this.objectStatus(objectItem) === 'draft' && this.canEditObject(objectItem)) {
       this.approveTarget = objectItem;
     }
   }
@@ -213,7 +234,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   confirmReject(objectItem: TouristObject): void {
-    if (this.objectStatus(objectItem) === 'draft') {
+    if (this.objectStatus(objectItem) === 'draft' && this.canEditObject(objectItem)) {
       this.rejectTarget = objectItem;
     }
   }

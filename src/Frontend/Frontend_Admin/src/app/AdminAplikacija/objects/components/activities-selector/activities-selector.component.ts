@@ -16,6 +16,10 @@ export class ActivitiesSelectorComponent implements OnInit {
   @Output() selectedIdsChange = new EventEmitter<number[]>();
 
   all: Activity[] = [];
+  proposalName = '';
+  proposalSaving = false;
+  proposalMessage = '';
+  proposalError = '';
 
   constructor(private activityService: ActivityService) { }
 
@@ -32,6 +36,40 @@ export class ActivitiesSelectorComponent implements OnInit {
     const next = this.isSelected(id)
       ? this.selectedIds.filter(x => x !== id)
       : [...this.selectedIds, id];
+    this.selectedIds = next;
     this.selectedIdsChange.emit(next);
+  }
+
+  proposeActivity(): void {
+    const name = this.proposalName.trim();
+    if (!name || this.proposalSaving) return;
+
+    this.proposalSaving = true;
+    this.proposalError = '';
+    this.proposalMessage = '';
+
+    this.activityService.create({
+      name,
+      category: 'OTHER',
+      status: 'pending',
+    }).subscribe({
+      next: res => {
+        const activity = {
+          ...res.data,
+          name,
+          status: 'pending' as const,
+        };
+        this.all = [activity, ...this.all];
+        this.selectedIds = [...this.selectedIds, activity.activityId];
+        this.selectedIdsChange.emit(this.selectedIds);
+        this.proposalName = '';
+        this.proposalSaving = false;
+        this.proposalMessage = 'Predlog aktivnosti je poslat na odobrenje.';
+      },
+      error: err => {
+        this.proposalSaving = false;
+        this.proposalError = err?.error?.message ?? 'Predlog aktivnosti nije moguce poslati.';
+      },
+    });
   }
 }

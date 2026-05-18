@@ -30,7 +30,7 @@
             <label class="label">Kategorija *</label>
             <select class="input" formControlName="category">
               @for (opt of categoryOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
+              <option [value]="opt.value" [disabled]="!canUseCategory(opt.value)">{{ opt.label }}</option>
               }
             </select>
           </div>

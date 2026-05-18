@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FiltersComponent } from '../Filteri/filters.component';
+import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { Location, LocationService } from '../services/location.service';
@@ -19,7 +20,7 @@ type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, FiltersComponent],
+  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })

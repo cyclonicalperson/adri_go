@@ -17,7 +17,7 @@ namespace TouristGuide.Api.Models
         [Column("admin_user_id")]
         public uint AdminUserId { get; set; }
 
-        /// <summary>pending_review | new_registration | post_approved | post_rejected | system</summary>
+        /// <summary>pending_review | route_pending | activity_pending | new_registration | post_approved | post_rejected | system</summary>
         [Required]
         [Column("type")]
         [MaxLength(50)]

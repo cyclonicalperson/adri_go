@@ -82,6 +82,7 @@ namespace TouristGuide.Api.Models
         public ICollection<ContentShare> Shares { get; set; } = new List<ContentShare>();
         public ICollection<VisitPlanner> Planners { get; set; } = new List<VisitPlanner>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<TouristNotificationPreference> NotificationPreferences { get; set; } = new List<TouristNotificationPreference>();
         public ICollection<MailingList> MailingListEntries { get; set; } = new List<MailingList>();
     }
 }

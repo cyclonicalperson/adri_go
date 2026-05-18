@@ -17,7 +17,7 @@ export const ADMIN_ROUTES: Routes = [
       { path: 'reviews', canActivate: [PermissionGuard], data: { permissions: ['manage_reviews'] }, loadChildren: () => import('./reviews/reviews.routes').then(m => m.REVIEWS_ROUTES) },
       { path: 'routes-management', canActivate: [PermissionGuard], data: { permissions: ['manage_own_posts'] }, loadChildren: () => import('./routes-management/routes-management.routes').then(m => m.ROUTES_MGMT_ROUTES) },
       { path: 'turisti', canActivate: [PermissionGuard], data: { permissions: ['view_tourists'] }, loadChildren: () => import('./turisti/turisti.routes').then(m => m.TURISTI_ROUTES) },
-      { path: 'destinations', loadChildren: () => import('./destinations/destinations.routes').then(m => m.DESTINATIONS_ROUTES) },
+      { path: 'destinations', canActivate: [RoleGuard], data: { roles: ['superadmin'] }, loadChildren: () => import('./destinations/destinations.routes').then(m => m.DESTINATIONS_ROUTES) },
       // ── Administracija (samo superadmin) ──────────────────────────────
       { path: 'users', canActivate: [RoleGuard], data: { roles: ['superadmin'] }, loadChildren: () => import('./users/users.routes').then(m => m.USERS_ROUTES) },
       { path: 'zahtevi', canActivate: [RoleGuard], data: { roles: ['superadmin'] }, loadChildren: () => import('./zahtevi/zahtevi.routes').then(m => m.ZAHTEVI_ROUTES) },

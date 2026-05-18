@@ -287,9 +287,21 @@ namespace TouristGuide.Api.Controllers
             if (!result.PostExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
+            var touristId = GetAuthorizedTouristId();
+            var myReview = touristId.HasValue
+                ? await _context.Reviews
+                    .AsNoTracking()
+                    .Where(r => r.PostId == id && r.TouristId == touristId.Value)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Select(r => new { r.Id, r.Status })
+                    .FirstOrDefaultAsync()
+                : null;
+
             return Ok(new
             {
                 total = result.Reviews.Count,
+                myReviewStatus = myReview?.Status,
+                myReviewId = myReview?.Id,
                 data = result.Reviews
             });
         }
@@ -481,6 +493,11 @@ namespace TouristGuide.Api.Controllers
                 var typeLower = dto.PostType.ToLower().Trim();
                 if (!AllowedPostTypes.Contains(typeLower))
                     return BadRequest(new { message = $"Nepoznat tip '{dto.PostType}'. Dozvoljeni: {string.Join(", ", AllowedPostTypes)}" });
+
+                if (!string.Equals(typeLower, post.PostType, StringComparison.OrdinalIgnoreCase) &&
+                    !await CanCreatePostAsync(typeLower, post.RegionId, !string.IsNullOrWhiteSpace(post.ProposedRegionName)))
+                    return Forbid();
+
                 post.PostType = typeLower;
             }
 

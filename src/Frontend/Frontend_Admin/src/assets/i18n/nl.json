@@ -599,5 +599,10 @@
   "Nova lozinka (ostavite prazno za istu)": "Nieuw wachtwoord (laat leeg om het huidige te behouden)",
   "Lozinka je uspešno promenjena.": "Wachtwoord is succesvol gewijzigd.",
   "Trenutna lozinka nije ispravna.": "Huidig wachtwoord is onjuist.",
-  "Greška pri promeni lozinke. Pokušajte ponovo.": "Fout bij het wijzigen van het wachtwoord. Probeer het opnieuw."
+  "Greška pri promeni lozinke. Pokušajte ponovo.": "Fout bij het wijzigen van het wachtwoord. Probeer het opnieuw.",
+  "Predlozi novu aktivnost": "Nieuwe activiteit voorstellen",
+  "Predlozi": "Voorstellen",
+  "Predlog aktivnosti je poslat na odobrenje.": "Het activiteitsvoorstel is ter goedkeuring verzonden.",
+  "Predlog aktivnosti nije moguce poslati.": "Het activiteitsvoorstel kon niet worden verzonden.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Je hebt geen toestemming om deze categorie te maken of te wijzigen."
 }

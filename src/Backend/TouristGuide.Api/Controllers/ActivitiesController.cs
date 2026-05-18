@@ -249,14 +249,19 @@ namespace TouristGuide.Api.Controllers
         [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Create([FromBody] CreateActivityDto dto)
         {
-            if (!await _permissionService.CanManageTagsAsync())
-                return Forbid();
-
             if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest(new { message = "Naziv aktivnosti je obavezan." });
 
             var subcat = dto.Category?.ToUpper() ?? "OTHER";
             var hex = ColorMap.GetValueOrDefault(subcat, "#6b7280");
             var statusFlag = string.Equals(dto.Status, "pending", StringComparison.OrdinalIgnoreCase) ? "pending" : "approved";
+            var canManageTags = await _permissionService.CanManageTagsAsync();
+            if (!canManageTags)
+            {
+                var canPropose = statusFlag == "pending" &&
+                    await _permissionService.HasPermissionInAnyScopeAsync("manage_own_posts");
+                if (!canPropose)
+                    return Forbid();
+            }
 
             var noviTag = new Tag
             {

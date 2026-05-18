@@ -63,6 +63,7 @@
 .header-login-btn:hover { opacity: 0.9; }
 
 .header-menu-btn {
+  position: relative;
   background: var(--gray-100);
   border: none;
   border-radius: 50%;
@@ -72,6 +73,7 @@
   align-items: center;
   justify-content: center;
   transition: background 0.15s;
+  overflow: visible;
 }
 .header-menu-btn:hover { background: var(--gray-200); }
 .header-menu-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }

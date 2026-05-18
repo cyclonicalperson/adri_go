@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SiteTranslateService } from './services/site-translate.service';
 import { AppVisitService } from './services/app-visit.service';
+import { TouristNotificationService } from './services/tourist-notification.service';
 
 @Component({
   selector: 'app-root',
@@ -15,6 +16,7 @@ export class App implements OnInit {
   constructor(
     private translate: SiteTranslateService,
     private appVisit: AppVisitService,
+    private touristNotifications: TouristNotificationService,
   ) {}
 
   ngOnInit(): void {
@@ -26,5 +28,6 @@ export class App implements OnInit {
     this.translate.init();
     // Bilježi sesiju otvaranja aplikacije za "Posete platformi" widget
     this.appVisit.recordVisit();
+    void this.touristNotifications.connect();
   }
 }

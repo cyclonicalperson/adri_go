@@ -105,7 +105,7 @@
     <div class="btn-group">
       <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
       <button class="btn btn-outline" (click)="exportCsv()">📊 Izvezi CSV</button>
-      @if (canManageObjects) {
+      @if (canCreateObjects) {
       <button class="btn btn-primary" (click)="goNew()">➕ Dodaj lokaciju</button>
       }
     </div>
@@ -195,7 +195,7 @@
             <span class="badge badge-green">✅ Aktivna</span>
             } @else if (objectStatus(o) === 'draft') {
             <span class="badge badge-amber">⏳ Na čekanju</span>
-            @if (canManageObjects) {
+            @if (canEditObject(o)) {
             <div style="margin-top:6px;display:flex;gap:6px">
               <button class="btn-icon approve-btn" title="Odobri" (click)="approve(o)">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="reject(o)">❌</button>
@@ -212,7 +212,7 @@
             <div class="actions">
               <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="goMap(o)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="goDetail(o)">👁️</button>
-              @if (canManageObjects) {
+              @if (canEditObject(o)) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(o)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(o)">🗑️</button>
               }

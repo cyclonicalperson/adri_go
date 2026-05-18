@@ -1,13 +1,14 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
 
 @Component({
   selector: 'app-side-menu',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NotificationBadgeComponent],
   templateUrl: './side-menu.component.html',
   styleUrls: ['./side-menu.component.css']
 })

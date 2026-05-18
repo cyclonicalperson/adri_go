@@ -25,6 +25,7 @@
 }
 
 .icon-btn {
+  position: relative;
   width: 40px;
   height: 40px;
   border: none;
@@ -32,6 +33,7 @@
   background: var(--gray-100);
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 .icon-btn svg {

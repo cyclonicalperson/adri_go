@@ -1,20 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../services/auth.service';
-import { environment } from '../../environments/environment';
-
-interface TouristNotification {
-  id: number;
-  type: string;
-  title: string;
-  body?: string;
-  payload?: string;
-  isRead: boolean;
-  createdAt: string;
-  sentAt?: string;
-}
+import { TouristNotification, TouristNotificationService } from '../services/tourist-notification.service';
 
 @Component({
   selector: 'app-notifications',
@@ -23,33 +12,50 @@ interface TouristNotification {
   templateUrl: './notifications.html',
   styleUrls: ['./notifications.css']
 })
-export class NotificationsComponent implements OnInit {
+export class NotificationsComponent implements OnInit, OnDestroy {
   activeFilter: string = 'All';
   isLoading = false;
   notifications: TouristNotification[] = [];
+  unreadCount = 0;
+  connected = false;
+  readonly filters = ['All', 'Alerts', 'Reviews', 'Recommendations', 'Trips', 'Messages'];
 
-  private readonly apiUrl = `${environment.apiUrl}/tourist-auth`;
+  private readonly subscriptions = new Subscription();
 
   constructor(
     private router: Router,
-    private http: HttpClient,
     public authService: AuthService,
+    private notificationService: TouristNotificationService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn) {
+      this.subscriptions.add(this.notificationService.notifications$.subscribe(items => {
+        this.notifications = items;
+        this.cdr.detectChanges();
+      }));
+      this.subscriptions.add(this.notificationService.unreadCount$.subscribe(count => {
+        this.unreadCount = count;
+        this.cdr.detectChanges();
+      }));
+      this.subscriptions.add(this.notificationService.connected$.subscribe(connected => {
+        this.connected = connected;
+        this.cdr.detectChanges();
+      }));
       this.loadNotifications();
     }
   }
 
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
   loadNotifications(): void {
     this.isLoading = true;
-    this.http.get<{ data: TouristNotification[]; unreadCount: number; success: boolean }>(
-      `${this.apiUrl}/notifications?limit=50`
-    ).subscribe({
-      next: (res) => {
-        this.notifications = res.data;
+    this.notificationService.list(50).subscribe({
+      next: (items) => {
+        this.notifications = items;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -65,8 +71,10 @@ export class NotificationsComponent implements OnInit {
     const filterType = this.activeFilter.toLowerCase();
     return this.notifications.filter(n => {
       const t = (n.type || '').toLowerCase();
-      if (filterType === 'alerts')          return t.includes('alert') || t.includes('system') || t.includes('warning') || t.includes('reminder') || t.includes('calendar') || t.includes('trip');
+      if (filterType === 'alerts')          return t.includes('alert') || t.includes('system') || t.includes('warning') || t.includes('important');
+      if (filterType === 'reviews')         return t.includes('review');
       if (filterType === 'recommendations') return t.includes('recommendation') || t.includes('promo') || t.includes('new_event');
+      if (filterType === 'trips')           return t.includes('calendar') || t.includes('trip') || t.includes('booking') || t.includes('reminder');
       if (filterType === 'messages')        return t.includes('support') || t.includes('message');
       return true;
     });
@@ -78,9 +86,8 @@ export class NotificationsComponent implements OnInit {
 
   markAllRead(): void {
     if (!this.authService.isLoggedIn) return;
-    this.http.patch(`${this.apiUrl}/notifications/read-all`, {}).subscribe({
+    this.notificationService.markAllRead().subscribe({
       next: () => {
-        this.notifications.forEach(n => n.isRead = true);
         this.cdr.detectChanges();
       }
     });
@@ -88,9 +95,8 @@ export class NotificationsComponent implements OnInit {
 
   markRead(notif: TouristNotification): void {
     if (notif.isRead || !this.authService.isLoggedIn) return;
-    this.http.patch(`${this.apiUrl}/notifications/${notif.id}/read`, {}).subscribe({
+    this.notificationService.markRead(notif.id).subscribe({
       next: () => {
-        notif.isRead = true;
         this.cdr.detectChanges();
       }
     });
@@ -99,9 +105,8 @@ export class NotificationsComponent implements OnInit {
   deleteNotification(notif: TouristNotification, event: Event): void {
     event.stopPropagation();
     if (!this.authService.isLoggedIn) return;
-    this.http.delete(`${this.apiUrl}/notifications/${notif.id}`).subscribe({
+    this.notificationService.delete(notif.id).subscribe({
       next: () => {
-        this.notifications = this.notifications.filter(n => n.id !== notif.id);
         this.cdr.detectChanges();
       }
     });
@@ -113,6 +118,17 @@ export class NotificationsComponent implements OnInit {
     if (target) {
       this.router.navigateByUrl(target);
     }
+  }
+
+  getNotificationIcon(type: string): string {
+    const t = (type || '').toLowerCase();
+    if (t.includes('review')) return t.includes('rejected') ? '\u2715' : '\u2713';
+    if (t.includes('alert') || t.includes('warning') || t.includes('important')) return '\u26A0';
+    if (t.includes('recommendation') || t.includes('promo')) return '\u2728';
+    if (t.includes('support') || t.includes('message')) return '\u{1F4AC}';
+    if (t.includes('calendar') || t.includes('trip') || t.includes('booking') || t.includes('reminder')) return '\u{1F4C5}';
+    if (t.includes('event')) return '\u{1F4CD}';
+    return '\u{1F514}';
   }
 
   getIcon(type: string): string {
@@ -151,7 +167,14 @@ export class NotificationsComponent implements OnInit {
   }
 
   private getNotificationTarget(notif: TouristNotification): string | null {
-    const payload = this.parsePayload(notif.payload);
+    const payload = notif.payload ?? {};
+    const url = this.readPayloadString(payload, 'url');
+    const type = (notif.type || '').toLowerCase();
+
+    if ((type.includes('calendar') || type.includes('trip')) && url?.startsWith('/')) {
+      return url;
+    }
+
     const postId = this.readPayloadNumber(payload, 'postId', 'post_id');
     if (postId) {
       return `/location-details/${postId}`;
@@ -162,18 +185,7 @@ export class NotificationsComponent implements OnInit {
       return '/routes';
     }
 
-    const url = this.readPayloadString(payload, 'url');
     return url && url.startsWith('/') ? url : null;
-  }
-
-  private parsePayload(payload?: string): Record<string, unknown> {
-    if (!payload) return {};
-    try {
-      const parsed = JSON.parse(payload);
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch {
-      return {};
-    }
   }
 
   private readPayloadNumber(payload: Record<string, unknown>, ...keys: string[]): number | null {

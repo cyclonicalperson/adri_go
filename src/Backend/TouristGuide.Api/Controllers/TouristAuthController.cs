@@ -17,6 +17,7 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _db;
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
+        private readonly TouristNotificationService _touristNotificationService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<TouristAuthController> _logger;
 
@@ -24,12 +25,14 @@ namespace TouristGuide.Api.Controllers
             AppDbContext db,
             JwtService jwtService,
             EmailService emailService,
+            TouristNotificationService touristNotificationService,
             IConfiguration configuration,
             ILogger<TouristAuthController> logger)
         {
             _db = db;
             _jwtService = jwtService;
             _emailService = emailService;
+            _touristNotificationService = touristNotificationService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -380,17 +383,10 @@ namespace TouristGuide.Api.Controllers
                 Notes = null,
                 ScheduledTime = null
             });
-            _db.Notifications.Add(new Notification
-            {
-                TouristId = tourist.Id,
-                Type = "calendar",
-                Title = "Added to calendar",
-                Body = $"{post.Title} is now in your travel calendar.",
-                Payload = System.Text.Json.JsonSerializer.Serialize(new { postId }),
-                CreatedAt = DateTime.UtcNow
-            });
+            var notification = await _touristNotificationService.QueueCalendarItemAddedAsync(tourist.Id, post.Id, post.Title);
 
             await _db.SaveChangesAsync();
+            await _touristNotificationService.DispatchAsync(notification);
             return Ok(new { message = "Added to calendar." });
         }
 
@@ -473,6 +469,7 @@ namespace TouristGuide.Api.Controllers
                 await _db.SaveChangesAsync();
             }
 
+            await _touristNotificationService.BroadcastNotificationReadAsync(tourist.Id, notif.Id);
             return Ok(new { success = true });
         }
 
@@ -495,6 +492,7 @@ namespace TouristGuide.Api.Controllers
             }
 
             await _db.SaveChangesAsync();
+            await _touristNotificationService.BroadcastAllReadAsync(tourist.Id);
             return Ok(new { success = true, count = unread.Count });
         }
 
@@ -513,7 +511,43 @@ namespace TouristGuide.Api.Controllers
 
             _db.Notifications.Remove(notif);
             await _db.SaveChangesAsync();
+            await _touristNotificationService.BroadcastNotificationDeletedAsync(tourist.Id, notif.Id);
             return Ok(new { success = true });
+        }
+
+        // GET /api/tourist-auth/notification-preferences
+        [Authorize(Roles = "tourist")]
+        [HttpGet("notification-preferences")]
+        public async Task<IActionResult> GetNotificationPreferences()
+        {
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            var preferences = await _touristNotificationService.GetPreferencesAsync(touristId.Value);
+            return Ok(new { data = preferences, success = true });
+        }
+
+        // PUT /api/tourist-auth/notification-preferences
+        [Authorize(Roles = "tourist")]
+        [HttpPut("notification-preferences")]
+        public async Task<IActionResult> UpdateNotificationPreferences(
+            [FromBody] List<TouristNotificationPreferenceUpdateDto> updates)
+        {
+            var touristId = GetTouristId();
+            if (touristId is null) return Unauthorized();
+
+            try
+            {
+                var preferences = await _touristNotificationService.UpdatePreferencesAsync(
+                    touristId.Value,
+                    updates ?? new List<TouristNotificationPreferenceUpdateDto>());
+
+                return Ok(new { data = preferences, success = true });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message, success = false });
+            }
         }
 
         // ─── PASSWORD MANAGEMENT ──────────────────────────────────────────────

@@ -99,6 +99,7 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<TouristNotificationService>();
 
 // ── SignalR ────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
@@ -190,5 +191,6 @@ app.MapControllers();
 
 // ── SignalR Hub ────────────────────────────────────────────────────────
 app.MapHub<TouristGuide.Api.Hubs.AdminNotificationHub>("/hubs/notifications");
+app.MapHub<TouristGuide.Api.Hubs.TouristNotificationHub>("/hubs/tourist-notifications");
 
 app.Run();

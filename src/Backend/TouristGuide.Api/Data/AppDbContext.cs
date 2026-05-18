@@ -47,6 +47,7 @@ namespace TouristGuide.Api.Data
 
         // Komunikacija
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<TouristNotificationPreference> TouristNotificationPreferences { get; set; }
         public DbSet<MailingList> MailingList { get; set; }
 
         // Analitika
@@ -448,6 +449,16 @@ namespace TouristGuide.Api.Data
                 .HasOne(n => n.Tourist)
                 .WithMany(t => t.Notifications)
                 .HasForeignKey(n => n.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TouristNotificationPreference>()
+                .HasIndex(x => new { x.TouristId, x.NotificationType })
+                .IsUnique();
+
+            modelBuilder.Entity<TouristNotificationPreference>()
+                .HasOne(x => x.Tourist)
+                .WithMany(t => t.NotificationPreferences)
+                .HasForeignKey(x => x.TouristId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // ════════════════════════════════════════════════════════════════

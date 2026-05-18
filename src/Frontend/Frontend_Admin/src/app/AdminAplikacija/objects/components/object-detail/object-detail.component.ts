@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { forkJoin } from 'rxjs';
 import { ObjectService } from '@core/services/object.service';
 import { ReviewService } from '@core/services/review.service';
@@ -38,6 +39,7 @@ export class ObjectDetailComponent implements OnInit {
     private router: Router,
     private objService: ObjectService,
     private reviewService: ReviewService,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -110,12 +112,25 @@ export class ObjectDetailComponent implements OnInit {
     return map[this.object?.category ?? ''] ?? 'default';
   }
 
-  goEdit(): void { this.router.navigate(['/admin/lokacije', this.object!.objectId, 'edit']); }
+  get canEditObject(): boolean {
+    if (!this.object) return false;
+    return this.auth.isSuperAdmin ||
+      (this.auth.hasPermission('manage_own_posts') && this.object.createdBy === this.auth.currentUser?.userId);
+  }
+
+  goEdit(): void {
+    if (!this.canEditObject) return;
+    this.router.navigate(['/admin/lokacije', this.object!.objectId, 'edit']);
+  }
   goBack(): void { this.router.navigate(['/admin/lokacije']); }
-  confirmDelete(): void { this.showDeleteDialog = true; }
+  confirmDelete(): void {
+    if (!this.canEditObject) return;
+    this.showDeleteDialog = true;
+  }
   cancelDelete(): void { this.showDeleteDialog = false; }
 
   doDelete(): void {
+    if (!this.canEditObject) return;
     this.objService.delete(this.object!.objectId).subscribe(() => {
       this.router.navigate(['/admin/lokacije']);
     });

@@ -10,6 +10,7 @@ import { MapNavigationPanelComponent } from './components/map-navigation-panel/m
 import { LocationDetailsCardComponent } from '../location-details-card/location-details-card';
 import { TripPlannerPanelComponent } from './components/trip-planner-panel/trip-planner-panel.component';
 import { FiltersComponent } from '../Filteri/filters.component';
+import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
@@ -65,6 +66,7 @@ type SearchResult = MapLocation & {
     MapRecommendationsPanelComponent,
     MapNavigationPanelComponent,
     FiltersComponent,
+    NotificationBadgeComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -1593,12 +1595,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (results) => {
         const addedCount = results.filter((res: any) => !res?.failed && !res?.alreadyAdded).length;
         const alreadyCount = results.filter((res: any) => !!res?.alreadyAdded).length;
-        const suffix = this.preferences.snapshot.emailNotifications
-          ? ' A summary will also appear in your email digest.'
-          : '';
 
         if (addedCount > 0) {
-          this.plannerMessage = `${addedCount} stop(s) added to your calendar.${suffix}`;
+          this.plannerMessage = `${addedCount} stop(s) added to your calendar.`;
           this.showTripSavedBrowserNotification(addedCount);
         } else if (alreadyCount > 0) {
           this.plannerMessage = 'These stops are already in your calendar.';

@@ -58,8 +58,7 @@ export class TopbarComponent implements OnInit, OnDestroy {
   loadNotifications(): void {
     this.notifLoading = true;
     this.notifHub.list().subscribe({
-      next: list => {
-        this.notifications = list;
+      next: () => {
         this.notifLoading = false;
       },
       error: () => {
@@ -94,8 +93,6 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   markAllRead(): void {
     this.notifHub.markAllAsRead().subscribe(() => {
-      this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
-      this.notifHub.unreadCount$.next(0);
       this.badgeService.refresh();
     });
   }
@@ -104,15 +101,11 @@ export class TopbarComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     if (n.isRead) return;
     this.notifHub.markAsRead(n.id).subscribe();
-    n.isRead = true;
-    this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
   }
 
   openNotification(n: AdminNotification): void {
     if (!n.isRead) {
       this.notifHub.markAsRead(n.id).subscribe();
-      n.isRead = true;
-      this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
     }
 
     this.notifOpen = false;
@@ -139,26 +132,14 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   deleteNotification(n: AdminNotification, event: Event): void {
     event.stopPropagation();
-    this.notifHub.delete(n.id).subscribe({
-      next: () => {
-        this.notifications = this.notifications.filter(x => x.id !== n.id);
-        if (!n.isRead) {
-          this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
-        }
-      },
-    });
+    this.notifHub.delete(n.id).subscribe();
   }
 
   clearAllNotifications(event: Event): void {
     event.stopPropagation();
     if (this.notifications.length === 0) return;
 
-    this.notifHub.deleteAll().subscribe({
-      next: () => {
-        this.notifications = [];
-        this.notifHub.unreadCount$.next(0);
-      },
-    });
+    this.notifHub.deleteAll().subscribe();
   }
 
   onAdminSearchInput(query: string): void {

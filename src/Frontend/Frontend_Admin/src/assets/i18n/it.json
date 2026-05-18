@@ -672,5 +672,10 @@
   "Nova lozinka (ostavite prazno za istu)": "Nuova password (lascia vuoto per mantenere quella attuale)",
   "Lozinka je uspešno promenjena.": "La password è stata modificata con successo.",
   "Trenutna lozinka nije ispravna.": "La password attuale non è corretta.",
-  "Greška pri promeni lozinke. Pokušajte ponovo.": "Errore durante la modifica della password. Riprova."
+  "Greška pri promeni lozinke. Pokušajte ponovo.": "Errore durante la modifica della password. Riprova.",
+  "Predlozi novu aktivnost": "Suggerisci una nuova attività",
+  "Predlozi": "Suggerisci",
+  "Predlog aktivnosti je poslat na odobrenje.": "Il suggerimento dell'attività è stato inviato per approvazione.",
+  "Predlog aktivnosti nije moguce poslati.": "Impossibile inviare il suggerimento dell'attività.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Non hai il permesso di creare o modificare questa categoria."
 }

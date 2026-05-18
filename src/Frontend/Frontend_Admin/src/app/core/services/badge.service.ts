@@ -60,10 +60,9 @@ export class BadgeService {
       this._pendingRequests$.next(0);
     }
 
-    this.userService.getNotifications(SILENT).subscribe({
+    this.http.get<{ data?: { count?: number } }>(`${environment.apiUrl}/notifications/unread-count`, SILENT).subscribe({
       next: res => {
-        const unread = (res.data ?? []).filter((n: any) => !n.isRead).length;
-        this._unreadNotifications$.next(unread);
+        this._unreadNotifications$.next(res.data?.count ?? 0);
       },
       error: () => { },
     });

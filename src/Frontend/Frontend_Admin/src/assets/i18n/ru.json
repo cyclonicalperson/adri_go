@@ -641,5 +641,10 @@
   "Nova lozinka (ostavite prazno za istu)": "Новый пароль (оставьте пустым, чтобы сохранить текущий)",
   "Lozinka je uspešno promenjena.": "Пароль успешно изменён.",
   "Trenutna lozinka nije ispravna.": "Текущий пароль неверный.",
-  "Greška pri promeni lozinke. Pokušajte ponovo.": "Ошибка при изменении пароля. Пожалуйста, попробуйте снова."
+  "Greška pri promeni lozinke. Pokušajte ponovo.": "Ошибка при изменении пароля. Пожалуйста, попробуйте снова.",
+  "Predlozi novu aktivnost": "Предложить новое занятие",
+  "Predlozi": "Предложить",
+  "Predlog aktivnosti je poslat na odobrenje.": "Предложение занятия отправлено на одобрение.",
+  "Predlog aktivnosti nije moguce poslati.": "Не удалось отправить предложение занятия.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "У вас нет разрешения создавать или изменять эту категорию."
 }

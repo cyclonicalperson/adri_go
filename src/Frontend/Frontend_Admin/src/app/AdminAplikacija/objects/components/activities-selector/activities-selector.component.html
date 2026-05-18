@@ -1,4 +1,23 @@
 <div class="selector">
+  <div class="proposal">
+    <input class="proposal-input"
+           [(ngModel)]="proposalName"
+           placeholder="Predlozi novu aktivnost"
+           (keydown.enter)="proposeActivity()" />
+    <button class="proposal-btn"
+            type="button"
+            [disabled]="proposalSaving || !proposalName.trim()"
+            (click)="proposeActivity()">
+      {{ proposalSaving ? 'Slanje...' : 'Predlozi' }}
+    </button>
+  </div>
+  @if (proposalMessage) {
+  <div class="proposal-note">{{ proposalMessage }}</div>
+  }
+  @if (proposalError) {
+  <div class="proposal-error">{{ proposalError }}</div>
+  }
+
   @for (activity of all; track activity.activityId) {
   <label class="chip" [class.selected]="isSelected(activity.activityId)">
     <input type="checkbox"
