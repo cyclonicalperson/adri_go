@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { DestinationService } from '@core/services/destination.service';
 import { DestinationType } from '@core/models/destination.model';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
@@ -34,6 +35,7 @@ export class DestinationFormComponent implements OnInit {
     private service: DestinationService,
     private route: ActivatedRoute,
     private router: Router,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -45,6 +47,11 @@ export class DestinationFormComponent implements OnInit {
       latitude: [null, [Validators.required, Validators.min(-90), Validators.max(90)]],
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
     });
+
+    if (!this.canManageDestinations) {
+      this.router.navigate(['/admin/dashboard']);
+      return;
+    }
 
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
@@ -71,7 +78,16 @@ export class DestinationFormComponent implements OnInit {
   get lat(): number { return this.form.get('latitude')?.value ?? 43.85; }
   get lng(): number { return this.form.get('longitude')?.value ?? 18.41; }
 
+  get canManageDestinations(): boolean {
+    return this.auth.isSuperAdmin;
+  }
+
   submit(): void {
+    if (!this.canManageDestinations) {
+      this.router.navigate(['/admin/dashboard']);
+      return;
+    }
+
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving = true;
     this.error = null;

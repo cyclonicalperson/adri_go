@@ -98,7 +98,7 @@ export class AktivnostiListComponent implements OnInit {
   }
 
   get canManageActivities(): boolean {
-    return this.auth.hasPermission('manage_tags');
+    return this.auth.hasGlobalPermission('manage_tags');
   }
 
   private loadGlobalTotal(): void {

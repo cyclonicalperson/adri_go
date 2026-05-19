@@ -34,5 +34,8 @@
   "Slanje...": "Slanje...",
   "Predlog aktivnosti je poslat na odobrenje.": "Predlog aktivnosti je poslat na odobrenje.",
   "Predlog aktivnosti nije moguce poslati.": "Predlog aktivnosti nije moguće poslati.",
-  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Nemate dozvolu za kreiranje ili promenu ove kategorije."
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Nemate dozvolu za kreiranje ili promenu ove kategorije.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.",
+  "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "Nemate dozvolu za kreiranje događaja u izabranom regionu.",
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "Nemate dozvolu za kreiranje rute u izabranom regionu."
 }

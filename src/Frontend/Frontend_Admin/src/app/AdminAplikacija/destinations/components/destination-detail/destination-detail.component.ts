@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { DestinationService } from '@core/services/destination.service';
 import { ObjectService } from '@core/services/object.service';
 import { Destination } from '@core/models/destination.model';
@@ -35,6 +36,7 @@ export class DestinationDetailComponent implements OnInit {
     private router: Router,
     private destService: DestinationService,
     private objService: ObjectService,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -48,6 +50,10 @@ export class DestinationDetailComponent implements OnInit {
     this.objService.getAll({ page: 1, pageSize: 6, destinationId: id }).subscribe((res: { data: TouristObject[]; }) => {
       this.objects = res.data;
     });
+  }
+
+  get canManageDestinations(): boolean {
+    return this.auth.isSuperAdmin;
   }
 
   get marker(): MapMarker[] {
@@ -81,6 +87,7 @@ export class DestinationDetailComponent implements OnInit {
   }
 
   goEdit(): void {
+    if (!this.canManageDestinations) return;
     this.router.navigate(['/admin/destinations', this.destination!.destinationId, 'edit']);
   }
 
@@ -88,16 +95,20 @@ export class DestinationDetailComponent implements OnInit {
     this.router.navigate(['/admin/destinations']);
   }
 
-  confirmDelete(): void { this.showDeleteDialog = true; }
+  confirmDelete(): void {
+    if (!this.canManageDestinations) return;
+    this.showDeleteDialog = true;
+  }
   cancelDelete(): void { this.showDeleteDialog = false; }
 
   doDelete(): void {
+    if (!this.canManageDestinations) return;
     this.destService.delete(this.destination!.destinationId).subscribe(() => {
       this.router.navigate(['/admin/destinations']);
     });
   }
 
   goObject(obj: TouristObject): void {
-    this.router.navigate(['/admin/objects', obj.objectId]);
+    this.router.navigate(['/admin/lokacije', obj.objectId]);
   }
 }

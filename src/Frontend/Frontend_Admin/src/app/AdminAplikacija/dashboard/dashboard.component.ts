@@ -161,7 +161,7 @@ export class DashboardComponent implements OnInit {
   }
 
   get canViewAnalytics(): boolean {
-    return this.auth.hasPermission('view_analytics');
+    return this.auth.hasGlobalPermission('view_analytics');
   }
 
   get canManageContent(): boolean {
@@ -169,11 +169,11 @@ export class DashboardComponent implements OnInit {
   }
 
   get canManageActivities(): boolean {
-    return this.auth.hasPermission('manage_tags');
+    return this.auth.hasGlobalPermission('manage_tags');
   }
 
   get canManageReviews(): boolean {
-    return this.auth.hasPermission('manage_reviews');
+    return this.auth.hasGlobalPermission('manage_reviews');
   }
 
   get pendingCount(): number {

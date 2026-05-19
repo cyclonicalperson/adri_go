@@ -92,7 +92,7 @@ export class ObjectFormComponent implements OnInit {
     if (this.isEdit) {
       this.service.getById(this.id!).subscribe(res => {
         const o = res.data;
-        if (!this.canEditObject(o.createdBy)) {
+        if (!this.canEditObject(o)) {
           this.router.navigate(['/admin/dashboard']);
           return;
         }
@@ -126,11 +126,6 @@ export class ObjectFormComponent implements OnInit {
 
   submit(): void {
     this.submitted = true;
-    if (!this.canUseCategory(this.form.value.category)) {
-      this.error = 'Nemate dozvolu za kreiranje ili promenu ove kategorije.';
-      return;
-    }
-
     if (this.form.invalid || !this.hasRegionChoice()) {
       this.form.markAllAsTouched();
       if (!this.hasRegionChoice()) {
@@ -138,11 +133,19 @@ export class ObjectFormComponent implements OnInit {
       }
       return;
     }
+
+    const proposedRegionName = this.normalizeProposedRegionName(this.form.value.proposedRegionName);
+    const scopeRegionId = proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+    if (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
+        !this.canUseCategory(this.form.value.category, scopeRegionId)) {
+      this.error = 'Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.';
+      return;
+    }
+
     this.saving = true;
     this.error = null;
 
     const media = this.formImages.map((url, idx) => ({ mediaId: idx + 1, url, sortOrder: idx, caption: undefined }));
-    const proposedRegionName = this.normalizeProposedRegionName(this.form.value.proposedRegionName);
     const payload = {
       ...this.form.value,
       regionId: proposedRegionName ? null : this.form.value.regionId,
@@ -164,7 +167,7 @@ export class ObjectFormComponent implements OnInit {
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
 
-  canUseCategory(category: ObjectCategory): boolean {
+  canUseCategory(category: ObjectCategory, regionId?: number | null): boolean {
     if (this.auth.isSuperAdmin) {
       return true;
     }
@@ -174,12 +177,21 @@ export class ObjectFormComponent implements OnInit {
     }
 
     const permission = this.createPermissionForCategory(category);
-    return !permission || this.auth.hasPermission(permission);
+    return !permission || this.auth.hasPermission(permission, regionId);
   }
 
-  private canEditObject(createdBy: number): boolean {
+  get selectedRegionIdForPermission(): number | undefined {
+    const regionId = Number(this.form?.get('regionId')?.value);
+    return Number.isFinite(regionId) && regionId > 0 ? regionId : undefined;
+  }
+
+  private canEditObject(objectItem: { createdBy: number; regionId?: number; destinationId?: number; proposedRegionName?: string | null }): boolean {
+    const regionId = objectItem.proposedRegionName
+      ? undefined
+      : this.objectScopeRegionId(objectItem);
+
     return this.auth.isSuperAdmin ||
-      (this.auth.hasPermission('manage_own_posts') && createdBy === this.auth.currentUser?.userId);
+      (this.auth.hasPermission('manage_own_posts', regionId) && objectItem.createdBy === this.auth.currentUser?.userId);
   }
 
   get regionChoiceInvalid(): boolean {
@@ -300,5 +312,10 @@ export class ObjectFormComponent implements OnInit {
       SPORT: 'create_sports',
     };
     return map[category] ?? null;
+  }
+
+  private objectScopeRegionId(objectItem: { regionId?: number; destinationId?: number }): number | undefined {
+    const regionId = objectItem.regionId ?? objectItem.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

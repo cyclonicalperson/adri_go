@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { Region } from '@core/models/region.model';
 import { RouteDifficulty, RouteStatus, Waypoint } from '@core/models/route.model';
 import { RegionService } from '@core/services/region.service';
@@ -42,6 +43,7 @@ export class RouteFormComponent implements OnInit {
     private fb: FormBuilder,
     private service: RouteService,
     private destService: RegionService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) {}
@@ -69,6 +71,11 @@ export class RouteFormComponent implements OnInit {
     if (this.isEdit) {
       this.service.getById(this.id!).subscribe((res: { data: any }) => {
         const r = res.data;
+        if (!this.canManageRoute(r)) {
+          this.router.navigate(['/admin/dashboard']);
+          return;
+        }
+
         this.form.patchValue({
           regionId: r.destinationId ?? r.regionId,
           proposedRegionName: r.proposedRegionName ?? '',
@@ -140,6 +147,15 @@ export class RouteFormComponent implements OnInit {
 
     this.saving = true;
     this.error = null;
+
+    const scopeRegionId = this.proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+    if (!this.isEdit &&
+        (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
+         !this.auth.hasPermission('create_route', scopeRegionId))) {
+      this.error = 'Nemate dozvolu za kreiranje rute u izabranom regionu.';
+      this.saving = false;
+      return;
+    }
 
     const first = this.waypoints[0];
     const last = this.waypoints[this.waypoints.length - 1];
@@ -242,6 +258,28 @@ export class RouteFormComponent implements OnInit {
 
   private hasRegionChoice(): boolean {
     return !!this.form?.get('regionId')?.value || !!this.proposedRegionName;
+  }
+
+  private get selectedRegionIdForPermission(): number | undefined {
+    const regionId = Number(this.form?.get('regionId')?.value);
+    return Number.isFinite(regionId) && regionId > 0 ? regionId : undefined;
+  }
+
+  private canManageRoute(route: { createdBy: number; regionId?: number | null; destinationId?: number | null; proposedRegionName?: string | null }): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.routeScopeRegionId(route)) &&
+        route.createdBy === this.auth.currentUser?.userId
+      );
+  }
+
+  private routeScopeRegionId(route: { regionId?: number | null; destinationId?: number | null; proposedRegionName?: string | null }): number | undefined {
+    if (route.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = route.regionId ?? route.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 
   private normalizeProposedRegionName(value: unknown): string | null {

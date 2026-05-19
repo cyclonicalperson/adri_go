@@ -30,6 +30,13 @@ namespace TouristGuide.Api.DTOs
         public bool IsIndividual { get; set; }
         public string? ProfileImage { get; set; }
         public List<string> Permissions { get; set; } = new();
+        public List<AuthenticatedPermissionGrantDto> PermissionGrants { get; set; } = new();
+    }
+
+    public class AuthenticatedPermissionGrantDto
+    {
+        public string Code { get; set; } = string.Empty;
+        public uint? RegionId { get; set; }
     }
 
     /// <summary>

@@ -11,11 +11,16 @@ export const EVENTS_ROUTES: Routes = [
   {
     path: 'new',
     canActivate: [PermissionGuard],
-    data: { permissions: ['create_event'] },
+    data: {
+      allPermissions: ['manage_own_posts'],
+      permissions: ['create_event'],
+    },
     component: EventFormComponent,
   },
   {
     path: ':id/edit',
+    canActivate: [PermissionGuard],
+    data: { permissions: ['manage_own_posts'] },
     component: EventFormComponent,
   },
 ];

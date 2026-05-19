@@ -321,6 +321,11 @@ export class TopbarComponent implements OnInit, OnDestroy {
   private buildAdminSearchResults(query: string): AdminSearchSuggestion[] {
     const role = this.auth.currentUser?.role ?? '';
     const canSeeSuperAdmin = role === 'superadmin';
+    const canManageContent = this.auth.hasPermission('manage_own_posts');
+    const canManageReviews = this.auth.hasGlobalPermission('manage_reviews');
+    const canManageActivities = this.auth.hasGlobalPermission('manage_tags');
+    const canViewTourists = this.auth.hasGlobalPermission('view_tourists');
+    const canAccessMap = canManageContent || this.auth.hasGlobalPermission('view_analytics');
     const catalog: AdminSearchSuggestion[] = [
       {
         title: 'Dashboard',
@@ -329,49 +334,49 @@ export class TopbarComponent implements OnInit, OnDestroy {
         intent: 'Pregled sistema',
         keywords: ['dashboard', 'home', 'statistika', 'pregled', 'analytics', 'analitika'],
       },
-      {
+      ...(canManageContent ? [{
         title: 'Destinacije i lokacije',
         subtitle: 'Objave, objekti, eventi, filtriranje po regionu i tipu',
         url: '/admin/lokacije',
         intent: 'Upravljanje sadrzajem',
         keywords: ['lokacije', 'destinacije', 'objave', 'posts', 'objects', 'plaza', 'restoran', 'hotel', 'event', 'mapa'],
-      },
-      {
+      }] : []),
+      ...(canManageReviews ? [{
         title: 'Recenzije na cekanju',
         subtitle: 'Moderacija komentara i ocena turista',
         url: '/admin/reviews',
         queryParams: { status: 'PENDING' },
         intent: 'Moderacija',
         keywords: ['recenzije', 'reviews', 'pending', 'cekanju', 'odobri', 'odbij', 'komentari', 'rating'],
-      },
-      {
+      }] : []),
+      ...(canManageContent ? [{
         title: 'Rute',
         subtitle: 'Kreiranje i uredjivanje turistickih ruta',
         url: '/admin/routes-management',
         intent: 'Planiranje ruta',
         keywords: ['rute', 'routes', 'itinerary', 'ruta', 'stajalista', 'waypoints'],
-      },
-      {
+      }] : []),
+      ...(canManageActivities ? [{
         title: 'Aktivnosti i tagovi',
         subtitle: 'Kategorije, aktivnosti i oznake za preporuke',
         url: '/admin/aktivnosti',
         intent: 'Katalog aktivnosti',
         keywords: ['aktivnosti', 'activity', 'tag', 'tags', 'kategorije', 'interesovanja'],
-      },
-      {
+      }] : []),
+      ...(canAccessMap ? [{
         title: 'Interaktivna mapa',
         subtitle: 'Vizuelni pregled destinacija i lokacija',
         url: '/admin/map-admin',
         intent: 'Mapa',
         keywords: ['mapa', 'map', 'geografija', 'koordinate', 'region'],
-      },
-      {
+      }] : []),
+      ...(canViewTourists ? [{
         title: 'Turisti',
         subtitle: 'Korisnicki nalozi turista i detalji naloga',
         url: '/admin/turisti',
         intent: 'Korisnici',
         keywords: ['turisti', 'tourists', 'korisnici', 'nalog', 'account'],
-      },
+      }] : []),
       {
         title: 'Moj profil',
         subtitle: 'Licni podaci i podesavanja admin naloga',

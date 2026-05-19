@@ -259,6 +259,14 @@ namespace TouristGuide.Api.Controllers
                     .Select(up => up.Permission.Code)
                     .ToList();
 
+                var permissionGrants = adminUser.UserPermissions
+                    .Select(up => new AuthenticatedPermissionGrantDto
+                    {
+                        Code = up.Permission.Code,
+                        RegionId = up.RegionId
+                    })
+                    .ToList();
+
                 return Ok(new LoginResponseDto
                 {
                     Token = token,
@@ -273,7 +281,8 @@ namespace TouristGuide.Api.Controllers
                         OrganizationId = adminUser.OrganizationId,
                         IsIndividual = adminUser.IsIndividual,
                         ProfileImage = adminUser.ProfileImage,
-                        Permissions = permissions
+                        Permissions = permissions,
+                        PermissionGrants = permissionGrants
                     }
                 });
             }

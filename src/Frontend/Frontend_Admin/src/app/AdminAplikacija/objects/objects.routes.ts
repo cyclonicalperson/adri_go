@@ -4,16 +4,6 @@ import { ObjectFormComponent } from './components/object-form/object-form.compon
 import { ObjectDetailComponent } from './components/object-detail/object-detail.component';
 import { PermissionGuard } from '../../core/auth/permission.guard';
 
-const OBJECT_CREATE_PERMISSIONS = [
-  'create_accommodation',
-  'create_restaurant',
-  'create_club',
-  'create_cultural_site',
-  'create_monument',
-  'create_sports',
-  'create_shop',
-];
-
 export const OBJECTS_ROUTES: Routes = [
   {
     path: '',
@@ -23,8 +13,7 @@ export const OBJECTS_ROUTES: Routes = [
     path: 'new',
     canActivate: [PermissionGuard],
     data: {
-      allPermissions: ['manage_own_posts'],
-      anyPermissions: OBJECT_CREATE_PERMISSIONS,
+      permissions: ['manage_own_posts'],
     },
     component: ObjectFormComponent,
   },

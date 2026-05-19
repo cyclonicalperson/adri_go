@@ -676,5 +676,8 @@
   "Predlozi": "Vorschlagen",
   "Predlog aktivnosti je poslat na odobrenje.": "Der Aktivitätsvorschlag wurde zur Freigabe gesendet.",
   "Predlog aktivnosti nije moguce poslati.": "Der Aktivitätsvorschlag konnte nicht gesendet werden.",
-  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Sie haben keine Berechtigung, diese Kategorie zu erstellen oder zu ändern."
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Sie haben keine Berechtigung, diese Kategorie zu erstellen oder zu ändern.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "Sie haben keine Berechtigung, diese Kategorie in der ausgewählten Region zu erstellen oder zu ändern.",
+  "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "Sie haben keine Berechtigung, Veranstaltungen in der ausgewählten Region zu erstellen.",
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "Sie haben keine Berechtigung, Routen in der ausgewählten Region zu erstellen."
 }

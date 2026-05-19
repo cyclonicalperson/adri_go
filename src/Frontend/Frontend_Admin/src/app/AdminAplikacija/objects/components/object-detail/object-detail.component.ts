@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
-import { forkJoin } from 'rxjs';
 import { ObjectService } from '@core/services/object.service';
 import { ReviewService } from '@core/services/review.service';
 import { TouristObject } from '@core/models/object.model';
@@ -12,6 +11,7 @@ import { StarRatingComponent } from '@shared/components/star-rating/star-rating.
 import { BadgeComponent, BadgeVariant } from '@shared/components/badge/badge.component';
 import { ReviewCardComponent } from '@shared/components/review-card/review-card.component';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+import { catchError, forkJoin, of } from 'rxjs';
 
 @Component({
   selector: 'app-object-detail',
@@ -44,10 +44,13 @@ export class ObjectDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    const reviews$ = this.auth.hasGlobalPermission('manage_reviews')
+      ? this.reviewService.getAll({ page: 1, pageSize: 5, entityType: 'OBJECT' }).pipe(catchError(() => of({ data: [] } as any)))
+      : of({ data: [] } as any);
 
     forkJoin({
       obj: this.objService.getById(id),
-      reviews: this.reviewService.getAll({ page: 1, pageSize: 5, entityType: 'OBJECT' }),
+      reviews: reviews$,
     }).subscribe({
       next: ({ obj, reviews }) => {
         this.object = obj.data;
@@ -115,7 +118,10 @@ export class ObjectDetailComponent implements OnInit {
   get canEditObject(): boolean {
     if (!this.object) return false;
     return this.auth.isSuperAdmin ||
-      (this.auth.hasPermission('manage_own_posts') && this.object.createdBy === this.auth.currentUser?.userId);
+      (
+        this.auth.hasPermission('manage_own_posts', this.objectScopeRegionId) &&
+        this.object.createdBy === this.auth.currentUser?.userId
+      );
   }
 
   goEdit(): void {
@@ -134,5 +140,14 @@ export class ObjectDetailComponent implements OnInit {
     this.objService.delete(this.object!.objectId).subscribe(() => {
       this.router.navigate(['/admin/lokacije']);
     });
+  }
+
+  private get objectScopeRegionId(): number | undefined {
+    if (!this.object || this.object.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = this.object.regionId ?? this.object.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

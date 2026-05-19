@@ -604,5 +604,8 @@
   "Predlozi": "Voorstellen",
   "Predlog aktivnosti je poslat na odobrenje.": "Het activiteitsvoorstel is ter goedkeuring verzonden.",
   "Predlog aktivnosti nije moguce poslati.": "Het activiteitsvoorstel kon niet worden verzonden.",
-  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Je hebt geen toestemming om deze categorie te maken of te wijzigen."
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Je hebt geen toestemming om deze categorie te maken of te wijzigen.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "Je hebt geen toestemming om deze categorie in de geselecteerde regio te maken of te wijzigen.",
+  "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "Je hebt geen toestemming om evenementen in de geselecteerde regio te maken.",
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "Je hebt geen toestemming om routes in de geselecteerde regio te maken."
 }

@@ -43,15 +43,6 @@ export class ObjectsListComponent implements OnInit {
     sortDir: 'desc',
   };
   private readonly stateKey = 'objects';
-  private readonly objectCreatePermissions = [
-    'create_accommodation',
-    'create_restaurant',
-    'create_club',
-    'create_cultural_site',
-    'create_monument',
-    'create_sports',
-    'create_shop',
-  ];
 
   constructor(
     private service: ObjectService,
@@ -76,12 +67,15 @@ export class ObjectsListComponent implements OnInit {
   }
 
   get canCreateObjects(): boolean {
-    return this.canManageObjects && this.auth.hasAnyPermission(...this.objectCreatePermissions);
+    return this.canManageObjects;
   }
 
   canEditObject(objectItem: TouristObject): boolean {
     return this.auth.isSuperAdmin ||
-      (this.canManageObjects && objectItem.createdBy === this.auth.currentUser?.userId);
+      (
+        this.auth.hasPermission('manage_own_posts', this.objectScopeRegionId(objectItem)) &&
+        objectItem.createdBy === this.auth.currentUser?.userId
+      );
   }
 
   private recomputeGlobalTotal(): void {
@@ -385,6 +379,11 @@ export class ObjectsListComponent implements OnInit {
       req: this.req,
       activeStatusFilter: this.activeStatusFilter,
     });
+  }
+
+  private objectScopeRegionId(objectItem: TouristObject): number | undefined {
+    const regionId = objectItem.regionId ?? objectItem.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 
   private statusFilterFromApiStatus(status?: string): string {

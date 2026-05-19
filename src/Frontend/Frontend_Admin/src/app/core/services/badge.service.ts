@@ -38,7 +38,7 @@ export class BadgeService {
   }
 
   refresh(): void {
-    if (this.auth.hasPermission('manage_reviews')) {
+    if (this.auth.hasGlobalPermission('manage_reviews')) {
       const reviewParams = new HttpParams().set('status', 'PENDING').set('page', 1).set('pageSize', 1);
       this.http.get<any>(`${environment.apiUrl}/reviews`, {
         params: reviewParams,
