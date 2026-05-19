@@ -743,7 +743,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (Number.isFinite(focusId) && focusId > 0) {
       const matched = this.locationsList.find(location => location.id === focusId);
       if (matched) {
-        this.focusOnLocation(matched);
+        // When arriving from "Directions" (planner=1), only center the map
+        // without opening the location card — the planner panel is the focus.
+        if (plannerFlag) {
+          const coordinates = this.getLocationCoordinates(matched);
+          if (this.map && coordinates) {
+            this.map.flyTo([coordinates.lat, coordinates.lng], 15, { animate: true, duration: 1 });
+          }
+        } else {
+          this.focusOnLocation(matched);
+        }
       }
     }
 
@@ -1083,6 +1092,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
       this.sheetExpanded = false;
+      this.applyMarkerFilter();
       this.cdr.detectChanges();
     } catch {
       this.plannerMessage = 'Could not fetch navigation data. Check your connection.';
@@ -1138,6 +1148,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navigationRouteGeometry = [];
     this.selectedLocation = null;
     this.clearRouteVisuals();
+    // Restore all map pins that were hidden during navigation
+    this.applyMarkerFilter();
     this.router.navigate([], { queryParams: {}, replaceUrl: true });
   }
 
@@ -1735,6 +1747,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private applyMarkerFilter(): void {
     this.markers.forEach(({ loc, marker }) => {
+      // During navigation: only show pins that are part of the route
+      if (this.isNavigating) {
+        const isRouteStop = this.plannerStops.some(stop => stop.id === loc.id);
+        if (isRouteStop) {
+          if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
+        } else if (this.map!.hasLayer(marker)) {
+          this.map!.removeLayer(marker);
+        }
+        return;
+      }
       const visible = this.passesFilters(loc);
       if (visible) {
         if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
