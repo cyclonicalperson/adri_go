@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { Subscription, catchError, forkJoin, of } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -25,6 +25,7 @@ import {
   RouteDetourSuggestion
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
+import { ThemeService } from '../services/theme.service';
 import { formatPostType } from '../utils/post-type.utils';
 
 type RecommendationTab = 'personalized' | 'global';
@@ -74,6 +75,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectedLocation: MapLocation | null = null;
   isMenuOpen = false;
+  isDarkMode = false;
   activeTab = 'map';
   sheetExpanded = false;
   private map: L.Map | undefined;
@@ -87,6 +89,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private hasCenteredOnUserLocation = false;
   private plannerRouteGeometry: [number, number][] = [];
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
+  private themeSubscription?: Subscription;
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
@@ -271,9 +274,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private analytics: TouristAnalyticsService,
     private recommendationService: RecommendationService,
     private savedRoutesService: SavedRoutesService,
+    private themeService: ThemeService,
   ) {}
 
   ngOnInit(): void {
+    this.isDarkMode = this.themeService.isDarkMode;
+    this.themeSubscription = this.themeService.theme$.subscribe(theme => {
+      this.isDarkMode = theme === 'dark';
+    });
+
     this.applyFilterState();
     this.syncPlannerStateFromServices();
     this.savedRoutes = this.savedRoutesService.getAll();
@@ -310,7 +319,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     window.removeEventListener('resize', this.handleWindowResize);
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
     this.autoLocatePermissionStatus = null;
+    this.themeSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 
   loadLocations(): void {

@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SiteTranslateService } from './services/site-translate.service';
 import { AppVisitService } from './services/app-visit.service';
+import { ThemeService } from './services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -15,14 +16,11 @@ export class App implements OnInit {
   constructor(
     private translate: SiteTranslateService,
     private appVisit: AppVisitService,
+    private themeService: ThemeService,
   ) {}
 
   ngOnInit(): void {
-    if (localStorage.getItem('theme') === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
+    this.themeService.init();
     this.translate.init();
     // Bilježi sesiju otvaranja aplikacije za "Posete platformi" widget
     this.appVisit.recordVisit();
