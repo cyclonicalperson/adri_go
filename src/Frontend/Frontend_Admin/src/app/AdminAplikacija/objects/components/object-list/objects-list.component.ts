@@ -66,6 +66,18 @@ export class ObjectsListComponent implements OnInit {
     return this.auth.hasPermission('manage_own_posts');
   }
 
+  get canCreateObjects(): boolean {
+    return this.canManageObjects;
+  }
+
+  canEditObject(objectItem: TouristObject): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.objectScopeRegionId(objectItem)) &&
+        objectItem.createdBy === this.auth.currentUser?.userId
+      );
+  }
+
   private recomputeGlobalTotal(): void {
     this.globalTotal = this.activeCount + this.pendingCount + this.inactiveCount;
   }
@@ -148,10 +160,12 @@ export class ObjectsListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateObjects) return;
     this.router.navigate(['/admin/lokacije/new']);
   }
 
   goEdit(objectItem: TouristObject): void {
+    if (!this.canEditObject(objectItem)) return;
     this.router.navigate(['/admin/lokacije', objectItem.objectId, 'edit']);
   }
 
@@ -170,6 +184,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   confirmDelete(objectItem: TouristObject): void {
+    if (!this.canEditObject(objectItem)) return;
     this.deleteTarget = objectItem;
   }
 
@@ -190,7 +205,7 @@ export class ObjectsListComponent implements OnInit {
   rejectTarget: TouristObject | null = null;
 
   confirmApprove(objectItem: TouristObject): void {
-    if (this.objectStatus(objectItem) === 'draft') {
+    if (this.objectStatus(objectItem) === 'draft' && this.canEditObject(objectItem)) {
       this.approveTarget = objectItem;
     }
   }
@@ -213,7 +228,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   confirmReject(objectItem: TouristObject): void {
-    if (this.objectStatus(objectItem) === 'draft') {
+    if (this.objectStatus(objectItem) === 'draft' && this.canEditObject(objectItem)) {
       this.rejectTarget = objectItem;
     }
   }
@@ -257,7 +272,7 @@ export class ObjectsListComponent implements OnInit {
         o.name,
         o.category,
         o.address || '—',
-        o.region?.name ?? o.destination?.name ?? '—',
+        o.region?.name ?? o.destination?.name ?? o.proposedRegionName ?? '—',
         o.latitude || '',
         o.longitude || '',
         o.averageRating != null ? o.averageRating.toFixed(1) : '—',
@@ -338,7 +353,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   ownerName(objectItem: TouristObject): string {
-    return objectItem.destination?.name ?? objectItem.region?.name ?? 'Sistem';
+    return objectItem.destination?.name ?? objectItem.region?.name ?? objectItem.proposedRegionName ?? 'Sistem';
   }
 
   objectStatus(objectItem: TouristObject): string {
@@ -364,6 +379,11 @@ export class ObjectsListComponent implements OnInit {
       req: this.req,
       activeStatusFilter: this.activeStatusFilter,
     });
+  }
+
+  private objectScopeRegionId(objectItem: TouristObject): number | undefined {
+    const regionId = objectItem.regionId ?? objectItem.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 
   private statusFilterFromApiStatus(status?: string): string {

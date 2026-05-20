@@ -19,6 +19,8 @@ const MOCK_USERS: Record<string, {
     organizationId: number | null;
     isIndividual: boolean;
     accountStatus: 'active';
+    permissions?: string[];
+    permissionGrants?: { code: string; regionId: number | null }[];
   };
 }> = {
   'superadmin@adrigo.rs': {
@@ -31,6 +33,8 @@ const MOCK_USERS: Record<string, {
       organizationId: null,
       isIndividual: true,
       accountStatus: 'active',
+      permissions: [],
+      permissionGrants: [],
     },
   },
   'admin@kopaonik.rs': {
@@ -43,6 +47,24 @@ const MOCK_USERS: Record<string, {
       organizationId: 1,
       isIndividual: false,
       accountStatus: 'active',
+      permissions: [
+        'create_event',
+        'create_route',
+        'create_cultural_site',
+        'create_monument',
+        'view_analytics',
+        'manage_reviews',
+        'manage_own_posts',
+      ],
+      permissionGrants: [
+        { code: 'create_event', regionId: null },
+        { code: 'create_route', regionId: null },
+        { code: 'create_cultural_site', regionId: null },
+        { code: 'create_monument', regionId: null },
+        { code: 'view_analytics', regionId: null },
+        { code: 'manage_reviews', regionId: null },
+        { code: 'manage_own_posts', regionId: null },
+      ],
     },
   },
 };

@@ -7,10 +7,12 @@
 
   <div class="header">
     <button class="btn-back" (click)="goBack()">← Nazad</button>
+    @if (canEditObject) {
     <div class="header-actions">
       <button class="btn-edit" (click)="goEdit()">Izmeni</button>
       <button class="btn-delete" (click)="confirmDelete()">Obriši</button>
     </div>
+    }
   </div>
 
   <div class="top-grid">

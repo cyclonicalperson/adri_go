@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
-import { UserService } from '@core/services/user.service';
+import { UniversalPasswordStatus, UserService } from '@core/services/user.service';
 import { AnalyticsService } from '@core/services/analytics.service';
 import { UserPermission } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
@@ -63,6 +63,15 @@ export class ProfileComponent implements OnInit {
   pwForm!: FormGroup;
   pwNewPasswordInteracted = false;
 
+  universalLoading = false;
+  universalSaving = false;
+  universalVisible = false;
+  universalError: string | null = null;
+  universalSuccess: string | null = null;
+  universalStatus: UniversalPasswordStatus | null = null;
+  universalForm!: FormGroup;
+  universalNewPasswordInteracted = false;
+
   userPermissions: UserPermission[] = [];
   permsLoading = false;
 
@@ -107,11 +116,25 @@ export class ProfileComponent implements OnInit {
     this.pw('newPassword').valueChanges.subscribe(() => this.syncPwConfirmState());
     this.syncPwConfirmState();
 
+    this.universalForm = this.fb.group({
+      currentPassword: ['', Validators.required],
+      newPassword: ['', [
+        Validators.required,
+        Validators.minLength(8),
+        passwordUppercaseValidator,
+        passwordNumberOrSpecialValidator,
+      ]],
+      confirmPassword: ['', Validators.required],
+    }, { validators: passwordMatchValidator });
+    this.uw('newPassword').valueChanges.subscribe(() => this.syncUniversalConfirmState());
+    this.syncUniversalConfirmState();
+
     if (!this.isSuperAdmin && this.user?.userId) {
       this.loadPermissions(this.user.userId);
     }
 
     if (this.isSuperAdmin) {
+      this.loadUniversalPassword();
       this.statsLoading = true;
       this.analytics.getDashboardStats().subscribe({
         next: res => {
@@ -202,6 +225,50 @@ export class ProfileComponent implements OnInit {
 
   get pwConfirmValid(): boolean {
     return this.pwConfirmEnabled && !!this.pw('confirmPassword').value && !this.pwForm.hasError('mismatch');
+  }
+
+  get universalRulesVisible(): boolean {
+    return this.universalNewPasswordInteracted && this.uw('newPassword').invalid;
+  }
+
+  get universalHasMinLength(): boolean {
+    return !this.uw('newPassword').hasError('minlength');
+  }
+
+  get universalHasUppercase(): boolean {
+    return !this.uw('newPassword').hasError('uppercase');
+  }
+
+  get universalHasNumberOrSpecial(): boolean {
+    return !this.uw('newPassword').hasError('numberOrSpecial');
+  }
+
+  get universalInputInvalid(): boolean {
+    return this.universalNewPasswordInteracted && this.uw('newPassword').invalid;
+  }
+
+  get universalInputValid(): boolean {
+    return this.universalNewPasswordInteracted && !!this.uw('newPassword').value && this.uw('newPassword').valid;
+  }
+
+  get universalValidMessageVisible(): boolean {
+    return this.universalInputValid;
+  }
+
+  get universalConfirmEnabled(): boolean {
+    return this.uw('confirmPassword').enabled;
+  }
+
+  get universalConfirmMismatchVisible(): boolean {
+    return this.universalConfirmEnabled && !!this.uw('confirmPassword').value && this.universalForm.hasError('mismatch');
+  }
+
+  get universalConfirmValid(): boolean {
+    return this.universalConfirmEnabled && !!this.uw('confirmPassword').value && !this.universalForm.hasError('mismatch');
+  }
+
+  get universalPasswordValue(): string {
+    return this.universalStatus?.password ?? '';
   }
 
   get permsByCategory(): { category: string; label: string; icon: string; perms: UserPermission[] }[] {
@@ -354,8 +421,75 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  loadUniversalPassword(): void {
+    this.universalLoading = true;
+    this.universalError = null;
+    this.userService.getUniversalPassword().subscribe({
+      next: res => {
+        this.universalStatus = res.data;
+        this.universalLoading = false;
+      },
+      error: (err: any) => {
+        this.universalError = err?.error?.message ?? 'Greška pri učitavanju univerzalne lozinke.';
+        this.universalLoading = false;
+      },
+    });
+  }
+
+  onUniversalNewPasswordInteract(): void {
+    this.universalNewPasswordInteracted = true;
+  }
+
+  private syncUniversalConfirmState(): void {
+    const confirmControl = this.uw('confirmPassword');
+    if (this.uw('newPassword').valid) {
+      if (confirmControl.disabled) {
+        confirmControl.enable({ emitEvent: false });
+      }
+      this.universalForm.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    if (confirmControl.enabled) {
+      confirmControl.reset('', { emitEvent: false });
+      confirmControl.disable({ emitEvent: false });
+      confirmControl.markAsPristine();
+      confirmControl.markAsUntouched();
+    }
+
+    this.universalForm.updateValueAndValidity({ emitEvent: false });
+  }
+
+  saveUniversalPassword(): void {
+    if (this.universalForm.invalid) {
+      this.universalForm.markAllAsTouched();
+      return;
+    }
+
+    this.universalSaving = true;
+    this.universalError = null;
+    this.universalSuccess = null;
+
+    const { currentPassword, newPassword } = this.universalForm.value;
+    this.userService.updateUniversalPassword(currentPassword, newPassword).subscribe({
+      next: res => {
+        this.universalStatus = res.data;
+        this.universalSaving = false;
+        this.universalSuccess = 'Univerzalna lozinka je promenjena.';
+        this.universalNewPasswordInteracted = false;
+        this.universalForm.reset();
+        this.syncUniversalConfirmState();
+      },
+      error: (err: any) => {
+        this.universalSaving = false;
+        this.universalError = err?.error?.message ?? 'Greška pri promeni univerzalne lozinke.';
+      },
+    });
+  }
+
   f(name: string) { return this.editForm.get(name)!; }
   pw(name: string) { return this.pwForm.get(name)!; }
+  uw(name: string) { return this.universalForm.get(name)!; }
 
   logout(): void { this.authService.logout(); }
 }

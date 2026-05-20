@@ -7,8 +7,13 @@ import { SiteTranslateService, SiteLanguageCode } from '../services/site-transla
 import { TouristAppPreferences, TouristPreferencesService } from '../services/tourist-preferences.service';
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
+import {
+  TouristNotificationPreference,
+  TouristNotificationPreferenceUpdate,
+  TouristNotificationService
+} from '../services/tourist-notification.service';
 
-type SettingsSheet = 'accounts' | 'content' | 'support' | 'language' | null;
+type SettingsSheet = 'accounts' | 'content' | 'booking' | 'support' | 'language' | 'notifications' | null;
 
 @Component({
   selector: 'app-settings',
@@ -24,6 +29,7 @@ export class SettingsComponent implements OnInit {
   appVersion = 'v1.2.0';
   savedMessage = '';
   notifPermission: NotificationPermission = 'default';
+  notificationPreferences: TouristNotificationPreference[] = [];
 
   contentOptions = [
     { id: 'nature', label: 'Nature', icon: '🌲' },
@@ -36,6 +42,12 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
+  ];
+
+  bookingOptions = [
+    { id: 'booking', label: 'Booking.com' },
+    { id: 'airbnb', label: 'Airbnb' },
+    { id: 'tripadvisor', label: 'Tripadvisor' },
   ];
 
   showPasswordModal = false;
@@ -60,6 +72,7 @@ export class SettingsComponent implements OnInit {
     private preferences: TouristPreferencesService,
     private userService: UserService,
     private analytics: TouristAnalyticsService,
+    private notifications: TouristNotificationService,
   ) {
     this.settings = this.preferences.snapshot;
 
@@ -89,6 +102,8 @@ export class SettingsComponent implements OnInit {
       },
       error: () => {}
     });
+
+    this.loadNotificationPreferences();
   }
 
   get currentLanguageLabel(): string {
@@ -120,6 +135,13 @@ export class SettingsComponent implements OnInit {
       .filter(option => this.settings.contentPreferences.includes(option.id))
       .map(option => option.label);
     return enabled.length > 0 ? enabled.join(', ') : 'Use general discovery mode';
+  }
+
+  get bookingServicesSummary(): string {
+    const enabled = this.bookingOptions
+      .filter(option => this.settings.bookingServices.includes(option.id))
+      .map(option => option.label);
+    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
   }
 
   get passwordRulesVisible(): boolean {
@@ -237,9 +259,46 @@ export class SettingsComponent implements OnInit {
   onEmailNotificationsToggle(): void {
     this.saveChanges(
       this.settings.emailNotifications
-        ? 'Trip email digests enabled'
-        : 'Trip email digests disabled'
+        ? 'Trip digest preference saved for future emails'
+        : 'Trip digest emails disabled'
     );
+    this.saveNotificationPreferences([
+      { notificationType: 'trip_digest', emailEnabled: this.settings.emailNotifications },
+    ]);
+  }
+
+  get notificationPreferencesSummary(): string {
+    if (this.notificationPreferences.length === 0) {
+      return 'Default delivery';
+    }
+
+    const activePush = this.notificationPreferences
+      .filter(pref => pref.pushEnabled && pref.notificationType !== 'trip_digest')
+      .length;
+    const digest = this.notificationPreferences.find(pref => pref.notificationType === 'trip_digest')?.emailEnabled;
+    return digest ? `${activePush} push types, digest email` : `${activePush} push types`;
+  }
+
+  get activeSheetKicker(): string {
+    switch (this.activeSheet) {
+      case 'accounts': return 'Accounts';
+      case 'content': return 'Content';
+      case 'booking': return 'Booking';
+      case 'language': return 'Language';
+      case 'notifications': return 'Notifications';
+      default: return 'Support';
+    }
+  }
+
+  get activeSheetTitle(): string {
+    switch (this.activeSheet) {
+      case 'accounts': return 'Connected Accounts';
+      case 'content': return 'Content Preferences';
+      case 'booking': return 'Connected Booking Services';
+      case 'language': return 'App Language';
+      case 'notifications': return 'Notification Preferences';
+      default: return 'Help & Support Center';
+    }
   }
 
   onPushNotificationsToggle(): void {
@@ -252,6 +311,7 @@ export class SettingsComponent implements OnInit {
     if (this.settings.pushNotifications) {
       if (Notification.permission === 'granted') {
         this.saveChanges('Push notifications enabled');
+        this.syncPushPreferenceToServer();
         return;
       }
 
@@ -269,6 +329,9 @@ export class SettingsComponent implements OnInit {
             ? 'Push notifications enabled'
             : 'Notification permission was not granted'
         );
+        if (permission === 'granted') {
+          this.syncPushPreferenceToServer();
+        }
       }).catch(() => {
         this.settings.pushNotifications = false;
         this.saveChanges('Notification permission was not granted');
@@ -277,6 +340,7 @@ export class SettingsComponent implements OnInit {
     }
 
     this.saveChanges('Push notifications disabled');
+    this.syncPushPreferenceToServer();
   }
 
   onLocationSharingToggle(): void {
@@ -328,6 +392,17 @@ export class SettingsComponent implements OnInit {
       }
     };
     this.saveChanges('Connected account preferences updated');
+  }
+
+  isBookingServiceEnabled(id: string): boolean {
+    return this.settings.bookingServices.includes(id);
+  }
+
+  toggleBookingService(id: string): void {
+    this.settings = {
+      ...this.settings,
+      bookingServices: this.toggleArrayValue(this.settings.bookingServices, id),
+    };
   }
 
   saveSheet(): void {
@@ -501,6 +576,93 @@ export class SettingsComponent implements OnInit {
         this.deleteError = err?.error?.message || 'Failed to delete account. Please try again.';
         this.isDeletingAccount = false;
       }
+    });
+  }
+
+  notificationPreferenceStatus(pref: TouristNotificationPreference): string {
+    const channels = [
+      pref.inAppEnabled ? 'In-app' : '',
+      pref.pushEnabled ? 'Push' : '',
+      pref.emailEnabled ? 'Email' : '',
+    ].filter(Boolean);
+
+    return channels.length > 0 ? channels.join(' + ') : 'Muted';
+  }
+
+  toggleNotificationPreference(
+    pref: TouristNotificationPreference,
+    channel: 'inAppEnabled' | 'pushEnabled' | 'emailEnabled',
+  ): void {
+    if (channel === 'inAppEnabled' && !pref.canMute) {
+      return;
+    }
+
+    if (channel === 'emailEnabled' && !pref.emailAvailable) {
+      return;
+    }
+
+    const nextValue = !pref[channel];
+    const update: TouristNotificationPreferenceUpdate = {
+      notificationType: pref.notificationType,
+    };
+    update[channel] = nextValue;
+
+    this.notificationPreferences = this.notificationPreferences.map(item =>
+      item.notificationType === pref.notificationType
+        ? { ...item, [channel]: nextValue }
+        : item,
+    );
+
+    if (pref.notificationType === 'trip_digest' && channel === 'emailEnabled') {
+      this.settings = { ...this.settings, emailNotifications: nextValue };
+      this.preferences.update(this.settings);
+    }
+
+    this.saveNotificationPreferences([update]);
+  }
+
+  private loadNotificationPreferences(): void {
+    this.notifications.getPreferences().subscribe({
+      next: preferences => {
+        this.notificationPreferences = preferences;
+        const digest = preferences.find(pref => pref.notificationType === 'trip_digest');
+        if (digest) {
+          this.settings = {
+            ...this.settings,
+            emailNotifications: digest.emailEnabled,
+          };
+          this.preferences.update(this.settings);
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  private syncPushPreferenceToServer(): void {
+    if (!this.authService.isLoggedIn || this.notificationPreferences.length === 0) {
+      return;
+    }
+
+    const updates = this.notificationPreferences
+      .filter(pref => pref.notificationType !== 'trip_digest')
+      .map(pref => ({
+        notificationType: pref.notificationType,
+        pushEnabled: this.settings.pushNotifications,
+      }));
+
+    this.saveNotificationPreferences(updates);
+  }
+
+  private saveNotificationPreferences(updates: TouristNotificationPreferenceUpdate[]): void {
+    if (!this.authService.isLoggedIn || updates.length === 0) {
+      return;
+    }
+
+    this.notifications.updatePreferences(updates).subscribe({
+      next: preferences => {
+        this.notificationPreferences = preferences;
+      },
+      error: () => {}
     });
   }
 

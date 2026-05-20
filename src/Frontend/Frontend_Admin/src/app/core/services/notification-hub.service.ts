@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as signalR from '@microsoft/signalr';
-import { BehaviorSubject, Observable, map } from 'rxjs';
+import { BehaviorSubject, Observable, map, tap } from 'rxjs';
 import { environment } from '@env/environment';
 import { TokenStorageService } from '@core/auth/token-storage.service';
 import { AdminNotification } from '@core/models/user.model';
@@ -54,9 +54,7 @@ export class NotificationHubService implements OnDestroy {
     // ── Registracija event handlera ───────────────────────────────────
     this.connection.on('NewNotification', (notif: AdminNotification) => {
       this.ngZone.run(() => {
-        const current = this.notifications$.value;
-        this.notifications$.next([normalizeNotification(notif), ...current].slice(0, 100));
-        this.unreadCount$.next(this.unreadCount$.value + 1);
+        this.addOrUpdateNotification(notif);
       });
     });
 
@@ -72,10 +70,27 @@ export class NotificationHubService implements OnDestroy {
 
     this.connection.on('NotificationRead', (id: number) => {
       this.ngZone.run(() => {
-        const updated = this.notifications$.value.map(n =>
-          n.id === id ? { ...n, isRead: true } : n
-        );
-        this.notifications$.next(updated);
+        this.setNotificationRead(id);
+      });
+    });
+
+    this.connection.on('AllNotificationsRead', () => {
+      this.ngZone.run(() => {
+        this.notifications$.next(this.notifications$.value.map(n => ({ ...n, isRead: true })));
+        this.unreadCount$.next(0);
+      });
+    });
+
+    this.connection.on('NotificationDeleted', (id: number) => {
+      this.ngZone.run(() => {
+        this.removeNotification(id);
+      });
+    });
+
+    this.connection.on('NotificationsCleared', () => {
+      this.ngZone.run(() => {
+        this.notifications$.next([]);
+        this.unreadCount$.next(0);
       });
     });
 
@@ -93,6 +108,9 @@ export class NotificationHubService implements OnDestroy {
       this.fetchInitialData();
     } catch (err) {
       console.error('[SignalR] Connection failed:', err);
+      this.connected$.next(false);
+      this.connection = null;
+      this.fetchInitialData();
     }
   }
 
@@ -101,47 +119,105 @@ export class NotificationHubService implements OnDestroy {
     await this.connection?.stop();
     this.connection = null;
     this.connected$.next(false);
+    this.notifications$.next([]);
+    this.unreadCount$.next(0);
   }
 
   // ── Označi kao pročitano (HTTP + SignalR povratni event) ─────────────
   markAsRead(id: number): Observable<any> {
     return this.http.patch(
       `${environment.apiUrl}/notifications/${id}/read`, {}
+    ).pipe(
+      tap(() => this.setNotificationRead(id)),
     );
   }
 
   markAllAsRead(): Observable<any> {
     return this.http.patch(
       `${environment.apiUrl}/notifications/read-all`, {}
+    ).pipe(
+      tap(() => {
+        this.notifications$.next(this.notifications$.value.map(n => ({ ...n, isRead: true })));
+        this.unreadCount$.next(0);
+      }),
     );
   }
 
   list(limit = 20): Observable<AdminNotification[]> {
-    return this.http.get<{ data: AdminNotification[] }>(
+    return this.http.get<{ data: AdminNotification[]; unreadCount?: number }>(
       `${environment.apiUrl}/notifications?limit=${limit}`
     ).pipe(
-      map(res => (res.data ?? []).map(normalizeNotification))
+      map(res => ({
+        items: (res.data ?? []).map(normalizeNotification),
+        unreadCount: res.unreadCount,
+      })),
+      tap(({ items, unreadCount }) => {
+        this.notifications$.next(items);
+        if (typeof unreadCount === 'number' && Number.isFinite(unreadCount)) {
+          this.unreadCount$.next(unreadCount);
+        }
+      }),
+      map(({ items }) => items),
     );
   }
 
   delete(id: number): Observable<any> {
-    return this.http.delete(`${environment.apiUrl}/notifications/${id}`);
+    return this.http.delete(`${environment.apiUrl}/notifications/${id}`).pipe(
+      tap(() => this.removeNotification(id)),
+    );
   }
 
   deleteAll(): Observable<any> {
-    return this.http.delete(`${environment.apiUrl}/notifications`);
+    return this.http.delete(`${environment.apiUrl}/notifications`).pipe(
+      tap(() => {
+        this.notifications$.next([]);
+        this.unreadCount$.next(0);
+      }),
+    );
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
-  private fetchInitialData(): void {
-    // Dohvati zadnjih 20 notifikacija iz baze
-    this.http.get<{ data: AdminNotification[] }>(
-      `${environment.apiUrl}/notifications?limit=20`
-    ).subscribe({
-      next: res => this.notifications$.next((res.data ?? []).map(normalizeNotification)),
-      error: () => { },
-    });
+  private addOrUpdateNotification(notification: AdminNotification): void {
+    const normalized = normalizeNotification(notification);
+    const current = this.notifications$.value;
+    const existing = current.find(item => item.id === normalized.id);
+    const next = [normalized, ...current.filter(item => item.id !== normalized.id)].slice(0, 100);
 
+    this.notifications$.next(next);
+
+    if (!existing && !normalized.isRead) {
+      this.unreadCount$.next(this.unreadCount$.value + 1);
+    }
+  }
+
+  private setNotificationRead(id: number): void {
+    const current = this.notifications$.value;
+    const existing = current.find(item => item.id === id);
+    if (!existing || existing.isRead) {
+      return;
+    }
+
+    this.notifications$.next(current.map(item =>
+      item.id === id ? { ...item, isRead: true } : item
+    ));
+    this.unreadCount$.next(Math.max(0, this.unreadCount$.value - 1));
+  }
+
+  private removeNotification(id: number): void {
+    const current = this.notifications$.value;
+    const existing = current.find(item => item.id === id);
+    if (!existing) {
+      return;
+    }
+
+    this.notifications$.next(current.filter(item => item.id !== id));
+    if (!existing.isRead) {
+      this.unreadCount$.next(Math.max(0, this.unreadCount$.value - 1));
+    }
+  }
+
+  private fetchInitialData(): void {
+    this.list(20).subscribe({ error: () => { } });
     this.fetchUnreadCount();
   }
 
@@ -155,14 +231,21 @@ export class NotificationHubService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.connection?.stop();
+    void this.disconnect();
   }
 }
 
 function normalizeNotification(notification: any): AdminNotification {
   return {
-    ...notification,
-    payload: parseNotificationPayload(notification?.payload),
+    id: notification?.id ?? notification?.Id ?? 0,
+    adminUserId: notification?.adminUserId ?? notification?.AdminUserId ?? 0,
+    type: notification?.type ?? notification?.Type ?? 'system',
+    title: notification?.title ?? notification?.Title ?? '',
+    body: notification?.body ?? notification?.Body ?? null,
+    payload: parseNotificationPayload(notification?.payload ?? notification?.Payload),
+    isRead: notification?.isRead ?? notification?.IsRead ?? false,
+    createdAt: notification?.createdAt ?? notification?.CreatedAt ?? new Date().toISOString(),
+    sentAt: notification?.sentAt ?? notification?.SentAt ?? null,
   };
 }
 

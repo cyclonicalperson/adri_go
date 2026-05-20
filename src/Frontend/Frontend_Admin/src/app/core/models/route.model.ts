@@ -5,6 +5,8 @@ export type RouteStatus = 'draft' | 'published' | 'archived';
 export interface TouristRoute {
   routeId: number;
   destinationId: number;
+  regionId?: number | null;
+  proposedRegionName?: string | null;
   name: string;
   routeType?: RouteType | null;
   difficulty: RouteDifficulty;
@@ -35,7 +37,9 @@ export interface Waypoint {
 }
 
 export interface CreateRouteRequest {
-  destinationId: number;
+  destinationId?: number | null;
+  regionId?: number | null;
+  proposedRegionName?: string | null;
   name: string;
   difficulty: RouteDifficulty;
   distanceKm: number;

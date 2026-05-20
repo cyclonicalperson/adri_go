@@ -455,6 +455,8 @@
   "npr. Nepotpuna dokumentacija...": "z.B. Unvollständige Dokumentation...",
   "Obrada...": "Verarbeitung...",
   "Slanje...": "Senden...",
+  "Ucitavanje aktivnosti...": "Aktivitäten werden geladen...",
+  "Aktivnosti nisu mogle da se ucitaju.": "Aktivitäten konnten nicht geladen werden.",
   "Potvrdi odbijanje": "Ablehnung bestätigen",
   "Verifikacija": "Verifizierung",
   "Organizacija": "Organisation",
@@ -671,5 +673,13 @@
   "Nova lozinka (ostavite prazno za istu)": "Neues Passwort (leer lassen, um das aktuelle zu behalten)",
   "Lozinka je uspešno promenjena.": "Passwort wurde erfolgreich geändert.",
   "Trenutna lozinka nije ispravna.": "Aktuelles Passwort ist nicht korrekt.",
-  "Greška pri promeni lozinke. Pokušajte ponovo.": "Fehler beim Ändern des Passworts. Bitte versuchen Sie es erneut."
+  "Greška pri promeni lozinke. Pokušajte ponovo.": "Fehler beim Ändern des Passworts. Bitte versuchen Sie es erneut.",
+  "Predlozi novu aktivnost": "Neue Aktivität vorschlagen",
+  "Predlozi": "Vorschlagen",
+  "Predlog aktivnosti je poslat na odobrenje.": "Der Aktivitätsvorschlag wurde zur Freigabe gesendet.",
+  "Predlog aktivnosti nije moguce poslati.": "Der Aktivitätsvorschlag konnte nicht gesendet werden.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Sie haben keine Berechtigung, diese Kategorie zu erstellen oder zu ändern.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "Sie haben keine Berechtigung, diese Kategorie in der ausgewählten Region zu erstellen oder zu ändern.",
+  "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "Sie haben keine Berechtigung, Veranstaltungen in der ausgewählten Region zu erstellen.",
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "Sie haben keine Berechtigung, Routen in der ausgewählten Region zu erstellen."
 }

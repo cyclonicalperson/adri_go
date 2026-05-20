@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -155,19 +156,29 @@ namespace TouristGuide.Api.Controllers
             if (adminId is null)
                 return Unauthorized();
 
+            var proposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
+            var hasRegionProposal = !dto.RegionId.HasValue && proposedRegionName is not null;
+            var statusValue = NormalizeStatus(dto.Status) ?? "draft";
+
             if (dto.RegionId.HasValue && !await _db.Regions.AnyAsync(r => r.Id == dto.RegionId.Value))
                 return BadRequest(new { message = $"Regija sa ID={dto.RegionId} ne postoji." });
 
-            if (!await CanCreateRouteAsync(dto.RegionId))
+            if (statusValue == "published" && hasRegionProposal && !IsSuperAdmin())
+                return Forbid();
+
+            if (!await CanCreateRouteAsync(dto.RegionId, hasRegionProposal))
                 return Forbid();
 
             var now = DateTime.UtcNow;
-            var statusValue = NormalizeStatus(dto.Status) ?? "draft";
+            var resolvedRegionId = statusValue == "published" && hasRegionProposal
+                ? await ResolveRegionProposalAsync(proposedRegionName!)
+                : dto.RegionId;
 
             var route = new RouteModel
             {
                 AdminId = adminId.Value,
-                RegionId = dto.RegionId,
+                RegionId = resolvedRegionId,
+                ProposedRegionName = resolvedRegionId.HasValue ? null : proposedRegionName,
                 Name = dto.Name.Trim(),
                 Difficulty = (dto.Difficulty ?? "moderate").ToLower(),
                 DistanceKm = dto.DistanceKm,
@@ -228,6 +239,11 @@ namespace TouristGuide.Api.Controllers
                     return BadRequest(new { message = $"Regija sa ID={dto.RegionId} ne postoji." });
 
                 route.RegionId = dto.RegionId;
+                route.ProposedRegionName = null;
+            }
+            else if (dto.ProposedRegionName is not null)
+            {
+                route.ProposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
             }
 
             if (dto.Name is not null) route.Name = dto.Name.Trim();
@@ -244,6 +260,15 @@ namespace TouristGuide.Api.Controllers
                 var statusValue = NormalizeStatus(dto.Status);
                 if (statusValue is null)
                     return BadRequest(new { message = "Status mora biti draft, published ili archived." });
+
+                if (statusValue == "published" && route.ProposedRegionName is not null && !IsSuperAdmin())
+                    return Forbid();
+
+                if (statusValue == "published" && route.ProposedRegionName is not null)
+                {
+                    route.RegionId = await ResolveRegionProposalAsync(route.ProposedRegionName);
+                    route.ProposedRegionName = null;
+                }
 
                 route.Status = statusValue;
             }
@@ -330,10 +355,18 @@ namespace TouristGuide.Api.Controllers
             if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
                 return IsSuperAdmin();
 
+            if (!string.IsNullOrWhiteSpace(route.ProposedRegionName))
+            {
+                var adminId = GetCurrentAdminId();
+                return adminId.HasValue &&
+                       adminId.Value == route.AdminId &&
+                       await _permissionService.HasPermissionInAnyScopeAsync("manage_own_posts");
+            }
+
             return await _permissionService.CanManageOwnContentAsync(route.AdminId, route.RegionId);
         }
 
-        private async Task<bool> CanCreateRouteAsync(uint? regionId)
+        private async Task<bool> CanCreateRouteAsync(uint? regionId, bool hasRegionProposal)
         {
             var role = User.FindFirstValue(ClaimTypes.Role);
             if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)
@@ -345,8 +378,49 @@ namespace TouristGuide.Api.Controllers
             if (IsSuperAdmin())
                 return true;
 
+            if (hasRegionProposal)
+            {
+                return await _permissionService.HasPermissionInAnyScopeAsync("manage_own_posts")
+                       && await _permissionService.HasPermissionInAnyScopeAsync("create_route");
+            }
+
             return await _permissionService.HasPermissionAsync("manage_own_posts", regionId)
                    && await _permissionService.HasPermissionAsync("create_route", regionId);
+        }
+
+        private async Task<uint> ResolveRegionProposalAsync(string proposedRegionName)
+        {
+            var normalizedName = NormalizeProposedRegionName(proposedRegionName)
+                ?? throw new InvalidOperationException("Naziv predlozenog regiona je obavezan.");
+            var normalizedForLookup = normalizedName.ToLowerInvariant();
+
+            var existingRegion = await _db.Regions
+                .FirstOrDefaultAsync(r => r.Name.ToLower() == normalizedForLookup);
+            if (existingRegion is not null)
+                return existingRegion.Id;
+
+            var region = new Region
+            {
+                Name = normalizedName,
+                Type = "other",
+                Country = "Montenegro",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.Regions.Add(region);
+            await _db.SaveChangesAsync();
+
+            return region.Id;
+        }
+
+        private static string? NormalizeProposedRegionName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            var normalized = value.Trim();
+            return normalized.Length > 200 ? normalized[..200] : normalized;
         }
 
         private static string? NormalizeStatus(string? status)
@@ -365,6 +439,7 @@ namespace TouristGuide.Api.Controllers
             adminName = route.Admin?.FullName ?? string.Empty,
             regionId = route.RegionId,
             destinationId = route.RegionId,
+            proposedRegionName = route.ProposedRegionName,
             name = route.Name,
             difficulty = route.Difficulty,
             distanceKm = route.DistanceKm,
@@ -391,6 +466,9 @@ namespace TouristGuide.Api.Controllers
     public class UpsertRouteDto
     {
         public uint? RegionId { get; set; }
+
+        [MaxLength(200)]
+        public string? ProposedRegionName { get; set; }
         public string? Name { get; set; }
         public string? Difficulty { get; set; }
         public decimal? DistanceKm { get; set; }

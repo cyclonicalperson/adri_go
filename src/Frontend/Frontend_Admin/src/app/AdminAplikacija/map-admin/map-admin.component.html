@@ -66,7 +66,9 @@
         {{ selectedMarker.lat.toFixed(5) }}&deg;N,
         {{ selectedMarker.lng.toFixed(5) }}&deg;E
       </div>
+      @if (canOpenSelectedDetail) {
       <button class="btn-detail" (click)="goToDetail()">Pogledaj detalje &rarr;</button>
+      }
     </div>
     }
   </div>

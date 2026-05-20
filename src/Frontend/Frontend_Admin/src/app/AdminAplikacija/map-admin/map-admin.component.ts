@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { environment } from '@env/environment';
 import { BadgeComponent } from '@shared/components/badge/badge.component';
 import { HeatPoint, MapComponent, MapMarker, MapPath } from '@shared/components/map/map.component';
@@ -14,12 +15,18 @@ interface PostPin {
   postType: string;
   lat: number;
   lng: number;
+  adminId: number;
+  regionId?: number | null;
+  proposedRegionName?: string | null;
   regionName?: string | null;
 }
 
 interface RoutePin {
   routeId: number;
   name: string;
+  adminId: number;
+  regionId?: number | null;
+  proposedRegionName?: string | null;
   waypoints: { lat: number; lng: number }[];
   regionName?: string | null;
 }
@@ -47,6 +54,7 @@ export class MapAdminComponent implements OnInit {
     private http: HttpClient,
     private router: Router,
     private activatedRoute: ActivatedRoute,
+    private auth: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -77,6 +85,9 @@ export class MapAdminComponent implements OnInit {
             postType: p.postType ?? 'other',
             lat: +p.lat,
             lng: +p.lng,
+            adminId: p.adminId ?? 0,
+            regionId: p.regionId ?? null,
+            proposedRegionName: p.proposedRegionName ?? null,
             regionName: p.region?.name ?? p.regionName ?? null,
           }));
 
@@ -100,6 +111,9 @@ export class MapAdminComponent implements OnInit {
             return {
               routeId: r.routeId ?? r.id,
               name: r.name ?? '',
+              adminId: r.adminId ?? 0,
+              regionId: r.regionId ?? null,
+              proposedRegionName: r.proposedRegionName ?? null,
               waypoints: wps,
               regionName: r.region?.name ?? null,
             } as RoutePin;
@@ -228,7 +242,7 @@ export class MapAdminComponent implements OnInit {
   }
 
   goToDetail(): void {
-    if (!this.selectedMarker) return;
+    if (!this.selectedMarker || !this.canOpenSelectedDetail) return;
 
     const id = this.selectedMarker.id;
     if (id >= 100000) {
@@ -242,6 +256,21 @@ export class MapAdminComponent implements OnInit {
     } else {
       void this.router.navigate(['/admin/lokacije', id]);
     }
+  }
+
+  get canOpenSelectedDetail(): boolean {
+    const marker = this.selectedMarker;
+    if (!marker) return false;
+
+    if (marker.id >= 100000) {
+      const route = this.routes.find(item => item.routeId === marker.id - 100000);
+      return !!route && this.canManageRoute(route);
+    }
+
+    const post = this.posts.find(item => item.id === marker.id);
+    if (!post) return false;
+
+    return this.canManagePost(post);
   }
 
   setLayer(l: LayerType): void {
@@ -300,4 +329,36 @@ export class MapAdminComponent implements OnInit {
     { color: '#0ea5e9', label: 'Ruta' },
     { color: '#6b7280', label: 'Ostalo' },
   ];
+
+  private canManagePost(post: PostPin): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.postScopeRegionId(post)) &&
+        post.adminId === this.auth.currentUser?.userId
+      );
+  }
+
+  private canManageRoute(route: RoutePin): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.routeScopeRegionId(route)) &&
+        route.adminId === this.auth.currentUser?.userId
+      );
+  }
+
+  private postScopeRegionId(post: PostPin): number | undefined {
+    if (post.proposedRegionName) {
+      return undefined;
+    }
+
+    return typeof post.regionId === 'number' && post.regionId > 0 ? post.regionId : undefined;
+  }
+
+  private routeScopeRegionId(route: RoutePin): number | undefined {
+    if (route.proposedRegionName) {
+      return undefined;
+    }
+
+    return typeof route.regionId === 'number' && route.regionId > 0 ? route.regionId : undefined;
+  }
 }

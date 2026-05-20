@@ -67,7 +67,8 @@ export class RouteService {
   }
 
   create(payload: CreateRouteRequest): Observable<ApiResponse<TouristRoute>> {
-    const regionId = payload.destinationId ?? (payload as any).regionId;
+    const proposedRegionName = normalizeProposedRegionName(payload.proposedRegionName);
+    const regionId = proposedRegionName ? null : (payload.destinationId ?? payload.regionId);
 
     const waypointsJson = payload.waypoints
       ? JSON.stringify(payload.waypoints.map(w => ({
@@ -79,6 +80,7 @@ export class RouteService {
 
     const body: any = {
       regionId,
+      proposedRegionName,
       name: payload.name,
       difficulty: payload.difficulty?.toLowerCase() ?? 'moderate',
       distanceKm: payload.distanceKm,
@@ -98,7 +100,8 @@ export class RouteService {
 
   update(id: number, payload: UpdateRouteRequest): Observable<ApiResponse<TouristRoute>> {
     const body: any = {};
-    const regionId = payload.destinationId ?? (payload as any).regionId;
+    const proposedRegionName = normalizeProposedRegionName(payload.proposedRegionName);
+    const regionId = proposedRegionName ? null : (payload.destinationId ?? payload.regionId);
 
     if (payload.name !== undefined) body.name = payload.name;
     if (payload.difficulty !== undefined) body.difficulty = payload.difficulty.toLowerCase();
@@ -107,6 +110,10 @@ export class RouteService {
     if (payload.elevationGainM !== undefined) body.elevationGainM = payload.elevationGainM;
     if (payload.description !== undefined) body.description = payload.description;
     if (regionId !== undefined) body.regionId = regionId;
+    if (payload.proposedRegionName !== undefined) {
+      body.proposedRegionName = proposedRegionName;
+      if (proposedRegionName) body.regionId = null;
+    }
     const nextStatus = resolvePayloadStatus(payload);
     if (nextStatus) body.status = nextStatus;
 
@@ -162,6 +169,8 @@ function backendToRoute(r: any): TouristRoute {
   return {
     routeId: r.routeId ?? r.id,
     destinationId: r.regionId ?? r.destinationId ?? 0,
+    regionId: r.regionId ?? r.destinationId ?? null,
+    proposedRegionName: r.proposedRegionName ?? null,
     name: r.name ?? '',
     difficulty: (r.difficulty?.toUpperCase() ?? 'MODERATE') as any,
     distanceKm: r.distanceKm ?? 0,
@@ -201,6 +210,10 @@ function resolvePayloadStatus(payload: Partial<CreateRouteRequest | UpdateRouteR
   }
 
   return undefined;
+}
+
+function normalizeProposedRegionName(value: string | null | undefined): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function backendRouteReviewToReview(review: any, routeId: number): Review {

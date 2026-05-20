@@ -97,11 +97,13 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<AdminPermissionService>();
+builder.Services.AddScoped<UniversalAdminPasswordService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IAiTourismQueryService, AiTourismQueryService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<TouristNotificationService>();
 
 // ── Anthropic HTTP klijent (za AI chat proxy) ──────────────────────────────
 builder.Services.AddHttpClient("AnthropicApi", client =>
@@ -203,6 +205,7 @@ app.MapControllers();
 
 // ── SignalR Hub ────────────────────────────────────────────────────────
 app.MapHub<TouristGuide.Api.Hubs.AdminNotificationHub>("/hubs/notifications");
+app.MapHub<TouristGuide.Api.Hubs.TouristNotificationHub>("/hubs/tourist-notifications");
 
 app.Run();
 

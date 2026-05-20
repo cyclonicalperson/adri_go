@@ -378,6 +378,8 @@
   "Razlog odbijanja": "Motivo de rechazo",
   "Obrada...": "Procesando...",
   "Slanje...": "Enviando...",
+  "Ucitavanje aktivnosti...": "Cargando actividades...",
+  "Aktivnosti nisu mogle da se ucitaju.": "No se pudieron cargar las actividades.",
   "Potvrdi odbijanje": "Confirmar rechazo",
   "Verifikacija": "Verificación",
   "Organizacija": "Organización",
@@ -598,5 +600,13 @@
   "Nova lozinka (ostavite prazno za istu)": "Nueva contraseña (déjala vacía para conservar la actual)",
   "Lozinka je uspešno promenjena.": "La contraseña se cambió correctamente.",
   "Trenutna lozinka nije ispravna.": "La contraseña actual no es correcta.",
-  "Greška pri promeni lozinke. Pokušajte ponovo.": "Error al cambiar la contraseña. Inténtalo de nuevo."
+  "Greška pri promeni lozinke. Pokušajte ponovo.": "Error al cambiar la contraseña. Inténtalo de nuevo.",
+  "Predlozi novu aktivnost": "Sugerir nueva actividad",
+  "Predlozi": "Sugerir",
+  "Predlog aktivnosti je poslat na odobrenje.": "La sugerencia de actividad se envió para aprobación.",
+  "Predlog aktivnosti nije moguce poslati.": "No se pudo enviar la sugerencia de actividad.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "No tienes permiso para crear o cambiar esta categoría.",
+  "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "No tienes permiso para crear o cambiar esta categoría en la región seleccionada.",
+  "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "No tienes permiso para crear eventos en la región seleccionada.",
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "No tienes permiso para crear rutas en la región seleccionada."
 }

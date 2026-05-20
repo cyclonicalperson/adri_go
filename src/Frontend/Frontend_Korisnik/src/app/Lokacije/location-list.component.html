@@ -10,6 +10,7 @@
     </div>
     <button class="menu-btn" (click)="goToNotifications()">
       <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+      <app-notification-badge />
     </button>
   </div>
 
@@ -272,6 +273,9 @@
         <span *ngIf="loc.regionName">📍 {{ loc.regionName }}</span>
         <span *ngIf="loc.distanceKm != null"> · {{ formatDistance(loc.distanceKm) }}</span>
       </div>
+      <div class="activity-tags-row compact" *ngIf="getActivityTags(loc, 2).length > 0">
+        <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(loc, 2)">{{ tag }}</span>
+      </div>
     </div>
   </ng-template>
 
@@ -332,6 +336,9 @@
           <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
           {{ loc.reviewCount }}
         </span>
+      </div>
+      <div class="activity-tags-row" *ngIf="getActivityTags(loc).length > 0">
+        <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(loc)">{{ tag }}</span>
       </div>
       <div class="divider"></div>
       <button class="view-details-btn">

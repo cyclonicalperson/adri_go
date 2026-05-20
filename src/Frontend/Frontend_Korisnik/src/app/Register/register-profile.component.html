@@ -122,7 +122,7 @@
           Profile photo
         </label>
         <input #registerProfilePhoto type="file" accept="image/*" hidden (change)="onProfilePhotoSelected($event)">
-        <button type="button" class="submit-btn" style="margin-top:0;background:#f1f5f9;color:#0f172a;" (click)="registerProfilePhoto.click()" [disabled]="isUploadingPhoto">
+        <button type="button" class="submit-btn photo-upload-btn" (click)="registerProfilePhoto.click()" [disabled]="isUploadingPhoto">
           {{ isUploadingPhoto ? 'Uploading...' : (profileImageUrl ? 'Change photo' : 'Choose photo') }}
         </button>
       </div>

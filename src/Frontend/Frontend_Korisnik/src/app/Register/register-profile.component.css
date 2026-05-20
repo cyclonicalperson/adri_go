@@ -324,6 +324,13 @@ input::placeholder { color: var(--gray-400); }
 .submit-btn:hover  { opacity: 0.92; transform: translateY(-1px); }
 .submit-btn:active { opacity: 0.85; transform: scale(0.98); }
 
+.photo-upload-btn {
+  margin-top: 0;
+  background: #f1f5f9;
+  color: #0f172a;
+  box-shadow: none;
+}
+
 .login-link {
   text-align: center;
   font-size: 13px;
@@ -333,43 +340,45 @@ input::placeholder { color: var(--gray-400); }
 
 /* ── DESKTOP ─────────────────────────────────────────────────── */
 :host-context(html[data-theme='dark']) .page-container {
-  color-scheme: light;
-  --green-50: #f0fdf4;
-  --green-100: #dcfce7;
-  --green-400: #4ade80;
-  --green-500: #22c55e;
-  --green-600: #16a34a;
-  --green-700: #15803d;
-  --gray-50: #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
-  background: linear-gradient(180deg, #fff 60%, rgba(134, 239, 172, 0.4) 100%);
-  color: #0f172a;
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.18), transparent 32%),
+    linear-gradient(180deg, #0f172a 0%, #111827 55%, #0b1712 100%);
+  color: var(--gray-900);
 }
 
-:host-context(html[data-theme='dark']) .register-card,
-:host-context(html[data-theme='dark']) .interest-chip {
-  background: #fff;
-  color: #0f172a;
+:host-context(html[data-theme='dark']) .register-card {
+  background: #1f2937;
+  border: 1px solid #334155;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.36);
+}
+
+:host-context(html[data-theme='dark']) .title,
+:host-context(html[data-theme='dark']) .interests-heading {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .subtitle,
+:host-context(html[data-theme='dark']) .interests-sub,
+:host-context(html[data-theme='dark']) .login-link,
+:host-context(html[data-theme='dark']) .terms-text {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .field-label {
+  color: #cbd5e1;
 }
 
 :host-context(html[data-theme='dark']) input,
 :host-context(html[data-theme='dark']) select {
-  background: #f8fafc !important;
-  border-color: #e2e8f0 !important;
-  color: #1e293b !important;
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
 :host-context(html[data-theme='dark']) input:focus,
 :host-context(html[data-theme='dark']) select:focus {
-  background: #fff !important;
+  background: #0f172a !important;
   border-color: #22c55e !important;
 }
 
@@ -378,15 +387,69 @@ input::placeholder { color: var(--gray-400); }
 }
 
 :host-context(html[data-theme='dark']) .terms-checkbox {
-  background: #fff !important;
-  border-color: #cbd5e1 !important;
+  background: #111827 !important;
+  border-color: #475569 !important;
   accent-color: #22c55e;
 }
 
+:host-context(html[data-theme='dark']) .interest-chip {
+  background: #111827;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .interest-chip:hover {
+  border-color: #22c55e;
+}
+
 :host-context(html[data-theme='dark']) .interest-chip.selected,
-:host-context(html[data-theme='dark']) .permit-card,
 :host-context(html[data-theme='dark']) .permit-card.permit-enabled {
-  background: #f0fdf4;
+  background: #123222;
+  border-color: #22c55e;
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .chip-icon-box {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .permit-card {
+  background: #111827;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .permit-text h4 {
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .permit-text p {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .permit-slider {
+  background: #475569;
+}
+
+:host-context(html[data-theme='dark']) .password-control-wrapper.password-control-invalid input,
+:host-context(html[data-theme='dark']) .input-wrapper.input-error input,
+:host-context(html[data-theme='dark']) .input-wrapper.input-error select {
+  background: #2d1515 !important;
+  border-color: #ef4444 !important;
+}
+
+:host-context(html[data-theme='dark']) .password-control-wrapper.password-control-valid input {
+  background: #102318 !important;
+}
+
+:host-context(html[data-theme='dark']) .error-banner {
+  background: #2d1515;
+  color: #fecaca;
+  border-color: #7f1d1d;
+}
+
+:host-context(html[data-theme='dark']) .photo-upload-btn {
+  background: #334155;
+  color: #f8fafc;
 }
 
 @media (min-width: 900px) {

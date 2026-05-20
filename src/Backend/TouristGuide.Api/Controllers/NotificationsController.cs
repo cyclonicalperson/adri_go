@@ -52,7 +52,10 @@ namespace TouristGuide.Api.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(new { data = items, success = true });
+            var unreadCount = await _db.AdminNotifications
+                .CountAsync(n => n.AdminUserId == adminId.Value && !n.IsRead);
+
+            return Ok(new { data = items, unreadCount, success = true });
         }
 
         // ── GET /api/notifications/unread-count ───────────────────────────────
@@ -99,7 +102,7 @@ namespace TouristGuide.Api.Controllers
             await _db.SaveChangesAsync();
 
             // Ažuriraj unread count klijenta
-            await _notifService.MarkReadAsync(0, adminId.Value); // count = 0
+            await _notifService.BroadcastAllReadAsync(adminId.Value);
             return Ok(new { success = true, count = unread.Count });
         }
 
@@ -116,6 +119,7 @@ namespace TouristGuide.Api.Controllers
 
             _db.AdminNotifications.Remove(notif);
             await _db.SaveChangesAsync();
+            await _notifService.BroadcastNotificationDeletedAsync(adminId.Value, id);
             return Ok(new { success = true });
         }
 
@@ -132,6 +136,7 @@ namespace TouristGuide.Api.Controllers
 
             _db.AdminNotifications.RemoveRange(all);
             await _db.SaveChangesAsync();
+            await _notifService.BroadcastNotificationsClearedAsync(adminId.Value);
 
             return Ok(new { success = true, deleted = all.Count });
         }

@@ -16,6 +16,10 @@ namespace TouristGuide.Api.Models
         [Column("region_id")]
         public uint? RegionId { get; set; }
 
+        [Column("proposed_region_name")]
+        [MaxLength(200)]
+        public string? ProposedRegionName { get; set; }
+
         [Required]
         [Column("name")]
         [MaxLength(200)]

@@ -92,7 +92,16 @@ export class EventsListComponent implements OnInit {
   }
 
   get canCreateEvents(): boolean {
-    return this.auth.hasPermission('create_event');
+    return this.auth.hasPermission('manage_own_posts') &&
+      this.auth.hasPermission('create_event');
+  }
+
+  canManageEvent(event: Post): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.eventScopeRegionId(event)) &&
+        event.adminId === this.auth.currentUser?.userId
+      );
   }
 
   private recomputeGlobalTotal(): void {
@@ -239,14 +248,17 @@ export class EventsListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateEvents) return;
     this.router.navigate(['/admin/events/new']);
   }
 
   goEdit(e: Post): void {
+    if (!this.canManageEvent(e)) return;
     this.router.navigate(['/admin/events', e.postId, 'edit']);
   }
 
   confirmDelete(e: Post): void {
+    if (!this.canManageEvent(e)) return;
     this.deleteTarget = e;
   }
 
@@ -286,7 +298,7 @@ export class EventsListComponent implements OnInit {
   }
 
   doDelete(): void {
-    if (!this.deleteTarget) return;
+    if (!this.deleteTarget || !this.canManageEvent(this.deleteTarget)) return;
     this.postService.delete(this.deleteTarget.postId)
       .subscribe(() => {
         this.deleteTarget = null;
@@ -299,6 +311,7 @@ export class EventsListComponent implements OnInit {
   statusChangeValue: PostStatus | null = null;
 
   requestStatusChange(e: Post, status: PostStatus): void {
+    if (!this.canManageEvent(e)) return;
     this.statusChangeTarget = e;
     this.statusChangeValue = status;
   }
@@ -314,7 +327,7 @@ export class EventsListComponent implements OnInit {
     this.statusChangeTarget = null;
     this.statusChangeValue = null;
 
-    if (!event || !status) return;
+    if (!event || !status || !this.canManageEvent(event)) return;
 
     this.postService.update(event.postId, { status }).subscribe({
       next: () => {
@@ -430,5 +443,14 @@ export class EventsListComponent implements OnInit {
 
   postStatusLabel(status: PostStatus): string {
     return { published: '✅ Objavljeno', draft: '⏳ Na čekanju', archived: '📦 Arhivirano' }[status] ?? status;
+  }
+
+  private eventScopeRegionId(event: Post): number | undefined {
+    if (event.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = event.regionId ?? event.region?.regionId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

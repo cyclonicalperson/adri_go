@@ -30,23 +30,32 @@
             <label class="label">Kategorija *</label>
             <select class="input" formControlName="category">
               @for (opt of categoryOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
+              <option [value]="opt.value" [disabled]="!canUseCategory(opt.value, selectedRegionIdForPermission)">{{ opt.label }}</option>
               }
             </select>
           </div>
           <div class="field">
             <label class="label">Region *</label>
-            <select class="input" [class.invalid]="f('regionId').invalid && f('regionId').touched"
-                    formControlName="regionId">
+            <select class="input" [class.invalid]="regionChoiceInvalid"
+                    formControlName="regionId"
+                    (change)="onRegionSelected()">
               <option [ngValue]="null">— Izaberite —</option>
               @for (r of destinations; track r.regionId) {
               <option [value]="r.regionId">{{ r.name }}</option>
               }
             </select>
-            @if (f('regionId').invalid && f('regionId').touched) {
-            <div class="field-error">Izaberite region.</div>
-            }
           </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Predlog novog regiona</label>
+          <input class="input" [class.invalid]="regionChoiceInvalid"
+                 formControlName="proposedRegionName"
+                 (input)="onProposedRegionInput()"
+                 placeholder="Ako region ne postoji, upisite naziv" />
+          @if (regionChoiceInvalid) {
+          <div class="field-error">Izaberite region ili upisite predlog novog regiona.</div>
+          }
         </div>
 
         <div class="field">

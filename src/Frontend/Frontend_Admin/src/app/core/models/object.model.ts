@@ -17,6 +17,7 @@ export interface TouristObject {
   destinationId: number;
   /** Alias for destinationId — matches new DB schema (region table) */
   regionId?: number;
+  proposedRegionName?: string | null;
   name: string;
   category: ObjectCategory;
   description: string;
@@ -40,6 +41,7 @@ export interface TouristObject {
 export interface CreateObjectRequest {
   destinationId?: number;
   regionId?: number;
+  proposedRegionName?: string | null;
   name: string;
   category: ObjectCategory;
   description: string;

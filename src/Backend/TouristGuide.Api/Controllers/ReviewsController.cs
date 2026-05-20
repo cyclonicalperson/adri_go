@@ -18,12 +18,18 @@ namespace TouristGuide.Api.Controllers
         private readonly IReviewService _reviewService;
         private readonly AppDbContext _db;
         private readonly AdminPermissionService _permissionService;
+        private readonly TouristNotificationService _touristNotificationService;
 
-        public ReviewsController(IReviewService reviewService, AppDbContext db, AdminPermissionService permissionService)
+        public ReviewsController(
+            IReviewService reviewService,
+            AppDbContext db,
+            AdminPermissionService permissionService,
+            TouristNotificationService touristNotificationService)
         {
             _reviewService = reviewService;
             _db = db;
             _permissionService = permissionService;
+            _touristNotificationService = touristNotificationService;
         }
 
         // GET /api/reviews  — podrzava ?status=PENDING|APPROVED|REJECTED &entityType=OBJECT|EVENT|ROUTE &page= &pageSize=
@@ -138,9 +144,10 @@ namespace TouristGuide.Api.Controllers
             review.IsApproved = review.Status == "APPROVED";
             var postId = review.PostId;
 
-            AddTouristReviewStatusNotification(review, previousStatus, dto.RejectionReason);
+            var notification = await _touristNotificationService.QueueReviewStatusUpdateAsync(review, previousStatus, dto.RejectionReason);
 
             await _db.SaveChangesAsync();
+            await _touristNotificationService.DispatchAsync(notification);
 
             if (postId.HasValue)
                 await RefreshPostReviewStatsAsync(postId.Value);
@@ -202,42 +209,6 @@ namespace TouristGuide.Api.Controllers
             await _db.SaveChangesAsync();
         }
 
-        private void AddTouristReviewStatusNotification(Review review, string? previousStatus, string? rejectionReason)
-        {
-            if (review.TouristId is null)
-                return;
-
-            if (string.Equals(previousStatus, review.Status, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            if (review.Status != "APPROVED" && review.Status != "REJECTED")
-                return;
-
-            var entityTitle = review.Post?.Title ?? review.Route?.Name ?? "your contribution";
-            var approved = review.Status == "APPROVED";
-            var title = approved ? "Review approved" : "Review needs changes";
-            var body = approved
-                ? $"Your review for {entityTitle} is now visible to travelers."
-                : string.IsNullOrWhiteSpace(rejectionReason)
-                    ? $"Your review for {entityTitle} was not approved by moderation."
-                    : $"Your review for {entityTitle} was not approved: {rejectionReason.Trim()}";
-
-            _db.Notifications.Add(new Notification
-            {
-                TouristId = review.TouristId.Value,
-                Type = approved ? "review_approved" : "review_rejected",
-                Title = title,
-                Body = body,
-                Payload = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    reviewId = review.Id,
-                    postId = review.PostId,
-                    routeId = review.RouteId,
-                    status = review.Status,
-                }),
-                CreatedAt = DateTime.UtcNow,
-            });
-        }
     }
 
     public class UpdateReviewStatusDto
