@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { Region } from '@core/models/region.model';
 import { RouteDifficulty, RouteStatus, Waypoint } from '@core/models/route.model';
 import { RegionService } from '@core/services/region.service';
@@ -23,6 +24,7 @@ export class RouteFormComponent implements OnInit {
 
   destinations: Region[] = [];
   waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[] = [];
+  submitted = false;
 
   readonly difficultyOptions: { value: RouteDifficulty; label: string }[] = [
     { value: 'EASY', label: 'Lako' },
@@ -41,13 +43,15 @@ export class RouteFormComponent implements OnInit {
     private fb: FormBuilder,
     private service: RouteService,
     private destService: RegionService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      regionId: [null, Validators.required],
+      regionId: [null],
+      proposedRegionName: [''],
       name: ['', Validators.required],
       difficulty: ['MODERATE', Validators.required],
       distanceKm: [null, [Validators.required, Validators.min(0.1)]],
@@ -67,8 +71,14 @@ export class RouteFormComponent implements OnInit {
     if (this.isEdit) {
       this.service.getById(this.id!).subscribe((res: { data: any }) => {
         const r = res.data;
+        if (!this.canManageRoute(r)) {
+          this.router.navigate(['/admin/dashboard']);
+          return;
+        }
+
         this.form.patchValue({
           regionId: r.destinationId ?? r.regionId,
+          proposedRegionName: r.proposedRegionName ?? '',
           name: r.name,
           difficulty: r.difficulty,
           durationMin: r.durationMin,
@@ -121,8 +131,12 @@ export class RouteFormComponent implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid) {
+    this.submitted = true;
+    if (this.form.invalid || !this.hasRegionChoice()) {
       this.form.markAllAsTouched();
+      if (!this.hasRegionChoice()) {
+        this.error = 'Izaberite destinaciju/region ili upisite predlog novog regiona.';
+      }
       return;
     }
 
@@ -134,12 +148,23 @@ export class RouteFormComponent implements OnInit {
     this.saving = true;
     this.error = null;
 
+    const scopeRegionId = this.proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+    if (!this.isEdit &&
+        (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
+         !this.auth.hasPermission('create_route', scopeRegionId))) {
+      this.error = 'Nemate dozvolu za kreiranje rute u izabranom regionu.';
+      this.saving = false;
+      return;
+    }
+
     const first = this.waypoints[0];
     const last = this.waypoints[this.waypoints.length - 1];
 
     const payload = {
       ...this.form.value,
-      destinationId: this.form.value.regionId,
+      regionId: this.proposedRegionName ? null : this.form.value.regionId,
+      destinationId: this.proposedRegionName ? null : this.form.value.regionId,
+      proposedRegionName: this.proposedRegionName,
       startLatitude: first.latitude,
       startLongitude: first.longitude,
       endLatitude: last.latitude,
@@ -162,6 +187,26 @@ export class RouteFormComponent implements OnInit {
 
   cancel(): void {
     void this.router.navigate(['/admin/routes-management']);
+  }
+
+  get regionChoiceInvalid(): boolean {
+    return this.submitted && !this.hasRegionChoice();
+  }
+
+  get proposedRegionName(): string | null {
+    return this.normalizeProposedRegionName(this.form?.get('proposedRegionName')?.value);
+  }
+
+  onRegionSelected(): void {
+    if (this.form.get('regionId')?.value) {
+      this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onProposedRegionInput(): void {
+    if (this.proposedRegionName) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
   }
 
   private setWaypoints(
@@ -209,5 +254,35 @@ export class RouteFormComponent implements OnInit {
 
   private toRadians(value: number): number {
     return value * (Math.PI / 180);
+  }
+
+  private hasRegionChoice(): boolean {
+    return !!this.form?.get('regionId')?.value || !!this.proposedRegionName;
+  }
+
+  private get selectedRegionIdForPermission(): number | undefined {
+    const regionId = Number(this.form?.get('regionId')?.value);
+    return Number.isFinite(regionId) && regionId > 0 ? regionId : undefined;
+  }
+
+  private canManageRoute(route: { createdBy: number; regionId?: number | null; destinationId?: number | null; proposedRegionName?: string | null }): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.routeScopeRegionId(route)) &&
+        route.createdBy === this.auth.currentUser?.userId
+      );
+  }
+
+  private routeScopeRegionId(route: { regionId?: number | null; destinationId?: number | null; proposedRegionName?: string | null }): number | undefined {
+    if (route.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = route.regionId ?? route.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
+  }
+
+  private normalizeProposedRegionName(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 }

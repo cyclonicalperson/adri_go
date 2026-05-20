@@ -12,11 +12,16 @@ export const ROUTES_MGMT_ROUTES: Routes = [
   {
     path: 'new',
     canActivate: [PermissionGuard],
-    data: { permissions: ['create_route'] },
+    data: {
+      allPermissions: ['manage_own_posts'],
+      permissions: ['create_route'],
+    },
     component: RouteFormComponent,
   },
   {
     path: ':id/edit',
+    canActivate: [PermissionGuard],
+    data: { permissions: ['manage_own_posts'] },
     component: RouteFormComponent,
   },
   {

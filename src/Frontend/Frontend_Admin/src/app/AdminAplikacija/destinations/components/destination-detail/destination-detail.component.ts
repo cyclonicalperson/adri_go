@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { DestinationService } from '@core/services/destination.service';
 import { ObjectService } from '@core/services/object.service';
 import { Destination } from '@core/models/destination.model';
@@ -35,19 +36,35 @@ export class DestinationDetailComponent implements OnInit {
     private router: Router,
     private destService: DestinationService,
     private objService: ObjectService,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
 
-    this.destService.getById(id).subscribe((res: { data: any; }) => {
-      this.destination = res.data;
-      this.loading = false;
-    });
+    this.auth.ensurePermissionsLoaded().subscribe(() => {
+      if (!this.canManageDestinations) {
+        this.router.navigate([this.canManageContent ? '/admin/lokacije' : '/admin/dashboard']);
+        return;
+      }
 
-    this.objService.getAll({ page: 1, pageSize: 6, destinationId: id }).subscribe((res: { data: TouristObject[]; }) => {
-      this.objects = res.data;
+      this.destService.getById(id).subscribe((res: { data: any; }) => {
+        this.destination = res.data;
+        this.loading = false;
+      });
+
+      this.objService.getAll({ page: 1, pageSize: 6, destinationId: id }).subscribe((res: { data: TouristObject[]; }) => {
+        this.objects = res.data;
+      });
     });
+  }
+
+  get canManageDestinations(): boolean {
+    return this.auth.isSuperAdmin;
+  }
+
+  get canManageContent(): boolean {
+    return this.auth.hasPermissionInAnyScope('manage_own_posts');
   }
 
   get marker(): MapMarker[] {
@@ -81,6 +98,7 @@ export class DestinationDetailComponent implements OnInit {
   }
 
   goEdit(): void {
+    if (!this.canManageDestinations) return;
     this.router.navigate(['/admin/destinations', this.destination!.destinationId, 'edit']);
   }
 
@@ -88,16 +106,20 @@ export class DestinationDetailComponent implements OnInit {
     this.router.navigate(['/admin/destinations']);
   }
 
-  confirmDelete(): void { this.showDeleteDialog = true; }
+  confirmDelete(): void {
+    if (!this.canManageDestinations) return;
+    this.showDeleteDialog = true;
+  }
   cancelDelete(): void { this.showDeleteDialog = false; }
 
   doDelete(): void {
+    if (!this.canManageDestinations) return;
     this.destService.delete(this.destination!.destinationId).subscribe(() => {
       this.router.navigate(['/admin/destinations']);
     });
   }
 
   goObject(obj: TouristObject): void {
-    this.router.navigate(['/admin/objects', obj.objectId]);
+    this.router.navigate(['/admin/lokacije', obj.objectId]);
   }
 }

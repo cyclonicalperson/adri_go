@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 
@@ -10,7 +11,7 @@ type RouteSort = 'created-desc' | 'distance-asc' | 'distance-desc' | 'duration-a
 @Component({
   selector: 'app-routes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NotificationBadgeComponent],
   templateUrl: './routes.component.html',
   styleUrls: ['./routes.component.css'],
 })

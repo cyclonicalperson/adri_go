@@ -41,6 +41,8 @@ export interface Location {
   isLiked?: boolean;
   isSaved?: boolean;
   distanceKm?: number | null;
+  tagIds?: number[];
+  tagNames?: string[];
 }
 
 export interface LocationsResponse {
@@ -57,11 +59,14 @@ export interface Review {
   touristName: string;
   rating: number;
   comment?: string;
+  status?: string;
   createdAt: string;
 }
 
 export interface ReviewsResponse {
   total: number;
+  myReviewStatus?: string | null;
+  myReviewId?: number | null;
   data: Review[];
 }
 

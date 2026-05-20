@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { RoutePlannerService } from '../services/route-planner.service';
+import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 
 type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
@@ -10,7 +10,7 @@ type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
 @Component({
   selector: 'app-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NotificationBadgeComponent],
   templateUrl: './activities.component.html',
   styleUrls: ['./activities.component.css'],
 })
@@ -24,7 +24,6 @@ export class ActivitiesComponent implements OnInit {
 
   constructor(
     private activitiesService: TouristActivitiesService,
-    private routePlanner: RoutePlannerService,
     private router: Router,
     private cdr: ChangeDetectorRef,
   ) {}
@@ -71,22 +70,12 @@ export class ActivitiesComponent implements OnInit {
   }
 
   openActivity(activity: TouristActivityItem): void {
-    if (activity.postId) {
-      this.router.navigate(['/location-details', activity.postId]);
-      return;
-    }
-
-    if (this.hasUsableCoordinates(activity)) {
-      this.routePlanner.replaceStops([{
-        id: -activity.id,
-        title: activity.name,
-        postType: 'activity',
-        lat: activity.lat,
-        lng: activity.lng,
-        regionName: activity.locationName,
-      }], { plannerMode: true, scenicMode: true, travelMode: 'walking' });
-      this.router.navigate(['/map-home']);
-    }
+    this.router.navigate(['/location-list'], {
+      queryParams: {
+        activityTagId: activity.id,
+        activityTag: activity.name,
+      },
+    });
   }
 
   hasUsableCoordinates(activity: TouristActivityItem): activity is TouristActivityItem & { lat: number; lng: number } {
@@ -103,6 +92,28 @@ export class ActivitiesComponent implements OnInit {
 
   goToMap(): void {
     this.router.navigate(['/map-home']);
+  }
+
+  getActivityIcon(activity: TouristActivityItem): string {
+    const text = `${activity.name} ${activity.category} ${activity.tags || ''}`.toLowerCase();
+    if (/(bike|cycle|bicikl|cycling)/.test(text)) return 'bike';
+    if (/(water|swim|beach|kayak|rafting|more|plaza|plaža)/.test(text)) return 'water';
+    if (/(food|dining|wine|restaurant|hrana|vino)/.test(text)) return 'food';
+    if (/(culture|museum|history|kultura|istorija|muzej)/.test(text)) return 'culture';
+    if (/(wellness|spa|relax|yoga)/.test(text)) return 'wellness';
+    if (/(night|club|bar|party|noc|noć)/.test(text)) return 'nightlife';
+    if (/(shop|market|shopping|kupovina)/.test(text)) return 'shopping';
+    if (/(walk|hike|trail|mountain|planina|setnja|šetnja)/.test(text)) return 'hiking';
+    return 'activity';
+  }
+
+  getTagList(tags?: string | null): string[] {
+    if (!tags) return [];
+    return tags
+      .split(/[;,]/)
+      .map(tag => tag.trim())
+      .filter(Boolean)
+      .slice(0, 4);
   }
 
   private sortActivities(activities: TouristActivityItem[]): TouristActivityItem[] {

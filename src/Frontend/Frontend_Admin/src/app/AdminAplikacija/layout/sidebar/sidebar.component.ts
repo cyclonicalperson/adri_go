@@ -80,9 +80,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   get isSuperAdmin(): boolean { return this.auth.isRole('superadmin'); }
   get canManageContent(): boolean { return this.auth.hasPermission('manage_own_posts'); }
-  get canManageActivities(): boolean { return this.auth.hasPermission('manage_tags'); }
-  get canManageReviews(): boolean { return this.auth.hasPermission('manage_reviews'); }
-  get canAccessMap(): boolean { return this.canManageContent || this.auth.hasPermission('view_analytics'); }
+  get canManageActivities(): boolean { return this.auth.hasGlobalPermission('manage_tags'); }
+  get canManageReviews(): boolean { return this.auth.hasGlobalPermission('manage_reviews'); }
+  get canAccessMap(): boolean { return this.canManageContent || this.auth.hasGlobalPermission('view_analytics'); }
 
   get initials(): string {
     return (this.auth.currentUser?.fullName ?? 'U')

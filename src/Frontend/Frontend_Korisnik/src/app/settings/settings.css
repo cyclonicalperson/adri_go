@@ -345,6 +345,24 @@ input:checked + .slider:before { transform: translateX(21px); }
   color: #15803d;
 }
 
+.notification-pref-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.notification-pref-actions .sheet-pill {
+  border: 0;
+  cursor: pointer;
+  min-width: 64px;
+}
+
+.notification-pref-actions .sheet-pill:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .chip-grid {
   display: flex;
   flex-wrap: wrap;

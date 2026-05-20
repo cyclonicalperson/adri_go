@@ -58,8 +58,7 @@ export class TopbarComponent implements OnInit, OnDestroy {
   loadNotifications(): void {
     this.notifLoading = true;
     this.notifHub.list().subscribe({
-      next: list => {
-        this.notifications = list;
+      next: () => {
         this.notifLoading = false;
       },
       error: () => {
@@ -94,8 +93,6 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   markAllRead(): void {
     this.notifHub.markAllAsRead().subscribe(() => {
-      this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
-      this.notifHub.unreadCount$.next(0);
       this.badgeService.refresh();
     });
   }
@@ -104,15 +101,11 @@ export class TopbarComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     if (n.isRead) return;
     this.notifHub.markAsRead(n.id).subscribe();
-    n.isRead = true;
-    this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
   }
 
   openNotification(n: AdminNotification): void {
     if (!n.isRead) {
       this.notifHub.markAsRead(n.id).subscribe();
-      n.isRead = true;
-      this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
     }
 
     this.notifOpen = false;
@@ -139,26 +132,14 @@ export class TopbarComponent implements OnInit, OnDestroy {
 
   deleteNotification(n: AdminNotification, event: Event): void {
     event.stopPropagation();
-    this.notifHub.delete(n.id).subscribe({
-      next: () => {
-        this.notifications = this.notifications.filter(x => x.id !== n.id);
-        if (!n.isRead) {
-          this.notifHub.unreadCount$.next(Math.max(0, this.notifHub.unreadCount$.value - 1));
-        }
-      },
-    });
+    this.notifHub.delete(n.id).subscribe();
   }
 
   clearAllNotifications(event: Event): void {
     event.stopPropagation();
     if (this.notifications.length === 0) return;
 
-    this.notifHub.deleteAll().subscribe({
-      next: () => {
-        this.notifications = [];
-        this.notifHub.unreadCount$.next(0);
-      },
-    });
+    this.notifHub.deleteAll().subscribe();
   }
 
   onAdminSearchInput(query: string): void {
@@ -340,6 +321,11 @@ export class TopbarComponent implements OnInit, OnDestroy {
   private buildAdminSearchResults(query: string): AdminSearchSuggestion[] {
     const role = this.auth.currentUser?.role ?? '';
     const canSeeSuperAdmin = role === 'superadmin';
+    const canManageContent = this.auth.hasPermission('manage_own_posts');
+    const canManageReviews = this.auth.hasGlobalPermission('manage_reviews');
+    const canManageActivities = this.auth.hasGlobalPermission('manage_tags');
+    const canViewTourists = this.auth.hasGlobalPermission('view_tourists');
+    const canAccessMap = canManageContent || this.auth.hasGlobalPermission('view_analytics');
     const catalog: AdminSearchSuggestion[] = [
       {
         title: 'Dashboard',
@@ -348,49 +334,49 @@ export class TopbarComponent implements OnInit, OnDestroy {
         intent: 'Pregled sistema',
         keywords: ['dashboard', 'home', 'statistika', 'pregled', 'analytics', 'analitika'],
       },
-      {
+      ...(canManageContent ? [{
         title: 'Destinacije i lokacije',
         subtitle: 'Objave, objekti, eventi, filtriranje po regionu i tipu',
         url: '/admin/lokacije',
         intent: 'Upravljanje sadrzajem',
         keywords: ['lokacije', 'destinacije', 'objave', 'posts', 'objects', 'plaza', 'restoran', 'hotel', 'event', 'mapa'],
-      },
-      {
+      }] : []),
+      ...(canManageReviews ? [{
         title: 'Recenzije na cekanju',
         subtitle: 'Moderacija komentara i ocena turista',
         url: '/admin/reviews',
         queryParams: { status: 'PENDING' },
         intent: 'Moderacija',
         keywords: ['recenzije', 'reviews', 'pending', 'cekanju', 'odobri', 'odbij', 'komentari', 'rating'],
-      },
-      {
+      }] : []),
+      ...(canManageContent ? [{
         title: 'Rute',
         subtitle: 'Kreiranje i uredjivanje turistickih ruta',
         url: '/admin/routes-management',
         intent: 'Planiranje ruta',
         keywords: ['rute', 'routes', 'itinerary', 'ruta', 'stajalista', 'waypoints'],
-      },
-      {
+      }] : []),
+      ...(canManageActivities ? [{
         title: 'Aktivnosti i tagovi',
         subtitle: 'Kategorije, aktivnosti i oznake za preporuke',
         url: '/admin/aktivnosti',
         intent: 'Katalog aktivnosti',
         keywords: ['aktivnosti', 'activity', 'tag', 'tags', 'kategorije', 'interesovanja'],
-      },
-      {
+      }] : []),
+      ...(canAccessMap ? [{
         title: 'Interaktivna mapa',
         subtitle: 'Vizuelni pregled destinacija i lokacija',
         url: '/admin/map-admin',
         intent: 'Mapa',
         keywords: ['mapa', 'map', 'geografija', 'koordinate', 'region'],
-      },
-      {
+      }] : []),
+      ...(canViewTourists ? [{
         title: 'Turisti',
         subtitle: 'Korisnicki nalozi turista i detalji naloga',
         url: '/admin/turisti',
         intent: 'Korisnici',
         keywords: ['turisti', 'tourists', 'korisnici', 'nalog', 'account'],
-      },
+      }] : []),
       {
         title: 'Moj profil',
         subtitle: 'Licni podaci i podesavanja admin naloga',

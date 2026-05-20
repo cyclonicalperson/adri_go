@@ -11,18 +11,18 @@
     <h1 class="title">Welcome!</h1>
     <p class="subtitle">Sign in to continue exploring Montenegro</p>
 
-    <div *ngIf="errorMessage" style="background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:16px;font-size:13px;font-weight:600;">
+    <div *ngIf="errorMessage" class="auth-alert auth-alert-error">
       {{ errorMessage }}
     </div>
 
-    <div *ngIf="verificationPendingEmail" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.6;">
-      <div style="font-weight:700;margin-bottom:8px;">Need a new verification email?</div>
-      <div style="margin-bottom:10px;">We can resend the confirmation link for <strong>{{ verificationPendingEmail }}</strong>.</div>
+    <div *ngIf="verificationPendingEmail" class="auth-alert auth-alert-info">
+      <div class="auth-alert-title">Need a new verification email?</div>
+      <div class="auth-alert-copy">We can resend the confirmation link for <strong>{{ verificationPendingEmail }}</strong>.</div>
       <button type="button" class="btn btn-guest" (click)="resendVerification()" [disabled]="isResendingVerification">
         {{ isResendingVerification ? 'Sending...' : 'Resend verification email' }}
       </button>
-      <div *ngIf="resendMessage" style="margin-top:10px;color:#15803d;font-weight:600;">{{ resendMessage }}</div>
-      <div *ngIf="resendError" style="margin-top:10px;color:#b91c1c;font-weight:600;">{{ resendError }}</div>
+      <div *ngIf="resendMessage" class="auth-alert-success-text">{{ resendMessage }}</div>
+      <div *ngIf="resendError" class="auth-alert-error-text">{{ resendError }}</div>
     </div>
 
     <form [formGroup]="loginForm" (ngSubmit)="onLogin()">

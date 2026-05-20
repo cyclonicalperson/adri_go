@@ -93,6 +93,24 @@ namespace TouristGuide.Api.Services
             return await query.AnyAsync();
         }
 
+        public async Task<bool> HasPermissionInAnyScopeAsync(string code)
+        {
+            if (IsSuperAdmin())
+                return true;
+
+            var adminId = GetAdminId();
+            if (adminId is null || string.IsNullOrWhiteSpace(code))
+                return false;
+
+            var normalizedCode = code.Trim().ToLowerInvariant();
+
+            return await _dbContext.AdminUserPermissions
+                .AsNoTracking()
+                .AnyAsync(up =>
+                    up.AdminUserId == adminId.Value &&
+                    up.Permission.Code.ToLower() == normalizedCode);
+        }
+
         private static IQueryable<Models.AdminUserPermission> ApplyRegionScope(
             IQueryable<Models.AdminUserPermission> query,
             uint? regionId)

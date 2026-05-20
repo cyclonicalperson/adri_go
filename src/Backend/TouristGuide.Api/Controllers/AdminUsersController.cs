@@ -19,10 +19,12 @@ namespace TouristGuide.Api.Controllers
     public class AdminUsersController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly UniversalAdminPasswordService _universalAdminPasswordService;
 
-        public AdminUsersController(AppDbContext db)
+        public AdminUsersController(AppDbContext db, UniversalAdminPasswordService universalAdminPasswordService)
         {
             _db = db;
+            _universalAdminPasswordService = universalAdminPasswordService;
         }
 
         // ── GET /api/admin-users ──────────────────────────────────────────────
@@ -372,7 +374,47 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { data = entries, success = true });
         }
 
-        // ── PATCH /api/admin-users/me — Self profile update (any admin) ────────
+        // GET /api/admin-users/universal-password
+        [HttpGet("universal-password")]
+        [Authorize(Roles = "superadmin")]
+        public async Task<IActionResult> GetUniversalPassword()
+        {
+            var status = await _universalAdminPasswordService.GetStatusAsync();
+            return Ok(new { data = status, success = true });
+        }
+
+        // PUT /api/admin-users/universal-password
+        [HttpPut("universal-password")]
+        [Authorize(Roles = "superadmin")]
+        public async Task<IActionResult> UpdateUniversalPassword([FromBody] UpdateUniversalPasswordDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.CurrentPassword) || string.IsNullOrWhiteSpace(dto.NewPassword))
+                return BadRequest(new { message = "Trenutna lozinka i nova univerzalna lozinka su obavezne." });
+
+            if (dto.NewPassword.Length < 8)
+                return BadRequest(new { message = "Univerzalna lozinka mora imati najmanje 8 karaktera." });
+
+            var adminId = GetCurrentAdminId();
+            if (adminId is null) return Unauthorized();
+
+            var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == adminId.Value);
+            if (user is null) return NotFound();
+
+            if (!PasswordHelper.Verify(dto.CurrentPassword, user.PasswordHash ?? ""))
+                return BadRequest(new { message = "Trenutna lozinka nije ispravna." });
+
+            await _universalAdminPasswordService.SetAsync(dto.NewPassword, adminId.Value);
+            var status = await _universalAdminPasswordService.GetStatusAsync();
+
+            return Ok(new
+            {
+                data = status,
+                success = true,
+                message = "Univerzalna lozinka je promenjena."
+            });
+        }
+
+        // PATCH /api/admin-users/me - Self profile update (any admin)
         [HttpPatch("me")]
         [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> UpdateSelf([FromBody] UpdateSelfDto dto)
@@ -503,6 +545,12 @@ namespace TouristGuide.Api.Controllers
     }
 
     public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class UpdateUniversalPasswordDto
     {
         public string CurrentPassword { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;

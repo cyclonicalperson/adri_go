@@ -84,6 +84,10 @@
             <span class="reviews">({{item.reviews}} reviews)</span>
           </div>
 
+          <div class="activity-tags-row" *ngIf="getActivityTags(item).length > 0">
+            <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(item)">{{ tag }}</span>
+          </div>
+
           <div class="divider"></div>
 
           <button class="view-link" (click)="viewDetails(item.id); $event.stopPropagation()">

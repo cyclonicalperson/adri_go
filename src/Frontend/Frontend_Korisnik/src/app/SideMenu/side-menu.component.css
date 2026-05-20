@@ -123,6 +123,7 @@
 }
 
 .item-icon {
+  position: relative;
   width: 34px;
   height: 34px;
   border-radius: 8px;
@@ -132,6 +133,7 @@
   justify-content: center;
   flex-shrink: 0;
   transition: background 0.15s;
+  overflow: visible;
 }
 .item-icon svg { width: 18px; height: 18px; fill: var(--gray-500); transition: fill 0.15s; }
 

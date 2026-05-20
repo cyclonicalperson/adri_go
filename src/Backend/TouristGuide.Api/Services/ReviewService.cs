@@ -11,6 +11,8 @@ namespace TouristGuide.Api.Services
     {
         private const string PublishedPostStatus = "published";
         private const string ApprovedReviewStatus = "APPROVED";
+        private const string PendingReviewStatus = "PENDING";
+        private const string RejectedReviewStatus = "REJECTED";
 
         private readonly AppDbContext _context;
 
@@ -95,27 +97,41 @@ namespace TouristGuide.Api.Services
             if (tourist is null)
                 return CreateReviewResult.TouristNotFound();
 
-            var reviewExists = await _context.Reviews
-                .AnyAsync(r => r.PostId == postId && r.TouristId == touristId);
+            var existingReview = await _context.Reviews
+                .FirstOrDefaultAsync(r => r.PostId == postId && r.TouristId == touristId);
 
-            if (reviewExists)
+            if (existingReview is not null &&
+                !string.Equals(existingReview.Status, RejectedReviewStatus, StringComparison.OrdinalIgnoreCase))
                 return CreateReviewResult.DuplicateReview();
+
+            var submittedAt = DateTime.UtcNow;
+            var normalizedComment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim();
+
+            if (existingReview is not null)
+            {
+                existingReview.Rating = (byte)dto.Rating;
+                existingReview.Comment = normalizedComment;
+                existingReview.Status = PendingReviewStatus;
+                existingReview.IsApproved = false;
+                existingReview.CreatedAt = submittedAt;
+                await _context.SaveChangesAsync();
+
+                return CreateReviewResult.Success(MapToReviewDto(existingReview, tourist.Name));
+            }
 
             var review = new Review
             {
                 PostId = postId,
                 TouristId = touristId,
                 Rating = (byte)dto.Rating,
-                Comment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim(),
-                Status = ApprovedReviewStatus,
-                IsApproved = true,
-                CreatedAt = DateTime.UtcNow
+                Comment = normalizedComment,
+                Status = PendingReviewStatus,
+                IsApproved = false,
+                CreatedAt = submittedAt
             };
 
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
-
-            await RefreshReviewStats(post);
 
             return CreateReviewResult.Success(MapToReviewDto(review, tourist.Name));
         }
@@ -145,6 +161,7 @@ namespace TouristGuide.Api.Services
             TouristName = review.Tourist != null ? review.Tourist.Name ?? string.Empty : string.Empty,
             Rating = review.Rating,
             Comment = review.Comment,
+            Status = review.Status,
             CreatedAt = review.CreatedAt
         };
 
@@ -155,6 +172,7 @@ namespace TouristGuide.Api.Services
             TouristName = touristName ?? review.Tourist?.Name ?? string.Empty,
             Rating = review.Rating,
             Comment = review.Comment,
+            Status = review.Status,
             CreatedAt = review.CreatedAt
         };
     }

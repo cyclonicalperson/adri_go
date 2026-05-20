@@ -60,6 +60,10 @@ function parseJsonField(val: any): any {
   return null;
 }
 
+function normalizeProposedRegionName(value: string | null | undefined): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ObjectService {
   private readonly url = `${environment.apiUrl}/posts`;
@@ -112,8 +116,10 @@ export class ObjectService {
   }
 
   create(payload: CreateObjectRequest): Observable<ApiResponse<TouristObject>> {
+    const proposedRegionName = normalizeProposedRegionName(payload.proposedRegionName);
     const body: any = {
-      regionId: payload.regionId ?? payload.destinationId,
+      regionId: proposedRegionName ? null : (payload.regionId ?? payload.destinationId),
+      proposedRegionName,
       title: payload.name,
       postType: CATEGORY_TO_POST_TYPE[payload.category] ?? 'other',
       description: payload.description,
@@ -150,8 +156,13 @@ export class ObjectService {
       .map(m => m.url);
     if (payload.status !== undefined) body['status'] = payload.status;
     if (payload.activityIds !== undefined) body['tagIds'] = payload.activityIds;
+    if (payload.proposedRegionName !== undefined) {
+      const proposedRegionName = normalizeProposedRegionName(payload.proposedRegionName);
+      body['proposedRegionName'] = proposedRegionName;
+      if (proposedRegionName) body['regionId'] = null;
+    }
     const rid = payload.regionId ?? payload.destinationId;
-    if (rid !== undefined) body['regionId'] = rid;
+    if (rid !== undefined && body['proposedRegionName'] == null) body['regionId'] = rid;
 
     return this.http.put<any>(`${this.url}/${id}`, body).pipe(
       map(res => ({ data: postToObject(res.data ?? res), success: true }))
@@ -190,6 +201,7 @@ function postToObject(p: any): TouristObject {
     objectId: p.id ?? p.postId,
     destinationId: p.regionId ?? 0,
     regionId: regionId,
+    proposedRegionName: p.proposedRegionName ?? null,
     name: p.title ?? '',
     category: (POST_TYPE_TO_CATEGORY[p.postType] ?? 'OTHER') as any,
     description: p.description ?? '',

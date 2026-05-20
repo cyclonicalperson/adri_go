@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { RegionService } from '@core/services/region.service';
 import { Region } from '@core/models/region.model';
+import { Post } from '@core/models/post.model';
 import { PostService } from '@core/services/post.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
@@ -44,6 +46,7 @@ export class EventFormComponent implements OnInit {
     private fb: FormBuilder,
     private destService: RegionService,
     private postService: PostService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
@@ -62,6 +65,7 @@ export class EventFormComponent implements OnInit {
         Validators.maxLength(2000),
       ]],
       regionId: [null],
+      proposedRegionName: [''],
       objectId: [null],
       startAt: ['', Validators.required],
       endAt: ['', Validators.required],
@@ -88,6 +92,11 @@ export class EventFormComponent implements OnInit {
       this.postService.getById(this.id!).subscribe({
         next: res => {
           const post = res.data;
+          if (!this.canManageEvent(post)) {
+            this.router.navigate(['/admin/dashboard']);
+            return;
+          }
+
           const details = post.details ?? {};
           const formatDateTime = (value?: string | null) => {
             if (!value) return '';
@@ -99,6 +108,7 @@ export class EventFormComponent implements OnInit {
             category: details['category'] ?? 'OTHER',
             description: post.description ?? '',
             regionId: post.regionId ?? null,
+            proposedRegionName: (post as any).proposedRegionName ?? '',
             objectId: details['objectId'] ?? details['relatedObjectId'] ?? null,
             startAt: formatDateTime((details['startAt'] as string | null | undefined) ?? (details['eventStart'] as string | null | undefined)),
             endAt: formatDateTime((details['endAt'] as string | null | undefined) ?? (details['eventEnd'] as string | null | undefined)),
@@ -144,6 +154,17 @@ export class EventFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
+    const proposedRegionName = this.normalizeProposedRegionName(raw.proposedRegionName);
+    const scopeRegionId = proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+
+    if (!this.isEdit &&
+        (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
+         !this.auth.hasPermission('create_event', scopeRegionId))) {
+      this.error = 'Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.';
+      this.saving = false;
+      return;
+    }
+
     const details = {
       category: raw.category,
       startAt: raw.startAt ? new Date(raw.startAt).toISOString() : null,
@@ -156,7 +177,8 @@ export class EventFormComponent implements OnInit {
       title: raw.title,
       postType: 'event' as const,
       description: raw.description,
-      regionId: raw.regionId || null,
+      regionId: proposedRegionName ? null : (raw.regionId || null),
+      proposedRegionName,
       lat: raw.lat || null,
       lng: raw.lng || null,
       externalUrl: raw.ticketUrl || raw.externalUrl || null,
@@ -180,4 +202,47 @@ export class EventFormComponent implements OnInit {
   }
 
   cancel(): void { this.router.navigate(['/admin/events']); }
+
+  onRegionSelected(): void {
+    if (this.form.get('regionId')?.value) {
+      this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onProposedRegionInput(): void {
+    if (this.normalizeProposedRegionName(this.form.get('proposedRegionName')?.value)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
+
+  private normalizeProposedRegionName(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private get selectedRegionIdForPermission(): number | null | undefined {
+    const value = this.form?.get('regionId')?.value;
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const regionId = Number(value);
+    return Number.isFinite(regionId) && regionId > 0 ? regionId : null;
+  }
+
+  private canManageEvent(event: Post): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.eventScopeRegionId(event)) &&
+        event.adminId === this.auth.currentUser?.userId
+      );
+  }
+
+  private eventScopeRegionId(event: Post): number | undefined {
+    if (event.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = event.regionId ?? event.region?.regionId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
+  }
 }

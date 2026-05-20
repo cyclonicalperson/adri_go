@@ -127,6 +127,8 @@ export interface RegistrationRequest {
 
 export type AdminNotificationType =
   | 'pending_review'
+  | 'route_pending'
+  | 'activity_pending'
   | 'new_registration'
   | 'post_approved'
   | 'post_rejected'

@@ -45,6 +45,7 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
   calendarScheduleError = '';
   showAuthModal = false;
   hasReviewed = false;
+  myReviewStatus: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -148,11 +149,10 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
         if (this.location && res.total !== undefined) {
           this.location.reviewCount = res.total;
         }
-        // Check if current tourist has already reviewed this location
-        const touristId = this.authService.touristId;
-        if (touristId) {
-          this.hasReviewed = this.reviews.some(r => r.touristId === touristId);
-        }
+        this.myReviewStatus = res.myReviewStatus ?? null;
+        this.hasReviewed = this.myReviewStatus === 'PENDING' ||
+          this.myReviewStatus === 'APPROVED' ||
+          (!!this.authService.touristId && this.reviews.some(r => r.touristId === this.authService.touristId));
         this.cdr.markForCheck();
       },
       error: (err) => console.error('getReviews error:', err)
@@ -382,14 +382,20 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
     this.isSubmittingReview = true;
     this.locationService.addReview(this.location.id, touristId, this.newRating, this.newComment).subscribe({
       next: (review) => {
-        this.reviews.unshift(review);
-        this.reviewSuccess  = 'Review submitted!';
+        const status = (review.status ?? '').toUpperCase();
+        if (status === 'APPROVED') {
+          this.reviews.unshift(review);
+        }
+        this.reviewSuccess  = status === 'APPROVED'
+          ? 'Review submitted!'
+          : 'Review submitted for moderation.';
         this.hasReviewed    = true;
+        this.myReviewStatus = status || 'PENDING';
         this.newRating      = 5;
         this.newComment     = '';
         this.isSubmittingReview = false;
         this.showReviewForm = false;
-        if (this.location) {
+        if (this.location && status === 'APPROVED') {
           this.location.reviewCount++;
           const total = this.reviews.reduce((sum, r) => sum + r.rating, 0);
           this.location.avgRating = Math.round((total / this.reviews.length) * 10) / 10;
@@ -416,6 +422,17 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
   }
 
   goToLogin(): void { this.showAuthModal = true; }
+
+  get reviewStatusLabel(): string {
+    switch ((this.myReviewStatus ?? '').toUpperCase()) {
+      case 'PENDING':
+        return 'Review pending';
+      case 'APPROVED':
+        return 'Reviewed';
+      default:
+        return 'Reviewed';
+    }
+  }
 
   goBack(): void { window.history.back(); }
 
@@ -535,7 +552,7 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
 
   addToCalendar(): void {
     if (!this.location) return;
-    
+
     if (!this.authService.isLoggedIn) {
       this.openAuthModal();
       return;

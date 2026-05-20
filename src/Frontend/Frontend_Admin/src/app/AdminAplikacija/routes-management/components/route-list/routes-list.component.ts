@@ -151,11 +151,20 @@ export class RoutesListComponent implements OnInit {
   }
 
   get canCreateRoutes(): boolean {
-    return this.auth.hasPermission('create_route');
+    return this.auth.hasPermission('manage_own_posts') &&
+      this.auth.hasPermission('create_route');
   }
 
   get canModerateRoutes(): boolean {
     return this.auth.currentUser?.role === 'superadmin' || this.auth.hasPermission('manage_own_posts');
+  }
+
+  canManageRoute(route: TouristRoute): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.routeScopeRegionId(route)) &&
+        route.createdBy === this.auth.currentUser?.userId
+      );
   }
 
   get activeSortValue(): string {
@@ -163,6 +172,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateRoutes) return;
     void this.router.navigate(['/admin/routes-management/new']);
   }
 
@@ -171,11 +181,12 @@ export class RoutesListComponent implements OnInit {
   }
 
   goEdit(route: TouristRoute): void {
+    if (!this.canManageRoute(route)) return;
     void this.router.navigate(['/admin/routes-management', route.routeId, 'edit']);
   }
 
   confirmApprove(route: TouristRoute): void {
-    if (route.status === 'draft') {
+    if (route.status === 'draft' && this.canManageRoute(route)) {
       this.approveTarget = route;
     }
   }
@@ -185,7 +196,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   doApprove(): void {
-    if (!this.approveTarget) return;
+    if (!this.approveTarget || !this.canManageRoute(this.approveTarget)) return;
 
     const route = this.approveTarget;
     this.approveTarget = null;
@@ -196,7 +207,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   confirmReject(route: TouristRoute): void {
-    if (route.status === 'draft') {
+    if (route.status === 'draft' && this.canManageRoute(route)) {
       this.rejectTarget = route;
     }
   }
@@ -206,7 +217,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   doReject(): void {
-    if (!this.rejectTarget) return;
+    if (!this.rejectTarget || !this.canManageRoute(this.rejectTarget)) return;
 
     const route = this.rejectTarget;
     this.rejectTarget = null;
@@ -217,6 +228,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   confirmDelete(route: TouristRoute): void {
+    if (!this.canManageRoute(route)) return;
     this.deleteTarget = route;
   }
 
@@ -225,7 +237,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   doDelete(): void {
-    if (!this.deleteTarget) return;
+    if (!this.deleteTarget || !this.canManageRoute(this.deleteTarget)) return;
 
     const route = this.deleteTarget;
     this.deleteTarget = null;
@@ -345,5 +357,14 @@ export class RoutesListComponent implements OnInit {
 
   private persistListState(): void {
     this.listState.save<RoutesListState>(this.stateKey, { req: this.req });
+  }
+
+  private routeScopeRegionId(route: TouristRoute): number | undefined {
+    if (route.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = route.regionId ?? route.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

@@ -117,7 +117,7 @@
             </app-badge>
           </td>
           <td>
-            <div class="meta-primary">{{ r.destination?.name ?? '-' }}</div>
+            <div class="meta-primary">{{ r.destination?.name ?? r.proposedRegionName ?? '-' }}</div>
           </td>
           <td class="num">{{ (r.distanceKm ?? 0).toFixed(1) }} km</td>
           <td class="num">{{ formatDuration(r.durationMin ?? 0) }}</td>
@@ -128,7 +128,7 @@
           </td>
           <td (click)="$event.stopPropagation()">
             <span class="badge" [class]="statusBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
-            @if (r.status === 'draft' && canModerateRoutes) {
+            @if (r.status === 'draft' && canManageRoute(r)) {
             <div class="status-actions">
               <button class="btn-icon approve-btn" title="Odobri" (click)="confirmApprove(r)">&#9989;</button>
               <button class="btn-icon danger" title="Odbij" (click)="confirmReject(r)">&#10060;</button>
@@ -138,8 +138,10 @@
           <td (click)="$event.stopPropagation()">
             <div class="actions">
               <button class="btn-icon" title="Detalji" (click)="goDetails(r)">&#128065;&#65039;</button>
+              @if (canManageRoute(r)) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(r)">&#9998;&#65039;</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(r)">&#128465;&#65039;</button>
+              }
             </div>
           </td>
         </tr>

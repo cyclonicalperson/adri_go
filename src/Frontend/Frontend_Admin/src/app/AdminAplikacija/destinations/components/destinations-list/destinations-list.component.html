@@ -8,7 +8,9 @@
       <option [value]="opt.value">{{ opt.label }}</option>
       }
     </select>
+    @if (canManageDestinations) {
     <button class="btn-new" (click)="goNew()">+ Nova destinacija</button>
+    }
   </div>
 
   @if (loading) {
@@ -41,8 +43,10 @@
           <td>{{ d.country }}</td>
           <td class="num">{{ d.objectCount ?? 0 }}</td>
           <td class="actions-cell" (click)="$event.stopPropagation()">
+            @if (canManageDestinations) {
             <button class="btn-edit" (click)="goEdit(d)">Izmeni</button>
             <button class="btn-delete" (click)="confirmDelete(d)">Obriši</button>
+            }
           </td>
         </tr>
         }

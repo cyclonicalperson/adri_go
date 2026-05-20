@@ -242,8 +242,8 @@ export class UserService {
 
   saveTripToCalendar(
     stops: PlannerStop[],
-    routeSummary: RouteSummary,
-    options: {
+    _routeSummary: RouteSummary,
+    _options: {
       title: string;
       travelMode: TravelMode;
       scenicMode: boolean;
@@ -272,13 +272,10 @@ export class UserService {
       map(results => {
         const addedCount = results.filter(result => !result.failed && !result.alreadyAdded).length;
         const alreadyCount = results.filter(result => result.alreadyAdded).length;
-        const suffix = options.emailNotifications
-          ? ' A summary will also appear in your email digest.'
-          : '';
 
         return {
           message: addedCount > 0
-            ? `${addedCount} stop(s) added to your calendar.${suffix}`
+            ? `${addedCount} stop(s) added to your calendar.`
             : alreadyCount > 0
               ? 'These stops are already in your calendar.'
               : 'We could not save this trip to the calendar.',

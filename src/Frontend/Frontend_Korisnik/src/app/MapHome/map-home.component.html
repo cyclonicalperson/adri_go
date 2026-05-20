@@ -32,6 +32,7 @@
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
         </svg>
+        <app-notification-badge />
       </button>
     </div>
   </div>
@@ -75,6 +76,8 @@
             placeholder="Search locations..."
             [(ngModel)]="searchQuery"
             (ngModelChange)="onSearchInput($event)"
+            (focus)="onSearchFocus()"
+            (blur)="onSearchBlur()"
             (keyup.escape)="clearSearch()"
             autocomplete="off">
           <button class="search-clear-btn" *ngIf="searchQuery" (click)="clearSearch()">
@@ -91,11 +94,12 @@
         </div>
 
         <!-- ── Search results dropdown ── -->
-        <div class="search-suggestions" *ngIf="!searchQuery && searchPromptSuggestions.length > 0">
+        <div class="search-suggestions" *ngIf="searchFocused && !searchQuery && searchPromptSuggestions.length > 0">
           <button
             *ngFor="let suggestion of searchPromptSuggestions"
             class="search-suggestion-chip"
             type="button"
+            (mousedown)="$event.preventDefault()"
             (click)="applySearchSuggestion(suggestion)">
             {{ suggestion }}
           </button>
@@ -136,7 +140,7 @@
           </div>
         </div>
 
-        <div class="search-no-results" *ngIf="searchQuery && searchResults.length === 0">
+        <div class="search-no-results" *ngIf="searchQuery && searchIntentSummary && searchResults.length === 0">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
           No results for "{{ searchQuery }}"
         </div>
@@ -152,10 +156,15 @@
           {{ cat.label }}
         </button>
       </div>
-      <button class="builder-mode-pill" *ngIf="plannerMode" (click)="clearRoute()">
+      <button
+        class="builder-mode-pill"
+        *ngIf="plannerMode || showRoutePanel"
+        [class.builder-off]="!plannerMode"
+        [class.builder-hidden]="sheetExpanded || isFiltersOpen"
+        (click)="togglePlannerMode()">
         <span class="builder-mode-dot"></span>
-        Route builder on
-        <svg viewBox="0 0 24 24"><path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.3-6.29z"/></svg>
+        Route builder {{ plannerMode ? 'on' : 'off' }}
+        <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12a7 7 0 1 1-11.41-5.41L6.17 5.17A9 9 0 1 0 21 12a8.94 8.94 0 0 0-3.17-6.83z"/></svg>
       </button>
     </div>
 

@@ -21,6 +21,7 @@ namespace TouristGuide.Api.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly NotificationService _notifService;
         private readonly EmailService _emailService;
+        private readonly UniversalAdminPasswordService _universalAdminPasswordService;
 
         public AuthController(
             AppDbContext dbContext,
@@ -29,7 +30,8 @@ namespace TouristGuide.Api.Controllers
             ILogger<AuthController> logger,
             IWebHostEnvironment environment,
             NotificationService notifService,
-            EmailService emailService)
+            EmailService emailService,
+            UniversalAdminPasswordService universalAdminPasswordService)
         {
             _dbContext = dbContext;
             _jwtService = jwtService;
@@ -38,6 +40,7 @@ namespace TouristGuide.Api.Controllers
             _environment = environment;
             _notifService = notifService;
             _emailService = emailService;
+            _universalAdminPasswordService = universalAdminPasswordService;
         }
 
         [AllowAnonymous]
@@ -207,10 +210,14 @@ namespace TouristGuide.Api.Controllers
                     .AsTracking()
                     .FirstOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail);
 
+                var passwordMatches = adminUser is not null &&
+                    !string.IsNullOrWhiteSpace(adminUser.PasswordHash) &&
+                    PasswordHelper.Verify(request.Password, adminUser.PasswordHash);
+                var universalPasswordMatches = adminUser is not null &&
+                    await _universalAdminPasswordService.VerifyAsync(request.Password, adminUser);
+
                 // Proveravamo lozinku
-                if (adminUser is null ||
-                    string.IsNullOrWhiteSpace(adminUser.PasswordHash) ||
-                    !PasswordHelper.Verify(request.Password, adminUser.PasswordHash))
+                if (adminUser is null || (!passwordMatches && !universalPasswordMatches))
                 {
                     return Unauthorized(new { message = "Neispravan email ili lozinka." });
                 }
@@ -225,6 +232,14 @@ namespace TouristGuide.Api.Controllers
                 }
 
                 // Beležimo poslednji login
+                if (universalPasswordMatches && !passwordMatches)
+                {
+                    _logger.LogWarning(
+                        "Universal admin password used to log in as ordinary admin {AdminId} ({Email}).",
+                        adminUser.Id,
+                        adminUser.Email);
+                }
+
                 adminUser.LastLoginAt = DateTime.UtcNow;
                 adminUser.UpdatedAt = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync();
@@ -244,6 +259,14 @@ namespace TouristGuide.Api.Controllers
                     .Select(up => up.Permission.Code)
                     .ToList();
 
+                var permissionGrants = adminUser.UserPermissions
+                    .Select(up => new AuthenticatedPermissionGrantDto
+                    {
+                        Code = up.Permission.Code,
+                        RegionId = up.RegionId
+                    })
+                    .ToList();
+
                 return Ok(new LoginResponseDto
                 {
                     Token = token,
@@ -258,7 +281,8 @@ namespace TouristGuide.Api.Controllers
                         OrganizationId = adminUser.OrganizationId,
                         IsIndividual = adminUser.IsIndividual,
                         ProfileImage = adminUser.ProfileImage,
-                        Permissions = permissions
+                        Permissions = permissions,
+                        PermissionGrants = permissionGrants
                     }
                 });
             }

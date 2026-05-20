@@ -256,6 +256,33 @@ namespace TouristGuide.Api.Migrations
                     b.ToTable("admin_registration_request");
                 });
 
+            modelBuilder.Entity("TouristGuide.Api.Models.AdminSecret", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("ProtectedValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_value");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.ToTable("admin_secret");
+                });
+
             modelBuilder.Entity("TouristGuide.Api.Models.AdminUser", b =>
                 {
                     b.Property<long>("Id")
@@ -793,6 +820,11 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("post_type");
 
+                    b.Property<string>("ProposedRegionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("proposed_region_name");
+
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
@@ -1121,6 +1153,11 @@ namespace TouristGuide.Api.Migrations
                     b.Property<long?>("RegionId")
                         .HasColumnType("bigint")
                         .HasColumnName("region_id");
+
+                    b.Property<string>("ProposedRegionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("proposed_region_name");
 
                     b.Property<long>("SaveCount")
                         .HasColumnType("bigint")
@@ -1635,6 +1672,16 @@ namespace TouristGuide.Api.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ReviewedByAdmin");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.AdminSecret", b =>
+                {
+                    b.HasOne("TouristGuide.Api.Models.AdminUser", "UpdatedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("UpdatedByAdmin");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.AdminUser", b =>
