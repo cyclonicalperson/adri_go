@@ -18,6 +18,12 @@
   <div class="proposal-error">{{ proposalError }}</div>
   }
 
+  @if (loading) {
+  <span class="empty">Ucitavanje aktivnosti...</span>
+  } @else if (loadError) {
+  <div class="proposal-error">{{ loadError }}</div>
+  }
+
   @for (activity of all; track activity.activityId) {
   <label class="chip" [class.selected]="isSelected(activity.activityId)">
     <input type="checkbox"
@@ -27,7 +33,7 @@
     {{ activity.name }}
   </label>
   }
-  @if (all.length === 0) {
+  @if (!loading && !loadError && all.length === 0) {
   <span class="empty">Nema aktivnosti.</span>
   }
 </div>

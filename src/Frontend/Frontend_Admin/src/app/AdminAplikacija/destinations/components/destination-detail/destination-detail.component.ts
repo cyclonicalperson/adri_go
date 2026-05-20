@@ -42,18 +42,29 @@ export class DestinationDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
 
-    this.destService.getById(id).subscribe((res: { data: any; }) => {
-      this.destination = res.data;
-      this.loading = false;
-    });
+    this.auth.ensurePermissionsLoaded().subscribe(() => {
+      if (!this.canManageDestinations) {
+        this.router.navigate([this.canManageContent ? '/admin/lokacije' : '/admin/dashboard']);
+        return;
+      }
 
-    this.objService.getAll({ page: 1, pageSize: 6, destinationId: id }).subscribe((res: { data: TouristObject[]; }) => {
-      this.objects = res.data;
+      this.destService.getById(id).subscribe((res: { data: any; }) => {
+        this.destination = res.data;
+        this.loading = false;
+      });
+
+      this.objService.getAll({ page: 1, pageSize: 6, destinationId: id }).subscribe((res: { data: TouristObject[]; }) => {
+        this.objects = res.data;
+      });
     });
   }
 
   get canManageDestinations(): boolean {
     return this.auth.isSuperAdmin;
+  }
+
+  get canManageContent(): boolean {
+    return this.auth.hasPermissionInAnyScope('manage_own_posts');
   }
 
   get marker(): MapMarker[] {

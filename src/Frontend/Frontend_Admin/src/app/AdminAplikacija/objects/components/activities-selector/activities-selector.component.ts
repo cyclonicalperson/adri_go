@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Activity } from '@core/models/activity.model';
 import { ActivityService } from '@core/services/activity.service';
+import { catchError, finalize, of } from 'rxjs';
 
 @Component({
   selector: 'app-activities-selector',
@@ -20,11 +21,20 @@ export class ActivitiesSelectorComponent implements OnInit {
   proposalSaving = false;
   proposalMessage = '';
   proposalError = '';
+  loading = true;
+  loadError = '';
 
   constructor(private activityService: ActivityService) { }
 
   ngOnInit(): void {
     this.activityService.getAll({ page: 1, pageSize: 200, sortBy: 'name', sortDir: 'asc' })
+      .pipe(
+        catchError(() => {
+          this.loadError = 'Aktivnosti nisu mogle da se ucitaju.';
+          return of({ data: [] } as any);
+        }),
+        finalize(() => { this.loading = false; }),
+      )
       .subscribe(res => { this.all = res.data; });
   }
 

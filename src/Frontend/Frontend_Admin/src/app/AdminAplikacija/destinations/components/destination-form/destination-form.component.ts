@@ -48,27 +48,29 @@ export class DestinationFormComponent implements OnInit {
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
     });
 
-    if (!this.canManageDestinations) {
-      this.router.navigate(['/admin/dashboard']);
-      return;
-    }
-
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
-    if (this.isEdit) {
-      this.service.getById(this.id!).subscribe((res: { data: any; }) => {
-        const d = res.data;
-        this.form.patchValue({
-          name: d.name,
-          type: d.type,
-          description: d.description,
-          country: d.country ?? 'Montenegro',
-          latitude: d.latitude,
-          longitude: d.longitude,
+    this.auth.ensurePermissionsLoaded().subscribe(() => {
+      if (!this.canManageDestinations) {
+        this.router.navigate([this.canManageContent && !this.isEdit ? '/admin/lokacije/new' : '/admin/lokacije']);
+        return;
+      }
+
+      if (this.isEdit) {
+        this.service.getById(this.id!).subscribe((res: { data: any; }) => {
+          const d = res.data;
+          this.form.patchValue({
+            name: d.name,
+            type: d.type,
+            description: d.description,
+            country: d.country ?? 'Montenegro',
+            latitude: d.latitude,
+            longitude: d.longitude,
+          });
         });
-      });
-    }
+      }
+    });
   }
 
   onMapClick(ev: MapClickEvent): void {
@@ -82,9 +84,13 @@ export class DestinationFormComponent implements OnInit {
     return this.auth.isSuperAdmin;
   }
 
+  get canManageContent(): boolean {
+    return this.auth.hasPermissionInAnyScope('manage_own_posts');
+  }
+
   submit(): void {
     if (!this.canManageDestinations) {
-      this.router.navigate(['/admin/dashboard']);
+      this.router.navigate([this.canManageContent && !this.isEdit ? '/admin/lokacije/new' : '/admin/lokacije']);
       return;
     }
 

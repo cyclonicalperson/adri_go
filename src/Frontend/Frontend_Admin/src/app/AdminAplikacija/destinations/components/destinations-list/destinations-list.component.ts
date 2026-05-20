@@ -51,16 +51,22 @@ export class DestinationsListComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    if (!this.canManageDestinations) {
-      this.router.navigate(['/admin/dashboard']);
-      return;
-    }
+    this.auth.ensurePermissionsLoaded().subscribe(() => {
+      if (!this.canManageDestinations) {
+        this.router.navigate([this.canManageContent ? '/admin/lokacije' : '/admin/dashboard']);
+        return;
+      }
 
-    this.load();
+      this.load();
+    });
   }
 
   get canManageDestinations(): boolean {
     return this.auth.isSuperAdmin;
+  }
+
+  get canManageContent(): boolean {
+    return this.auth.hasPermissionInAnyScope('manage_own_posts');
   }
 
   load(): void {
@@ -104,7 +110,12 @@ export class DestinationsListComponent implements OnInit {
   }
 
   goNew(): void {
-    if (!this.canManageDestinations) return;
+    if (!this.canManageDestinations) {
+      if (this.canManageContent) {
+        this.router.navigate(['/admin/lokacije/new']);
+      }
+      return;
+    }
     this.router.navigate(['/admin/destinations/new']);
   }
 

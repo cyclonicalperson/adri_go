@@ -100,19 +100,24 @@ namespace TouristGuide.Api.Controllers
         {
             var isAdminRequest = User.IsInRole("admin") || User.IsInRole("superadmin");
             var query = _context.Tags.Where(t => t.Category == "aktivnost").AsQueryable();
+            var canManageTags = false;
 
             if (isAdminRequest)
             {
-                if (!await _permissionService.CanManageTagsAsync())
-                    return Forbid();
+                canManageTags = await _permissionService.CanManageTagsAsync();
 
-                if (!_adminIdentityService.IsSuperAdmin())
+                if (canManageTags && !_adminIdentityService.IsSuperAdmin())
                 {
                     var adminId = _adminIdentityService.GetAdminId();
                     if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
                     var adminTagIds = await _context.PostTags
                         .Where(pt => pt.Post.AdminId == adminId.Value).Select(pt => pt.TagId).Distinct().ToListAsync();
                     query = query.Where(t => adminTagIds.Contains(t.Id));
+                }
+                else if (!canManageTags)
+                {
+                    query = query.Where(t => t.Color == null
+                        || (!t.Color.ToLower().Contains("|pending|") && !t.Color.ToLower().EndsWith("|pending")));
                 }
             }
             else
@@ -134,7 +139,7 @@ namespace TouristGuide.Api.Controllers
                 foreach (var k in known)
                     query = query.Where(t => t.Color == null || !t.Color.ToUpper().StartsWith(k));
             }
-            if (!string.IsNullOrWhiteSpace(status) && isAdminRequest)
+            if (!string.IsNullOrWhiteSpace(status) && isAdminRequest && canManageTags)
             {
                 var sl = status.ToLower();
                 query = query.Where(t => t.Color != null &&
@@ -202,15 +207,14 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetById(uint id)
         {
             var isAdminRequest = User.IsInRole("admin") || User.IsInRole("superadmin");
-            if (isAdminRequest && !await _permissionService.CanManageTagsAsync())
-                return Forbid();
+            var canManageTags = isAdminRequest && await _permissionService.CanManageTagsAsync();
 
             var tag = await _context.Tags
                 .Include(t => t.PostTags).ThenInclude(pt => pt.Post).ThenInclude(p => p.Region)
                 .FirstOrDefaultAsync(t => t.Id == id && t.Category == "aktivnost");
             if (tag == null) return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
-            if (isAdminRequest && !_adminIdentityService.IsSuperAdmin())
+            if (isAdminRequest && canManageTags && !_adminIdentityService.IsSuperAdmin())
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
@@ -219,7 +223,7 @@ namespace TouristGuide.Api.Controllers
 
             var prviPost = tag.PostTags.FirstOrDefault()?.Post;
             var d = DecodeColor(tag.Color);
-            if (!isAdminRequest && d.Status == "pending")
+            if ((!isAdminRequest || !canManageTags) && d.Status == "pending")
                 return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
             return Ok(new
             {

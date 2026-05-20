@@ -530,6 +530,8 @@
   "npr. Nepotpuna dokumentacija...": "e.g. Incomplete documentation...",
   "Obrada...": "Processing...",
   "Slanje...": "Sending...",
+  "Ucitavanje aktivnosti...": "Loading activities...",
+  "Aktivnosti nisu mogle da se ucitaju.": "Activities could not be loaded.",
   "Potvrdi odbijanje": "Confirm rejection",
   "Verifikacija": "Verification",
   "Organizacija": "Organization",
