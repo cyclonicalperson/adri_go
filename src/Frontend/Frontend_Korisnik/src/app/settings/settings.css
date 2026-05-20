@@ -537,6 +537,93 @@ input:checked + .slider:before { transform: translateX(21px); }
   .settings-sheet { border-radius: 8px; }
 }
 
+:host-context(html[data-theme='dark']) .settings-container {
+  background: #0f172a !important;
+}
+
+:host-context(html[data-theme='dark']) .header,
+:host-context(html[data-theme='dark']) .group-items,
+:host-context(html[data-theme='dark']) .setting-row,
+:host-context(html[data-theme='dark']) .settings-sheet {
+  background: #111827;
+  border-color: #334155 !important;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .header {
+  border-bottom: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .back-btn,
+:host-context(html[data-theme='dark']) .sheet-close,
+:host-context(html[data-theme='dark']) .sheet-secondary {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .back-btn:hover,
+:host-context(html[data-theme='dark']) .setting-row:hover,
+:host-context(html[data-theme='dark']) .setting-row.no-hover:hover,
+:host-context(html[data-theme='dark']) .sheet-option:hover,
+:host-context(html[data-theme='dark']) .support-action:hover {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .back-btn svg,
+:host-context(html[data-theme='dark']) .row-chevron svg {
+  fill: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .header h1,
+:host-context(html[data-theme='dark']) .row-text .label,
+:host-context(html[data-theme='dark']) .sheet-header h2,
+:host-context(html[data-theme='dark']) .sheet-option strong {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .group-label,
+:host-context(html[data-theme='dark']) .row-text .desc,
+:host-context(html[data-theme='dark']) .row-text .value,
+:host-context(html[data-theme='dark']) .sheet-copy,
+:host-context(html[data-theme='dark']) .sheet-option span {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .setting-row,
+:host-context(html[data-theme='dark']) .sheet-header {
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .settings-sheet-overlay {
+  background: rgba(2, 6, 23, 0.68);
+}
+
+:host-context(html[data-theme='dark']) .sheet-option,
+:host-context(html[data-theme='dark']) .pref-chip,
+:host-context(html[data-theme='dark']) .support-action {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .sheet-pill {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .sheet-pill.active {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .pref-chip.active,
+:host-context(html[data-theme='dark']) .sheet-primary,
+:host-context(html[data-theme='dark']) .save-btn {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
 .field-error {
   margin: 8px 0 0;
   font-size: 12px;

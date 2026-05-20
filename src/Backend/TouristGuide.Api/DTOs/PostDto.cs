@@ -45,4 +45,23 @@ namespace TouristGuide.Api.DTOs
         /// <summary>Da li je prijavljeni turista sacuvao ovu objavu (null = nepoznato/nije prijavljen)</summary>
         public bool? IsSaved { get; set; }
     }
+
+    public class AddCalendarItemDto
+    {
+        public DateTime? ScheduledAt { get; set; }
+    }
+
+    public class AddTouristRouteCalendarDto
+    {
+        /// <summary>Set when re-adding an existing private route; otherwise a new one is created from the fields below.</summary>
+        public uint? TouristRouteId { get; set; }
+        public string? Title { get; set; }
+        /// <summary>JSON: [{lat, lng, name}, ...]</summary>
+        public string? Waypoints { get; set; }
+        public string? TravelMode { get; set; }
+        public bool ScenicMode { get; set; }
+        public decimal? DistanceKm { get; set; }
+        public uint? DurationMin { get; set; }
+        public DateTime? ScheduledAt { get; set; }
+    }
 }

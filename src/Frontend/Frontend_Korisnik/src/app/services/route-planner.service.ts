@@ -18,6 +18,11 @@ export interface PlannerState {
   plannerMode: boolean;
   scenicMode: boolean;
   travelMode: TravelMode;
+  // Id of the curated route this planner currently mirrors, or null when the
+  // stops were assembled some other way (manual taps, optimization, saved trip).
+  sourceRouteId: number | null;
+  // Id of the private (localStorage SavedRoute) route this planner mirrors, or null.
+  sourcePrivateRouteId: string | null;
 }
 
 const DEFAULT_STATE: PlannerState = {
@@ -25,6 +30,8 @@ const DEFAULT_STATE: PlannerState = {
   plannerMode: false,
   scenicMode: true,
   travelMode: 'driving',
+  sourceRouteId: null,
+  sourcePrivateRouteId: null,
 };
 
 @Injectable({ providedIn: 'root' })
@@ -67,6 +74,8 @@ export class RoutePlannerService {
       ...state,
       plannerMode: true,
       stops,
+      sourceRouteId: null,
+      sourcePrivateRouteId: null,
     });
   }
 
@@ -76,6 +85,8 @@ export class RoutePlannerService {
       ...options,
       plannerMode: options.plannerMode ?? true,
       stops: stops.map(stop => this.normalizeStop(stop)),
+      sourceRouteId: options.sourceRouteId ?? null,
+      sourcePrivateRouteId: options.sourcePrivateRouteId ?? null,
     });
   }
 
@@ -84,6 +95,8 @@ export class RoutePlannerService {
     return this.persist({
       ...state,
       stops: state.stops.filter(stop => stop.id !== stopId),
+      sourceRouteId: null,
+      sourcePrivateRouteId: null,
     });
   }
 
@@ -96,7 +109,7 @@ export class RoutePlannerService {
 
     const [moved] = stops.splice(fromIndex, 1);
     stops.splice(toIndex, 0, moved);
-    return this.persist({ ...state, stops });
+    return this.persist({ ...state, stops, sourceRouteId: null, sourcePrivateRouteId: null });
   }
 
   clear(): PlannerState {
@@ -149,6 +162,8 @@ export class RoutePlannerService {
         stops: Array.isArray(parsed.stops)
           ? parsed.stops.filter(stop => typeof stop?.id === 'number' && typeof stop?.lat === 'number' && typeof stop?.lng === 'number')
           : [],
+        sourceRouteId: typeof parsed.sourceRouteId === 'number' ? parsed.sourceRouteId : null,
+        sourcePrivateRouteId: typeof parsed.sourcePrivateRouteId === 'string' ? parsed.sourcePrivateRouteId : null,
       };
     } catch {
       return DEFAULT_STATE;

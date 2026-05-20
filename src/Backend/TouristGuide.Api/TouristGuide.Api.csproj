@@ -12,6 +12,7 @@
 		<Compile Include="..\..\Recommended\Backend\DTOs\Recommendations\ContentRecommendationItemDto.cs" Link="DTOs\Recommendations\ContentRecommendationItemDto.cs" />
 		<Compile Include="..\..\Recommended\Backend\Services\Interfaces\IRecommendationService.cs" Link="Services\Interfaces\IRecommendationService.cs" />
 		<Compile Include="..\..\Recommended\Backend\Services\RecommendationService.cs" Link="Services\RecommendationService.cs" />
+		<Compile Include="..\..\Shared\AiContracts\TourismDtos.cs" Link="Contracts\TourismDtos.cs" />
 		<!-- Exclude the local copies that have been superseded by the linked canonical files above. -->
 		<Compile Remove="Controllers\RecommendationsController.cs" />
 		<Compile Remove="DTOs\Recommendations\ContentRecommendationItemDto.cs" />

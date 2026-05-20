@@ -43,6 +43,7 @@ namespace TouristGuide.Api.Data
         // Planer
         public DbSet<VisitPlanner> VisitPlanners { get; set; }
         public DbSet<PlannerItem> PlannerItems { get; set; }
+        public DbSet<TouristRoute> TouristRoutes { get; set; }
 
         // Komunikacija
         public DbSet<Notification> Notifications { get; set; }
@@ -432,6 +433,18 @@ namespace TouristGuide.Api.Data
                 .WithMany(r => r.PlannerItems)
                 .HasForeignKey(i => i.RouteId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<PlannerItem>()
+                .HasOne(i => i.TouristRoute)
+                .WithMany(r => r.PlannerItems)
+                .HasForeignKey(i => i.TouristRouteId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<TouristRoute>()
+                .HasOne(r => r.Tourist)
+                .WithMany()
+                .HasForeignKey(r => r.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ════════════════════════════════════════════════════════════════
             //  Notification relacije
