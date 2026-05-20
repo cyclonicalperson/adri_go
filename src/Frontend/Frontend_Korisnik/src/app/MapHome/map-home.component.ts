@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of, Observable } from 'rxjs';
+import { catchError, forkJoin, of, Observable, Subscription } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -25,7 +25,11 @@ import {
   RouteDetourSuggestion
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
+<<<<<<< HEAD
+import { ThemeService } from '../services/theme.service';
+=======
 import { TouristRoutesService } from '../services/tourist-routes.service';
+>>>>>>> master
 import { formatPostType } from '../utils/post-type.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 
@@ -77,6 +81,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectedLocation: MapLocation | null = null;
   isMenuOpen = false;
+  isDarkMode = false;
   activeTab = 'map';
   sheetExpanded = false;
   showChatHint = false;
@@ -92,7 +97,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private hasCenteredOnUserLocation = false;
   private plannerRouteGeometry: [number, number][] = [];
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
+<<<<<<< HEAD
+  private themeSubscription?: Subscription;
+=======
   private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
+>>>>>>> master
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
@@ -283,10 +292,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private analytics: TouristAnalyticsService,
     private recommendationService: RecommendationService,
     private savedRoutesService: SavedRoutesService,
+<<<<<<< HEAD
+    private themeService: ThemeService,
+=======
     private touristRoutesService: TouristRoutesService,
+>>>>>>> master
   ) {}
 
   ngOnInit(): void {
+    this.isDarkMode = this.themeService.isDarkMode;
+    this.themeSubscription = this.themeService.theme$.subscribe(theme => {
+      this.isDarkMode = theme === 'dark';
+    });
+
     this.applyFilterState();
     this.syncPlannerStateFromServices();
     this.savedRoutes = this.savedRoutesService.getAll();
@@ -325,9 +343,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     window.removeEventListener('resize', this.handleWindowResize);
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
     this.autoLocatePermissionStatus = null;
+    this.themeSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
   }
 
+<<<<<<< HEAD
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
+=======
   private showChatAssistantHint(): void {
     if (localStorage.getItem('chatHintSeen')) {
       return;
@@ -347,6 +370,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       clearTimeout(this.chatHintTimerId);
       this.chatHintTimerId = null;
     }
+>>>>>>> master
   }
 
   loadLocations(): void {
