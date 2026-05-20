@@ -48,7 +48,6 @@ export class SettingsComponent implements OnInit {
     { id: 'booking', label: 'Booking.com' },
     { id: 'airbnb', label: 'Airbnb' },
     { id: 'tripadvisor', label: 'Tripadvisor' },
-    { id: 'getyourguide', label: 'GetYourGuide' },
   ];
 
   showPasswordModal = false;
@@ -116,6 +115,10 @@ export class SettingsComponent implements OnInit {
   }
 
   get connectedAccountsSummary(): string {
+    if (this.authService.currentTourist?.authProvider === 'google') {
+      return 'Connected';
+    }
+
     const linked = this.accountOptions
       .filter(option => this.settings.connectedAccounts[option.id])
       .map(option => option.label);
@@ -127,18 +130,18 @@ export class SettingsComponent implements OnInit {
       || this.settings.connectedAccounts.google;
   }
 
-  get bookingServicesSummary(): string {
-    const enabled = this.bookingOptions
-      .filter(option => this.settings.bookingServices.includes(option.id))
-      .map(option => option.label);
-    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
-  }
-
   get contentPreferencesSummary(): string {
     const enabled = this.contentOptions
       .filter(option => this.settings.contentPreferences.includes(option.id))
       .map(option => option.label);
     return enabled.length > 0 ? enabled.join(', ') : 'Use general discovery mode';
+  }
+
+  get bookingServicesSummary(): string {
+    const enabled = this.bookingOptions
+      .filter(option => this.settings.bookingServices.includes(option.id))
+      .map(option => option.label);
+    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
   }
 
   get passwordRulesVisible(): boolean {
@@ -426,8 +429,6 @@ export class SettingsComponent implements OnInit {
 
     const label = this.activeSheet === 'accounts'
       ? 'Connected account preferences updated'
-      : this.activeSheet === 'booking'
-      ? 'Booking service preferences updated'
       : 'Settings saved';
 
     this.saveChanges(label);

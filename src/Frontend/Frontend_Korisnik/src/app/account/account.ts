@@ -1,11 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserService, UserProfile } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
-import { forkJoin, of } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { ThemeService } from '../services/theme.service';
 
 @Component({
   selector: 'app-account',
@@ -14,27 +15,36 @@ import { catchError } from 'rxjs/operators';
   templateUrl: './account.html',
   styleUrls: ['./account.css']
 })
-export class AccountComponent implements OnInit {
+export class AccountComponent implements OnInit, OnDestroy {
 
   userData: UserProfile | null = null;
   loading: boolean = true;
   isDarkMode: boolean = false;
+  private themeSubscription?: Subscription;
 
   constructor(
     private router: Router,
     private userService: UserService,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private themeService: ThemeService
   ) {}
 
   ngOnInit(): void {
-    this.isDarkMode = localStorage.getItem('theme') === 'dark';
-    this.applyTheme();
+    this.isDarkMode = this.themeService.isDarkMode;
+    this.themeSubscription = this.themeService.theme$.subscribe(theme => {
+      this.isDarkMode = theme === 'dark';
+    });
+
     if (!this.authService.isLoggedIn) {
       this.router.navigate(['/login']);
       return;
     }
     this.loadUserData();
+  }
+
+  ngOnDestroy(): void {
+    this.themeSubscription?.unsubscribe();
   }
 
   loadUserData() {
@@ -70,20 +80,8 @@ export class AccountComponent implements OnInit {
       this.cdr.detectChanges();
     });
   }
-  private applyTheme(): void {
-    const html = document.documentElement;
-
-    if (this.isDarkMode) {
-      html.setAttribute('data-theme', 'dark');
-    } else {
-      html.removeAttribute('data-theme');
-    }
-  }
-
   toggleDarkMode(): void {
-    this.isDarkMode = !this.isDarkMode;
-    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
-    this.applyTheme();
+    this.themeService.toggleTheme();
   }
 
   getInitials(): string {

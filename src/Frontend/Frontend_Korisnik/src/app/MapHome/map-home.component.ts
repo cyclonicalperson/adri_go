@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of, Observable, Subscription } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -26,7 +26,10 @@ import {
   RouteDetourSuggestion
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
+import { ThemeService } from '../services/theme.service';
+import { TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -67,6 +70,7 @@ type SearchResult = MapLocation & {
     MapNavigationPanelComponent,
     FiltersComponent,
     NotificationBadgeComponent,
+    ChatPopupComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -76,8 +80,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectedLocation: MapLocation | null = null;
   isMenuOpen = false;
+  isDarkMode = false;
   activeTab = 'map';
   sheetExpanded = false;
+  showChatHint = false;
+  isChatOpen = false;
   private map: L.Map | undefined;
   private markers: { loc: MapLocation; marker: L.Marker }[] = [];
   private userMarker: L.Marker<any> | null = null;
@@ -89,6 +96,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private hasCenteredOnUserLocation = false;
   private plannerRouteGeometry: [number, number][] = [];
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
+  private themeSubscription?: Subscription;
+  private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
@@ -159,6 +168,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   savedRoutes: SavedRoute[] = [];
   showSavedRoutes = false;
   saveRouteMessage = '';
+
+  // ─── Curated route → calendar scheduler ──────────────────────────────────
+  showRouteCalendarScheduler = false;
+  routeCalendarDateTime = '';
+  routeCalendarError = '';
+  isSavingRouteToCalendar = false;
 
   // ─── Locate-me FAB ───────────────────────────────────────────────────────
   isLocating = false;
@@ -274,12 +289,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private analytics: TouristAnalyticsService,
     private recommendationService: RecommendationService,
     private savedRoutesService: SavedRoutesService,
+    private themeService: ThemeService,
+    private touristRoutesService: TouristRoutesService,
   ) {}
 
   ngOnInit(): void {
+    this.isDarkMode = this.themeService.isDarkMode;
+    this.themeSubscription = this.themeService.theme$.subscribe(theme => {
+      this.isDarkMode = theme === 'dark';
+    });
+
     this.applyFilterState();
     this.syncPlannerStateFromServices();
     this.savedRoutes = this.savedRoutesService.getAll();
+    this.showChatAssistantHint();
   }
 
   ngAfterViewInit(): void {
@@ -309,11 +332,38 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopLocationTracking();
     this.clearNavRefollowTimer();
     this.clearMapResizeTimer();
+    this.clearChatHintTimer();
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     window.removeEventListener('resize', this.handleWindowResize);
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
     this.autoLocatePermissionStatus = null;
+    this.themeSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
+  }
+
+  private showChatAssistantHint(): void {
+    if (localStorage.getItem('chatHintSeen')) {
+      return;
+    }
+    localStorage.setItem('chatHintSeen', '1');
+    this.showChatHint = true;
+    this.clearChatHintTimer();
+    this.chatHintTimerId = setTimeout(() => {
+      this.showChatHint = false;
+      this.chatHintTimerId = null;
+      this.cdr.detectChanges();
+    }, 8500);
+  }
+
+  private clearChatHintTimer(): void {
+    if (this.chatHintTimerId !== null) {
+      clearTimeout(this.chatHintTimerId);
+      this.chatHintTimerId = null;
+    }
   }
 
   loadLocations(): void {
@@ -726,6 +776,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.lastHydratedQueryKey = key;
 
+    // Opened from a calendar route entry — load that route onto the map.
+    const routeParam = Number(this.latestQueryParams['routeId']);
+    if (Number.isFinite(routeParam) && routeParam > 0) {
+      this.hydratePlannerFromCuratedRoute(routeParam);
+      return;
+    }
+
+    const touristRouteParam = Number(this.latestQueryParams['touristRouteId']);
+    if (Number.isFinite(touristRouteParam) && touristRouteParam > 0) {
+      this.hydratePlannerFromTouristRoute(touristRouteParam);
+      return;
+    }
+
     const tripParam = this.latestQueryParams['trip'];
     const directTo = this.latestQueryParams['directTo'];
     const focusId = Number(this.latestQueryParams['focusId']);
@@ -746,7 +809,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (Number.isFinite(focusId) && focusId > 0) {
       const matched = this.locationsList.find(location => location.id === focusId);
       if (matched) {
-        this.focusOnLocation(matched);
+        // When arriving from "Directions" (planner=1), only center the map
+        // without opening the location card — the planner panel is the focus.
+        if (plannerFlag) {
+          const coordinates = this.getLocationCoordinates(matched);
+          if (this.map && coordinates) {
+            this.map.flyTo([coordinates.lat, coordinates.lng], 15, { animate: true, duration: 1 });
+          }
+        } else {
+          this.focusOnLocation(matched);
+        }
       }
     }
 
@@ -805,6 +877,50 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
+  }
+
+  private hydratePlannerFromCuratedRoute(routeId: number): void {
+    this.touristRoutesService.getRouteById(routeId).subscribe({
+      next: (route) => {
+        if (!route || route.waypoints.length === 0) {
+          return;
+        }
+        this.routePlanner.replaceStops(
+          this.touristRoutesService.routeToPlannerStops(route),
+          { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+        );
+        this.syncPlannerStateFromServices();
+        this.renderPlannerRoute();
+        this.cdr.detectChanges();
+      },
+      error: () => { /* route unavailable — leave the planner untouched */ },
+    });
+  }
+
+  private hydratePlannerFromTouristRoute(touristRouteId: number): void {
+    this.userService.getTouristRoute(touristRouteId).subscribe({
+      next: (route) => {
+        if (!route || route.waypoints.length === 0) {
+          return;
+        }
+        const stops: PlannerStop[] = route.waypoints.map((point, index) => ({
+          id: -(touristRouteId * 1000 + index + 1),
+          title: point.name || `${route.title} ${index + 1}`,
+          postType: 'route',
+          lat: point.lat,
+          lng: point.lng,
+        }));
+        this.routePlanner.replaceStops(stops, {
+          plannerMode: true,
+          scenicMode: route.scenicMode,
+          travelMode: (route.travelMode as TravelMode) || 'walking',
+        });
+        this.syncPlannerStateFromServices();
+        this.renderPlannerRoute();
+        this.cdr.detectChanges();
+      },
+      error: () => { /* route unavailable — leave the planner untouched */ },
+    });
   }
 
   private renderPlannerRoute(): void {
@@ -1043,6 +1159,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       plannerMode: true,
       scenicMode: route.scenicMode,
       travelMode: route.travelMode,
+      sourcePrivateRouteId: route.id,
     });
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
@@ -1086,6 +1203,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
       this.sheetExpanded = false;
+      this.applyMarkerFilter();
       this.cdr.detectChanges();
     } catch {
       this.plannerMessage = 'Could not fetch navigation data. Check your connection.';
@@ -1141,6 +1259,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navigationRouteGeometry = [];
     this.selectedLocation = null;
     this.clearRouteVisuals();
+    // Restore all map pins that were hidden during navigation
+    this.applyMarkerFilter();
     this.router.navigate([], { queryParams: {}, replaceUrl: true });
   }
 
@@ -1581,58 +1701,113 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const validStops = this.plannerStops.filter(stop => stop.id > 0);
-    if (validStops.length === 0 || this.isSavingTrip) {
+    if (this.plannerStops.length === 0) {
+      this.plannerMessage = 'Add at least one stop before saving to the calendar.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
+      this.cdr.detectChanges();
       return;
     }
 
-    this.isSavingTrip = true;
-    forkJoin(validStops.map(stop =>
-      this.userService.addToCalendar(stop.id).pipe(
-        catchError(() => of({ failed: true }))
-      )
-    )).subscribe({
-      next: (results) => {
-        const addedCount = results.filter((res: any) => !res?.failed && !res?.alreadyAdded).length;
-        const alreadyCount = results.filter((res: any) => !!res?.alreadyAdded).length;
-
-        if (addedCount > 0) {
-          this.plannerMessage = `${addedCount} stop(s) added to your calendar.`;
-          this.showTripSavedBrowserNotification(addedCount);
-        } else if (alreadyCount > 0) {
-          this.plannerMessage = 'These stops are already in your calendar.';
-        } else {
-          this.plannerMessage = 'We could not save this trip to the calendar.';
-        }
-
-        this.analytics.track('planner_saved_to_calendar', {
-          stopCount: validStops.length,
-          addedCount,
-        });
-        this.isSavingTrip = false;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.plannerMessage = 'We could not save this trip to the calendar.';
-        this.isSavingTrip = false;
-        this.cdr.detectChanges();
-      }
-    });
+    // Curated route, loaded private route, or a route built right here in the
+    // planner — all are saved as a single route object via the scheduler.
+    this.openRouteCalendarScheduler();
   }
 
-  private showTripSavedBrowserNotification(addedCount: number): void {
-    if (!this.preferences.snapshot.pushNotifications || !('Notification' in window)) {
-      return;
-    }
-    if (Notification.permission !== 'granted') {
+  get minRouteCalendarDateTime(): string {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }
+
+  openRouteCalendarScheduler(): void {
+    this.routeCalendarDateTime = '';
+    this.routeCalendarError = '';
+    this.showRouteCalendarScheduler = true;
+    this.cdr.detectChanges();
+  }
+
+  closeRouteCalendarScheduler(): void {
+    this.showRouteCalendarScheduler = false;
+    this.routeCalendarError = '';
+    this.cdr.detectChanges();
+  }
+
+  confirmRouteCalendarSave(): void {
+    if (this.isSavingRouteToCalendar) {
       return;
     }
 
-    const title = addedCount === 1 ? 'Trip stop saved' : 'Trip stops saved';
-    const body = addedCount === 1
-      ? 'Your stop was added to the travel calendar.'
-      : `${addedCount} stops were added to the travel calendar.`;
-    new Notification(title, { body });
+    if (!this.routeCalendarDateTime) {
+      this.routeCalendarError = 'Choose date and time.';
+      return;
+    }
+
+    const selected = new Date(this.routeCalendarDateTime);
+    if (isNaN(selected.getTime())) {
+      this.routeCalendarError = 'Choose a valid date and time.';
+      return;
+    }
+    if (selected < new Date()) {
+      this.routeCalendarError = 'Choose a future date and time.';
+      return;
+    }
+
+    const snapshot = this.routePlanner.snapshot;
+    let request$: Observable<any> | null = null;
+
+    if (snapshot.sourceRouteId != null) {
+      request$ = this.userService.addRouteToCalendar(snapshot.sourceRouteId, { scheduledAt: this.routeCalendarDateTime });
+    } else if (snapshot.sourcePrivateRouteId != null) {
+      const saved = this.savedRoutesService.getById(snapshot.sourcePrivateRouteId);
+      if (!saved) {
+        this.routeCalendarError = 'This private route is no longer available.';
+        return;
+      }
+      request$ = this.userService.addPrivateRouteToCalendar({
+        title: saved.title,
+        waypoints: JSON.stringify(saved.stops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+        travelMode: saved.travelMode,
+        scenicMode: saved.scenicMode,
+        distanceKm: saved.distanceKm,
+        durationMin: saved.durationMin,
+        scheduledAt: this.routeCalendarDateTime,
+      });
+    } else if (this.plannerStops.length > 0) {
+      // Route built directly in the planner — save the current stops as a new private route.
+      request$ = this.userService.addPrivateRouteToCalendar({
+        title: this.routeDestTitle || this.getRouteTitle(),
+        waypoints: JSON.stringify(this.plannerStops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+        travelMode: this.travelMode,
+        scenicMode: this.scenicMode,
+        distanceKm: this.routeSummary.distanceKm || undefined,
+        durationMin: Math.round(this.routeSummary.durationMin) || undefined,
+        scheduledAt: this.routeCalendarDateTime,
+      });
+    }
+
+    if (!request$) {
+      return;
+    }
+
+    this.isSavingRouteToCalendar = true;
+    this.routeCalendarError = '';
+
+    request$.subscribe({
+      next: (res: any) => {
+        this.isSavingRouteToCalendar = false;
+        this.showRouteCalendarScheduler = false;
+        this.plannerMessage = res?.alreadyAdded
+          ? 'This route is already in your calendar.'
+          : 'Route added to your calendar.';
+        setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3500);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isSavingRouteToCalendar = false;
+        this.routeCalendarError = err?.error?.message || 'Could not add route to calendar.';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private applyFilterState(): void {
@@ -1735,6 +1910,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private applyMarkerFilter(): void {
     this.markers.forEach(({ loc, marker }) => {
+      // During navigation: only show pins that are part of the route
+      if (this.isNavigating) {
+        const isRouteStop = this.plannerStops.some(stop => stop.id === loc.id);
+        if (isRouteStop) {
+          if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
+        } else if (this.map!.hasLayer(marker)) {
+          this.map!.removeLayer(marker);
+        }
+        return;
+      }
       const visible = this.passesFilters(loc);
       if (visible) {
         if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
@@ -1911,20 +2096,38 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   locateMe(): void {
     if (this.isLocating) return;
     this.isLocating = true;
+
+    const immediatePosition = this.getImmediateUserPosition();
+    if (immediatePosition) {
+      this.hasCenteredOnUserLocation = true;
+      this.handleUserPositionAvailable(immediatePosition, { fly: true, rerenderRoute: false });
+    }
+
     this.cdr.detectChanges();
 
-    void this.geolocationService.requestCurrentPosition({ maximumAge: 0 }).then((position) => {
+    void this.geolocationService.requestCurrentPosition({
+      enableHighAccuracy: false,
+      maximumAge: 60000,
+      timeout: immediatePosition ? 2500 : 6000,
+    }).then((position) => {
       this.isLocating = false;
       if (position) {
         this.hasCenteredOnUserLocation = true;
-        this.showUserLocation(position, true);
-        this.updateDistancesAndRecommendations();
-        this.applyMarkerFilter();
-        this.refreshRecommendations();
         this.handleUserPositionAvailable(position, { fly: true, rerenderRoute: true });
       }
       this.cdr.detectChanges();
     });
+  }
+
+  private getImmediateUserPosition(): UserPosition | null {
+    if (this.userPosition) {
+      return {
+        lat: this.userPosition[0],
+        lng: this.userPosition[1],
+      };
+    }
+
+    return this.geolocationService.getLastKnownPosition();
   }
 
   private tryAutoLocateUser(): void {
@@ -1997,7 +2200,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (fly) {
-      this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
+      this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 0.45 });
     }
   }
 
@@ -2468,6 +2671,22 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.activeTab = 'calendar';
     this.router.navigate(['/calendar']);
+  }
+
+  goToChat(): void {
+    this.showChatHint = false;
+    this.clearChatHintTimer();
+    this.isChatOpen = true;
+  }
+
+  closeChatPopup(): void {
+    this.isChatOpen = false;
+  }
+
+  dismissChatHint(event?: Event): void {
+    event?.stopPropagation();
+    this.showChatHint = false;
+    this.clearChatHintTimer();
   }
 
   goToAccount(): void {

@@ -4,12 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Net.Http.Headers;
+using System.Net;
 using Microsoft.Extensions.FileProviders;
 using System.IO;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Services;
 using TouristGuide.Api.Interfaces;
 using TouristGuide.Api.Services.Interfaces;
+using TouristGuide.Api.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
 var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "DataProtectionKeys");
@@ -97,9 +100,18 @@ builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<UniversalAdminPasswordService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<IAiTourismQueryService, AiTourismQueryService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TouristNotificationService>();
+
+// ── Anthropic HTTP klijent (za AI chat proxy) ──────────────────────────────
+builder.Services.AddHttpClient("AnthropicApi", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Accept.Add(
+        new MediaTypeWithQualityHeaderValue("application/json"));
+});
 
 // ── SignalR ────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
@@ -169,7 +181,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseWhen(
+    context => !IsLoopbackRequest(context),
+    branch => branch.UseHttpsRedirection());
 
 var imagesPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "images");
 Directory.CreateDirectory(imagesPhysicalPath);
@@ -194,3 +208,9 @@ app.MapHub<TouristGuide.Api.Hubs.AdminNotificationHub>("/hubs/notifications");
 app.MapHub<TouristGuide.Api.Hubs.TouristNotificationHub>("/hubs/tourist-notifications");
 
 app.Run();
+
+static bool IsLoopbackRequest(HttpContext context)
+{
+    var remoteIp = context.Connection.RemoteIpAddress;
+    return remoteIp is not null && IPAddress.IsLoopback(remoteIp);
+}

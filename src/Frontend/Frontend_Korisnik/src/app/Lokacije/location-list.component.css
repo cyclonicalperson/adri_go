@@ -246,7 +246,8 @@
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100%;
+  right: 0;
+  width: auto;
   height: 68px;
   background: #fff;
   box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
@@ -255,6 +256,8 @@
   justify-content: space-around;
   z-index: 20;
   padding: 0 4px env(safe-area-inset-bottom, 0);
+  margin: 0;
+  border-radius: 0;
 }
 
 .footer-btn {
@@ -895,4 +898,114 @@
 @media (min-width: 1600px) {
   .header-bar    { padding: 12px 56px; }
   .search-section { padding: 10px 56px; }
+}
+
+:host-context(html[data-theme='dark']) .list-container {
+  background: #111827;
+}
+
+:host-context(html[data-theme='dark']) .sticky-top,
+:host-context(html[data-theme='dark']) .header-bar,
+:host-context(html[data-theme='dark']) .search-section {
+  background: #1f2937;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .search-input-wrapper {
+  background: #334155;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .search-input-wrapper:focus-within {
+  background: #111827;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+:host-context(html[data-theme='dark']) .search-input {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .search-input::placeholder,
+:host-context(html[data-theme='dark']) .search-icon svg,
+:host-context(html[data-theme='dark']) .search-clear-btn svg {
+  color: #334155;
+  fill: #334155;
+}
+
+:host-context(html[data-theme='dark']) .search-divider {
+  background: #334155;
+}
+
+:host-context(html[data-theme='dark']) .filter-icon-btn svg {
+  fill: #22c55e;
+}
+
+:host-context(html[data-theme='dark']) .sort-btn {
+  background: #111827;
+  border-color: #334155;
+  color: #cbd5e1;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .sort-btn:hover,
+:host-context(html[data-theme='dark']) .sort-btn.sort-btn-active {
+  background: #0f172a;
+  border-color: #22c55e;
+  color: #86efac;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+:host-context(html[data-theme='dark']) .sort-menu,
+:host-context(html[data-theme='dark']) .search-results-dropdown {
+  background: #111827;
+  border-color: #334155;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .sort-option,
+:host-context(html[data-theme='dark']) .search-result-title {
+  color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .sort-option {
+  border-color: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .sort-option:hover {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .sort-option.sort-option-active {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .section-title,
+:host-context(html[data-theme='dark']) .filter-results-title,
+:host-context(html[data-theme='dark']) .expanded-section-label,
+:host-context(html[data-theme='dark']) .title-row h3,
+:host-context(html[data-theme='dark']) .h-card-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .search-result-meta,
+:host-context(html[data-theme='dark']) .info-row,
+:host-context(html[data-theme='dark']) .h-card-meta {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .location-card,
+:host-context(html[data-theme='dark']) .h-card,
+:host-context(html[data-theme='dark']) .card-content,
+:host-context(html[data-theme='dark']) .h-card-content {
+  background: #111827;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .app-footer {
+  background: #1f2937;
+  border-top: 1px solid #334155;
+  box-shadow: none;
 }
