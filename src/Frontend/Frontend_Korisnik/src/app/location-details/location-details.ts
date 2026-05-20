@@ -333,6 +333,23 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
     return (this.location?.postType || '').toLowerCase() === 'event';
   }
 
+  private touchStartX = 0;
+  private touchStartY = 0;
+
+  onTouchStart(e: TouchEvent): void {
+    const t = e.changedTouches[0];
+    this.touchStartX = t.clientX;
+    this.touchStartY = t.clientY;
+  }
+
+  onTouchEnd(e: TouchEvent): void {
+    if (this.images.length < 2) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - this.touchStartX;
+    const dy = t.clientY - this.touchStartY;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) this.nextImage(); else this.prevImage();
+  }
   get calendarMinDateTime(): string {
     const now = new Date();
     const eventRange = this.getEventRange();
