@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -8,6 +8,7 @@ import { UserService } from '../services/user.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { formatPostType } from '../utils/post-type.utils';
 
 @Component({
@@ -17,7 +18,7 @@ import { formatPostType } from '../utils/post-type.utils';
   templateUrl: './location-details.html',
   styleUrls: ['./location-details.css']
 })
-export class LocationDetailsComponent implements OnInit {
+export class LocationDetailsComponent implements OnInit, OnDestroy {
 
   location: Location | null = null;
   reviews: Review[] = [];
@@ -39,6 +40,9 @@ export class LocationDetailsComponent implements OnInit {
   isSubmittingReview = false;
 
   calendarMessage = '';
+  showCalendarScheduler = false;
+  selectedCalendarDateTime = '';
+  calendarScheduleError = '';
   showAuthModal = false;
   hasReviewed = false;
 
@@ -51,8 +55,13 @@ export class LocationDetailsComponent implements OnInit {
     private routePlanner: RoutePlannerService,
     private analytics: TouristAnalyticsService,
     private preferences: TouristPreferencesService,
+    private siteTranslate: SiteTranslateService,
     private cdr: ChangeDetectorRef
   ) { }
+
+  get currentLanguage(): string {
+    return this.siteTranslate.currentLanguage;
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -324,6 +333,23 @@ export class LocationDetailsComponent implements OnInit {
     return (this.location?.postType || '').toLowerCase() === 'event';
   }
 
+  get calendarMinDateTime(): string {
+    const now = new Date();
+    const eventRange = this.getEventRange();
+    const min = this.isEvent && eventRange?.start && eventRange.start > now ? eventRange.start : now;
+    return this.toDateTimeLocalValue(min);
+  }
+
+  get calendarMaxDateTime(): string | null {
+    const eventRange = this.getEventRange();
+    return this.isEvent && eventRange?.end ? this.toDateTimeLocalValue(eventRange.end) : null;
+  }
+
+  get eventHasPassed(): boolean {
+    const eventRange = this.getEventRange();
+    return this.isEvent && !!eventRange?.end && eventRange.end < new Date();
+  }
+
   prevImage(): void {
     if (!this.images.length) return;
     this.currentImageIndex = (this.currentImageIndex - 1 + this.images.length) % this.images.length;
@@ -466,19 +492,90 @@ export class LocationDetailsComponent implements OnInit {
     }
   }
 
-  addToCalendar(): void {
+  openCalendarScheduler(): void {
     if (!this.location) return;
     if (!this.authService.isLoggedIn) {
       this.openAuthModal();
       return;
     }
+    if (this.eventHasPassed) {
+      this.calendarMessage = 'This event has already ended.';
+      setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);
+      return;
+    }
 
-    this.userService.addLocationToCalendar(this.location).subscribe({
+    this.selectedCalendarDateTime = this.calendarMinDateTime;
+    this.calendarScheduleError = '';
+    this.showCalendarScheduler = true;
+    this.setBodyScrollLock(true);
+  }
+
+  closeCalendarScheduler(): void {
+    this.showCalendarScheduler = false;
+    this.calendarScheduleError = '';
+    this.setBodyScrollLock(false);
+  }
+
+  openDateTimePicker(input: HTMLInputElement): void {
+    const anyInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof anyInput.showPicker === 'function') {
+      try { anyInput.showPicker(); return; } catch { /* fall through */ }
+    }
+    input.focus();
+  }
+
+  ngOnDestroy(): void {
+    this.setBodyScrollLock(false);
+  }
+
+  private setBodyScrollLock(locked: boolean): void {
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('calendar-scheduler-open', locked);
+  }
+
+  addToCalendar(): void {
+    if (!this.location) return;
+    
+    if (!this.authService.isLoggedIn) {
+      this.openAuthModal();
+      return;
+    }
+    if (!this.selectedCalendarDateTime) {
+      this.calendarScheduleError = 'Choose date and time.';
+      return;
+    }
+
+    const selectedDate = new Date(this.selectedCalendarDateTime);
+    if (isNaN(selectedDate.getTime())) {
+      this.calendarScheduleError = 'Choose a valid date and time.';
+      return;
+    }
+
+    const now = new Date();
+    if (selectedDate < now) {
+      this.calendarScheduleError = 'Choose a future date and time.';
+      return;
+    }
+
+    const eventRange = this.getEventRange();
+    if (this.isEvent && eventRange) {
+      if (eventRange.start && selectedDate < eventRange.start) {
+        this.calendarScheduleError = 'Choose a time after the event starts.';
+        return;
+      }
+      if (eventRange.end && selectedDate > eventRange.end) {
+        this.calendarScheduleError = 'Choose a time before the event ends.';
+        return;
+      }
+    }
+
+    this.userService.addLocationToCalendar(this.location, { scheduledAt: this.selectedCalendarDateTime }).subscribe({
       next: (res) => {
         this.calendarMessage = res.message
           ? (res.localOnly ? '📅 ' + res.message : (res.alreadyAdded ? '📅 Already in your calendar' : '📅 Added to your calendar!'))
           : '📅 Added to your calendar!';
         setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3500);
+        this.closeCalendarScheduler();
         this.cdr.markForCheck();
       },
       error: () => {
@@ -487,6 +584,27 @@ export class LocationDetailsComponent implements OnInit {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  private getEventRange(): { start: Date | null; end: Date | null } | null {
+    if (!this.location?.details) return null;
+
+    try {
+      const details = JSON.parse(this.location.details);
+      const start = details?.startAt ? new Date(details.startAt) : null;
+      const end = details?.endAt ? new Date(details.endAt) : null;
+      return {
+        start: start && !isNaN(start.getTime()) ? start : null,
+        end: end && !isNaN(end.getTime()) ? end : null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private toDateTimeLocalValue(date: Date): string {
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

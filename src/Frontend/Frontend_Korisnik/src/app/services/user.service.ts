@@ -34,7 +34,9 @@ export interface UpdateProfilePayload {
 
 export interface CalendarItem {
   id: number;
-  postId: number;
+  postId: number | null;
+  routeId?: number | null;
+  touristRouteId?: number | null;
   title: string;
   postType: string;
   address: string;
@@ -44,6 +46,31 @@ export interface CalendarItem {
   imageUrl: string | null;
 }
 
+export interface TouristRouteWaypoint {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+export interface TouristRouteDetails {
+  id: number;
+  title: string;
+  waypoints: TouristRouteWaypoint[];
+  travelMode: string;
+  scenicMode: boolean;
+}
+
+export interface PrivateRouteCalendarPayload {
+  touristRouteId?: number;
+  title?: string;
+  waypoints?: string;
+  travelMode?: string;
+  scenicMode?: boolean;
+  distanceKm?: number;
+  durationMin?: number;
+  scheduledAt: string;
+}
+
 export interface CalendarMutationResult {
   message: string;
   alreadyAdded?: boolean;
@@ -51,6 +78,10 @@ export interface CalendarMutationResult {
   addedCount?: number;
   alreadyCount?: number;
   savedTripId?: string;
+}
+
+export interface CalendarSchedulePayload {
+  scheduledAt?: string | null;
 }
 
 export interface PostTypePreference {
@@ -139,19 +170,65 @@ export class UserService {
     return this.http.get<CalendarItem[]>(`${this.authApiUrl}/calendar`);
   }
 
-  addToCalendar(postId: number): Observable<any> {
+  addToCalendar(postId: number, schedule?: CalendarSchedulePayload): Observable<any> {
     if (!this.authService.isLoggedIn) {
       return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
-    return this.http.post(`${this.authApiUrl}/calendar/${postId}`, {});
+    return this.http.post(`${this.authApiUrl}/calendar/${postId}`, schedule ?? {});
   }
 
-  addLocationToCalendar(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }): Observable<CalendarMutationResult> {
+  addRouteToCalendar(routeId: number, schedule?: CalendarSchedulePayload): Observable<any> {
+    if (!this.authService.isLoggedIn) {
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
+    }
+
+    return this.http.post(`${this.authApiUrl}/calendar/route/${routeId}`, schedule ?? {});
+  }
+
+  addPrivateRouteToCalendar(payload: PrivateRouteCalendarPayload): Observable<any> {
+    if (!this.authService.isLoggedIn) {
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
+    }
+
+    return this.http.post(`${this.authApiUrl}/calendar/tourist-route`, payload);
+  }
+
+  getTouristRoute(id: number): Observable<TouristRouteDetails | null> {
+    if (!this.authService.isLoggedIn) {
+      return of(null);
+    }
+
+    return this.http.get<any>(`${this.authApiUrl}/tourist-routes/${id}`).pipe(
+      map(res => {
+        if (!res) return null;
+        let waypoints: TouristRouteWaypoint[] = [];
+        try {
+          const parsed = typeof res.waypoints === 'string' ? JSON.parse(res.waypoints) : res.waypoints;
+          waypoints = (Array.isArray(parsed) ? parsed : [])
+            .map((p: any) => ({ lat: Number(p.lat ?? p.latitude), lng: Number(p.lng ?? p.longitude), name: p.name ?? '' }))
+            .filter((p: TouristRouteWaypoint) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        } catch {
+          waypoints = [];
+        }
+        return {
+          id: Number(res.id),
+          title: res.title ?? '',
+          waypoints,
+          travelMode: res.travelMode ?? 'driving',
+          scenicMode: !!res.scenicMode,
+        };
+      }),
+    );
+  }
+
+  addLocationToCalendar(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }, schedule?: CalendarSchedulePayload): Observable<CalendarMutationResult> {
     if (this.authService.isLoggedIn) {
-      return this.http.post<any>(`${this.authApiUrl}/calendar/${location.id}`, {}).pipe(
+      return this.http.post<any>(`${this.authApiUrl}/calendar/${location.id}`, schedule ?? {}).pipe(
         map(res => ({
-          message: res?.alreadyAdded
+          message: res?.updated
+            ? 'Calendar date updated.'
+            : res?.alreadyAdded
             ? 'Already in your server-synced calendar.'
             : 'Added to your server-synced calendar.',
           alreadyAdded: !!res?.alreadyAdded,
@@ -225,12 +302,12 @@ export class UserService {
       .pipe(map(res => res?.data ?? null));
   }
 
-  removeFromCalendar(postId: number, plannerItemId?: number): Observable<any> {
+  removeCalendarItem(plannerItemId: number): Observable<any> {
     if (!this.authService.isLoggedIn) {
       return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
-    return this.http.delete(`${this.authApiUrl}/calendar/${postId}`);
+    return this.http.delete(`${this.authApiUrl}/calendar/item/${plannerItemId}`);
   }
 
   private mapProfile(profile: TouristProfileResponse): UserProfile {

@@ -8,7 +8,7 @@ import { TouristAppPreferences, TouristPreferencesService } from '../services/to
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 
-type SettingsSheet = 'accounts' | 'content' | 'booking' | 'support' | 'language' | null;
+type SettingsSheet = 'accounts' | 'content' | 'support' | 'language' | null;
 
 @Component({
   selector: 'app-settings',
@@ -36,13 +36,6 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
-  ];
-
-  bookingOptions = [
-    { id: 'booking', label: 'Booking.com' },
-    { id: 'airbnb', label: 'Airbnb' },
-    { id: 'tripadvisor', label: 'Tripadvisor' },
-    { id: 'getyourguide', label: 'GetYourGuide' },
   ];
 
   showPasswordModal = false;
@@ -107,6 +100,10 @@ export class SettingsComponent implements OnInit {
   }
 
   get connectedAccountsSummary(): string {
+    if (this.authService.currentTourist?.authProvider === 'google') {
+      return 'Connected';
+    }
+
     const linked = this.accountOptions
       .filter(option => this.settings.connectedAccounts[option.id])
       .map(option => option.label);
@@ -116,13 +113,6 @@ export class SettingsComponent implements OnInit {
   get isGoogleAccount(): boolean {
     return this.authService.currentTourist?.authProvider === 'google'
       || this.settings.connectedAccounts.google;
-  }
-
-  get bookingServicesSummary(): string {
-    const enabled = this.bookingOptions
-      .filter(option => this.settings.bookingServices.includes(option.id))
-      .map(option => option.label);
-    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
   }
 
   get contentPreferencesSummary(): string {
@@ -340,17 +330,6 @@ export class SettingsComponent implements OnInit {
     this.saveChanges('Connected account preferences updated');
   }
 
-  isBookingServiceEnabled(id: string): boolean {
-    return this.settings.bookingServices.includes(id);
-  }
-
-  toggleBookingService(id: string): void {
-    this.settings = {
-      ...this.settings,
-      bookingServices: this.toggleArrayValue(this.settings.bookingServices, id),
-    };
-  }
-
   saveSheet(): void {
     if (this.activeSheet === 'content' && this.authService.isLoggedIn) {
       this.userService.updateProfile({
@@ -375,8 +354,6 @@ export class SettingsComponent implements OnInit {
 
     const label = this.activeSheet === 'accounts'
       ? 'Connected account preferences updated'
-      : this.activeSheet === 'booking'
-      ? 'Booking service preferences updated'
       : 'Settings saved';
 
     this.saveChanges(label);

@@ -1,5 +1,6 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserService, CalendarMutationResult } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
@@ -9,11 +10,11 @@ import { formatPostType } from '../utils/post-type.utils';
 @Component({
   selector: 'app-location-details-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './location-details-card.html',
   styleUrls: ['./location-details-card.css']
 })
-export class LocationDetailsCardComponent {
+export class LocationDetailsCardComponent implements OnDestroy {
   @Input() locationData: any;
   @Output() onClose = new EventEmitter<void>();
   @Output() onViewDetails = new EventEmitter<void>();
@@ -22,6 +23,10 @@ export class LocationDetailsCardComponent {
   defaultImage = 'assets/Budva.jpg';
   calendarMessage = '';
   showAuthModal = false;
+
+  showCalendarScheduler = false;
+  selectedCalendarDateTime = '';
+  calendarScheduleError = '';
 
   constructor(
     private router: Router,
@@ -76,12 +81,49 @@ export class LocationDetailsCardComponent {
     this.onAddToRoute.emit();
   }
 
-  addToCalendar(event: Event): void {
+  openCalendarScheduler(event: Event): void {
     event.stopPropagation();
     if (!this.locationData?.id) return;
     if (!this.authService.isLoggedIn) {
       this.showAuthModal = true;
       this.cdr.detectChanges();
+      return;
+    }
+
+    this.selectedCalendarDateTime = this.calendarMinDateTime;
+    this.calendarScheduleError = '';
+    this.showCalendarScheduler = true;
+    this.setBodyScrollLock(true);
+  }
+
+  closeCalendarScheduler(): void {
+    this.showCalendarScheduler = false;
+    this.calendarScheduleError = '';
+    this.setBodyScrollLock(false);
+  }
+
+  openDateTimePicker(input: HTMLInputElement): void {
+    const anyInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof anyInput.showPicker === 'function') {
+      try { anyInput.showPicker(); return; } catch { /* fall through */ }
+    }
+    input.focus();
+  }
+
+  addToCalendar(): void {
+    if (!this.locationData?.id) return;
+    if (!this.selectedCalendarDateTime) {
+      this.calendarScheduleError = 'Choose date and time.';
+      return;
+    }
+
+    const selectedDate = new Date(this.selectedCalendarDateTime);
+    if (isNaN(selectedDate.getTime())) {
+      this.calendarScheduleError = 'Choose a valid date and time.';
+      return;
+    }
+    if (selectedDate < new Date()) {
+      this.calendarScheduleError = 'Choose a future date and time.';
       return;
     }
 
@@ -93,16 +135,18 @@ export class LocationDetailsCardComponent {
       regionName: this.locationData.regionName,
       images: this.locationData.images,
       imageUrl: this.locationData.imageUrl,
-    }).subscribe({
+    }, { scheduledAt: this.selectedCalendarDateTime }).subscribe({
       next: (res) => {
         this.calendarMessage = res.alreadyAdded
           ? '📅 Already in calendar'
           : (res.localOnly ? '📅 Saved locally!' : '📅 Added to calendar!');
+        this.closeCalendarScheduler();
         this.cdr.detectChanges();
         setTimeout(() => { this.calendarMessage = ''; this.cdr.detectChanges(); }, 3000);
       },
       error: () => {
         this.calendarMessage = 'Could not add to calendar.';
+        this.closeCalendarScheduler();
         this.cdr.detectChanges();
         setTimeout(() => { this.calendarMessage = ''; this.cdr.detectChanges(); }, 2500);
       }
@@ -122,5 +166,21 @@ export class LocationDetailsCardComponent {
   goToLogin(event: Event): void {
     event.stopPropagation();
     this.router.navigate(['/login']);
+  }
+
+  get calendarMinDateTime(): string {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }
+
+  ngOnDestroy(): void {
+    this.setBodyScrollLock(false);
+  }
+
+  private setBodyScrollLock(locked: boolean): void {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = locked ? 'hidden' : '';
+    document.body.style.touchAction = locked ? 'none' : '';
   }
 }

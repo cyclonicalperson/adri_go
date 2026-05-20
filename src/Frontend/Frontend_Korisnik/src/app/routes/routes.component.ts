@@ -67,15 +67,8 @@ export class RoutesComponent implements OnInit {
     if (route.waypoints.length === 0) return;
 
     this.routePlanner.replaceStops(
-      route.waypoints.map((point, index) => ({
-        id: -(route.id * 1000 + index + 1),
-        title: point.name || `${route.name} ${index + 1}`,
-        postType: 'route',
-        lat: point.lat,
-        lng: point.lng,
-        regionName: route.regionName ?? undefined,
-      })),
-      { plannerMode: true, scenicMode: false, travelMode: 'walking' },
+      this.routesService.routeToPlannerStops(route),
+      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
     );
     this.router.navigate(['/map-home']);
   }
