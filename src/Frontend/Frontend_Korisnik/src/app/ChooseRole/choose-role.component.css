@@ -168,10 +168,61 @@
 }
 
 @media (min-width: 900px) {
+  /* Full-screen layout — bez bočnih pruga */
   .role-container {
-    max-width: 500px;
-    margin: 0 auto;
-    min-height: 100vh;
-    padding: 0 32px 48px;
+    background: #eef2f6;
+    min-height: 100dvh;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Unutrašnji wrapper — centriran sadržaj */
+  .role-container > * {
+    width: min(600px, calc(100vw - 80px));
+  }
+
+  .header-area {
+    padding: 60px 0 36px;
+    width: min(600px, calc(100vw - 80px));
+  }
+  .header-area h1 { font-size: 32px; }
+  .header-area p  { font-size: 15px; }
+
+  .role-cards {
+    gap: 16px;
+    width: min(600px, calc(100vw - 80px));
+  }
+
+  .role-card {
+    padding: 24px;
+    transition: all 0.2s ease;
+    border-radius: 20px;
+  }
+  .role-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  }
+
+  .role-icon-box {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+  }
+  .role-icon-box svg { width: 30px; height: 30px; }
+
+  .role-text h3 { font-size: 18px; }
+  .role-text p  { font-size: 14px; }
+
+  .admin-note { margin-top: 8px; border-radius: 14px; }
+
+  .continue-btn {
+    width: min(600px, calc(100vw - 80px));
+    margin-top: 32px;
+    margin-bottom: 48px;
+    padding: 18px;
+    font-size: 17px;
+    border-radius: 16px;
   }
 }
