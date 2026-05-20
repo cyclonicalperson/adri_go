@@ -36,6 +36,6 @@ export class FilterStateService {
   /** Returns true if any non-default filter is active */
   isActive(): boolean {
     const s = this.get();
-    return s.minRating > 0 || s.openNow || s.activeCategories.length > 0 || !!s.showOnlySaved;
+    return s.minRating > 0 || s.openNow || s.radius > 0 || s.activeCategories.length > 0 || !!s.showOnlySaved;
   }
 }

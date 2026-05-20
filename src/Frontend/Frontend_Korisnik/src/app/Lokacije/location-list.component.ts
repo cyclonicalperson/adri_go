@@ -11,11 +11,52 @@ import { RecommendationService } from '../services/recommendation.service';
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
+import { RoutePlannerService } from '../services/route-planner.service';
+import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
+import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
+type ExploreContentType = 'destinations' | 'activities' | 'routes';
 type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
+type ActivitySortOption = 'activity-name-asc' | 'activity-popular' | 'activity-category' | 'activity-difficulty';
+type RouteSortOption = 'route-newest' | 'route-distance-asc' | 'route-distance-desc' | 'route-duration-asc' | 'route-name-asc' | 'route-difficulty';
+type ExploreSortOption = SortOption | ActivitySortOption | RouteSortOption;
+
+type SearchIntent = {
+  normalizedQuery: string;
+  terms: string[];
+  categoryKeys: string[];
+  nearMe: boolean;
+  openNow: boolean;
+  highRated: boolean;
+  savedOnly: boolean;
+  familyFriendly: boolean;
+  timeSensitive: boolean;
+  scenic: boolean;
+  personalized: boolean;
+  matchedPhrases: string[];
+};
+
+type DestinationSearchResult = Location & {
+  searchReason?: string;
+  searchBadges?: string[];
+};
+
+type ExploreSearchResult = {
+  kind: ExploreContentType;
+  id: number;
+  title: string;
+  subtitle: string;
+  meta: string;
+  color: string;
+  image?: string;
+  rating?: number | null;
+  reason?: string;
+  raw: Location | TouristActivityItem | TouristRouteItem;
+};
 
 @Component({
   selector: 'app-location-list',
@@ -30,16 +71,24 @@ export class LocationListComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   sortMenuOpen = false;
   isFiltersOpen = false;
+  isTypeFiltersOpen = false;
+  activeContentType: ExploreContentType = 'destinations';
   locations: Location[] = [];
   private allLocations: Location[] = [];
+  activities: TouristActivityItem[] = [];
+  private allActivities: TouristActivityItem[] = [];
+  routes: TouristRouteItem[] = [];
+  private allRoutes: TouristRouteItem[] = [];
   isLoading = false;
   errorMessage = '';
+  activitiesErrorMessage = '';
+  routesErrorMessage = '';
   feedbackMessage = '';
   showAuthPopup = false;
   authPopupMessage = 'Please log in to save locations, like places, and add items to your calendar.';
   private userPosition: UserPosition | null = null;
-  sortOption: SortOption = 'recommended';
-  readonly sortOptions: { value: SortOption; label: string }[] = [
+  sortOption: ExploreSortOption = 'recommended';
+  readonly destinationSortOptions: { value: SortOption; label: string }[] = [
     { value: 'recommended', label: 'Recommended' },
     { value: 'rating-desc', label: 'Highest rated' },
     { value: 'distance-asc', label: 'Nearest' },
@@ -48,12 +97,34 @@ export class LocationListComponent implements OnInit, OnDestroy {
     { value: 'newest', label: 'Newest' },
     { value: 'popular', label: 'Most popular' },
   ];
+  readonly activitySortOptions: { value: ActivitySortOption; label: string }[] = [
+    { value: 'activity-name-asc', label: 'Name A-Z' },
+    { value: 'activity-popular', label: 'Most used' },
+    { value: 'activity-category', label: 'Category' },
+    { value: 'activity-difficulty', label: 'Difficulty' },
+  ];
+  readonly routeSortOptions: { value: RouteSortOption; label: string }[] = [
+    { value: 'route-newest', label: 'Newest' },
+    { value: 'route-distance-asc', label: 'Shortest' },
+    { value: 'route-distance-desc', label: 'Longest' },
+    { value: 'route-duration-asc', label: 'Quickest' },
+    { value: 'route-name-asc', label: 'Name A-Z' },
+    { value: 'route-difficulty', label: 'Difficulty' },
+  ];
 
   searchQuery = '';
   submittedSearchQuery = '';
   isSearchActive = false;
-  searchResults: Location[] = [];
+  searchResults: ExploreSearchResult[] = [];
+  searchIntentSummary = '';
+  searchFocused = false;
   showDropdown = false;
+
+  readonly contentTypeTabs: { value: ExploreContentType; label: string }[] = [
+    { value: 'destinations', label: 'Destinacije' },
+    { value: 'activities', label: 'Aktivnosti' },
+    { value: 'routes', label: 'Rute' },
+  ];
 
   // Section arrays
   nearYouLocations: Location[] = [];
@@ -65,9 +136,96 @@ export class LocationListComponent implements OnInit, OnDestroy {
   filteredLocations: Location[] = [];
   activeFilterState: FilterState | null = null;
   private activeActivityFilter: { id: number | null; name: string } | null = null;
+  activityFilters = {
+    categories: [] as string[],
+    difficulties: [] as string[],
+    linkedOnly: false,
+  };
+  routeFilters = {
+    difficulties: [] as string[],
+    regions: [] as string[],
+    distanceBand: '',
+    durationBand: '',
+  };
 
   get isFilterView(): boolean {
-    return this.isFilterActive && !this.isSearchActive;
+    return this.activeContentType === 'destinations' && this.isFilterActive && !this.isSearchActive;
+  }
+
+  get sortOptions(): { value: ExploreSortOption; label: string }[] {
+    switch (this.activeContentType) {
+      case 'activities': return this.activitySortOptions;
+      case 'routes': return this.routeSortOptions;
+      default: return this.destinationSortOptions;
+    }
+  }
+
+  get activeContentLabel(): string {
+    return this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinacije';
+  }
+
+  get activeSearchPlaceholder(): string {
+    switch (this.activeContentType) {
+      case 'activities': return 'Search activities...';
+      case 'routes': return 'Search routes...';
+      default: return 'Search locations...';
+    }
+  }
+
+  get activeErrorMessage(): string {
+    switch (this.activeContentType) {
+      case 'activities': return this.activitiesErrorMessage;
+      case 'routes': return this.routesErrorMessage;
+      default: return this.errorMessage;
+    }
+  }
+
+  get hasActiveTypeFilters(): boolean {
+    if (this.activeContentType === 'destinations') {
+      return this.isFilterActive || this.filterStateService.isActive();
+    }
+    if (this.activeContentType === 'activities') {
+      return this.activityFilters.categories.length > 0
+        || this.activityFilters.difficulties.length > 0
+        || this.activityFilters.linkedOnly;
+    }
+    return this.routeFilters.difficulties.length > 0
+      || this.routeFilters.regions.length > 0
+      || !!this.routeFilters.distanceBand
+      || !!this.routeFilters.durationBand;
+  }
+
+  get activityCategoryOptions(): string[] {
+    return this.uniqueSorted(this.allActivities.map(item => item.category).filter(Boolean));
+  }
+
+  get activityDifficultyOptions(): string[] {
+    return this.uniqueSorted(this.allActivities.map(item => item.difficulty || '').filter(Boolean));
+  }
+
+  get routeDifficultyOptions(): string[] {
+    return this.uniqueSorted(this.allRoutes.map(item => item.difficulty || '').filter(Boolean));
+  }
+
+  get routeRegionOptions(): string[] {
+    return this.uniqueSorted(this.allRoutes.map(item => item.regionName || '').filter(Boolean));
+  }
+
+  get activeResultCount(): number {
+    switch (this.activeContentType) {
+      case 'activities': return this.activities.length;
+      case 'routes': return this.routes.length;
+      default: return this.locations.length;
+    }
+  }
+
+  get searchNoResultsMessage(): string {
+    const query = this.submittedSearchQuery || this.searchQuery.trim();
+    switch (this.activeContentType) {
+      case 'activities': return `No activities found for "${query}".`;
+      case 'routes': return `No routes found for "${query}".`;
+      default: return `No destinations found for "${query}".`;
+    }
   }
 
   // Expanded section view (inline, no navigation)
@@ -105,11 +263,18 @@ export class LocationListComponent implements OnInit, OnDestroy {
     private userService: UserService,
     private analyticsService: TouristAnalyticsService,
     private filterStateService: FilterStateService,
+    private activitiesService: TouristActivitiesService,
+    private routesService: TouristRoutesService,
+    private routePlanner: RoutePlannerService,
+    private preferences: TouristPreferencesService,
   ) { }
 
   ngOnInit(): void {
+    this.readContentTypeFromRoute();
     this.readActivityFilterFromRoute();
     this.loadLocations();
+    this.loadActivities();
+    this.loadRoutes();
     this.loadUserPosition();
   }
 
@@ -126,7 +291,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
         if (this.activeActivityFilter) {
           this.applyActivityFilter(this.activeActivityFilter);
         } else {
-          this.locations = this.applySort(this.allLocations);
+          this.refreshVisibleContent();
         }
         this.buildSections();
         this.isLoading = false;
@@ -140,86 +305,126 @@ export class LocationListComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadActivities(): void {
+    this.activitiesErrorMessage = '';
+    this.activitiesService.getActivities().subscribe({
+      next: (activities) => {
+        this.allActivities = activities;
+        this.refreshVisibleContent();
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        if (err.status === 403 || err.status === 401) {
+          this.activitiesErrorMessage = 'Activities require a registered account.';
+        } else if (err.status === 404) {
+          this.activitiesErrorMessage = 'Activities are not available on this server.';
+        } else {
+          this.activitiesErrorMessage = 'Could not load activities.';
+        }
+        this.allActivities = [];
+        this.refreshVisibleContent();
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  loadRoutes(): void {
+    this.routesErrorMessage = '';
+    this.routesService.getRoutes().subscribe({
+      next: (routes) => {
+        this.allRoutes = routes;
+        this.refreshVisibleContent();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.routesErrorMessage = 'Could not load routes.';
+        this.allRoutes = [];
+        this.refreshVisibleContent();
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
   /** Called on every keystroke — updates live dropdown */
+  retryActiveLoad(): void {
+    if (this.activeContentType === 'activities') {
+      this.loadActivities();
+      return;
+    }
+    if (this.activeContentType === 'routes') {
+      this.loadRoutes();
+      return;
+    }
+    this.loadLocations();
+  }
+
   onSearchInput(): void {
-    const q = this.searchQuery.trim().toLowerCase();
-    if (!q) {
-      this.searchResults = [];
-      this.showDropdown = false;
-      this.isSearchActive = false;
-      this.clearActivityFilterState();
-      this.submittedSearchQuery = '';
-      this.locations = this.applySort(this.allLocations);
+    const query = this.searchQuery.trim();
+    if (!query) {
+      this.resetSearchState();
+      this.refreshVisibleContent();
       this.cdr.markForCheck();
       return;
     }
-    this.searchResults = this.allLocations
-      .filter(loc =>
-        (loc.title || '').toLowerCase().includes(q) ||
-        (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-        (loc.regionName || '').toLowerCase().includes(q) ||
-        this.getActivityTags(loc, 20).some(tag => tag.toLowerCase().includes(q))
-      )
-      .slice(0, 8);
+    this.isSearchActive = true;
+    this.submittedSearchQuery = query;
+    this.clearActivityFilterState();
+    this.rebuildSearchResults();
+    this.refreshVisibleContent();
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
-    this.showDropdown = this.searchResults.length > 0;
     this.cdr.markForCheck();
   }
 
   /** Called when user clicks a dropdown suggestion */
-  selectSearchResult(loc: Location): void {
-    this.searchQuery = loc.title || '';
+  selectSearchResult(result: ExploreSearchResult): void {
+    this.searchQuery = result.title || '';
     this.showDropdown = false;
+    this.searchFocused = false;
     this.submittedSearchQuery = this.searchQuery.trim();
     this.isSearchActive = true;
     this.clearActivityFilterState();
-    const q = this.searchQuery.trim().toLowerCase();
-    this.locations = this.applySort(this.allLocations.filter(l =>
-      (l.title || '').toLowerCase().includes(q) ||
-      (l.postType || (l as any).category || '').toLowerCase().includes(q) ||
-      (l.regionName || '').toLowerCase().includes(q) ||
-      this.getActivityTags(l, 20).some(tag => tag.toLowerCase().includes(q))
-    ));
+    this.rebuildSearchResults();
+    this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
 
   /** Called when user clicks Search button or presses Enter */
   executeSearch(rawQuery = this.searchQuery): void {
     this.searchQuery = rawQuery;
-    const q = rawQuery.trim().toLowerCase();
+    const query = rawQuery.trim();
     this.showDropdown = false;
+    this.searchFocused = false;
     this.sortMenuOpen = false;
-    if (!q) {
+    if (!query) {
       this.clearSearch();
       return;
     }
     this.isSearchActive = true;
     this.clearActivityFilterState();
-    this.submittedSearchQuery = rawQuery.trim();
-    this.locations = this.applySort(this.allLocations.filter(loc =>
-      (loc.title || '').toLowerCase().includes(q) ||
-      (loc.postType || (loc as any).category || '').toLowerCase().includes(q) ||
-      (loc.regionName || '').toLowerCase().includes(q) ||
-      this.getActivityTags(loc, 20).some(tag => tag.toLowerCase().includes(q))
-    ));
+    this.submittedSearchQuery = query;
+    this.rebuildSearchResults();
+    this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
 
   clearSearch(): void {
     this.searchQuery = '';
-    this.submittedSearchQuery = '';
-    this.isSearchActive = false;
+    this.resetSearchState();
     this.clearActivityFilterState();
-    this.searchResults = [];
-    this.showDropdown = false;
-    this.locations = this.applySort(this.allLocations);
+    this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
 
   /** Zatvaramo dropdown kad input izgubi fokus (malo kašnjenje zbog mousedown na stavci) */
+  onSearchFocus(): void {
+    this.searchFocused = true;
+    this.rebuildSearchResults();
+  }
+
   onSearchBlur(): void {
     setTimeout(() => {
       this.showDropdown = false;
+      this.searchFocused = false;
       this.cdr.markForCheck();
     }, 150);
   }
@@ -267,12 +472,19 @@ export class LocationListComponent implements OnInit, OnDestroy {
   goToNotifications(): void { this.router.navigate(['/notifications']); }
   goToMap(): void { this.router.navigate(['/map-home']); }
   openFilters(): void {
+    if (this.activeContentType !== 'destinations') {
+      this.isTypeFiltersOpen = true;
+      this.setPageScrollLock(true);
+      this.cdr.markForCheck();
+      return;
+    }
     this.isFiltersOpen = true;
     this.setPageScrollLock(true);
     this.cdr.markForCheck();
   }
   closeFilters(): void {
     this.isFiltersOpen = false;
+    this.isTypeFiltersOpen = false;
     this.setPageScrollLock(false);
     this.cdr.markForCheck();
   }
@@ -285,6 +497,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       state.activeCategories.length > 0 ||
       state.minRating > 0 ||
       state.openNow ||
+      state.showOnlySaved ||
       (state.radius > 0);
 
     if (hasActiveFilter) {
@@ -295,6 +508,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       this.filteredLocations = [];
       this.isFilterActive = false;
     }
+    this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
 
@@ -303,6 +517,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.filteredLocations = [];
     this.activeFilterState = null;
     this.filterStateService.clear();
+    this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
 
@@ -315,6 +530,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
       }
       // Rating filter
       if (state.minRating > 0 && (loc.avgRating || 0) < state.minRating) return false;
+      if (state.openNow && !this.isLocationOpen(loc)) return false;
+      if (state.showOnlySaved && state.savedPostIds?.length && !state.savedPostIds.includes(loc.id)) return false;
       // Radius filter
       if (state.radius > 0 && this.userPosition) {
         const coords = this.getLocationCoordinates(loc);
@@ -328,7 +545,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   onSortChanged(): void {
-    this.locations = this.applySort(this.locations);
+    this.refreshVisibleContent();
     this.filteredLocations = this.applySort(this.filteredLocations);
     this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
     this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
@@ -384,6 +601,15 @@ export class LocationListComponent implements OnInit, OnDestroy {
       .map(tag => String(tag).trim())
       .filter(Boolean)))
       .slice(0, limit);
+  }
+
+  getTagList(tags?: string | null): string[] {
+    if (!tags) return [];
+    return tags
+      .split(/[;,]/)
+      .map(tag => tag.trim())
+      .filter(Boolean)
+      .slice(0, 4);
   }
 
   get sectionTitle(): string {
@@ -511,7 +737,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if (this.activeActivityFilter) {
         this.applyActivityFilter(this.activeActivityFilter);
       } else if (!this.isSearchActive) {
-        this.locations = this.applySort(this.allLocations);
+        this.refreshVisibleContent();
+      }
+      if (this.isSearchActive) {
+        this.rebuildSearchResults();
+        this.refreshVisibleContent();
       }
       this.buildSections();
       this.cdr.markForCheck();
@@ -525,6 +755,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     const parsedId = idParam != null ? Number(idParam) : NaN;
     if (!name && !Number.isFinite(parsedId)) return;
 
+    this.activeContentType = 'destinations';
     this.activeActivityFilter = {
       id: Number.isFinite(parsedId) ? parsedId : null,
       name,
@@ -608,6 +839,678 @@ export class LocationListComponent implements OnInit, OnDestroy {
       default:
         return sorted;
     }
+  }
+
+  setActiveContentType(type: ExploreContentType): void {
+    if (this.activeContentType === type) return;
+
+    this.activeContentType = type;
+    this.activeSectionView = null;
+    this.isFiltersOpen = false;
+    this.isTypeFiltersOpen = false;
+    this.sortMenuOpen = false;
+    this.setPageScrollLock(false);
+    this.clearSearch();
+    this.ensureSortForActiveType();
+    this.refreshVisibleContent();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { type },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  toggleActivityFilter(group: 'categories' | 'difficulties', value: string): void {
+    const list = this.activityFilters[group];
+    this.activityFilters[group] = list.includes(value)
+      ? list.filter(item => item !== value)
+      : [...list, value];
+    this.refreshVisibleContent();
+    this.cdr.markForCheck();
+  }
+
+  toggleRouteFilter(group: 'difficulties' | 'regions', value: string): void {
+    const list = this.routeFilters[group];
+    this.routeFilters[group] = list.includes(value)
+      ? list.filter(item => item !== value)
+      : [...list, value];
+    this.refreshVisibleContent();
+    this.cdr.markForCheck();
+  }
+
+  setRouteDistanceBand(value: string): void {
+    this.routeFilters.distanceBand = this.routeFilters.distanceBand === value ? '' : value;
+    this.refreshVisibleContent();
+    this.cdr.markForCheck();
+  }
+
+  setRouteDurationBand(value: string): void {
+    this.routeFilters.durationBand = this.routeFilters.durationBand === value ? '' : value;
+    this.refreshVisibleContent();
+    this.cdr.markForCheck();
+  }
+
+  toggleLinkedActivitiesOnly(): void {
+    this.activityFilters.linkedOnly = !this.activityFilters.linkedOnly;
+    this.refreshVisibleContent();
+    this.cdr.markForCheck();
+  }
+
+  clearTypeFilters(): void {
+    if (this.activeContentType === 'activities') {
+      this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
+    } else if (this.activeContentType === 'routes') {
+      this.routeFilters = { difficulties: [], regions: [], distanceBand: '', durationBand: '' };
+    }
+    this.refreshVisibleContent();
+    this.cdr.markForCheck();
+  }
+
+  openActivity(activity: TouristActivityItem): void {
+    this.activeContentType = 'destinations';
+    this.activeActivityFilter = { id: activity.id, name: activity.name };
+    this.applyActivityFilter(this.activeActivityFilter);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { type: 'destinations', activityTagId: activity.id, activityTag: activity.name },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
+  }
+
+  openRouteOnMap(route: TouristRouteItem): void {
+    if (route.waypoints.length === 0) return;
+
+    this.routePlanner.replaceStops(
+      this.routesService.routeToPlannerStops(route),
+      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+    );
+    this.router.navigate(['/map-home']);
+  }
+
+  getRouteFirstImage(route: TouristRouteItem): string {
+    return this.getFirstImage({ images: route.images || [] });
+  }
+
+  getActivityColor(activity: TouristActivityItem): string {
+    return activity.color || '#22c55e';
+  }
+
+  formatRouteDifficulty(value?: string | null): string {
+    if (!value) return 'Route';
+    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  }
+
+  formatActivityCategory(value?: string | null): string {
+    if (!value) return 'Activity';
+    return value
+      .toLowerCase()
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, char => char.toUpperCase());
+  }
+
+  private readContentTypeFromRoute(): void {
+    const type = this.route.snapshot.queryParamMap.get('type');
+    if (type === 'activities' || type === 'routes' || type === 'destinations') {
+      this.activeContentType = type;
+      this.ensureSortForActiveType();
+    }
+  }
+
+  private ensureSortForActiveType(): void {
+    const allowed = this.sortOptions.map(option => option.value);
+    if (allowed.includes(this.sortOption)) return;
+
+    this.sortOption = this.activeContentType === 'activities'
+      ? 'activity-name-asc'
+      : this.activeContentType === 'routes'
+        ? 'route-newest'
+        : 'recommended';
+  }
+
+  private resetSearchState(): void {
+    this.submittedSearchQuery = '';
+    this.isSearchActive = false;
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.showDropdown = false;
+  }
+
+  private rebuildSearchResults(): void {
+    const query = this.searchQuery.trim();
+    if (!query) {
+      this.resetSearchState();
+      return;
+    }
+
+    this.searchResults = this.buildSearchResults(query);
+    this.searchIntentSummary = this.describeSearchForCurrentType(query, this.searchResults.length);
+    this.showDropdown = this.searchFocused && this.searchResults.length > 0;
+  }
+
+  private refreshVisibleContent(): void {
+    if (this.isSearchActive && this.searchQuery.trim()) {
+      this.rebuildSearchResults();
+    }
+
+    if (this.activeContentType === 'destinations') {
+      if (this.activeActivityFilter) {
+        this.locations = this.applySort(this.allLocations.filter(loc => this.matchesActivityFilter(loc, this.activeActivityFilter!)));
+        return;
+      }
+
+      const base = this.getDestinationFilterBase();
+      this.locations = this.isSearchActive && this.searchQuery.trim()
+        ? this.applySort(this.searchResults
+            .filter(result => result.kind === 'destinations')
+            .map(result => result.raw as Location))
+        : this.applySort(base);
+      return;
+    }
+
+    if (this.activeContentType === 'activities') {
+      const base = this.getActivityFilterBase();
+      this.activities = this.isSearchActive && this.searchQuery.trim()
+        ? this.sortActivities(this.searchResults
+            .filter(result => result.kind === 'activities')
+            .map(result => result.raw as TouristActivityItem))
+        : this.sortActivities(base);
+      return;
+    }
+
+    const base = this.getRouteFilterBase();
+    this.routes = this.isSearchActive && this.searchQuery.trim()
+      ? this.sortRoutes(this.searchResults
+          .filter(result => result.kind === 'routes')
+          .map(result => result.raw as TouristRouteItem))
+      : this.sortRoutes(base);
+  }
+
+  private getDestinationFilterBase(): Location[] {
+    if (this.activeFilterState && this.isFilterActive) {
+      return this.applyFiltersToLocations(this.allLocations, this.activeFilterState);
+    }
+    return [...this.allLocations];
+  }
+
+  private getActivityFilterBase(): TouristActivityItem[] {
+    return this.allActivities.filter(activity => {
+      if (this.activityFilters.categories.length > 0 && !this.activityFilters.categories.includes(activity.category)) {
+        return false;
+      }
+      if (this.activityFilters.difficulties.length > 0 && !this.activityFilters.difficulties.includes(activity.difficulty || '')) {
+        return false;
+      }
+      if (this.activityFilters.linkedOnly && !(activity.linkedPosts && activity.linkedPosts > 0)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private getRouteFilterBase(): TouristRouteItem[] {
+    return this.allRoutes.filter(route => {
+      if (this.routeFilters.difficulties.length > 0 && !this.routeFilters.difficulties.includes(route.difficulty || '')) {
+        return false;
+      }
+      if (this.routeFilters.regions.length > 0 && !this.routeFilters.regions.includes(route.regionName || '')) {
+        return false;
+      }
+      if (this.routeFilters.distanceBand && !this.routeMatchesDistanceBand(route, this.routeFilters.distanceBand)) {
+        return false;
+      }
+      if (this.routeFilters.durationBand && !this.routeMatchesDurationBand(route, this.routeFilters.durationBand)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private buildSearchResults(query: string): ExploreSearchResult[] {
+    if (this.activeContentType === 'activities') {
+      return this.getActivitySearchResults(query);
+    }
+    if (this.activeContentType === 'routes') {
+      return this.getRouteSearchResults(query);
+    }
+    return this.getDestinationSearchResults(query);
+  }
+
+  private getDestinationSearchResults(query: string): ExploreSearchResult[] {
+    const intent = this.parseSearchIntent(query);
+    if (!intent.normalizedQuery) return [];
+
+    return this.getDestinationFilterBase()
+      .map(loc => this.buildDestinationSearchMatch(loc, intent))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map(item => ({
+        kind: 'destinations',
+        id: item.loc.id,
+        title: item.loc.title,
+        subtitle: item.loc.regionName || this.formatPostType(item.loc.postType || item.loc.category),
+        meta: this.formatPostType(item.loc.postType || item.loc.category),
+        color: this.getCategoryColor(item.loc.postType || item.loc.category),
+        image: this.getFirstImage(item.loc),
+        rating: item.loc.avgRating || item.loc.rating || null,
+        reason: item.reason,
+        raw: {
+          ...item.loc,
+          searchReason: item.reason,
+          searchBadges: item.badges,
+        } as DestinationSearchResult,
+      }));
+  }
+
+  private getActivitySearchResults(query: string): ExploreSearchResult[] {
+    const terms = this.expandSearchTerms(this.tokenizeSearch(query));
+    if (terms.length === 0) return [];
+
+    return this.getActivityFilterBase()
+      .map(activity => {
+        const fields = [
+          activity.name,
+          activity.category,
+          activity.description,
+          activity.difficulty,
+          activity.duration,
+          activity.tags,
+          activity.locationName,
+        ].map(value => this.normalizeSearchValue(value));
+        const score = this.scoreTextFields(terms, fields, this.normalizeSearchValue(activity.name))
+          + Math.min(12, activity.viewCount ?? 0);
+        return { activity, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map(({ activity }) => ({
+        kind: 'activities',
+        id: activity.id,
+        title: activity.name,
+        subtitle: this.formatActivityCategory(activity.category),
+        meta: [activity.locationName, activity.difficulty, activity.duration].filter(Boolean).join(' · '),
+        color: this.getActivityColor(activity),
+        reason: activity.locationName ? `Matched activity data near ${activity.locationName}.` : 'Matched activity name, category or tags.',
+        raw: activity,
+      }));
+  }
+
+  private getRouteSearchResults(query: string): ExploreSearchResult[] {
+    const terms = this.expandSearchTerms(this.tokenizeSearch(query));
+    if (terms.length === 0) return [];
+
+    return this.getRouteFilterBase()
+      .map(route => {
+        const fields = [
+          route.name,
+          route.description,
+          route.difficulty,
+          route.regionName,
+          ...route.waypoints.map(point => point.name || ''),
+        ].map(value => this.normalizeSearchValue(value));
+        const score = this.scoreTextFields(terms, fields, this.normalizeSearchValue(route.name))
+          + Math.max(0, 20 - (route.distanceKm || 0) / 2);
+        return { route, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map(({ route }) => ({
+        kind: 'routes',
+        id: route.id,
+        title: route.name,
+        subtitle: route.regionName || this.formatRouteDifficulty(route.difficulty),
+        meta: [
+          route.distanceKm ? `${route.distanceKm.toFixed(1)} km` : '',
+          route.durationMin ? `${route.durationMin} min` : '',
+          this.formatRouteDifficulty(route.difficulty),
+        ].filter(Boolean).join(' · '),
+        color: '#0ea5e9',
+        image: this.getRouteFirstImage(route),
+        reason: route.regionName ? `Matched route data in ${route.regionName}.` : 'Matched route name, description or waypoints.',
+        raw: route,
+      }));
+  }
+
+  private buildDestinationSearchMatch(loc: Location, intent: SearchIntent): { loc: Location; score: number; reason: string; badges: string[] } {
+    const terms = intent.terms;
+    const fields = [
+      loc.title,
+      loc.regionName,
+      loc.address,
+      loc.description,
+      loc.postType,
+      loc.category,
+      ...this.getActivityTags(loc, 20),
+    ].filter(Boolean).map(value => this.normalizeSearchText(String(value)));
+
+    let score = 0;
+    const badges: string[] = [];
+    const title = this.normalizeSearchText(loc.title || '');
+    const typeKey = this.normalizeTypeKey(loc.postType || loc.category || '');
+
+    for (const term of terms) {
+      if (title === term) score += 120;
+      else if (title.startsWith(term)) score += 80;
+      else if (title.includes(term)) score += 55;
+
+      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
+      if (fields.some(field => field.includes(term))) score += 15;
+    }
+
+    if (intent.categoryKeys.includes(typeKey)) {
+      score += terms.length > 0 ? 70 : 45;
+      badges.push(this.formatPostType(loc.postType || loc.category));
+    }
+
+    if (intent.openNow) {
+      if (!this.isLocationOpen(loc)) return { loc, score: 0, reason: '', badges: [] };
+      score += 35;
+      badges.push('Open now');
+    }
+
+    if (intent.highRated) {
+      const rating = Number(loc.avgRating || loc.rating || 0);
+      if (rating < 4) score -= 20;
+      score += Math.min(35, rating * 7);
+      badges.push('Top rated');
+    }
+
+    if (intent.nearMe) {
+      if (loc.distanceKm == null) {
+        score += 4;
+      } else {
+        score += Math.max(0, 45 - loc.distanceKm * 7);
+        if (loc.distanceKm <= 2) badges.push('Very close');
+        else if (loc.distanceKm <= 8) badges.push('Nearby');
+      }
+    }
+
+    if (intent.familyFriendly && fields.some(field => /(family|kids|children|porodic|deca|djeca|mirno|park)/.test(field))) {
+      score += 25;
+      badges.push('Family fit');
+    }
+
+    if (intent.timeSensitive && (typeKey === 'event' || this.isLocationOpen(loc))) {
+      score += 20;
+      badges.push(typeKey === 'event' ? 'Event' : 'Good timing');
+    }
+
+    if (intent.scenic && fields.some(field => /(view|scenic|panorama|vidikovac|nature|priroda|sunset|zalazak|photo|foto)/.test(field))) {
+      score += 22;
+      badges.push('Scenic');
+    }
+
+    if (intent.personalized) {
+      const personalTokens = this.preferences.snapshot.contentPreferences
+        .map(value => this.normalizeSearchText(value));
+      if (personalTokens.some(token => fields.some(field => field.includes(token)))) {
+        score += 18;
+        badges.push('For you');
+      }
+    }
+
+    if (loc.distanceKm != null) score += Math.max(0, 10 - loc.distanceKm);
+    score += Math.min(10, Number(loc.avgRating || loc.rating || 0));
+
+    if (terms.length === 0 && !intent.categoryKeys.length && !intent.nearMe && !intent.openNow && !intent.highRated && !intent.timeSensitive && !intent.scenic && !intent.personalized) {
+      score = 0;
+    }
+
+    const uniqueBadges = Array.from(new Set(badges.filter(Boolean))).slice(0, 3);
+    return {
+      loc,
+      score,
+      reason: this.getSearchReason(loc, intent, uniqueBadges),
+      badges: uniqueBadges,
+    };
+  }
+
+  private parseSearchIntent(query: string): SearchIntent {
+    const normalizedQuery = this.normalizeSearchText(query);
+    const phrases: string[] = [];
+    const categoryKeys = new Set<string>();
+
+    const phraseIncludes = (...values: string[]) => values.some(value => normalizedQuery.includes(value));
+    const addCategory = (key: string, ...values: string[]) => {
+      if (phraseIncludes(...values)) {
+        categoryKeys.add(key);
+        phrases.push(this.formatPostType(key));
+      }
+    };
+
+    addCategory('attraction', 'beach', 'plaza', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
+    addCategory('restaurant', 'restaurant', 'restoran', 'food', 'hrana', 'dinner', 'lunch', 'kafa', 'cafe');
+    addCategory('cultural_site', 'culture', 'cultural', 'kultura', 'museum', 'muzej', 'history', 'istorija');
+    addCategory('monument', 'monument', 'spomenik');
+    addCategory('club', 'nightlife', 'club', 'bar', 'party', 'nocni', 'nocu');
+    addCategory('sports_facility', 'sport', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure');
+    addCategory('event', 'event', 'dogadjaj', 'festival', 'concert', 'koncert', 'tonight', 'veceras', 'weekend', 'vikend');
+    addCategory('accommodation', 'hotel', 'accommodation', 'smestaj', 'smjestaj', 'stay');
+    addCategory('shop', 'shop', 'shopping', 'prodavnica', 'market');
+
+    const nearMe = phraseIncludes('near me', 'nearby', 'close', 'blizu', 'u blizini', 'oko mene');
+    const openNow = phraseIncludes('open now', 'opened', 'otvoreno', 'radi sada', 'sad otvoreno');
+    const highRated = phraseIncludes('best', 'top', 'rated', 'najbolje', 'najbolji', 'visoko ocen', 'visoko ocjen');
+    const savedOnly = phraseIncludes('saved', 'sacuvano', 'sacuvane', 'omiljeno', 'favorites', 'favourites');
+    const familyFriendly = phraseIncludes('family', 'kids', 'children', 'porodic', 'deca', 'djeca');
+    const timeSensitive = phraseIncludes('today', 'tonight', 'tomorrow', 'weekend', 'danas', 'veceras', 'sutra', 'vikend');
+    const scenic = phraseIncludes('scenic', 'view', 'photo', 'foto', 'panorama', 'vidikovac', 'zalazak');
+    const personalized = phraseIncludes('for me', 'recommended', 'recommendation', 'preporuci', 'preporuke', 'za mene');
+
+    const stopWords = new Set([
+      'near', 'me', 'nearby', 'open', 'now', 'best', 'top', 'rated', 'for', 'today', 'tonight',
+      'tomorrow', 'weekend', 'blizu', 'mene', 'sada', 'sad', 'najbolje', 'najbolji', 'danas',
+      'veceras', 'sutra', 'vikend', 'preporuci', 'preporuke', 'saved', 'sacuvano', 'sacuvane',
+    ]);
+    const terms = normalizedQuery
+      .split(/\s+/)
+      .filter(term => term.length > 1 && !stopWords.has(term));
+
+    return {
+      normalizedQuery,
+      terms,
+      categoryKeys: Array.from(categoryKeys),
+      nearMe,
+      openNow,
+      highRated,
+      savedOnly,
+      familyFriendly,
+      timeSensitive,
+      scenic,
+      personalized,
+      matchedPhrases: phrases,
+    };
+  }
+
+  private describeSearchForCurrentType(query: string, count: number): string {
+    if (this.activeContentType !== 'destinations') {
+      return `${count} ${count === 1 ? 'result' : 'results'} for "${query}".`;
+    }
+
+    const intent = this.parseSearchIntent(query);
+    const parts = [
+      intent.nearMe ? 'near you' : '',
+      intent.openNow ? 'open now' : '',
+      intent.highRated ? 'high rated' : '',
+      intent.timeSensitive ? 'time-aware' : '',
+      intent.scenic ? 'scenic' : '',
+      intent.personalized ? 'personalized' : '',
+      ...intent.matchedPhrases,
+    ].filter(Boolean);
+
+    if (parts.length === 0) {
+      return `${count} result${count === 1 ? '' : 's'} ranked by text, rating and context.`;
+    }
+
+    return `${count} result${count === 1 ? '' : 's'} for ${Array.from(new Set(parts)).slice(0, 4).join(', ')}.`;
+  }
+
+  private getSearchReason(loc: Location, intent: SearchIntent, badges: string[]): string {
+    if (badges.includes('Very close') || badges.includes('Nearby')) {
+      return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
+    }
+    if (badges.includes('Open now')) return 'Available now based on opening hours.';
+    if (badges.includes('For you')) return 'Matches your interests and recent context.';
+    if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
+    if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
+    return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
+  }
+
+  private scoreTextFields(terms: string[], fields: string[], title: string): number {
+    let score = 0;
+    for (const term of terms) {
+      if (title === term) score += 120;
+      else if (title.startsWith(term)) score += 80;
+      else if (title.includes(term)) score += 55;
+      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
+      if (fields.some(field => field.includes(term))) score += 15;
+    }
+    return score;
+  }
+
+  private tokenizeSearch(value: string): string[] {
+    return this.normalizeSearchValue(value)
+      .split(' ')
+      .filter(term => term.length > 1);
+  }
+
+  private expandSearchTerms(terms: string[]): string[] {
+    const synonyms: Record<string, string[]> = {
+      food: ['restaurant', 'restoran', 'cafe'],
+      eat: ['restaurant', 'food'],
+      restoran: ['restaurant', 'food'],
+      plaza: ['beach', 'attraction'],
+      beach: ['plaza', 'attraction'],
+      culture: ['cultural', 'monument'],
+      kultura: ['cultural', 'monument'],
+      history: ['cultural', 'monument'],
+      night: ['club', 'nightlife'],
+      nightlife: ['club'],
+      hotel: ['accommodation'],
+      stay: ['accommodation'],
+      shop: ['shopping'],
+      shopping: ['shop'],
+      route: ['ruta', 'trail'],
+      ruta: ['route', 'trail'],
+      hike: ['trail', 'walking'],
+    };
+
+    return Array.from(new Set(
+      terms
+        .flatMap(term => [term, ...(synonyms[term] ?? [])])
+        .map(term => this.normalizeSearchValue(term))
+        .filter(Boolean)
+    ));
+  }
+
+  private normalizeSearchText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private normalizeTypeKey(value: string): string {
+    return this.normalizeSearchText(value).replace(/\s+/g, '_');
+  }
+
+  private normalizeSearchValue(value: string | null | undefined): string {
+    return (value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Ä‘/g, 'dj')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  private isLocationOpen(loc: Location): boolean {
+    const raw = loc.openingHours;
+    if (!raw) return true;
+
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      const now = new Date();
+      const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const todayHours = parsed[dayKeys[now.getDay()]];
+
+      if (!todayHours || todayHours === 'closed') return false;
+      if (todayHours === '00:00-24:00' || todayHours === '0:00-24:00') return true;
+
+      const [openStr, closeStr] = todayHours.split('-');
+      const toMinutes = (value: string) => {
+        const [hours, minutes] = value.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const openMinutes = toMinutes(openStr);
+      const closeMinutes = toMinutes(closeStr);
+
+      if (closeMinutes <= openMinutes) {
+        return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+      }
+
+      return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+    } catch {
+      return true;
+    }
+  }
+
+  private sortActivities(activities: TouristActivityItem[]): TouristActivityItem[] {
+    const sorted = [...activities];
+    switch (this.sortOption) {
+      case 'activity-popular':
+        return sorted.sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0));
+      case 'activity-category':
+        return sorted.sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name));
+      case 'activity-difficulty':
+        return sorted.sort((a, b) => (a.difficulty || '').localeCompare(b.difficulty || '') || a.name.localeCompare(b.name));
+      default:
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
+  private sortRoutes(routes: TouristRouteItem[]): TouristRouteItem[] {
+    const sorted = [...routes];
+    switch (this.sortOption) {
+      case 'route-distance-asc': return sorted.sort((a, b) => a.distanceKm - b.distanceKm);
+      case 'route-distance-desc': return sorted.sort((a, b) => b.distanceKm - a.distanceKm);
+      case 'route-duration-asc': return sorted.sort((a, b) => a.durationMin - b.durationMin);
+      case 'route-name-asc': return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case 'route-difficulty': return sorted.sort((a, b) => (a.difficulty || '').localeCompare(b.difficulty || '') || a.name.localeCompare(b.name));
+      default:
+        return sorted.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }
+  }
+
+  private routeMatchesDistanceBand(route: TouristRouteItem, band: string): boolean {
+    const distance = route.distanceKm || 0;
+    if (band === 'short') return distance > 0 && distance <= 5;
+    if (band === 'medium') return distance > 5 && distance <= 15;
+    if (band === 'long') return distance > 15;
+    return true;
+  }
+
+  private routeMatchesDurationBand(route: TouristRouteItem, band: string): boolean {
+    const duration = route.durationMin || 0;
+    if (band === 'quick') return duration > 0 && duration <= 60;
+    if (band === 'half-day') return duration > 60 && duration <= 240;
+    if (band === 'full-day') return duration > 240;
+    return true;
+  }
+
+  private uniqueSorted(values: string[]): string[] {
+    return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b));
   }
 
   private getLocationCoordinates(location: Partial<Location>): UserPosition | null {
