@@ -87,3 +87,46 @@ section li { margin-bottom: 4px; }
 @media (min-width: 900px) {
   .doc-container { max-width: 760px; margin: 0 auto; background: #fff; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
 }
+
+:host-context(html[data-theme='dark']) .doc-container {
+  background: #0f172a;
+}
+
+:host-context(html[data-theme='dark']) .doc-header {
+  background: #111827;
+  border-bottom: 1px solid #334155;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .back-btn {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .back-btn:hover {
+  background: #263244;
+}
+
+:host-context(html[data-theme='dark']) .back-btn svg {
+  fill: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .doc-header h1,
+:host-context(html[data-theme='dark']) section h2 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) section p,
+:host-context(html[data-theme='dark']) section li {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .doc-date {
+  color: #94a3b8;
+}
+
+@media (min-width: 900px) {
+  :host-context(html[data-theme='dark']) .doc-container {
+    background: #111827;
+    box-shadow: none;
+  }
+}

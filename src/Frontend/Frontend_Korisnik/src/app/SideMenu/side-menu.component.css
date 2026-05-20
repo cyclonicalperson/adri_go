@@ -146,6 +146,8 @@
 .menu-item:hover .item-icon.icon-routes svg { fill: #0284c7; }
 .menu-item:hover .item-icon.icon-activities { background: #dcfce7; }
 .menu-item:hover .item-icon.icon-activities svg { fill: #16a34a; }
+.menu-item:hover .item-icon.icon-chat       { background: #ede9fe; }
+.menu-item:hover .item-icon.icon-chat svg   { fill: #7c3aed; }
 .menu-item:hover .item-icon.icon-tickets   { background: #fce7f3; }
 .menu-item:hover .item-icon.icon-tickets svg { fill: #9d174d; }
 .menu-item:hover .item-icon.icon-notif     { background: #ffedd5; }

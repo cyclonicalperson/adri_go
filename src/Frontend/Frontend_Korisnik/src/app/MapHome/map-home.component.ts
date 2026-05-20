@@ -26,6 +26,7 @@ import {
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -65,6 +66,7 @@ type SearchResult = MapLocation & {
     MapRecommendationsPanelComponent,
     MapNavigationPanelComponent,
     FiltersComponent,
+    ChatPopupComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -76,6 +78,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isMenuOpen = false;
   activeTab = 'map';
   sheetExpanded = false;
+  showChatHint = false;
+  isChatOpen = false;
   private map: L.Map | undefined;
   private markers: { loc: MapLocation; marker: L.Marker }[] = [];
   private userMarker: L.Marker<any> | null = null;
@@ -87,6 +91,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private hasCenteredOnUserLocation = false;
   private plannerRouteGeometry: [number, number][] = [];
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
+  private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
@@ -277,6 +282,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.applyFilterState();
     this.syncPlannerStateFromServices();
     this.savedRoutes = this.savedRoutesService.getAll();
+    this.showChatAssistantHint();
   }
 
   ngAfterViewInit(): void {
@@ -306,11 +312,33 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopLocationTracking();
     this.clearNavRefollowTimer();
     this.clearMapResizeTimer();
+    this.clearChatHintTimer();
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     window.removeEventListener('resize', this.handleWindowResize);
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
     this.autoLocatePermissionStatus = null;
     void this.releaseScreenWakeLock();
+  }
+
+  private showChatAssistantHint(): void {
+    if (localStorage.getItem('chatHintSeen')) {
+      return;
+    }
+    localStorage.setItem('chatHintSeen', '1');
+    this.showChatHint = true;
+    this.clearChatHintTimer();
+    this.chatHintTimerId = setTimeout(() => {
+      this.showChatHint = false;
+      this.chatHintTimerId = null;
+      this.cdr.detectChanges();
+    }, 8500);
+  }
+
+  private clearChatHintTimer(): void {
+    if (this.chatHintTimerId !== null) {
+      clearTimeout(this.chatHintTimerId);
+      this.chatHintTimerId = null;
+    }
   }
 
   loadLocations(): void {
@@ -1911,20 +1939,38 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   locateMe(): void {
     if (this.isLocating) return;
     this.isLocating = true;
+
+    const immediatePosition = this.getImmediateUserPosition();
+    if (immediatePosition) {
+      this.hasCenteredOnUserLocation = true;
+      this.handleUserPositionAvailable(immediatePosition, { fly: true, rerenderRoute: false });
+    }
+
     this.cdr.detectChanges();
 
-    void this.geolocationService.requestCurrentPosition({ maximumAge: 0 }).then((position) => {
+    void this.geolocationService.requestCurrentPosition({
+      enableHighAccuracy: false,
+      maximumAge: 60000,
+      timeout: immediatePosition ? 2500 : 6000,
+    }).then((position) => {
       this.isLocating = false;
       if (position) {
         this.hasCenteredOnUserLocation = true;
-        this.showUserLocation(position, true);
-        this.updateDistancesAndRecommendations();
-        this.applyMarkerFilter();
-        this.refreshRecommendations();
         this.handleUserPositionAvailable(position, { fly: true, rerenderRoute: true });
       }
       this.cdr.detectChanges();
     });
+  }
+
+  private getImmediateUserPosition(): UserPosition | null {
+    if (this.userPosition) {
+      return {
+        lat: this.userPosition[0],
+        lng: this.userPosition[1],
+      };
+    }
+
+    return this.geolocationService.getLastKnownPosition();
   }
 
   private tryAutoLocateUser(): void {
@@ -1997,7 +2043,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (fly) {
-      this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 1.2 });
+      this.map.flyTo([position.lat, position.lng], 14, { animate: true, duration: 0.45 });
     }
   }
 
@@ -2454,6 +2500,22 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.activeTab = 'calendar';
     this.router.navigate(['/calendar']);
+  }
+
+  goToChat(): void {
+    this.showChatHint = false;
+    this.clearChatHintTimer();
+    this.isChatOpen = true;
+  }
+
+  closeChatPopup(): void {
+    this.isChatOpen = false;
+  }
+
+  dismissChatHint(event?: Event): void {
+    event?.stopPropagation();
+    this.showChatHint = false;
+    this.clearChatHintTimer();
   }
 
   goToAccount(): void {

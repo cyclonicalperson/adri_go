@@ -157,6 +157,7 @@
   z-index: 15;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 .top-ui-layer.sheet-expanded {
   max-height: min(45dvh, calc(100dvh - 290px));
@@ -207,6 +208,10 @@
   padding: 0 14px;
 }
 .top-ui-layer > :last-child { padding-bottom: 16px; }
+.top-ui-layer > app-trip-planner-panel {
+  display: block;
+  margin-top: 0;
+}
 
 .search-container {
   display: flex;
@@ -316,6 +321,19 @@
   gap: 8px;
   overflow-x: auto;
   padding: 8px 2px 0;
+  border: none;
+  box-shadow: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.search-suggestions {
+  overflow-x: auto;
+  scrollbar-width: none;      
+  -ms-overflow-style: none;   
+}
+
+.search-suggestions::-webkit-scrollbar {
+  display: none;             
 }
 
 .search-suggestion-chip {
@@ -447,6 +465,8 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   padding: 2px 4px 4px;
+  border: none;
+  box-shadow: none;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -648,9 +668,11 @@
 
 /* ── FOOTER NAV ──────────────────────────────────────────────── */
 .app-footer {
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: auto;
   height: 68px;
   background: #fff;
   box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
@@ -659,6 +681,8 @@
   justify-content: space-around;
   z-index: 20;
   padding: 0 4px env(safe-area-inset-bottom, 0);
+  margin: 0;
+  border-radius: 0;
 }
 
 .footer-btn {
@@ -801,7 +825,7 @@ app-location-details-card {
     background: transparent;
     border-radius: 0;
     box-shadow: none;
-    gap: 16px;
+    gap: 14px;
     scrollbar-width: thin;
     scrollbar-color: var(--gray-200) transparent;
   }
@@ -814,6 +838,9 @@ app-location-details-card {
   .sheet-header { display: none; }
 
   .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
+  .top-ui-layer > app-trip-planner-panel {
+    margin-top: 0;
+  }
 
   /* ── Map fills right side ──────────────────────────────── */
   .map-container {
@@ -838,7 +865,7 @@ app-location-details-card {
   /* ── Footer as bottom bar of sidebar ──────────────────── */
   .app-footer {
     position: fixed;
-    bottom: 0; left: 0;
+    bottom: 0; left: 0; right: auto;
     width: 380px;
     height: 68px;
     z-index: 30;
@@ -909,6 +936,67 @@ app-location-details-card {
   .search-filter-btn span:not(.filter-badge) { display: inline; }
 }
 
+:host-context(html[data-theme='dark']) .search-container,
+:host-context(html[data-theme='dark']) .top-ui-layer,
+:host-context(html[data-theme='dark']) .sheet-header,
+:host-context(html[data-theme='dark']) .search-results-dropdown,
+:host-context(html[data-theme='dark']) .search-no-results {
+  border-color: #334155;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .search-input,
+:host-context(html[data-theme='dark']) .search-result-title,
+:host-context(html[data-theme='dark']) .search-result-rating,
+:host-context(html[data-theme='dark']) .sheet-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .search-input::placeholder,
+:host-context(html[data-theme='dark']) .search-result-meta,
+:host-context(html[data-theme='dark']) .search-result-reason,
+:host-context(html[data-theme='dark']) .search-no-results,
+:host-context(html[data-theme='dark']) .sheet-route-meta {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .search-icon svg,
+:host-context(html[data-theme='dark']) .search-clear-btn svg,
+:host-context(html[data-theme='dark']) .sheet-chevron,
+:host-context(html[data-theme='dark']) .search-no-results svg {
+  fill: #334155;
+}
+
+:host-context(html[data-theme='dark']) .search-divider,
+:host-context(html[data-theme='dark']) .search-result-item {
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .search-suggestion-chip,
+:host-context(html[data-theme='dark']) .cat-chip:not(.active) {
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: #e2e8f0;
+  border-color: var(--cat-color, #475569);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+:host-context(html[data-theme='dark']) .search-suggestion-chip {
+  border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .cat-chip:hover,
+:host-context(html[data-theme='dark']) .search-suggestion-chip:hover,
+:host-context(html[data-theme='dark']) .search-result-item:hover,
+:host-context(html[data-theme='dark']) .sheet-header:hover {
+  background: #1f2937 !important;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .cat-chip.active {
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+}
+
 /* ============================================================
    CLEAR ROUTE CONFIRMATION DIALOG
    ============================================================ */
@@ -945,7 +1033,7 @@ app-location-details-card {
 /* ============================================================
    SAVED ROUTES TOGGLE BUTTON
    ============================================================ */
-.saved-routes-toggle-row { padding: 6px 14px 10px; }
+.saved-routes-toggle-row { padding: 0 14px; }
 .saved-routes-toggle-btn {
   width: 100%;
   display: flex;
@@ -1172,6 +1260,167 @@ app-location-details-card {
     left: calc(380px + 50%);
     transform: translateX(-50%);
     bottom: 24px;
+  }
+}
+
+/* ============================================================
+   CHAT FAB
+   ============================================================ */
+.chat-fab-wrap {
+  position: fixed;
+  right: 16px;
+  bottom: calc(68px + 60px + 14px + 58px + env(safe-area-inset-bottom, 0px));
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.map-wrapper.navigating .chat-fab-wrap {
+  bottom: calc(68px + 14px + 58px + env(safe-area-inset-bottom, 0px));
+}
+
+.chat-fab {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #7c3aed;
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
+}
+
+.chat-fab:hover { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22); transform: scale(1.06); }
+.chat-fab:active { transform: scale(0.96); }
+
+.chat-fab-wrap.chat-fab-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.75);
+}
+
+.chat-fab-hint {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  width: min(280px, calc(100vw - 32px));
+  padding: 14px 42px 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  font-size: 13px;
+  line-height: 1.45;
+  animation: chatHintIn 0.24s ease-out;
+}
+
+.chat-fab-hint::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  border-right: 1px solid rgba(148, 163, 184, 0.24);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  transform: rotate(45deg);
+}
+
+.chat-fab-hint strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.chat-fab-hint span {
+  display: block;
+  color: #475569;
+}
+
+.chat-hint-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-hint-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+@keyframes chatHintIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+:host-context(html[data-theme='dark']) .chat-fab {
+  background: #1f2937;
+  color: #a78bfa;
+  border: 1px solid #334155;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .chat-fab:hover {
+  background: #111827;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+:host-context(html[data-theme='dark']) .chat-fab-hint {
+  background: #111827;
+  color: #e5e7eb;
+  border-color: rgba(71, 85, 105, 0.85);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+:host-context(html[data-theme='dark']) .chat-fab-hint strong {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .chat-fab-hint span {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .chat-hint-close {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .chat-hint-close:hover {
+  background: #334155;
+  color: #fff;
+}
+
+@media (min-width: 900px) {
+  .chat-fab-wrap {
+    right: 24px;
+    bottom: calc(24px + 58px);
+  }
+  .chat-fab-wrap.chat-fab-hidden {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+  .chat-fab-hint {
+    width: 300px;
   }
 }
 
