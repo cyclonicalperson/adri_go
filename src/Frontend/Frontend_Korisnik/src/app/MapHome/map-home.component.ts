@@ -26,6 +26,7 @@ import {
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -65,6 +66,7 @@ type SearchResult = MapLocation & {
     MapRecommendationsPanelComponent,
     MapNavigationPanelComponent,
     FiltersComponent,
+    ChatPopupComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -77,6 +79,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   activeTab = 'map';
   sheetExpanded = false;
   showChatHint = false;
+  isChatOpen = false;
   private map: L.Map | undefined;
   private markers: { loc: MapLocation; marker: L.Marker }[] = [];
   private userMarker: L.Marker<any> | null = null;
@@ -318,6 +321,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private showChatAssistantHint(): void {
+    if (localStorage.getItem('chatHintSeen')) {
+      return;
+    }
+    localStorage.setItem('chatHintSeen', '1');
     this.showChatHint = true;
     this.clearChatHintTimer();
     this.chatHintTimerId = setTimeout(() => {
@@ -2498,7 +2505,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   goToChat(): void {
     this.showChatHint = false;
     this.clearChatHintTimer();
-    this.router.navigate(['/chat']);
+    this.isChatOpen = true;
+  }
+
+  closeChatPopup(): void {
+    this.isChatOpen = false;
   }
 
   dismissChatHint(event?: Event): void {
