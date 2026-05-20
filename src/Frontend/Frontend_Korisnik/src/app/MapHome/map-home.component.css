@@ -1030,6 +1030,27 @@ app-location-details-card {
 .modal-btn-cancel:hover  { background: #e2e8f0; }
 .modal-btn-confirm:hover { background: #dc2626; }
 
+.route-calendar-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 16px;
+}
+.route-calendar-error {
+  color: #dc2626 !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  margin: -8px 0 14px !important;
+}
+.route-calendar-confirm          { background: #16a34a; }
+.route-calendar-confirm:hover    { background: #15803d; }
+.route-calendar-confirm:disabled { background: #94a3b8; cursor: default; }
+
 /* ============================================================
    SAVED ROUTES TOGGLE BUTTON
    ============================================================ */

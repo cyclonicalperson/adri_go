@@ -308,25 +308,81 @@ namespace TouristGuide.Api.Controllers
             if (planner is null)
                 return Ok(new List<object>());
 
-            var items = await _db.PlannerItems
-                .Where(pi => pi.PlannerId == planner.Id && pi.PostId != null)
+            var plannerItems = await _db.PlannerItems
+                .Where(pi => pi.PlannerId == planner.Id
+                    && (pi.PostId != null || pi.RouteId != null || pi.TouristRouteId != null))
                 .Include(pi => pi.Post)
+                .Include(pi => pi.Route)
+                    .ThenInclude(r => r!.Region)
+                .Include(pi => pi.TouristRoute)
                 .OrderBy(pi => pi.DayNumber).ThenBy(pi => pi.OrderInDay)
-                .Select(pi => new
+                .ToListAsync();
+
+            var items = plannerItems.Select(pi =>
+            {
+                var scheduledDate = GetCalendarItemDate(pi)
+                    ?? planner.StartDate?.AddDays(Math.Max(0, pi.DayNumber - 1));
+                var scheduledTime = pi.ScheduledTime != null ? pi.ScheduledTime.Value.ToString("HH:mm") : "";
+
+                if (pi.RouteId != null)
+                {
+                    return new
+                    {
+                        id = pi.Id,
+                        postId = (uint?)null,
+                        routeId = (uint?)pi.RouteId,
+                        touristRouteId = (uint?)null,
+                        title = pi.Route?.Name ?? "(deleted route)",
+                        postType = "route",
+                        address = pi.Route?.Region?.Name ?? "",
+                        date = scheduledDate != null
+                            ? scheduledDate.Value.ToDateTime(TimeOnly.MinValue).ToString("yyyy-MM-dd")
+                            : "",
+                        notes = pi.Notes,
+                        scheduledTime,
+                        imageUrl = ExtractFirstImage(pi.Route != null ? pi.Route.Images : null)
+                    };
+                }
+
+                if (pi.TouristRouteId != null)
+                {
+                    return new
+                    {
+                        id = pi.Id,
+                        postId = (uint?)null,
+                        routeId = (uint?)null,
+                        touristRouteId = (uint?)pi.TouristRouteId,
+                        title = pi.TouristRoute?.Title ?? "(deleted route)",
+                        postType = "private-route",
+                        address = "",
+                        date = scheduledDate != null
+                            ? scheduledDate.Value.ToDateTime(TimeOnly.MinValue).ToString("yyyy-MM-dd")
+                            : "",
+                        notes = pi.Notes,
+                        scheduledTime,
+                        imageUrl = pi.TouristRoute?.ImageUrl
+                    };
+                }
+
+                return new
                 {
                     id = pi.Id,
-                    postId = pi.PostId,
-                    title = pi.Post != null ? pi.Post.Title : "(deleted)",
-                    postType = pi.Post != null ? pi.Post.PostType : "",
-                    address = pi.Post != null ? pi.Post.Address : "",
-                    date = pi.Post != null && pi.Post.PublishedAt != null
-                                    ? pi.Post.PublishedAt.Value.ToString("MMMM d, yyyy")
+                    postId = (uint?)pi.PostId,
+                    routeId = (uint?)null,
+                    touristRouteId = (uint?)null,
+                    title = pi.Post?.Title ?? "(deleted)",
+                    postType = pi.Post?.PostType ?? "",
+                    address = pi.Post?.Address ?? "",
+                    date = scheduledDate != null
+                        ? scheduledDate.Value.ToDateTime(TimeOnly.MinValue).ToString("yyyy-MM-dd")
+                        : pi.Post != null && pi.Post.PublishedAt != null
+                            ? pi.Post.PublishedAt.Value.ToString("yyyy-MM-dd")
                                     : "",
                     notes = pi.Notes,
-                    scheduledTime = pi.ScheduledTime != null ? pi.ScheduledTime.Value.ToString("HH:mm") : "",
+                    scheduledTime,
                     imageUrl = ExtractFirstImage(pi.Post != null ? pi.Post.Images : null)
-                })
-                .ToListAsync();
+                };
+            }).ToList();
 
             return Ok(items);
         }
@@ -334,7 +390,7 @@ namespace TouristGuide.Api.Controllers
         // POST /api/tourist-auth/calendar/{postId}
         [Authorize(Roles = "tourist")]
         [HttpPost("calendar/{postId:int}")]
-        public async Task<IActionResult> AddToCalendar(int postId)
+        public async Task<IActionResult> AddToCalendar(int postId, [FromBody] AddCalendarItemDto? request)
         {
             var tourist = await GetCurrentTouristAsync();
             if (tourist is null)
@@ -343,6 +399,27 @@ namespace TouristGuide.Api.Controllers
             var post = await _db.Posts.FindAsync((uint)postId);
             if (post is null)
                 return NotFound(new { message = "Post not found." });
+
+            var scheduledAt = request?.ScheduledAt;
+            if (scheduledAt is null)
+                return BadRequest(new { message = "Scheduled date and time are required." });
+
+            var scheduledLocal = scheduledAt.Value;
+            if (scheduledLocal < DateTime.Now)
+                return BadRequest(new { message = "Scheduled date and time must be in the future." });
+
+            if (string.Equals(post.PostType, "event", StringComparison.OrdinalIgnoreCase))
+            {
+                var details = EventDetails.FromJson(post.Details);
+                if (details?.EndAt is not null && details.EndAt.Value < DateTime.Now)
+                    return BadRequest(new { message = "This event has already ended." });
+
+                if (details?.StartAt is not null && scheduledLocal < details.StartAt.Value)
+                    return BadRequest(new { message = "Scheduled date and time must be after the event starts." });
+
+                if (details?.EndAt is not null && scheduledLocal > details.EndAt.Value)
+                    return BadRequest(new { message = "Scheduled date and time must be before the event ends." });
+            }
 
             // Get or create the tourist's "My Calendar" planner
             var planner = await _db.VisitPlanners
@@ -354,6 +431,8 @@ namespace TouristGuide.Api.Controllers
                 {
                     TouristId = tourist.Id,
                     Title = "My Calendar",
+                    StartDate = DateOnly.FromDateTime(scheduledLocal),
+                    EndDate = DateOnly.FromDateTime(scheduledLocal),
                     IsPublic = false,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -362,12 +441,45 @@ namespace TouristGuide.Api.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Don't add duplicates
-            var alreadyAdded = await _db.PlannerItems
-                .AnyAsync(pi => pi.PlannerId == planner.Id && pi.PostId == (uint)postId);
+            var scheduledDate = DateOnly.FromDateTime(scheduledLocal);
+            if (planner.StartDate is null || scheduledDate < planner.StartDate.Value)
+            {
+                var shiftDays = planner.StartDate is null ? 0 : planner.StartDate.Value.DayNumber - scheduledDate.DayNumber;
+                if (shiftDays > 0)
+                {
+                    var existingItems = await _db.PlannerItems
+                        .Where(pi => pi.PlannerId == planner.Id)
+                        .ToListAsync();
 
-            if (alreadyAdded)
-                return Ok(new { message = "Already in calendar.", alreadyAdded = true });
+                    foreach (var item in existingItems)
+                        item.DayNumber = (byte)Math.Clamp(item.DayNumber + shiftDays, 1, byte.MaxValue);
+                }
+
+                planner.StartDate = scheduledDate;
+            }
+
+            if (planner.EndDate is null || scheduledDate > planner.EndDate.Value)
+                planner.EndDate = scheduledDate;
+
+            planner.UpdatedAt = DateTime.UtcNow;
+            var dayNumber = (byte)Math.Clamp(scheduledDate.DayNumber - planner.StartDate.Value.DayNumber + 1, 1, byte.MaxValue);
+
+            // Treat as duplicate only when the same post is scheduled on the same date.
+            // Different dates produce a new calendar entry so a destination can appear on multiple days.
+            var notesForDate = BuildCalendarItemNotes(scheduledDate);
+            var existingItem = await _db.PlannerItems
+                .FirstOrDefaultAsync(pi => pi.PlannerId == planner.Id
+                    && pi.PostId == (uint)postId
+                    && pi.Notes == notesForDate);
+
+            if (existingItem is not null)
+            {
+                existingItem.DayNumber = dayNumber;
+                existingItem.Notes = notesForDate;
+                existingItem.ScheduledTime = TimeOnly.FromDateTime(scheduledLocal);
+                await _db.SaveChangesAsync();
+                return Ok(new { message = "Calendar item updated.", alreadyAdded = true, updated = true });
+            }
 
             var order = (byte)(await _db.PlannerItems.CountAsync(pi => pi.PlannerId == planner.Id) + 1);
 
@@ -375,10 +487,10 @@ namespace TouristGuide.Api.Controllers
             {
                 PlannerId = planner.Id,
                 PostId = (uint)postId,
-                DayNumber = 1,
+                DayNumber = dayNumber,
                 OrderInDay = order,
-                Notes = null,
-                ScheduledTime = null
+                Notes = notesForDate,
+                ScheduledTime = TimeOnly.FromDateTime(scheduledLocal)
             });
             _db.Notifications.Add(new Notification
             {
@@ -394,10 +506,183 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { message = "Added to calendar." });
         }
 
-        // DELETE /api/tourist-auth/calendar/{postId}
+        // GET /api/tourist-auth/tourist-routes/{id}
         [Authorize(Roles = "tourist")]
-        [HttpDelete("calendar/{postId:int}")]
-        public async Task<IActionResult> RemoveFromCalendar(int postId)
+        [HttpGet("tourist-routes/{id:int}")]
+        public async Task<IActionResult> GetTouristRoute(int id)
+        {
+            var tourist = await GetCurrentTouristAsync();
+            if (tourist is null)
+                return Unauthorized();
+
+            var route = await _db.TouristRoutes
+                .FirstOrDefaultAsync(r => r.Id == (uint)id && r.TouristId == tourist.Id);
+            if (route is null)
+                return NotFound(new { message = "Private route not found." });
+
+            return Ok(new
+            {
+                id = route.Id,
+                title = route.Title,
+                waypoints = route.Waypoints,
+                travelMode = route.TravelMode,
+                scenicMode = route.ScenicMode,
+                distanceKm = route.DistanceKm,
+                durationMin = route.DurationMin
+            });
+        }
+
+        // POST /api/tourist-auth/calendar/tourist-route
+        // Saves a tourist's own (private) route as a single calendar object. Creates the
+        // tourist_route row on first save, or reuses it when TouristRouteId is supplied.
+        [Authorize(Roles = "tourist")]
+        [HttpPost("calendar/tourist-route")]
+        public async Task<IActionResult> AddTouristRouteToCalendar([FromBody] AddTouristRouteCalendarDto? request)
+        {
+            var tourist = await GetCurrentTouristAsync();
+            if (tourist is null)
+                return Unauthorized();
+
+            if (request is null)
+                return BadRequest(new { message = "Route details are required." });
+
+            var scheduledAt = request.ScheduledAt;
+            if (scheduledAt is null)
+                return BadRequest(new { message = "Scheduled date and time are required." });
+
+            var scheduledLocal = scheduledAt.Value;
+            if (scheduledLocal < DateTime.Now)
+                return BadRequest(new { message = "Scheduled date and time must be in the future." });
+
+            TouristRoute route;
+            if (request.TouristRouteId is not null)
+            {
+                var existing = await _db.TouristRoutes
+                    .FirstOrDefaultAsync(r => r.Id == request.TouristRouteId.Value && r.TouristId == tourist.Id);
+                if (existing is null)
+                    return NotFound(new { message = "Private route not found." });
+                route = existing;
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(request.Title))
+                    return BadRequest(new { message = "Route title is required." });
+
+                route = new TouristRoute
+                {
+                    TouristId = tourist.Id,
+                    Title = request.Title.Trim(),
+                    Waypoints = request.Waypoints,
+                    TravelMode = NormalizeTravelMode(request.TravelMode),
+                    ScenicMode = request.ScenicMode,
+                    DistanceKm = request.DistanceKm,
+                    DurationMin = request.DurationMin,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                // Cover image = first image of the route's first stop.
+                var coverPostId = ExtractFirstWaypointPostId(request.Waypoints);
+                if (coverPostId is not null)
+                {
+                    var coverPost = await _db.Posts.FindAsync(coverPostId.Value);
+                    route.ImageUrl = ExtractFirstImage(coverPost?.Images);
+                }
+
+                _db.TouristRoutes.Add(route);
+                await _db.SaveChangesAsync();
+            }
+
+            // Get or create the tourist's "My Calendar" planner
+            var planner = await _db.VisitPlanners
+                .FirstOrDefaultAsync(p => p.TouristId == tourist.Id);
+
+            if (planner is null)
+            {
+                planner = new VisitPlanner
+                {
+                    TouristId = tourist.Id,
+                    Title = "My Calendar",
+                    StartDate = DateOnly.FromDateTime(scheduledLocal),
+                    EndDate = DateOnly.FromDateTime(scheduledLocal),
+                    IsPublic = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _db.VisitPlanners.Add(planner);
+                await _db.SaveChangesAsync();
+            }
+
+            var scheduledDate = DateOnly.FromDateTime(scheduledLocal);
+            if (planner.StartDate is null || scheduledDate < planner.StartDate.Value)
+            {
+                var shiftDays = planner.StartDate is null ? 0 : planner.StartDate.Value.DayNumber - scheduledDate.DayNumber;
+                if (shiftDays > 0)
+                {
+                    var existingItems = await _db.PlannerItems
+                        .Where(pi => pi.PlannerId == planner.Id)
+                        .ToListAsync();
+
+                    foreach (var item in existingItems)
+                        item.DayNumber = (byte)Math.Clamp(item.DayNumber + shiftDays, 1, byte.MaxValue);
+                }
+
+                planner.StartDate = scheduledDate;
+            }
+
+            if (planner.EndDate is null || scheduledDate > planner.EndDate.Value)
+                planner.EndDate = scheduledDate;
+
+            planner.UpdatedAt = DateTime.UtcNow;
+            var dayNumber = (byte)Math.Clamp(scheduledDate.DayNumber - planner.StartDate.Value.DayNumber + 1, 1, byte.MaxValue);
+
+            // Same private route on the same date is a duplicate; different dates produce a new entry.
+            var notesForDate = BuildCalendarItemNotes(scheduledDate);
+            var existingRouteItem = await _db.PlannerItems
+                .FirstOrDefaultAsync(pi => pi.PlannerId == planner.Id
+                    && pi.TouristRouteId == route.Id
+                    && pi.Notes == notesForDate);
+
+            if (existingRouteItem is not null)
+            {
+                existingRouteItem.DayNumber = dayNumber;
+                existingRouteItem.Notes = notesForDate;
+                existingRouteItem.ScheduledTime = TimeOnly.FromDateTime(scheduledLocal);
+                await _db.SaveChangesAsync();
+                return Ok(new { message = "Calendar item updated.", alreadyAdded = true, updated = true, touristRouteId = route.Id });
+            }
+
+            var order = (byte)(await _db.PlannerItems.CountAsync(pi => pi.PlannerId == planner.Id) + 1);
+
+            _db.PlannerItems.Add(new PlannerItem
+            {
+                PlannerId = planner.Id,
+                TouristRouteId = route.Id,
+                DayNumber = dayNumber,
+                OrderInDay = order,
+                Notes = notesForDate,
+                ScheduledTime = TimeOnly.FromDateTime(scheduledLocal)
+            });
+            _db.Notifications.Add(new Notification
+            {
+                TouristId = tourist.Id,
+                Type = "calendar",
+                Title = "Added to calendar",
+                Body = $"{route.Title} is now in your travel calendar.",
+                Payload = System.Text.Json.JsonSerializer.Serialize(new { touristRouteId = route.Id }),
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Added to calendar.", touristRouteId = route.Id });
+        }
+
+        // DELETE /api/tourist-auth/calendar/item/{itemId}
+        // The planner item id is the primary key, so it identifies one entry on its own —
+        // whether that entry is a post or a route. PlannerId is still matched so a tourist
+        // can only delete items from their own calendar.
+        [Authorize(Roles = "tourist")]
+        [HttpDelete("calendar/item/{itemId:int}")]
+        public async Task<IActionResult> RemoveCalendarItem(int itemId)
         {
             var tourist = await GetCurrentTouristAsync();
             if (tourist is null)
@@ -409,8 +694,8 @@ namespace TouristGuide.Api.Controllers
             if (planner is null)
                 return NotFound(new { message = "Calendar not found." });
 
-            var item = await _db.PlannerItems
-                .FirstOrDefaultAsync(pi => pi.PlannerId == planner.Id && pi.PostId == (uint)postId);
+            var item = await _db.PlannerItems.FirstOrDefaultAsync(pi =>
+                pi.PlannerId == planner.Id && pi.Id == (uint)itemId);
 
             if (item is null)
                 return NotFound(new { message = "Item not in calendar." });
@@ -418,6 +703,111 @@ namespace TouristGuide.Api.Controllers
             _db.PlannerItems.Remove(item);
             await _db.SaveChangesAsync();
             return Ok(new { message = "Removed from calendar." });
+        }
+
+        // POST /api/tourist-auth/calendar/route/{routeId}
+        [Authorize(Roles = "tourist")]
+        [HttpPost("calendar/route/{routeId:int}")]
+        public async Task<IActionResult> AddRouteToCalendar(int routeId, [FromBody] AddCalendarItemDto? request)
+        {
+            var tourist = await GetCurrentTouristAsync();
+            if (tourist is null)
+                return Unauthorized();
+
+            var route = await _db.Routes.FindAsync((uint)routeId);
+            if (route is null)
+                return NotFound(new { message = "Route not found." });
+
+            var scheduledAt = request?.ScheduledAt;
+            if (scheduledAt is null)
+                return BadRequest(new { message = "Scheduled date and time are required." });
+
+            var scheduledLocal = scheduledAt.Value;
+            if (scheduledLocal < DateTime.Now)
+                return BadRequest(new { message = "Scheduled date and time must be in the future." });
+
+            // Get or create the tourist's "My Calendar" planner
+            var planner = await _db.VisitPlanners
+                .FirstOrDefaultAsync(p => p.TouristId == tourist.Id);
+
+            if (planner is null)
+            {
+                planner = new VisitPlanner
+                {
+                    TouristId = tourist.Id,
+                    Title = "My Calendar",
+                    StartDate = DateOnly.FromDateTime(scheduledLocal),
+                    EndDate = DateOnly.FromDateTime(scheduledLocal),
+                    IsPublic = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _db.VisitPlanners.Add(planner);
+                await _db.SaveChangesAsync();
+            }
+
+            var scheduledDate = DateOnly.FromDateTime(scheduledLocal);
+            if (planner.StartDate is null || scheduledDate < planner.StartDate.Value)
+            {
+                var shiftDays = planner.StartDate is null ? 0 : planner.StartDate.Value.DayNumber - scheduledDate.DayNumber;
+                if (shiftDays > 0)
+                {
+                    var existingItems = await _db.PlannerItems
+                        .Where(pi => pi.PlannerId == planner.Id)
+                        .ToListAsync();
+
+                    foreach (var item in existingItems)
+                        item.DayNumber = (byte)Math.Clamp(item.DayNumber + shiftDays, 1, byte.MaxValue);
+                }
+
+                planner.StartDate = scheduledDate;
+            }
+
+            if (planner.EndDate is null || scheduledDate > planner.EndDate.Value)
+                planner.EndDate = scheduledDate;
+
+            planner.UpdatedAt = DateTime.UtcNow;
+            var dayNumber = (byte)Math.Clamp(scheduledDate.DayNumber - planner.StartDate.Value.DayNumber + 1, 1, byte.MaxValue);
+
+            // Same route on the same date is a duplicate; different dates produce a new entry.
+            var notesForDate = BuildCalendarItemNotes(scheduledDate);
+            var existingRouteItem = await _db.PlannerItems
+                .FirstOrDefaultAsync(pi => pi.PlannerId == planner.Id
+                    && pi.RouteId == (uint)routeId
+                    && pi.Notes == notesForDate);
+
+            if (existingRouteItem is not null)
+            {
+                existingRouteItem.DayNumber = dayNumber;
+                existingRouteItem.Notes = notesForDate;
+                existingRouteItem.ScheduledTime = TimeOnly.FromDateTime(scheduledLocal);
+                await _db.SaveChangesAsync();
+                return Ok(new { message = "Calendar item updated.", alreadyAdded = true, updated = true });
+            }
+
+            var order = (byte)(await _db.PlannerItems.CountAsync(pi => pi.PlannerId == planner.Id) + 1);
+
+            _db.PlannerItems.Add(new PlannerItem
+            {
+                PlannerId = planner.Id,
+                RouteId = (uint)routeId,
+                DayNumber = dayNumber,
+                OrderInDay = order,
+                Notes = notesForDate,
+                ScheduledTime = TimeOnly.FromDateTime(scheduledLocal)
+            });
+            _db.Notifications.Add(new Notification
+            {
+                TouristId = tourist.Id,
+                Type = "calendar",
+                Title = "Added to calendar",
+                Body = $"{route.Name} is now in your travel calendar.",
+                Payload = System.Text.Json.JsonSerializer.Serialize(new { routeId }),
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Added to calendar." });
         }
 
         // ─── NOTIFICATIONS ───────────────────────────────────────────────────
@@ -786,6 +1176,54 @@ namespace TouristGuide.Api.Controllers
                 return urls?.FirstOrDefault();
             }
             catch { return null; }
+        }
+
+        /// <summary>Reads the post id of the first waypoint from a route's waypoints JSON.</summary>
+        private static uint? ExtractFirstWaypointPostId(string? waypointsJson)
+        {
+            if (string.IsNullOrWhiteSpace(waypointsJson)) return null;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(waypointsJson);
+                if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
+
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    if (element.ValueKind == System.Text.Json.JsonValueKind.Object
+                        && element.TryGetProperty("id", out var idProp)
+                        && idProp.ValueKind == System.Text.Json.JsonValueKind.Number
+                        && idProp.TryGetInt64(out var id)
+                        && id > 0)
+                    {
+                        return (uint)id;
+                    }
+
+                    return null; // only the first stop counts
+                }
+
+                return null;
+            }
+            catch { return null; }
+        }
+
+        private const string CalendarDateNotePrefix = "calendarDate:";
+
+        private static string BuildCalendarItemNotes(DateOnly scheduledDate) =>
+            $"{CalendarDateNotePrefix}{scheduledDate:yyyy-MM-dd}";
+
+        private static string NormalizeTravelMode(string? mode)
+        {
+            var normalized = mode?.Trim().ToLowerInvariant();
+            return normalized is "walking" or "cycling" or "driving" ? normalized : "driving";
+        }
+
+        private static DateOnly? GetCalendarItemDate(PlannerItem item)
+        {
+            if (item.Notes?.StartsWith(CalendarDateNotePrefix, StringComparison.OrdinalIgnoreCase) == true
+                && DateOnly.TryParse(item.Notes[CalendarDateNotePrefix.Length..], out var noteDate))
+                return noteDate;
+
+            return null;
         }
 
         private static string? SerializeInterests(List<string>? interests)

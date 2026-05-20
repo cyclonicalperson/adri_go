@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, forkJoin, of, Observable } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -25,6 +25,7 @@ import {
   RouteDetourSuggestion
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
+import { TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 
@@ -162,6 +163,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   showSavedRoutes = false;
   saveRouteMessage = '';
 
+  // ─── Curated route → calendar scheduler ──────────────────────────────────
+  showRouteCalendarScheduler = false;
+  routeCalendarDateTime = '';
+  routeCalendarError = '';
+  isSavingRouteToCalendar = false;
+
   // ─── Locate-me FAB ───────────────────────────────────────────────────────
   isLocating = false;
 
@@ -276,6 +283,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private analytics: TouristAnalyticsService,
     private recommendationService: RecommendationService,
     private savedRoutesService: SavedRoutesService,
+    private touristRoutesService: TouristRoutesService,
   ) {}
 
   ngOnInit(): void {
@@ -751,6 +759,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.lastHydratedQueryKey = key;
 
+    // Opened from a calendar route entry — load that route onto the map.
+    const routeParam = Number(this.latestQueryParams['routeId']);
+    if (Number.isFinite(routeParam) && routeParam > 0) {
+      this.hydratePlannerFromCuratedRoute(routeParam);
+      return;
+    }
+
+    const touristRouteParam = Number(this.latestQueryParams['touristRouteId']);
+    if (Number.isFinite(touristRouteParam) && touristRouteParam > 0) {
+      this.hydratePlannerFromTouristRoute(touristRouteParam);
+      return;
+    }
+
     const tripParam = this.latestQueryParams['trip'];
     const directTo = this.latestQueryParams['directTo'];
     const focusId = Number(this.latestQueryParams['focusId']);
@@ -830,6 +851,50 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
+  }
+
+  private hydratePlannerFromCuratedRoute(routeId: number): void {
+    this.touristRoutesService.getRouteById(routeId).subscribe({
+      next: (route) => {
+        if (!route || route.waypoints.length === 0) {
+          return;
+        }
+        this.routePlanner.replaceStops(
+          this.touristRoutesService.routeToPlannerStops(route),
+          { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+        );
+        this.syncPlannerStateFromServices();
+        this.renderPlannerRoute();
+        this.cdr.detectChanges();
+      },
+      error: () => { /* route unavailable — leave the planner untouched */ },
+    });
+  }
+
+  private hydratePlannerFromTouristRoute(touristRouteId: number): void {
+    this.userService.getTouristRoute(touristRouteId).subscribe({
+      next: (route) => {
+        if (!route || route.waypoints.length === 0) {
+          return;
+        }
+        const stops: PlannerStop[] = route.waypoints.map((point, index) => ({
+          id: -(touristRouteId * 1000 + index + 1),
+          title: point.name || `${route.title} ${index + 1}`,
+          postType: 'route',
+          lat: point.lat,
+          lng: point.lng,
+        }));
+        this.routePlanner.replaceStops(stops, {
+          plannerMode: true,
+          scenicMode: route.scenicMode,
+          travelMode: (route.travelMode as TravelMode) || 'walking',
+        });
+        this.syncPlannerStateFromServices();
+        this.renderPlannerRoute();
+        this.cdr.detectChanges();
+      },
+      error: () => { /* route unavailable — leave the planner untouched */ },
+    });
   }
 
   private renderPlannerRoute(): void {
@@ -1068,6 +1133,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       plannerMode: true,
       scenicMode: route.scenicMode,
       travelMode: route.travelMode,
+      sourcePrivateRouteId: route.id,
     });
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
@@ -1606,61 +1672,113 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const validStops = this.plannerStops.filter(stop => stop.id > 0);
-    if (validStops.length === 0 || this.isSavingTrip) {
+    if (this.plannerStops.length === 0) {
+      this.plannerMessage = 'Add at least one stop before saving to the calendar.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
+      this.cdr.detectChanges();
       return;
     }
 
-    this.isSavingTrip = true;
-    forkJoin(validStops.map(stop =>
-      this.userService.addToCalendar(stop.id).pipe(
-        catchError(() => of({ failed: true }))
-      )
-    )).subscribe({
-      next: (results) => {
-        const addedCount = results.filter((res: any) => !res?.failed && !res?.alreadyAdded).length;
-        const alreadyCount = results.filter((res: any) => !!res?.alreadyAdded).length;
-        const suffix = this.preferences.snapshot.emailNotifications
-          ? ' A summary will also appear in your email digest.'
-          : '';
-
-        if (addedCount > 0) {
-          this.plannerMessage = `${addedCount} stop(s) added to your calendar.${suffix}`;
-          this.showTripSavedBrowserNotification(addedCount);
-        } else if (alreadyCount > 0) {
-          this.plannerMessage = 'These stops are already in your calendar.';
-        } else {
-          this.plannerMessage = 'We could not save this trip to the calendar.';
-        }
-
-        this.analytics.track('planner_saved_to_calendar', {
-          stopCount: validStops.length,
-          addedCount,
-        });
-        this.isSavingTrip = false;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.plannerMessage = 'We could not save this trip to the calendar.';
-        this.isSavingTrip = false;
-        this.cdr.detectChanges();
-      }
-    });
+    // Curated route, loaded private route, or a route built right here in the
+    // planner — all are saved as a single route object via the scheduler.
+    this.openRouteCalendarScheduler();
   }
 
-  private showTripSavedBrowserNotification(addedCount: number): void {
-    if (!this.preferences.snapshot.pushNotifications || !('Notification' in window)) {
-      return;
-    }
-    if (Notification.permission !== 'granted') {
+  get minRouteCalendarDateTime(): string {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  }
+
+  openRouteCalendarScheduler(): void {
+    this.routeCalendarDateTime = '';
+    this.routeCalendarError = '';
+    this.showRouteCalendarScheduler = true;
+    this.cdr.detectChanges();
+  }
+
+  closeRouteCalendarScheduler(): void {
+    this.showRouteCalendarScheduler = false;
+    this.routeCalendarError = '';
+    this.cdr.detectChanges();
+  }
+
+  confirmRouteCalendarSave(): void {
+    if (this.isSavingRouteToCalendar) {
       return;
     }
 
-    const title = addedCount === 1 ? 'Trip stop saved' : 'Trip stops saved';
-    const body = addedCount === 1
-      ? 'Your stop was added to the travel calendar.'
-      : `${addedCount} stops were added to the travel calendar.`;
-    new Notification(title, { body });
+    if (!this.routeCalendarDateTime) {
+      this.routeCalendarError = 'Choose date and time.';
+      return;
+    }
+
+    const selected = new Date(this.routeCalendarDateTime);
+    if (isNaN(selected.getTime())) {
+      this.routeCalendarError = 'Choose a valid date and time.';
+      return;
+    }
+    if (selected < new Date()) {
+      this.routeCalendarError = 'Choose a future date and time.';
+      return;
+    }
+
+    const snapshot = this.routePlanner.snapshot;
+    let request$: Observable<any> | null = null;
+
+    if (snapshot.sourceRouteId != null) {
+      request$ = this.userService.addRouteToCalendar(snapshot.sourceRouteId, { scheduledAt: this.routeCalendarDateTime });
+    } else if (snapshot.sourcePrivateRouteId != null) {
+      const saved = this.savedRoutesService.getById(snapshot.sourcePrivateRouteId);
+      if (!saved) {
+        this.routeCalendarError = 'This private route is no longer available.';
+        return;
+      }
+      request$ = this.userService.addPrivateRouteToCalendar({
+        title: saved.title,
+        waypoints: JSON.stringify(saved.stops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+        travelMode: saved.travelMode,
+        scenicMode: saved.scenicMode,
+        distanceKm: saved.distanceKm,
+        durationMin: saved.durationMin,
+        scheduledAt: this.routeCalendarDateTime,
+      });
+    } else if (this.plannerStops.length > 0) {
+      // Route built directly in the planner — save the current stops as a new private route.
+      request$ = this.userService.addPrivateRouteToCalendar({
+        title: this.routeDestTitle || this.getRouteTitle(),
+        waypoints: JSON.stringify(this.plannerStops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+        travelMode: this.travelMode,
+        scenicMode: this.scenicMode,
+        distanceKm: this.routeSummary.distanceKm || undefined,
+        durationMin: Math.round(this.routeSummary.durationMin) || undefined,
+        scheduledAt: this.routeCalendarDateTime,
+      });
+    }
+
+    if (!request$) {
+      return;
+    }
+
+    this.isSavingRouteToCalendar = true;
+    this.routeCalendarError = '';
+
+    request$.subscribe({
+      next: (res: any) => {
+        this.isSavingRouteToCalendar = false;
+        this.showRouteCalendarScheduler = false;
+        this.plannerMessage = res?.alreadyAdded
+          ? 'This route is already in your calendar.'
+          : 'Route added to your calendar.';
+        setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3500);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.isSavingRouteToCalendar = false;
+        this.routeCalendarError = err?.error?.message || 'Could not add route to calendar.';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private applyFilterState(): void {
