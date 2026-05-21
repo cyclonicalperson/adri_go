@@ -37,7 +37,7 @@
         <span class="stat-value">{{userData.stats.saved || 0}}</span>
         <span class="stat-label">Saved</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" (click)="goToMyReviews()">
         <span class="stat-value">{{userData.stats.reviews || 0}}</span>
         <span class="stat-label">Reviews</span>
       </div>

@@ -104,5 +104,6 @@ export class AccountComponent implements OnInit {
   goToPrivacy()      { this.router.navigate(['/account/privacy']); }
   goToSettings()     { this.router.navigate(['/settings']); }
   goToSaved()        { this.router.navigate(['/saved']); }
+  goToMyReviews()    { this.router.navigate(['/account/reviews']); }
   goToCalendar()     { this.router.navigate(['/calendar']); }
 }

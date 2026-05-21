@@ -44,6 +44,17 @@ export interface CalendarItem {
   imageUrl: string | null;
 }
 
+export interface MyReviewItem {
+  reviewId: number;
+  postId?: number | null;
+  routeId?: number | null;
+  entityTitle: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  status: string;
+}
+
 export interface CalendarMutationResult {
   message: string;
   alreadyAdded?: boolean;
@@ -137,6 +148,16 @@ export class UserService {
     }
 
     return this.http.get<CalendarItem[]>(`${this.authApiUrl}/calendar`);
+  }
+
+  getMyReviews(): Observable<MyReviewItem[]> {
+    if (!this.authService.isLoggedIn) {
+      return of([]);
+    }
+
+    return this.http
+      .get<{ success: boolean; total: number; data: MyReviewItem[] }>(`${this.authApiUrl}/my-reviews`)
+      .pipe(map(res => Array.isArray(res?.data) ? res.data : []));
   }
 
   addToCalendar(postId: number): Observable<any> {
