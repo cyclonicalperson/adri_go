@@ -33,7 +33,7 @@
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card">
+      <div class="stat-card clickable" (click)="goToSaved()">
         <span class="stat-value">{{userData.stats.saved || 0}}</span>
         <span class="stat-label">Saved</span>
       </div>
@@ -41,7 +41,7 @@
         <span class="stat-value">{{userData.stats.reviews || 0}}</span>
         <span class="stat-label">Reviews</span>
       </div>
-      <div class="stat-card">
+      <div class="stat-card clickable" (click)="goToCalendar()">
         <span class="stat-value">{{userData.stats.upcoming || 0}}</span>
         <span class="stat-label">Calendar</span>
       </div>

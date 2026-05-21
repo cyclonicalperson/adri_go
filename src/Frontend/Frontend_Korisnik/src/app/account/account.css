@@ -135,6 +135,15 @@
   text-align: center;
   box-shadow: var(--shadow-sm);
 }
+.stat-card.clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.stat-card.clickable:hover {
+  background: #f8fafc;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
 .stat-value {
   font-family: var(--font-display);
   font-size: 26px;
