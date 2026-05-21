@@ -238,6 +238,46 @@ namespace TouristGuide.Api.Controllers
             return Ok(MapToMeDto(tourist, savedCount, reviewCount));
         }
 
+        // GET /api/tourist-auth/my-reviews
+        [Authorize(Roles = "tourist")]
+        [HttpGet("my-reviews")]
+        public async Task<IActionResult> GetMyReviews()
+        {
+            var tourist = await GetCurrentTouristAsync();
+            if (tourist is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
+
+            var reviews = await _db.Reviews
+                .AsNoTracking()
+                .Where(r => r.TouristId == tourist.Id)
+                .Include(r => r.Post)
+                .Include(r => r.Route)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new TouristReviewItemDto
+                {
+                    ReviewId = r.Id,
+                    PostId = r.PostId,
+                    RouteId = r.RouteId,
+                    EntityTitle = r.Post != null
+                        ? r.Post.Title
+                        : r.Route != null
+                            ? r.Route.Name
+                            : "(deleted)",
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt,
+                    Status = r.Status,
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                total = reviews.Count,
+                data = reviews,
+            });
+        }
+
         // DELETE /api/tourist-auth/account
         [Authorize(Roles = "tourist")]
         [HttpDelete("account")]
