@@ -19,6 +19,7 @@ export class TripPlannerPanelComponent {
     { mode: 'cycling', label: 'Cycle' },
   ];
 
+  @Input() isNavigating = false;
   @Input() plannerMode = false;
   @Input() plannerStops: PlannerStop[] = [];
   @Input() scenicMode = true;

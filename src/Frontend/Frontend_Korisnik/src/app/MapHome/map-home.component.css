@@ -1036,6 +1036,12 @@ app-location-details-card {
 .saved-routes-close:hover { background: #e2e8f0; }
 .saved-routes-close svg { fill: currentColor; }
 
+.saved-routes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .saved-routes-body {
   overflow-y: auto;
   flex: 1;

@@ -151,6 +151,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly handleAutoLocatePermissionChange = () => this.tryAutoLocateUser();
 
   showClearRouteConfirm = false;
+  showClearSavedRoutesConfirm = false;
 
   // ─── Saved routes ────────────────────────────────────────────────────────
   savedRoutes: SavedRoute[] = [];
@@ -1054,6 +1055,26 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   deleteSavedRoute(id: string): void {
     this.savedRoutesService.delete(id);
     this.savedRoutes = this.savedRoutesService.getAll();
+    this.cdr.detectChanges();
+  }
+
+  requestClearSavedRoutes(): void {
+    if (this.savedRoutes.length === 0) {
+      return;
+    }
+    this.showClearSavedRoutesConfirm = true;
+    this.cdr.detectChanges();
+  }
+
+  confirmClearSavedRoutes(): void {
+    this.showClearSavedRoutesConfirm = false;
+    this.savedRoutesService.clearAll();
+    this.savedRoutes = this.savedRoutesService.getAll();
+    this.cdr.detectChanges();
+  }
+
+  cancelClearSavedRoutes(): void {
+    this.showClearSavedRoutesConfirm = false;
     this.cdr.detectChanges();
   }
 
