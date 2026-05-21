@@ -17,7 +17,7 @@ import { FilterStateService, FilterState } from '../services/filter-state.servic
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { UserService, CalendarItem, UserProfile, ServerPreferences } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
-import { ComputedRoute, NavigationStep, RoutingService, RouteSummary } from '../services/routing.service';
+import { ComputedRoute, NavigationStep, RoutingService, RouteSummary, isRoutingUnavailableError } from '../services/routing.service';
 import { TravelMode, TouristPreferencesService } from '../services/tourist-preferences.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import {
@@ -27,6 +27,7 @@ import {
 } from '../services/recommendation.service';
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
 import { ThemeService } from '../services/theme.service';
+import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
@@ -79,6 +80,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly IMAGE_BASE_URL = 'http://localhost:5125/';
 
   selectedLocation: MapLocation | null = null;
+  selectedPublicRoute: TouristRouteItem | null = null;
   isMenuOpen = false;
   isDarkMode = false;
   activeTab = 'map';
@@ -98,6 +100,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private plannerRouteGeometry: [number, number][] = [];
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
   private themeSubscription?: Subscription;
+  private authSubscription?: Subscription;
   private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
 
   showAuthPopup = false;
@@ -116,6 +119,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   personalizedRecommendations: LocationRecommendation[] = [];
   activeRecommendationTab: RecommendationTab = 'personalized';
   locationsList: MapLocation[] = [];
+  activitiesList: TouristActivityItem[] = [];
   publicRoutes: TouristRouteItem[] = [];
   plannerStops: PlannerStop[] = [];
   scenicSuggestions: RouteDetourSuggestion[] = [];
@@ -199,7 +203,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   filterRadius = 0;
   filterShowOnlySaved = false;
   filterSavedPostIds: number[] = [];
+  filterActivityCategories: string[] = [];
+  filterActivityDifficulties: string[] = [];
+  filterActivityLinkedOnly = false;
+  filterRouteDifficulties: string[] = [];
+  filterRouteRegions: string[] = [];
+  filterRouteDistanceBand = '';
+  filterRouteDurationBand = '';
   userPosition: [number, number] | null = null;
+  routeIsRoutable = true;
+  private routeProblem: 'none' | 'not-routable' | 'service-unavailable' = 'none';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly resolveRecommendationImage = (location: any): string => this.getFirstImage(location);
 
@@ -208,7 +221,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       || this.filterOpenNow
       || (this.filterRadius > 0 && !!this.userPosition)
       || this.hasAnyCategorySelected
-      || this.filterShowOnlySaved;
+      || this.filterShowOnlySaved
+      || this.filterActivityCategories.length > 0
+      || this.filterActivityDifficulties.length > 0
+      || this.filterActivityLinkedOnly
+      || this.filterRouteDifficulties.length > 0
+      || this.filterRouteRegions.length > 0
+      || !!this.filterRouteDistanceBand
+      || !!this.filterRouteDurationBand;
   }
 
   /** True when at least one category chip is selected (filled) */
@@ -296,6 +316,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private recommendationService: RecommendationService,
     private savedRoutesService: SavedRoutesService,
     private themeService: ThemeService,
+    private touristActivitiesService: TouristActivitiesService,
     private touristRoutesService: TouristRoutesService,
   ) {}
 
@@ -304,10 +325,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.themeSubscription = this.themeService.theme$.subscribe(theme => {
       this.isDarkMode = theme === 'dark';
     });
+    this.authSubscription = this.authService.tourist$.subscribe(session => {
+      this.savedRoutes = session ? this.savedRoutesService.getAll() : [];
+      if (!session) {
+        this.showSavedRoutes = false;
+      }
+      this.cdr.detectChanges();
+    });
 
     this.applyFilterState();
     this.syncPlannerStateFromServices();
-    this.savedRoutes = this.savedRoutesService.getAll();
+    this.refreshSavedRoutes();
     this.showChatAssistantHint();
   }
 
@@ -319,6 +347,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.tryAutoLocateUser();
     this.loadPersonalizationContext();
     this.loadLocations();
+    this.loadActivities();
     this.loadPublicRoutes();
     this.activatedRoute.queryParams.subscribe(params => {
       this.latestQueryParams = Object.fromEntries(
@@ -345,7 +374,22 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
     this.autoLocatePermissionStatus = null;
     this.themeSubscription?.unsubscribe();
+    this.authSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
+  }
+
+  get savedRouteCount(): number {
+    return this.authService.isLoggedIn ? this.savedRoutes.length : 0;
+  }
+
+  private refreshSavedRoutes(): void {
+    this.savedRoutes = this.authService.isLoggedIn ? this.savedRoutesService.getAll() : [];
+  }
+
+  private getRouteProblemMessage(): string {
+    return this.routeProblem === 'service-unavailable'
+      ? 'Routing server trenutno nije dostupan. Pokusajte ponovo za par trenutaka.'
+      : 'Ruta nije routabilna. Pomerite tacke na kopno/put i izbegnite vodene povrsine.';
   }
 
   toggleTheme(): void {
@@ -386,6 +430,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (err) => console.error('Failed to load locations:', err)
+    });
+  }
+
+  loadActivities(): void {
+    this.touristActivitiesService.getActivities().subscribe({
+      next: activities => {
+        this.activitiesList = activities;
+        this.applyMarkerFilter();
+        this.refreshRecommendations();
+        this.cdr.detectChanges();
+      },
+      error: err => console.error('Failed to load activities:', err),
     });
   }
 
@@ -551,6 +607,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.map && coordinates) {
       this.dismissSearchMenu();
       this.map.flyTo([coordinates.lat, coordinates.lng], 16, { animate: true, duration: 1 });
+      this.selectedPublicRoute = null;
       this.selectedLocation = loc;
       this.analytics.track('location_opened', {
         postId: loc.id,
@@ -750,8 +807,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.navFollowMode) {
         this.centerNavigationOnUser(false);
       }
-    } catch {
-      this.plannerMessage = 'Could not switch navigation mode right now.';
+    } catch (error) {
+      this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
+      this.plannerMessage = isRoutingUnavailableError(error)
+        ? this.getRouteProblemMessage()
+        : 'Could not switch navigation mode right now.';
       setTimeout(() => {
         this.plannerMessage = '';
         this.cdr.detectChanges();
@@ -961,6 +1021,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (!this.map || this.plannerStops.length === 0) {
       this.scenicSuggestions = [];
+      this.routeProblem = 'none';
       this.cdr.detectChanges();
       return;
     }
@@ -968,6 +1029,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const routeCoordinates = this.getRouteCoordinates();
 
     if (routeCoordinates.length < 2) {
+      this.routeIsRoutable = true;
+      this.routeProblem = 'none';
       const onlyStop = this.plannerStops[0];
       if (this.preferences.snapshot.locationSharing && !this.userPosition) {
         this.tryAutoLocateUser();
@@ -983,14 +1046,21 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.isRenderingRoute = true;
+    this.routeIsRoutable = false;
+    this.routeProblem = 'none';
     const renderToken = ++this.plannerRenderToken;
 
-    this.routingService.computeRoute(routeCoordinates, this.travelMode, { viewport: this.getRouteViewportMode() })
+    this.routingService.computeRoute(routeCoordinates, this.travelMode, {
+      viewport: this.getRouteViewportMode(),
+      allowFallback: false,
+    })
       .then(route => {
         if (renderToken !== this.plannerRenderToken || !this.map) {
           return;
         }
 
+        this.routeIsRoutable = true;
+        this.routeProblem = 'none';
         this.drawPlannerPolyline(route);
         this.routeSummary = {
           distanceKm: route.distanceKm,
@@ -1015,13 +1085,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           this.plannerMessage = 'Live routing is unavailable right now. We are showing a scenic stop sequence instead.';
         }
       })
-      .catch(() => {
+      .catch(error => {
         if (renderToken !== this.plannerRenderToken) {
           return;
         }
 
         this.scenicSuggestions = [];
-        this.plannerMessage = 'We could not calculate this route right now.';
+        this.routeIsRoutable = false;
+        this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
+        this.plannerMessage = this.getRouteProblemMessage();
       })
       .finally(() => {
         if (renderToken !== this.plannerRenderToken) {
@@ -1152,6 +1224,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     if (this.plannerStops.length === 0) return;
+    if (this.plannerStops.length > 1 && !this.routeIsRoutable) {
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => {
+        this.plannerMessage = '';
+        this.cdr.detectChanges();
+      }, 3200);
+      this.cdr.detectChanges();
+      return;
+    }
     const title = this.routeDestTitle || this.getRouteTitle();
     const saved = this.savedRoutesService.save(
       this.plannerStops,
@@ -1160,7 +1241,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       title,
       this.routeSummary,
     );
-    this.savedRoutes = this.savedRoutesService.getAll();
+    this.refreshSavedRoutes();
     this.saveRouteMessage = `Route "${saved.title}" saved!`;
     setTimeout(() => {
       this.saveRouteMessage = '';
@@ -1174,6 +1255,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.showAuthPopup = true;
       return;
     }
+    this.refreshSavedRoutes();
     this.showSavedRoutes = true;
   }
 
@@ -1197,7 +1279,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   deleteSavedRoute(id: string): void {
     this.savedRoutesService.delete(id);
-    this.savedRoutes = this.savedRoutesService.getAll();
+    this.refreshSavedRoutes();
     this.cdr.detectChanges();
   }
 
@@ -1214,24 +1296,34 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
       return;
     }
+    if (!this.routeIsRoutable) {
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3200);
+      return;
+    }
     try {
       const result = await this.routingService.computeRouteForNavigation(
         coordinates,
         this.travelMode,
-        { viewport: this.getRouteViewportMode() },
+        { viewport: this.getRouteViewportMode(), allowFallback: false },
       );
       this.navigationSteps = result.steps ?? [];
       this.navigationRouteGeometry = result.geometry;
       this.isNavigating = true;
+      this.plannerMode = false;
+      this.routePlanner.setPlannerMode(false);
       this.showRoutePanel = false;
       this.selectedLocation = null;
+      this.selectedPublicRoute = null;
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
       this.sheetExpanded = false;
       this.applyMarkerFilter();
       this.cdr.detectChanges();
-    } catch {
-      this.plannerMessage = 'Could not fetch navigation data. Check your connection.';
+    } catch (error) {
+      this.routeIsRoutable = false;
+      this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
+      this.plannerMessage = this.getRouteProblemMessage();
       setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 2400);
     }
   }
@@ -1283,6 +1375,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navigationSteps = [];
     this.navigationRouteGeometry = [];
     this.selectedLocation = null;
+    this.selectedPublicRoute = null;
+    this.routeIsRoutable = true;
+    this.routeProblem = 'none';
     this.clearRouteVisuals();
     // Restore all map pins that were hidden during navigation
     this.applyMarkerFilter();
@@ -1732,6 +1827,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cdr.detectChanges();
       return;
     }
+    if (this.plannerStops.length > 1 && !this.routeIsRoutable) {
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3200);
+      this.cdr.detectChanges();
+      return;
+    }
 
     // Curated route, loaded private route, or a route built right here in the
     // planner — all are saved as a single route object via the scheduler.
@@ -1759,6 +1860,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   confirmRouteCalendarSave(): void {
     if (this.isSavingRouteToCalendar) {
+      return;
+    }
+
+    if (this.plannerStops.length > 1 && !this.routeIsRoutable) {
+      this.routeCalendarError = this.getRouteProblemMessage();
       return;
     }
 
@@ -1842,6 +1948,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterRadius = state.radius ?? 0;
     this.filterShowOnlySaved = state.showOnlySaved ?? false;
     this.filterSavedPostIds = state.savedPostIds ?? [];
+    this.filterActivityCategories = state.activityCategories ?? [];
+    this.filterActivityDifficulties = state.activityDifficulties ?? [];
+    this.filterActivityLinkedOnly = state.activityLinkedOnly ?? false;
+    this.filterRouteDifficulties = state.routeDifficulties ?? [];
+    this.filterRouteRegions = state.routeRegions ?? [];
+    this.filterRouteDistanceBand = state.routeDistanceBand ?? '';
+    this.filterRouteDurationBand = state.routeDurationBand ?? '';
     // activeCategories prazan niz = nijedan chip selektovan = sve vidljivo
     this.categories.forEach(c => {
       c.active = state.activeCategories.includes(c.key);
@@ -1917,6 +2030,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.filterMinRating > 0 && (loc.avgRating || 0) < this.filterMinRating) return false;
     if (this.filterOpenNow && !this.isLocationOpen(loc)) return false;
+    if (!this.locationPassesActivityFilters(loc)) return false;
 
     if (this.filterRadius > 0 && this.userPosition) {
       const coordinates = this.getLocationCoordinates(loc);
@@ -1930,6 +2044,37 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return true;
+  }
+
+  private locationPassesActivityFilters(loc: MapLocation): boolean {
+    const hasActivityFilters = this.filterActivityLinkedOnly
+      || this.filterActivityCategories.length > 0
+      || this.filterActivityDifficulties.length > 0;
+
+    if (!hasActivityFilters) {
+      return true;
+    }
+
+    const linkedActivities = this.activitiesList.filter(activity => activity.postId === loc.id);
+    if (this.filterActivityLinkedOnly && linkedActivities.length === 0) {
+      return false;
+    }
+
+    const needsActivityMatch = this.filterActivityCategories.length > 0
+      || this.filterActivityDifficulties.length > 0;
+    if (!needsActivityMatch) {
+      return true;
+    }
+
+    return linkedActivities.some(activity => {
+      if (this.filterActivityCategories.length > 0 && !this.filterActivityCategories.includes(activity.category)) {
+        return false;
+      }
+      if (this.filterActivityDifficulties.length > 0 && !this.filterActivityDifficulties.includes(activity.difficulty || '')) {
+        return false;
+      }
+      return true;
+    });
   }
 
   private applyMarkerFilter(): void {
@@ -1956,7 +2101,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeMarkers.forEach(({ route, marker }) => {
       const visible = !this.isNavigating
         && (!this.hasAnyCategorySelected || selectedKeys.includes('route'))
-        && this.routePassesRadiusFilter(route);
+        && this.routePassesRadiusFilter(route)
+        && this.routeMatchesExploreFilters(route);
 
       if (visible) {
         if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
@@ -1975,6 +2121,38 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       { lat: waypoint.lat, lng: waypoint.lng },
     );
     return dist <= this.filterRadius;
+  }
+
+  private routeMatchesExploreFilters(route: TouristRouteItem): boolean {
+    if (this.filterRouteDifficulties.length > 0 && !this.filterRouteDifficulties.includes(route.difficulty || '')) {
+      return false;
+    }
+    if (this.filterRouteRegions.length > 0 && !this.filterRouteRegions.includes(route.regionName || '')) {
+      return false;
+    }
+    if (this.filterRouteDistanceBand && !this.routeMatchesDistanceBand(route, this.filterRouteDistanceBand)) {
+      return false;
+    }
+    if (this.filterRouteDurationBand && !this.routeMatchesDurationBand(route, this.filterRouteDurationBand)) {
+      return false;
+    }
+    return true;
+  }
+
+  private routeMatchesDistanceBand(route: TouristRouteItem, band: string): boolean {
+    const distance = route.distanceKm || 0;
+    if (band === 'short') return distance > 0 && distance <= 5;
+    if (band === 'medium') return distance > 5 && distance <= 15;
+    if (band === 'long') return distance > 15;
+    return true;
+  }
+
+  private routeMatchesDurationBand(route: TouristRouteItem, band: string): boolean {
+    const duration = route.durationMin || 0;
+    if (band === 'quick') return duration > 0 && duration <= 60;
+    if (band === 'half-day') return duration > 60 && duration <= 240;
+    if (band === 'full-day') return duration > 240;
+    return true;
   }
 
   private getMarkerHtml(category: string): string {
@@ -2287,6 +2465,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           this.addLocationToPlanner(loc, true);
         } else {
           // Van planner mode: otvori karticu objave
+          this.selectedPublicRoute = null;
           this.selectedLocation = loc;
         }
         this.cdr.detectChanges();
@@ -2317,11 +2496,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       });
 
       const marker = L.marker([waypoint.lat, waypoint.lng], { icon }).addTo(this.map!);
-      marker.bindPopup(`<strong>${route.name}</strong>${route.regionName ? '<br><small>' + route.regionName + '</small>' : ''}`);
       marker.on('click', (event: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(event as unknown as Event);
         this.dismissSearchMenu();
-        this.openPublicRoute(route);
+        this.selectedLocation = null;
+        this.selectedPublicRoute = route;
+        this.map?.flyTo([waypoint.lat, waypoint.lng], Math.max(this.map?.getZoom() ?? 13, 13), {
+          animate: true,
+          duration: 0.45,
+        });
+        this.cdr.detectChanges();
       });
 
       this.routeMarkers.push({ route, marker });
@@ -2333,6 +2517,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private openPublicRoute(route: TouristRouteItem): void {
     if (route.waypoints.length === 0) return;
 
+    this.selectedPublicRoute = null;
     this.routePlanner.replaceStops(
       this.touristRoutesService.routeToPlannerStops(route),
       { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
@@ -2345,6 +2530,31 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.cdr.detectChanges();
     }, 2400);
     this.cdr.detectChanges();
+  }
+
+  closeRoutePreview(): void {
+    this.selectedPublicRoute = null;
+    this.cdr.detectChanges();
+  }
+
+  loadPreviewRoute(route: TouristRouteItem): void {
+    this.openPublicRoute(route);
+  }
+
+  getRouteFirstImage(route: TouristRouteItem): string {
+    return this.getFirstImage({ images: route.images });
+  }
+
+  formatRouteDifficulty(value?: string | null): string {
+    if (!value) return 'Standard';
+    const normalized = value.toLowerCase();
+    const labels: Record<string, string> = {
+      easy: 'Easy',
+      moderate: 'Moderate',
+      hard: 'Hard',
+      expert: 'Expert',
+    };
+    return labels[normalized] ?? value.replace(/[_-]+/g, ' ');
   }
 
   private getLocationCoordinates(loc: Partial<Location>): UserPosition | null {

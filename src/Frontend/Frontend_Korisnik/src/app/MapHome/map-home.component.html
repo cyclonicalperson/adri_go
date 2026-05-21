@@ -158,7 +158,7 @@
       </div>
       <button
         class="builder-mode-pill"
-        *ngIf="plannerMode || showRoutePanel"
+        *ngIf="!isNavigating && (plannerMode || showRoutePanel)"
         [class.builder-off]="!plannerMode"
         [class.builder-hidden]="sheetExpanded || isFiltersOpen"
         (click)="togglePlannerMode()">
@@ -214,7 +214,7 @@
       <div class="saved-routes-toggle-row">
         <button class="saved-routes-toggle-btn" (click)="openSavedRoutes()">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-          Saved routes<span *ngIf="savedRoutes.length > 0"> ({{ savedRoutes.length }})</span>
+          Saved routes<span *ngIf="savedRouteCount > 0"> ({{ savedRouteCount }})</span>
         </button>
       </div>
 
@@ -261,7 +261,7 @@
   <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
-          [class.locate-hidden]="sheetExpanded || isFiltersOpen"
+          [class.locate-hidden]="isNavigating || sheetExpanded || isFiltersOpen"
           [class.locate-refollow]="isNavigating && !navFollowMode"
           (click)="locateMeOrRefollow()"
           aria-label="Show my location">
@@ -281,6 +281,56 @@
     (onViewDetails)="viewFullDetails()"
     (onAddToRoute)="addSelectedLocationToPlanner()">
   </app-location-details-card>
+
+  <div class="rp-overlay" *ngIf="selectedPublicRoute as route">
+    <div class="rp-card">
+      <div class="rp-header">
+        <div class="rp-category">
+          <span class="rp-dot"></span>
+          {{ route.regionName || 'Route' }}
+        </div>
+        <button class="rp-close" type="button" (click)="closeRoutePreview()" aria-label="Close route preview">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
+      <div class="rp-media">
+        <img
+          [src]="getRouteFirstImage(route)"
+          [alt]="route.name"
+          (error)="$any($event.target).src='assets/placeholder.jpg'">
+      </div>
+
+      <div class="rp-body">
+        <div class="rp-title-row">
+          <h2>{{ route.name }}</h2>
+        </div>
+
+        <div class="rp-info">
+          <div class="rp-info-item" *ngIf="route.distanceKm">
+            <svg viewBox="0 0 24 24"><path d="M9 6.5A2.5 2.5 0 1 0 9 11a2.5 2.5 0 0 0 0-5zm6 6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM9 10h6v2H9zm0 5h6v-2H9z"/></svg>
+            {{ route.distanceKm | number:'1.1-1' }} km
+          </div>
+          <div class="rp-info-item" *ngIf="route.durationMin">
+            <svg viewBox="0 0 24 24"><path d="M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22zm1 11.2 4.2 2.5-1 1.7-5.2-3.1V6h2z"/></svg>
+            {{ formatDuration(route.durationMin) }}
+          </div>
+          <div class="rp-info-item">
+            <svg viewBox="0 0 24 24"><path d="M12 2 4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+            {{ formatRouteDifficulty(route.difficulty) }}
+          </div>
+        </div>
+
+        <p>{{ route.description || 'Pregledajte detalje rute pre ucitavanja na mapu.' }}</p>
+
+        <div class="rp-actions">
+          <button class="rp-load" type="button" (click)="loadPreviewRoute(route)">
+            Load route
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <app-map-navigation-panel
     *ngIf="isNavigating"
@@ -437,6 +487,7 @@
   <app-filters
     *ngIf="isFiltersOpen"
     context="map"
+    [showContentFilters]="true"
     (closed)="closeInlineFilters()"
     (applied)="onFiltersChanged($event)">
   </app-filters>
@@ -454,7 +505,8 @@
 
   <!-- ── CHAT POPUP ── -->
   <app-chat-popup
-    [isOpen]="isChatOpen"
+    *ngIf="isChatOpen"
+    [isOpen]="true"
     (closePopup)="closeChatPopup()">
   </app-chat-popup>
 

@@ -18,6 +18,7 @@ namespace TouristGuide.Api.Controllers
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
         private readonly TouristNotificationService _touristNotificationService;
+        private readonly RouteSafetyService _routeSafetyService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<TouristAuthController> _logger;
 
@@ -26,6 +27,7 @@ namespace TouristGuide.Api.Controllers
             JwtService jwtService,
             EmailService emailService,
             TouristNotificationService touristNotificationService,
+            RouteSafetyService routeSafetyService,
             IConfiguration configuration,
             ILogger<TouristAuthController> logger)
         {
@@ -33,6 +35,7 @@ namespace TouristGuide.Api.Controllers
             _jwtService = jwtService;
             _emailService = emailService;
             _touristNotificationService = touristNotificationService;
+            _routeSafetyService = routeSafetyService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -563,6 +566,10 @@ namespace TouristGuide.Api.Controllers
             {
                 if (string.IsNullOrWhiteSpace(request.Title))
                     return BadRequest(new { message = "Route title is required." });
+
+                var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(request.Waypoints, HttpContext.RequestAborted);
+                if (!routeValidation.IsValid)
+                    return BadRequest(new { message = routeValidation.Message });
 
                 route = new TouristRoute
                 {

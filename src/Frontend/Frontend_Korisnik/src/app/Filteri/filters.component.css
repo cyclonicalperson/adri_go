@@ -173,6 +173,37 @@ section { margin-bottom: 24px; }
 .chip-icon { font-size: 16px; }
 
 /* ── SLIDER ──────────────────────────────────────────────────── */
+.filter-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chip {
+  border: 1.5px solid var(--gray-200);
+  background: #fff;
+  color: var(--gray-700);
+  border-radius: var(--radius-pill);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.filter-chip:hover {
+  border-color: var(--green-300);
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.filter-chip.active {
+  border-color: var(--green-500);
+  background: var(--green-500);
+  color: #fff;
+}
+
 .slider-box { padding: 0 4px; }
 
 .slider-labels {

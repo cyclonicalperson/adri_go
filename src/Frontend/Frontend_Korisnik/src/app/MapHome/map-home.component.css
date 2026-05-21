@@ -1485,6 +1485,12 @@ app-location-details-card {
   .chat-fab-hint {
     width: 300px;
   }
+
+  .map-wrapper.navigating .chat-fab-wrap.chat-fab-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
+  }
 }
 
 /* ============================================================
@@ -1582,6 +1588,12 @@ app-location-details-card {
     opacity: 1;
     pointer-events: auto;
     transform: none;
+  }
+
+  .map-wrapper.navigating .locate-btn.locate-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
   }
 }
 

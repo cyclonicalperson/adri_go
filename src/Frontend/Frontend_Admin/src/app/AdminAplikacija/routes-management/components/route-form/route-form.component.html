@@ -137,6 +137,13 @@
                              (waypointsChange)="onWaypointsChange($event)" />
       </div>
 
+      <div class="card">
+        <h3 class="card-title">Slike rute</h3>
+        <app-post-image-picker
+          [images]="formImages"
+          (imagesChange)="onImagesChange($event)" />
+      </div>
+
       <div class="card summary-card">
         <h3 class="card-title">Pregled unosa</h3>
         <div class="summary-grid">

@@ -142,6 +142,11 @@ namespace TouristGuide.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("ActivityTags")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("activity_tags");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(100)

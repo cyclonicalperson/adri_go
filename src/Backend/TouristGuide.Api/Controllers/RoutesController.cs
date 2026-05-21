@@ -18,6 +18,7 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _db;
         private readonly AdminPermissionService _permissionService;
         private readonly NotificationService _notifService;
+        private readonly RouteSafetyService _routeSafetyService;
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -27,11 +28,13 @@ namespace TouristGuide.Api.Controllers
         public RoutesController(
             AppDbContext db,
             AdminPermissionService permissionService,
-            NotificationService notifService)
+            NotificationService notifService,
+            RouteSafetyService routeSafetyService)
         {
             _db = db;
             _permissionService = permissionService;
             _notifService = notifService;
+            _routeSafetyService = routeSafetyService;
         }
 
         [HttpGet]
@@ -169,6 +172,10 @@ namespace TouristGuide.Api.Controllers
             if (!await CanCreateRouteAsync(dto.RegionId, hasRegionProposal))
                 return Forbid();
 
+            var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
+            if (!routeValidation.IsValid)
+                return BadRequest(new { message = routeValidation.Message });
+
             var now = DateTime.UtcNow;
             var resolvedRegionId = statusValue == "published" && hasRegionProposal
                 ? await ResolveRegionProposalAsync(proposedRegionName!)
@@ -252,7 +259,14 @@ namespace TouristGuide.Api.Controllers
             if (dto.DurationMin.HasValue) route.DurationMin = dto.DurationMin;
             if (dto.ElevationGainM.HasValue) route.ElevationGain = dto.ElevationGainM;
             if (dto.Description is not null) route.Description = dto.Description.Trim();
-            if (dto.Waypoints is not null) route.Waypoints = dto.Waypoints;
+            if (dto.Waypoints is not null)
+            {
+                var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
+                if (!routeValidation.IsValid)
+                    return BadRequest(new { message = routeValidation.Message });
+
+                route.Waypoints = dto.Waypoints;
+            }
             if (dto.Images is not null) route.Images = dto.Images;
 
             if (dto.Status is not null)

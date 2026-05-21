@@ -194,7 +194,7 @@
 .nav-speed-badge {
   position: fixed;
   left: 16px;
-  bottom: calc(68px + 60px + 14px);
+  bottom: calc(68px + 14px + env(safe-area-inset-bottom, 0px));
   z-index: 3040;
   flex-direction: column;
   align-items: center;

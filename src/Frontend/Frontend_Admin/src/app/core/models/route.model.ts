@@ -53,6 +53,7 @@ export interface CreateRouteRequest {
   status?: RouteStatus;
   isActive?: boolean;
   waypoints?: Omit<Waypoint, 'waypointId' | 'routeId'>[];
+  images?: string[];
 }
 
 export interface UpdateRouteRequest extends Partial<CreateRouteRequest> {}

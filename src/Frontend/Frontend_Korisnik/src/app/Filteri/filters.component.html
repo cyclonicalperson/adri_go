@@ -117,6 +117,110 @@
       </div>
     </section>
 
+    <ng-container *ngIf="showContentFilters">
+      <section *ngIf="activityCategoryOptions.length > 0">
+        <div class="section-header">
+          <h2>Activity Categories</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button
+            type="button"
+            class="filter-chip"
+            *ngFor="let category of activityCategoryOptions"
+            [class.active]="activityFilters.categories.includes(category)"
+            (click)="toggleActivityFilter('categories', category)">
+            {{ formatActivityCategory(category) }}
+          </button>
+        </div>
+      </section>
+
+      <section *ngIf="activityDifficultyOptions.length > 0">
+        <div class="section-header">
+          <h2>Activity Difficulty</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button
+            type="button"
+            class="filter-chip"
+            *ngFor="let difficulty of activityDifficultyOptions"
+            [class.active]="activityFilters.difficulties.includes(difficulty)"
+            (click)="toggleActivityFilter('difficulties', difficulty)">
+            {{ difficulty }}
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-header">
+          <h2>Activity Links</h2>
+        </div>
+        <div class="toggle-card">
+          <div class="toggle-text">
+            <h3>Linked Only</h3>
+            <p>Show destinations that have activities attached</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" [checked]="activityFilters.linkedOnly" (change)="toggleLinkedActivitiesOnly()">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </section>
+
+      <section *ngIf="routeDifficultyOptions.length > 0">
+        <div class="section-header">
+          <h2>Route Difficulty</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button
+            type="button"
+            class="filter-chip"
+            *ngFor="let difficulty of routeDifficultyOptions"
+            [class.active]="routeFilters.difficulties.includes(difficulty)"
+            (click)="toggleRouteFilter('difficulties', difficulty)">
+            {{ formatRouteDifficulty(difficulty) }}
+          </button>
+        </div>
+      </section>
+
+      <section *ngIf="routeRegionOptions.length > 0">
+        <div class="section-header">
+          <h2>Route Region</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button
+            type="button"
+            class="filter-chip"
+            *ngFor="let region of routeRegionOptions"
+            [class.active]="routeFilters.regions.includes(region)"
+            (click)="toggleRouteFilter('regions', region)">
+            {{ region }}
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-header">
+          <h2>Route Distance</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'short'" (click)="setRouteDistanceBand('short')">Up to 5 km</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'medium'" (click)="setRouteDistanceBand('medium')">5-15 km</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'long'" (click)="setRouteDistanceBand('long')">15+ km</button>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-header">
+          <h2>Route Duration</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'quick'" (click)="setRouteDurationBand('quick')">Up to 1h</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'half-day'" (click)="setRouteDurationBand('half-day')">1-4h</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'full-day'" (click)="setRouteDurationBand('full-day')">4h+</button>
+        </div>
+      </section>
+    </ng-container>
+
   </div>
 
 </div>

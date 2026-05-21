@@ -39,5 +39,14 @@
   "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "Nemate dozvolu za kreiranje ili promenu ove kategorije.",
   "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.",
   "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "Nemate dozvolu za kreiranje događaja u izabranom regionu.",
-  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "Nemate dozvolu za kreiranje rute u izabranom regionu."
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "Nemate dozvolu za kreiranje rute u izabranom regionu.",
+  "Vezivanje za destinacije": "Vezivanje za destinacije",
+  "Ocisti izbor": "Ocisti izbor",
+  "Aktivnost moze biti samostalna ili vezana za jednu ili vise destinacija.": "Aktivnost moze biti samostalna ili vezana za jednu ili vise destinacija.",
+  "Destinacije (opcionalno)": "Destinacije (opcionalno)",
+  "Pretrazi destinacije...": "Pretrazi destinacije...",
+  "Nema dostupnih destinacija.": "Nema dostupnih destinacija.",
+  "Nema destinacija za zadatu pretragu.": "Nema destinacija za zadatu pretragu.",
+  "Standalone (bez vezane destinacije)": "Standalone (bez vezane destinacije)",
+  "izabrano": "izabrano"
 }

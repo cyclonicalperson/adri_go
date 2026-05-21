@@ -104,6 +104,8 @@ function normalizeActivity(item: any): Activity {
     maxCapacity: item?.maxCapacity ?? null,
     tags: item?.tags ?? '',
     postId: item?.postId ?? null,
+    postIds: Array.isArray(item?.postIds) ? item.postIds.map((id: any) => Number(id)).filter((id: number) => id > 0) : [],
+    locationNames: Array.isArray(item?.locationNames) ? item.locationNames.filter((name: any) => typeof name === 'string') : [],
     lat: item?.lat ?? item?.latitude ?? null,
     lng: item?.lng ?? item?.longitude ?? null,
     locationName: item?.locationName ?? '',
@@ -128,6 +130,7 @@ function toActivityPayload(payload: Partial<CreateActivityRequest>): Record<stri
   if ('latitude' in payload) body['latitude'] = payload.latitude ?? null;
   if ('longitude' in payload) body['longitude'] = payload.longitude ?? null;
   if ('postId' in payload) body['postId'] = payload.postId ?? null;
+  if ('postIds' in payload) body['postIds'] = payload.postIds ?? [];
   if ('clearPost' in payload) body['clearPost'] = payload.clearPost;
 
   return body;

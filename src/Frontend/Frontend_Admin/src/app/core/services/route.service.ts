@@ -88,6 +88,7 @@ export class RouteService {
       elevationGainM: payload.elevationGainM,
       description: payload.description,
       waypoints: waypointsJson,
+      images: JSON.stringify(payload.images ?? []),
     };
 
     const nextStatus = resolvePayloadStatus(payload);
@@ -114,6 +115,7 @@ export class RouteService {
       body.proposedRegionName = proposedRegionName;
       if (proposedRegionName) body.regionId = null;
     }
+    if (payload.images !== undefined) body.images = JSON.stringify(payload.images ?? []);
     const nextStatus = resolvePayloadStatus(payload);
     if (nextStatus) body.status = nextStatus;
 

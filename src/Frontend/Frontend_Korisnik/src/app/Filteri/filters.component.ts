@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
+import { TouristActivitiesService } from '../services/tourist-activities.service';
+import { TouristRoutesService } from '../services/tourist-routes.service';
 
 @Component({
   selector: 'app-filters',
@@ -21,6 +23,8 @@ export class FiltersComponent implements OnInit {
 
   /** Legacy inlineMode support — ignored, use context instead */
   @Input() inlineMode = false;
+
+  @Input() showContentFilters = false;
 
   @Output() closed  = new EventEmitter<void>();
   @Output() applied = new EventEmitter<FilterState>();
@@ -62,13 +66,30 @@ export class FiltersComponent implements OnInit {
   savedPostIds: number[] = [];
   fromDate: string = '';
   toDate: string = '';
+  activityCategoryOptions: string[] = [];
+  activityDifficultyOptions: string[] = [];
+  routeDifficultyOptions: string[] = [];
+  routeRegionOptions: string[] = [];
+  activityFilters = {
+    categories: [] as string[],
+    difficulties: [] as string[],
+    linkedOnly: false,
+  };
+  routeFilters = {
+    difficulties: [] as string[],
+    regions: [] as string[],
+    distanceBand: '',
+    durationBand: '',
+  };
 
   private returnTo: string = 'map-home';
 
   constructor(
     private router: Router,
     private route: ActivatedRoute,
-    private filterState: FilterStateService
+    private filterState: FilterStateService,
+    private activitiesService: TouristActivitiesService,
+    private routesService: TouristRoutesService
   ) {}
 
   ngOnInit(): void {
@@ -87,12 +108,26 @@ export class FiltersComponent implements OnInit {
     this.openNow       = state.openNow;
     this.showOnlySaved = state.showOnlySaved ?? false;
     this.savedPostIds  = state.savedPostIds ?? [];
+    this.activityFilters = {
+      categories: [...(state.activityCategories ?? [])],
+      difficulties: [...(state.activityDifficulties ?? [])],
+      linkedOnly: state.activityLinkedOnly ?? false,
+    };
+    this.routeFilters = {
+      difficulties: [...(state.routeDifficulties ?? [])],
+      regions: [...(state.routeRegions ?? [])],
+      distanceBand: state.routeDistanceBand ?? '',
+      durationBand: state.routeDurationBand ?? '',
+    };
     const storedRadius = state.radius ?? 0;
     const nearest = this.radiusSteps.reduce((prev, cur) =>
       Math.abs(cur - storedRadius) < Math.abs(prev - storedRadius) ? cur : prev, 0);
     this.radiusIndex = this.radiusSteps.indexOf(nearest);
     if (state.activeCategories.length > 0) {
       this.categories.forEach(c => { c.selected = state.activeCategories.includes(c.id); });
+    }
+    if (this.showContentFilters) {
+      this.loadContentFilterOptions();
     }
   }
 
@@ -111,6 +146,58 @@ export class FiltersComponent implements OnInit {
   }
 
   /** Called on every interactive change — saves state and emits immediately */
+  toggleActivityFilter(group: 'categories' | 'difficulties', value: string): void {
+    const list = this.activityFilters[group];
+    this.activityFilters[group] = list.includes(value)
+      ? list.filter(item => item !== value)
+      : [...list, value];
+    this.onAnyChange();
+  }
+
+  toggleRouteFilter(group: 'difficulties' | 'regions', value: string): void {
+    const list = this.routeFilters[group];
+    this.routeFilters[group] = list.includes(value)
+      ? list.filter(item => item !== value)
+      : [...list, value];
+    this.onAnyChange();
+  }
+
+  toggleLinkedActivitiesOnly(): void {
+    this.activityFilters.linkedOnly = !this.activityFilters.linkedOnly;
+    this.onAnyChange();
+  }
+
+  setRouteDistanceBand(value: string): void {
+    this.routeFilters.distanceBand = this.routeFilters.distanceBand === value ? '' : value;
+    this.onAnyChange();
+  }
+
+  setRouteDurationBand(value: string): void {
+    this.routeFilters.durationBand = this.routeFilters.durationBand === value ? '' : value;
+    this.onAnyChange();
+  }
+
+  formatActivityCategory(value?: string | null): string {
+    if (!value) return 'Other';
+    return value
+      .toString()
+      .toLowerCase()
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, letter => letter.toUpperCase());
+  }
+
+  formatRouteDifficulty(value?: string | null): string {
+    if (!value) return 'Standard';
+    const normalized = value.toString().toLowerCase();
+    const labels: Record<string, string> = {
+      easy: 'Easy',
+      moderate: 'Moderate',
+      hard: 'Hard',
+      expert: 'Expert',
+    };
+    return labels[normalized] ?? this.formatActivityCategory(value);
+  }
+
   onAnyChange(): void {
     const state = this.buildState();
     this.filterState.set(state);
@@ -126,6 +213,8 @@ export class FiltersComponent implements OnInit {
     this.savedPostIds  = [];
     this.fromDate      = '';
     this.toDate        = '';
+    this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
+    this.routeFilters = { difficulties: [], regions: [], distanceBand: '', durationBand: '' };
     this.filterState.clear();
     this.applied.emit(this.filterState.getDefault());
   }
@@ -144,10 +233,46 @@ export class FiltersComponent implements OnInit {
       activeCategories: selected,
       showOnlySaved:    this.showOnlySaved,
       savedPostIds:     this.savedPostIds,
+      activityCategories: this.activityFilters.categories,
+      activityDifficulties: this.activityFilters.difficulties,
+      activityLinkedOnly: this.activityFilters.linkedOnly,
+      routeDifficulties: this.routeFilters.difficulties,
+      routeRegions: this.routeFilters.regions,
+      routeDistanceBand: this.routeFilters.distanceBand,
+      routeDurationBand: this.routeFilters.durationBand,
     };
   }
 
   /** applyFilters kept for backward compat — now just saves and navigates */
+  private loadContentFilterOptions(): void {
+    this.activitiesService.getActivities().subscribe({
+      next: activities => {
+        this.activityCategoryOptions = this.uniqueSorted(activities.map(item => item.category).filter(Boolean));
+        this.activityDifficultyOptions = this.uniqueSorted(activities.map(item => item.difficulty || '').filter(Boolean));
+      },
+      error: () => {
+        this.activityCategoryOptions = [];
+        this.activityDifficultyOptions = [];
+      },
+    });
+
+    this.routesService.getRoutes().subscribe({
+      next: routes => {
+        this.routeDifficultyOptions = this.uniqueSorted(routes.map(item => item.difficulty || '').filter(Boolean));
+        this.routeRegionOptions = this.uniqueSorted(routes.map(item => item.regionName || '').filter(Boolean));
+      },
+      error: () => {
+        this.routeDifficultyOptions = [];
+        this.routeRegionOptions = [];
+      },
+    });
+  }
+
+  private uniqueSorted(values: string[]): string[] {
+    return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b));
+  }
+
   applyFilters(): void {
     const state = this.buildState();
     this.filterState.set(state);
