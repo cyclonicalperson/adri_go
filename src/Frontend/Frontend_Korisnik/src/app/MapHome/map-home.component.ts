@@ -191,6 +191,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'accommodation', label: 'Accommodation', icon: '🏨', active: false },
     { key: 'shop', label: 'Shopping', icon: '🛍️', active: false },
     { key: 'route', label: 'Routes', icon: 'Route', active: false },
+    { key: 'other', label: 'Ostalo', icon: '\u{1F4CD}', active: false },
   ];
 
   filterMinRating = 0;
@@ -610,10 +611,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   addSelectedLocationToPlanner(): void {
-    if (!this.selectedLocation) {
+    const location = this.selectedLocation;
+    if (!location) {
       return;
     }
-    this.addLocationToPlanner(this.selectedLocation, true);
+    this.addLocationToPlanner(location, true);
+    this.selectedLocation = null;
+    this.cdr.detectChanges();
   }
 
   addLocationToPlanner(location: Location, fromPin = false, insertAfterIndex?: number): void {
@@ -1906,10 +1910,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Kategorija filter: ako nijedan chip nije selektovan → sve prolazi
     // Ako je bar jedan selektovan → prikazuju se samo selektovane kategorije
     if (this.hasAnyCategorySelected) {
-      const key = (loc.postType || loc.category || '').toLowerCase().replace(/\s+/g, '_');
+      const key = this.getSelectableCategoryKey(loc);
       const selectedKeys = this.categories.filter(c => c.active).map(c => c.key);
-      const isKnownType = this.categories.some(c => c.key === key);
-      if (isKnownType && !selectedKeys.includes(key)) return false;
+      if (!selectedKeys.includes(key)) return false;
     }
 
     if (this.filterMinRating > 0 && (loc.avgRating || 0) < this.filterMinRating) return false;
@@ -2420,7 +2423,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     let score = 0;
     const badges: string[] = [];
     const title = this.normalizeSearchText(loc.title || '');
-    const typeKey = this.normalizeTypeKey(loc.postType || loc.category || '');
+    const typeKey = this.getSelectableCategoryKey(loc);
     const savedIds = new Set([
       ...this.savedLocationsContext.map(item => item.id),
       ...this.filterSavedPostIds,
@@ -2538,6 +2541,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     addCategory('event', 'event', 'dogadjaj', 'festival', 'concert', 'koncert', 'tonight', 'veceras', 'weekend', 'vikend');
     addCategory('accommodation', 'hotel', 'accommodation', 'smestaj', 'smjestaj', 'stay');
     addCategory('shop', 'shop', 'shopping', 'prodavnica', 'market');
+    addCategory('other', 'other', 'ostalo', 'misc', 'miscellaneous');
 
     const nearMe = phraseIncludes('near me', 'nearby', 'close', 'blizu', 'u blizini', 'oko mene');
     const openNow = phraseIncludes('open now', 'opened', 'otvoreno', 'radi sada', 'sad otvoreno');
@@ -2616,6 +2620,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private normalizeTypeKey(value: string): string {
     return this.normalizeSearchText(value).replace(/\s+/g, '_');
+  }
+
+  private getSelectableCategoryKey(loc: Pick<MapLocation, 'postType' | 'category'>): string {
+    const key = this.normalizeTypeKey(loc.postType || loc.category || '');
+    return this.categories.some(category => category.key === key) ? key : 'other';
   }
 
   private tokenizeSearch(value: string): string[] {
@@ -2749,16 +2758,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.activeTab = 'saved';
     this.router.navigate(['/saved']);
-  }
-
-  goToRoutes(): void {
-    this.activeTab = 'routes';
-    this.router.navigate(['/routes']);
-  }
-
-  goToActivities(): void {
-    this.activeTab = 'activities';
-    this.router.navigate(['/activities']);
   }
 
   goToNotifications(): void {

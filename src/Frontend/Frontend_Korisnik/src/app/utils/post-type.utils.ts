@@ -8,6 +8,7 @@ const POST_TYPE_LABELS: Record<string, string> = {
   event:            'Event',
   accommodation:    'Accommodation',
   shop:             'Shop',
+  other:            'Ostalo',
 };
 
 /**

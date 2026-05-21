@@ -705,18 +705,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.router.navigate(['/calendar']);
   }
 
-  goToActivities(): void {
-    this.router.navigate(['/activities']);
-  }
-
-  goToRoutes(): void {
-    if (!this.authService.isLoggedIn) {
-      this.openAuthPopup('Please log in to view your routes.');
-      return;
-    }
-    this.router.navigate(['/routes']);
-  }
-
   goToAccount(): void {
     if (!this.authService.isLoggedIn) {
       this.openAuthPopup('Please log in to view your account.');
@@ -1292,6 +1280,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     addCategory('event', 'event', 'dogadjaj', 'festival', 'concert', 'koncert', 'tonight', 'veceras', 'weekend', 'vikend');
     addCategory('accommodation', 'hotel', 'accommodation', 'smestaj', 'smjestaj', 'stay');
     addCategory('shop', 'shop', 'shopping', 'prodavnica', 'market');
+    addCategory('other', 'other', 'ostalo', 'misc', 'miscellaneous');
 
     const nearMe = phraseIncludes('near me', 'nearby', 'close', 'blizu', 'u blizini', 'oko mene');
     const openNow = phraseIncludes('open now', 'opened', 'otvoreno', 'radi sada', 'sad otvoreno');

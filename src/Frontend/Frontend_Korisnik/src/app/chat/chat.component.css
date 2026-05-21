@@ -531,10 +531,15 @@
 :host-context(html[data-theme='dark']) .bubble-content :is(code) { background: rgba(255,255,255,0.08); }
 :host-context(html[data-theme='dark']) .thinking-dots span { background: #8b949e; }
 :host-context(html[data-theme='dark']) .thinking-label { color: #8b949e; }
-:host-context(html[data-theme='dark']) .input-area      { background: #161b22; border-color: #21262d; }
-:host-context(html[data-theme='dark']) .input-wrapper   { background: #0d1117; border-color: #30363d; }
-:host-context(html[data-theme='dark']) .input-wrapper:focus-within { border-color: #22c55e; }
-:host-context(html[data-theme='dark']) .message-input   { color: #f0f6fc; }
+:host-context(html[data-theme='dark']) .input-area      { background: #161b22 !important; border-color: #21262d !important; }
+:host-context(html[data-theme='dark']) .input-wrapper   { background: #0d1117 !important; border-color: #30363d !important; }
+:host-context(html[data-theme='dark']) .input-wrapper:focus-within,
+:host-context(html[data-theme='dark']) .input-wrapper.input-active {
+  background: #0d1117 !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.14) !important;
+}
+:host-context(html[data-theme='dark']) .message-input   { background: transparent !important; color: #f0f6fc; }
 :host-context(html[data-theme='dark']) .message-input::placeholder { color: #484f58; }
 :host-context(html[data-theme='dark']) .error-banner    { background: #1a0d0d; border-color: #6e1616; }
 :host-context(html[data-theme='dark']) .msg-time        { color: #484f58; }

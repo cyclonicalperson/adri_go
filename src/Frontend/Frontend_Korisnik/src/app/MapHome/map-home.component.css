@@ -310,6 +310,10 @@
   .map-wrapper.navigating .top-ui-layer {
     display: none;
   }
+
+  .search-results-dropdown {
+    max-height: min(34dvh, calc(100dvh - 250px));
+  }
 }
 .search-filter-btn:hover { color: var(--green-500); }
 .search-filter-btn svg {
@@ -368,7 +372,9 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.14);
-  overflow: hidden;
+  max-height: min(48dvh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 100;
 }
 
@@ -1000,7 +1006,7 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .search-clear-btn svg,
 :host-context(html[data-theme='dark']) .sheet-chevron,
 :host-context(html[data-theme='dark']) .search-no-results svg {
-  fill: #334155;
+  fill: #94a3b8;
 }
 
 :host-context(html[data-theme='dark']) .search-divider,

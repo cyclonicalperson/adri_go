@@ -370,24 +370,6 @@
       <span class="footer-label">Calendar</span>
     </button>
 
-    <button class="footer-btn" [class.active]="activeTab === 'activities'" (click)="goToActivities()">
-      <span class="footer-icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
-        </svg>
-      </span>
-      <span class="footer-label">Activities</span>
-    </button>
-
-    <button class="footer-btn" [class.active]="activeTab === 'routes'" (click)="goToRoutes()">
-      <span class="footer-icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/>
-        </svg>
-      </span>
-      <span class="footer-label">Routes</span>
-    </button>
-
     <button class="footer-btn" [class.active]="activeTab === 'account'" (click)="goToAccount()">
       <span class="footer-icon">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

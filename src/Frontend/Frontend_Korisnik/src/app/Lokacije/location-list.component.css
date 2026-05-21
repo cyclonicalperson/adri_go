@@ -412,10 +412,10 @@
   border-radius: var(--radius-xl);
   box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
   border: 1px solid var(--gray-100);
-  overflow: hidden;
   z-index: 100;
-  max-height: 320px;
+  max-height: min(45dvh, 420px);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .search-result-item {
@@ -889,10 +889,25 @@
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  min-height: 360px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .activity-card { padding: 16px; }
+
+.route-post-card .image-wrapper {
+  height: 170px;
+  flex: 0 0 170px;
+}
+
+.route-post-card .card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
 .activity-card-head {
   display: flex;
@@ -933,6 +948,11 @@
   color: var(--gray-900);
   font-size: 17px;
   font-weight: 800;
+  min-height: 44px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .activity-card p,
@@ -941,6 +961,11 @@
   color: var(--gray-500);
   font-size: 13px;
   line-height: 1.45;
+  min-height: 57px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .activity-meta {
@@ -948,6 +973,7 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 10px;
+  min-height: 25px;
 }
 
 .activity-meta span {
@@ -975,6 +1001,21 @@
 .route-difficulty {
   background: #e0f2fe;
   color: #0369a1;
+}
+
+.activity-card .activity-tags-row,
+.route-post-card .info-row {
+  min-height: 28px;
+}
+
+.activity-card .activity-tags-row {
+  max-height: 58px;
+  overflow: hidden;
+}
+
+.activity-card .view-details-btn,
+.route-post-card .view-details-btn {
+  margin-top: auto;
 }
 
 .type-filter-overlay {
@@ -1174,6 +1215,11 @@
     gap: 16px;
     padding: 0 32px 24px;
   }
+  .activity-card,
+  .route-post-card {
+    min-height: 390px;
+    margin-bottom: 0;
+  }
   .expanded-section-header { padding: 14px 32px 10px; }
   .filter-results-header { padding: 14px 32px 10px; }
 }
@@ -1257,8 +1303,8 @@
 :host-context(html[data-theme='dark']) .search-input::placeholder,
 :host-context(html[data-theme='dark']) .search-icon svg,
 :host-context(html[data-theme='dark']) .search-clear-btn svg {
-  color: #334155;
-  fill: #334155;
+  color: #94a3b8;
+  fill: #94a3b8;
 }
 
 :host-context(html[data-theme='dark']) .search-divider {

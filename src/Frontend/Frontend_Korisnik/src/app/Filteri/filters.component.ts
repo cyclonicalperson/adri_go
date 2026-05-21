@@ -35,6 +35,7 @@ export class FiltersComponent implements OnInit {
     event:           '#ec4899',
     attraction:      '#10b981',
     shop:            '#f97316',
+    other:           '#6b7280',
   };
 
   categories = [
@@ -47,6 +48,7 @@ export class FiltersComponent implements OnInit {
     { id: 'event',           label: 'Events',        icon: '📅', selected: false },
     { id: 'accommodation',   label: 'Accommodation', icon: '🏨', selected: false },
     { id: 'shop',            label: 'Shopping',      icon: '🛍️', selected: false },
+    { id: 'other',           label: 'Ostalo',        icon: '\u{1F4CD}', selected: false },
   ];
 
   readonly radiusSteps = [0, 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100, 150, 200];
