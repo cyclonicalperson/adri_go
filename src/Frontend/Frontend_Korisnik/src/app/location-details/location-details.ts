@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LocationService, Location, Review } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
-import { UserService } from '../services/user.service';
+import { UserService, PendingSchedule } from '../services/user.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
@@ -40,9 +40,6 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
   isSubmittingReview = false;
 
   calendarMessage = '';
-  showCalendarScheduler = false;
-  selectedCalendarDateTime = '';
-  calendarScheduleError = '';
   showAuthModal = false;
   hasReviewed = false;
   myReviewStatus: string | null = null;
@@ -350,18 +347,6 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
     if (dx < 0) this.nextImage(); else this.prevImage();
   }
-  get calendarMinDateTime(): string {
-    const now = new Date();
-    const eventRange = this.getEventRange();
-    const min = this.isEvent && eventRange?.start && eventRange.start > now ? eventRange.start : now;
-    return this.toDateTimeLocalValue(min);
-  }
-
-  get calendarMaxDateTime(): string | null {
-    const eventRange = this.getEventRange();
-    return this.isEvent && eventRange?.end ? this.toDateTimeLocalValue(eventRange.end) : null;
-  }
-
   get eventHasPassed(): boolean {
     const eventRange = this.getEventRange();
     return this.isEvent && !!eventRange?.end && eventRange.end < new Date();
@@ -526,6 +511,11 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Starts the calendar-scheduling flow: navigates to the Calendar page where
+   * the user picks the day/time. Events carry their date window so the calendar
+   * only allows days while the event is running.
+   */
   openCalendarScheduler(): void {
     if (!this.location) return;
     if (!this.authService.isLoggedIn) {
@@ -538,86 +528,26 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.selectedCalendarDateTime = this.calendarMinDateTime;
-    this.calendarScheduleError = '';
-    this.showCalendarScheduler = true;
-    this.setBodyScrollLock(true);
-  }
+    const eventRange = this.getEventRange();
+    const pending: PendingSchedule = {
+      kind: 'post',
+      postId: this.location.id,
+      title: this.location.title,
+      postType: this.location.postType,
+      isEvent: this.isEvent,
+      eventStart: this.isEvent ? (eventRange?.start?.toISOString() ?? null) : null,
+      eventEnd:   this.isEvent ? (eventRange?.end?.toISOString() ?? null) : null,
+      address:    this.location.address || this.location.regionName || '',
+      imageUrl:   this.location.imageUrl ?? null,
+    };
 
-  closeCalendarScheduler(): void {
-    this.showCalendarScheduler = false;
-    this.calendarScheduleError = '';
-    this.setBodyScrollLock(false);
-  }
-
-  openDateTimePicker(input: HTMLInputElement): void {
-    const anyInput = input as HTMLInputElement & { showPicker?: () => void };
-    if (typeof anyInput.showPicker === 'function') {
-      try { anyInput.showPicker(); return; } catch { /* fall through */ }
-    }
-    input.focus();
+    this.router.navigate(['/calendar'], { state: { pendingSchedule: pending } });
   }
 
   ngOnDestroy(): void {
-    this.setBodyScrollLock(false);
-  }
-
-  private setBodyScrollLock(locked: boolean): void {
-    if (typeof document === 'undefined') return;
-    document.body.classList.toggle('calendar-scheduler-open', locked);
-  }
-
-  addToCalendar(): void {
-    if (!this.location) return;
-
-    if (!this.authService.isLoggedIn) {
-      this.openAuthModal();
-      return;
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('calendar-scheduler-open');
     }
-    if (!this.selectedCalendarDateTime) {
-      this.calendarScheduleError = 'Choose date and time.';
-      return;
-    }
-
-    const selectedDate = new Date(this.selectedCalendarDateTime);
-    if (isNaN(selectedDate.getTime())) {
-      this.calendarScheduleError = 'Choose a valid date and time.';
-      return;
-    }
-
-    const now = new Date();
-    if (selectedDate < now) {
-      this.calendarScheduleError = 'Choose a future date and time.';
-      return;
-    }
-
-    const eventRange = this.getEventRange();
-    if (this.isEvent && eventRange) {
-      if (eventRange.start && selectedDate < eventRange.start) {
-        this.calendarScheduleError = 'Choose a time after the event starts.';
-        return;
-      }
-      if (eventRange.end && selectedDate > eventRange.end) {
-        this.calendarScheduleError = 'Choose a time before the event ends.';
-        return;
-      }
-    }
-
-    this.userService.addLocationToCalendar(this.location, { scheduledAt: this.selectedCalendarDateTime }).subscribe({
-      next: (res) => {
-        this.calendarMessage = res.message
-          ? (res.localOnly ? '📅 ' + res.message : (res.alreadyAdded ? '📅 Already in your calendar' : '📅 Added to your calendar!'))
-          : '📅 Added to your calendar!';
-        setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3500);
-        this.closeCalendarScheduler();
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.calendarMessage = 'Could not add to calendar.';
-        setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);
-        this.cdr.markForCheck();
-      }
-    });
   }
 
   private getEventRange(): { start: Date | null; end: Date | null } | null {
@@ -634,11 +564,6 @@ export class LocationDetailsComponent implements OnInit, OnDestroy {
     } catch {
       return null;
     }
-  }
-
-  private toDateTimeLocalValue(date: Date): string {
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 16);
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
