@@ -64,6 +64,14 @@
 
       <div class="card">
         <h3 class="card-title">Vezivanje za lokaciju</h3>
+        <div class="field">
+          <label class="label">Drzava *</label>
+          <select class="input" formControlName="country" (change)="onCountryChanged()">
+            @for (country of countries; track country) {
+            <option [value]="country">{{ country }}</option>
+            }
+          </select>
+        </div>
         <p class="hint">Dogadjaj se može vezati za destinaciju ili konkretan objekat (ili oboje).</p>
 
         <div class="row-2">
@@ -71,7 +79,7 @@
             <label class="label">Destinacija</label>
             <select class="input" formControlName="regionId" (change)="onRegionSelected()">
               <option [ngValue]="null">— Nije vezano —</option>
-              @for (r of destinations; track r.regionId) {
+              @for (r of filteredDestinations; track r.regionId) {
               <option [value]="r.regionId">{{ r.name }}</option>
               }
             </select>
@@ -92,8 +100,10 @@
           <input class="input"
                  formControlName="proposedRegionName"
                  (input)="onProposedRegionInput()"
+                 [disabled]="!!f('regionId').value"
                  placeholder="Ako destinacija ne postoji, upisite naziv" />
         </div>
+
       </div>
 
     </div>

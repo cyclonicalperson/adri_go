@@ -2,12 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { DestinationService } from '@core/services/destination.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { Destination, DestinationType } from '@core/models/destination.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { SearchBarComponent } from '@shared/components/search-bar/search-bar.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { BadgeComponent, BadgeVariant } from '@shared/components/badge/badge.component';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 @Component({
   selector: 'app-destinations-list',
@@ -27,7 +29,9 @@ export class DestinationsListComponent implements OnInit {
   total = 0;
   totalPages = 1;
 
-  req: PageRequest & { type?: string } = {
+  readonly countries = WORLD_COUNTRIES;
+
+  req: PageRequest & { type?: string; country?: string } = {
     page: 1, pageSize: 12, sortBy: 'name', sortDir: 'asc',
   };
 
@@ -48,6 +52,7 @@ export class DestinationsListComponent implements OnInit {
     private service: DestinationService,
     private router: Router,
     private auth: AuthService,
+    private csv: CsvExportService,
   ) { }
 
   ngOnInit(): void {
@@ -98,6 +103,11 @@ export class DestinationsListComponent implements OnInit {
     this.load();
   }
 
+  onCountryChange(country: string): void {
+    this.req = { ...this.req, country: country || undefined, page: 1 };
+    this.load();
+  }
+
   onSort(col: string): void {
     const dir = this.req.sortBy === col && this.req.sortDir === 'asc' ? 'desc' : 'asc';
     this.req = { ...this.req, sortBy: col, sortDir: dir, page: 1 };
@@ -125,6 +135,24 @@ export class DestinationsListComponent implements OnInit {
   }
 
   goDetail(d: Destination): void { this.router.navigate(['/admin/destinations', d.destinationId]); }
+
+  printReport(): void {
+    window.print();
+  }
+
+  exportCsv(): void {
+    const today = new Date().toISOString().slice(0, 10);
+    this.csv.download(
+      `destinacije_${today}.csv`,
+      ['Naziv', 'Tip', 'Drzava', 'Objekti'],
+      this.destinations.map(d => [
+        d.name,
+        this.typeLabel(d.type),
+        d.country,
+        d.objectCount ?? 0,
+      ]),
+    );
+  }
 
   confirmDelete(d: Destination): void {
     if (!this.canManageDestinations) return;

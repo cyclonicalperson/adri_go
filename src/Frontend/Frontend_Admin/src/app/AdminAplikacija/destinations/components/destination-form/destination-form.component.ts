@@ -5,6 +5,7 @@ import { AuthService } from '@core/auth/auth.service';
 import { DestinationService } from '@core/services/destination.service';
 import { DestinationType } from '@core/models/destination.model';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 @Component({
   selector: 'app-destination-form',
@@ -20,6 +21,7 @@ export class DestinationFormComponent implements OnInit {
   id: number | null = null;
   saving = false;
   error: string | null = null;
+  readonly countries = WORLD_COUNTRIES;
 
   readonly typeOptions: { value: DestinationType; label: string }[] = [
     { value: 'CITY', label: 'Grad' },
@@ -43,7 +45,7 @@ export class DestinationFormComponent implements OnInit {
       name: ['', Validators.required],
       type: ['CITY', Validators.required],
       description: ['', Validators.required],
-      country: ['Montenegro', Validators.required],
+      country: [DEFAULT_COUNTRY, Validators.required],
       latitude: [null, [Validators.required, Validators.min(-90), Validators.max(90)]],
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
     });
@@ -64,7 +66,7 @@ export class DestinationFormComponent implements OnInit {
             name: d.name,
             type: d.type,
             description: d.description,
-            country: d.country ?? 'Montenegro',
+            country: d.country ?? DEFAULT_COUNTRY,
             latitude: d.latitude,
             longitude: d.longitude,
           });

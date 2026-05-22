@@ -35,27 +35,38 @@
             </select>
           </div>
           <div class="field">
-            <label class="label">Region *</label>
-            <select class="input" [class.invalid]="regionChoiceInvalid"
-                    formControlName="regionId"
-                    (change)="onRegionSelected()">
-              <option [ngValue]="null">— Izaberite —</option>
-              @for (r of destinations; track r.regionId) {
-              <option [value]="r.regionId">{{ r.name }}</option>
+            <label class="label">Drzava *</label>
+            <select class="input" formControlName="country" (change)="onCountryChanged()">
+              @for (country of countries; track country) {
+              <option [value]="country">{{ country }}</option>
               }
             </select>
           </div>
         </div>
 
-        <div class="field">
-          <label class="label">Predlog novog regiona</label>
-          <input class="input" [class.invalid]="regionChoiceInvalid"
-                 formControlName="proposedRegionName"
-                 (input)="onProposedRegionInput()"
-                 placeholder="Ako region ne postoji, upisite naziv" />
-          @if (regionChoiceInvalid) {
-          <div class="field-error">Izaberite region ili upisite predlog novog regiona.</div>
-          }
+        <div class="row-2">
+          <div class="field">
+            <label class="label">Region *</label>
+            <select class="input" [class.invalid]="regionChoiceInvalid"
+                    formControlName="regionId"
+                    (change)="onRegionSelected()">
+              <option [ngValue]="null">— Izaberite —</option>
+              @for (r of filteredDestinations; track r.regionId) {
+              <option [value]="r.regionId">{{ r.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="label">Predlog novog regiona</label>
+            <input class="input" [class.invalid]="regionChoiceInvalid"
+                   formControlName="proposedRegionName"
+                   (input)="onProposedRegionInput()"
+                   [disabled]="!!f('regionId').value"
+                   placeholder="Ako region ne postoji, upisite naziv" />
+            @if (regionChoiceInvalid) {
+            <div class="field-error">Izaberite region ili upisite predlog novog regiona.</div>
+            }
+          </div>
         </div>
 
         <div class="field">

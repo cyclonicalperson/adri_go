@@ -5,10 +5,10 @@
 <div class="account-container" *ngIf="!loading && userData">
 
   <div class="header-bar">
+    <h1>Account</h1>
     <button class="back-btn" (click)="goBack()">
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
     </button>
-    <h1>Account</h1>
   </div>
 
   <div class="scroll-content">
@@ -33,18 +33,18 @@
     </div>
 
     <div class="stats-grid">
-      <div class="stat-card">
+      <button type="button" class="stat-card" (click)="goToSaved()" aria-label="Open saved locations">
         <span class="stat-value">{{userData.stats.saved || 0}}</span>
         <span class="stat-label">Saved</span>
-      </div>
-      <div class="stat-card">
+      </button>
+      <button type="button" class="stat-card" (click)="goToReviews()" aria-label="Open locations for reviews">
         <span class="stat-value">{{userData.stats.reviews || 0}}</span>
         <span class="stat-label">Reviews</span>
-      </div>
-      <div class="stat-card">
+      </button>
+      <button type="button" class="stat-card" (click)="goToCalendar()" aria-label="Open calendar">
         <span class="stat-value">{{userData.stats.upcoming || 0}}</span>
         <span class="stat-label">Calendar</span>
-      </div>
+      </button>
     </div>
 
     <section class="menu-section">

@@ -137,6 +137,29 @@
 }
 .item-icon svg { width: 18px; height: 18px; fill: var(--gray-500); transition: fill 0.15s; }
 
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-arrow {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.menu-item-arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--gray-400);
+}
+
+.menu-item:hover .menu-item-arrow svg {
+  fill: currentColor;
+}
+
 /* Color-coded icon highlights on hover */
 .menu-item:hover .item-icon.icon-account   { background: #dbeafe; }
 .menu-item:hover .item-icon.icon-account svg { fill: #2563eb; }

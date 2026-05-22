@@ -104,6 +104,7 @@ builder.Services.AddScoped<IAiTourismQueryService, AiTourismQueryService>();
 builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TouristNotificationService>();
+builder.Services.AddScoped<RouteSafetyService>();
 
 // ── Anthropic HTTP klijent (za AI chat proxy) ──────────────────────────────
 builder.Services.AddHttpClient("AnthropicApi", client =>
@@ -111,6 +112,11 @@ builder.Services.AddHttpClient("AnthropicApi", client =>
     client.Timeout = TimeSpan.FromSeconds(60);
     client.DefaultRequestHeaders.Accept.Add(
         new MediaTypeWithQualityHeaderValue("application/json"));
+});
+
+builder.Services.AddHttpClient("RouteValidation", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
 });
 
 // ── SignalR ────────────────────────────────────────────────────────────

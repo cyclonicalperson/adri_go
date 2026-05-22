@@ -69,7 +69,7 @@ export class AdminTouristService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(req: PageRequest & { accountStatus?: string }): Observable<PaginatedResponse<TouristUser>> {
+  getAll(req: PageRequest & { accountStatus?: string; language?: string }): Observable<PaginatedResponse<TouristUser>> {
     let params = new HttpParams()
       .set('page', req.page)
       .set('pageSize', req.pageSize);
@@ -78,6 +78,7 @@ export class AdminTouristService {
     if (req.sortDir)      params = params.set('sortDir',       req.sortDir!);
     if (req.search)       params = params.set('search',        req.search);
     if (req.accountStatus) params = params.set('accountStatus', req.accountStatus);
+    if (req.language)     params = params.set('language',      req.language);
 
     return this.http.get<any>(this.url, { params }).pipe(
       map(res => ({

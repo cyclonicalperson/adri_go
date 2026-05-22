@@ -8,6 +8,7 @@ import { Post } from '@core/models/post.model';
 import { PostService } from '@core/services/post.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 interface EventObjectOption {
   objectId: number;
@@ -30,6 +31,7 @@ export class EventFormComponent implements OnInit {
 
   destinations: Region[] = [];
   objects: EventObjectOption[] = [];
+  readonly countries = WORLD_COUNTRIES;
 
   readonly categoryOptions = [
     { value: 'CONCERT', label: 'Koncert' },
@@ -66,6 +68,7 @@ export class EventFormComponent implements OnInit {
       ]],
       regionId: [null],
       proposedRegionName: [''],
+      country: [DEFAULT_COUNTRY, [Validators.required, Validators.maxLength(100)]],
       objectId: [null],
       startAt: ['', Validators.required],
       endAt: ['', Validators.required],
@@ -109,6 +112,7 @@ export class EventFormComponent implements OnInit {
             description: post.description ?? '',
             regionId: post.regionId ?? null,
             proposedRegionName: (post as any).proposedRegionName ?? '',
+            country: post.country ?? post.region?.country ?? DEFAULT_COUNTRY,
             objectId: details['objectId'] ?? details['relatedObjectId'] ?? null,
             startAt: formatDateTime((details['startAt'] as string | null | undefined) ?? (details['eventStart'] as string | null | undefined)),
             endAt: formatDateTime((details['endAt'] as string | null | undefined) ?? (details['eventEnd'] as string | null | undefined)),
@@ -155,6 +159,11 @@ export class EventFormComponent implements OnInit {
 
     const raw = this.form.value;
     const proposedRegionName = this.normalizeProposedRegionName(raw.proposedRegionName);
+    if (raw.regionId && proposedRegionName) {
+      this.error = 'Ne mozete istovremeno izabrati region i poslati predlog novog regiona.';
+      this.saving = false;
+      return;
+    }
     const scopeRegionId = proposedRegionName ? undefined : this.selectedRegionIdForPermission;
 
     if (!this.isEdit &&
@@ -179,6 +188,7 @@ export class EventFormComponent implements OnInit {
       description: raw.description,
       regionId: proposedRegionName ? null : (raw.regionId || null),
       proposedRegionName,
+      country: raw.country || 'Montenegro',
       lat: raw.lat || null,
       lng: raw.lng || null,
       externalUrl: raw.ticketUrl || raw.externalUrl || null,
@@ -207,6 +217,18 @@ export class EventFormComponent implements OnInit {
     if (this.form.get('regionId')?.value) {
       this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
     }
+  }
+
+  onCountryChanged(): void {
+    const selectedRegionId = Number(this.form.get('regionId')?.value);
+    if (selectedRegionId && !this.filteredDestinations.some(region => region.regionId === selectedRegionId)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
+
+  get filteredDestinations(): Region[] {
+    const country = this.form?.get('country')?.value;
+    return country ? this.destinations.filter(region => region.country === country) : this.destinations;
   }
 
   onProposedRegionInput(): void {

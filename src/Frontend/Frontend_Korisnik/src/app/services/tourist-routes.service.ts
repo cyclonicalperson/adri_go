@@ -20,6 +20,9 @@ export interface TouristRouteItem {
   elevationGainM?: number;
   regionName?: string | null;
   createdAt?: string;
+  images?: string | string[];
+  viewCount?: number;
+  saveCount?: number;
   waypoints: TouristRouteWaypoint[];
 }
 
@@ -76,6 +79,9 @@ export class TouristRoutesService {
       elevationGainM: item.elevationGainM ?? item.elevationGain ?? null,
       regionName: item.region?.name ?? item.regionName ?? null,
       createdAt: item.createdAt,
+      images: item.images ?? [],
+      viewCount: Number(item.viewCount ?? 0),
+      saveCount: Number(item.saveCount ?? 0),
       waypoints,
     };
   }

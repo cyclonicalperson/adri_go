@@ -54,3 +54,15 @@ td.num {
     border-color: #15803d;
   }
 }
+
+.btn-outline {
+  background: $white;
+  color: $gray-700;
+  border-color: $gray-200;
+
+  &:hover {
+    background: $surface-green;
+    color: $primary-dark;
+    border-color: $primary;
+  }
+}

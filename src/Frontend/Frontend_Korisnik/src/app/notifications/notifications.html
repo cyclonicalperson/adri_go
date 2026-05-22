@@ -1,6 +1,8 @@
 <div class="notif-container">
   <div class="header">
-    <button class="back-btn" (click)="goBack()">‹</button>
+    <button class="back-btn" (click)="goBack()" aria-label="Back">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
     <h1>Notifications</h1>
     <button class="mark-read"
             (click)="markAllRead()"
@@ -31,14 +33,14 @@
 
   <!-- Guest: no notifications -->
   <div *ngIf="!authService.isLoggedIn && !isLoading" class="state-message">
-    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
+    <div class="state-icon">&#128276;</div>
     <p>Log in to see your notifications</p>
   </div>
 
   <!-- Empty state for logged-in users -->
   <div *ngIf="authService.isLoggedIn && !isLoading && filteredNotifications.length === 0"
        class="state-message">
-    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
+    <div class="state-icon">&#128276;</div>
     <p>No notifications yet</p>
   </div>
 
@@ -56,7 +58,7 @@
             <h3>{{n.title}}</h3>
             <span class="new-badge" *ngIf="!n.isRead">NEW</span>
           </div>
-          <span class="time">🕒 {{ formatTime(n.createdAt) }}</span>
+          <span class="time">&#128338; {{ formatTime(n.createdAt) }}</span>
         </div>
       </div>
 
@@ -66,12 +68,12 @@
 
       <div class="card-actions">
         <button class="view-btn">
-          <span class="dot">●</span> View
+          <span class="dot">&#9679;</span> View
         </button>
         <button (click)="deleteNotification(n, $event)"
                 class="delete-btn"
                 title="Delete">
-          ✕
+          &times;
         </button>
       </div>
     </div>

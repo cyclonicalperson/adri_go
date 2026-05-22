@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
+import { SiteTranslateService } from './site-translate.service';
 
 // ── Modeli poruka ─────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ export interface ChatMessage {
 interface GeminiChatRequest {
   message: string;
   history: GeminiHistoryMessage[];
+  language?: string;
 }
 
 /** Format poruke u historiji koji backend (GeminiChatService) razume */
@@ -56,6 +58,7 @@ export class ChatService {
   constructor(
     private readonly http: HttpClient,
     private readonly auth: AuthService,
+    private readonly translate: SiteTranslateService,
   ) {}
 
   async sendMessage(userText: string): Promise<void> {
@@ -92,6 +95,7 @@ export class ChatService {
     const body: GeminiChatRequest = {
       message: userMessage,
       history: this.buildHistory(),
+      language: this.auth.currentTourist?.language || this.translate.currentLanguage,
     };
 
     // HttpClient automatski dodaje Authorization header kroz auth.interceptor.ts

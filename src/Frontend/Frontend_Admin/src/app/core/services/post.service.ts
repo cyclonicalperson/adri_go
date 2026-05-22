@@ -7,6 +7,7 @@ import { CreatePostRequest, Post, PostStatus, PostType, UpdatePostRequest } from
 
 export interface PostQuery extends PageRequest {
   regionId?: number;
+  country?: string;
   type?: PostType | string;
   excludeType?: PostType | string;
   status?: PostStatus | string;
@@ -27,6 +28,7 @@ export class PostService {
     if (req.sortDir) params = params.set('sortDir', req.sortDir);
     if (req.search) params = params.set('search', req.search);
     if (req.regionId) params = params.set('region_id', req.regionId);
+    if (req.country) params = params.set('country', req.country);
     if (req.type) params = params.set('type', req.type);
     if (req.excludeType) params = params.set('excludeType', req.excludeType);
     if (req.status) params = params.set('status', req.status);
@@ -114,6 +116,7 @@ function normalizePost(item: any): Post {
     adminOrganizationId: item?.adminOrganizationId ?? null,
     regionId: item?.regionId ?? null,
     proposedRegionName: item?.proposedRegionName ?? null,
+    country: item?.country ?? region?.country ?? 'Montenegro',
     region,
     title: item?.title ?? '',
     postType: (item?.postType ?? 'other') as PostType,
