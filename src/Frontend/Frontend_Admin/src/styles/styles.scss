@@ -362,6 +362,9 @@ table.admin-table {
   flex-wrap: wrap;
 
   .ftab {
+    flex: 0 0 auto;
+    min-width: auto;
+    min-height: 36px;
     padding: 7px 14px;
     border-radius: $radius-sm;
     border: 1px solid $gray-200;
@@ -371,6 +374,7 @@ table.admin-table {
     cursor: pointer;
     transition: .15s;
     color: $gray-500;
+    text-align: center;
 
     &:hover {
       border-color: $primary;

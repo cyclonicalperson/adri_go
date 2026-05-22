@@ -75,8 +75,8 @@
     <div class="btn-group">
       <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
       <button class="btn btn-outline" (click)="exportCsv()">📊 Izvezi CSV</button>
-      @if (canManageActivities) {
-      <button class="btn btn-primary" (click)="openNew()">➕ Dodaj aktivnost</button>
+      @if (canProposeActivities) {
+      <button class="btn btn-primary" (click)="openNew()">➕ {{ canManageActivities ? 'Dodaj aktivnost' : 'Predloži aktivnost' }}</button>
       }
     </div>
   </div>

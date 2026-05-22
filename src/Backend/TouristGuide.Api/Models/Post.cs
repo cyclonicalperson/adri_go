@@ -21,6 +21,11 @@ namespace TouristGuide.Api.Models
         public string? ProposedRegionName { get; set; }
 
         [Required]
+        [Column("country")]
+        [MaxLength(100)]
+        public string Country { get; set; } = "Montenegro";
+
+        [Required]
         [Column("title")]
         [MaxLength(300)]
         public string Title { get; set; } = string.Empty;

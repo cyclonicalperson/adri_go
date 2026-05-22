@@ -18,6 +18,7 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _db;
         private readonly AdminPermissionService _permissionService;
         private readonly NotificationService _notifService;
+        private readonly RouteSafetyService _routeSafetyService;
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -27,17 +28,20 @@ namespace TouristGuide.Api.Controllers
         public RoutesController(
             AppDbContext db,
             AdminPermissionService permissionService,
-            NotificationService notifService)
+            NotificationService notifService,
+            RouteSafetyService routeSafetyService)
         {
             _db = db;
             _permissionService = permissionService;
             _notifService = notifService;
+            _routeSafetyService = routeSafetyService;
         }
 
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll(
             [FromQuery] uint? region_id,
+            [FromQuery] string? country,
             [FromQuery] string? difficulty,
             [FromQuery] string? status,
             [FromQuery] string? search,
@@ -85,6 +89,10 @@ namespace TouristGuide.Api.Controllers
 
             if (region_id.HasValue)
                 query = query.Where(r => r.RegionId == region_id.Value);
+
+            var normalizedCountry = NormalizeOptionalSearch(country);
+            if (normalizedCountry is not null)
+                query = query.Where(r => r.Region != null && r.Region.Country.ToLower() == normalizedCountry);
 
             if (!string.IsNullOrWhiteSpace(difficulty))
                 query = query.Where(r => r.Difficulty == difficulty.ToLower());
@@ -157,8 +165,12 @@ namespace TouristGuide.Api.Controllers
                 return Unauthorized();
 
             var proposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
+            if (dto.RegionId.HasValue && proposedRegionName is not null)
+                return BadRequest(new { message = "Ne mozete istovremeno izabrati postojeci region i poslati predlog novog regiona." });
+
             var hasRegionProposal = !dto.RegionId.HasValue && proposedRegionName is not null;
             var statusValue = NormalizeStatus(dto.Status) ?? "draft";
+            var proposedCountry = NormalizeCountry(dto.Country);
 
             if (dto.RegionId.HasValue && !await _db.Regions.AnyAsync(r => r.Id == dto.RegionId.Value))
                 return BadRequest(new { message = $"Regija sa ID={dto.RegionId} ne postoji." });
@@ -169,9 +181,13 @@ namespace TouristGuide.Api.Controllers
             if (!await CanCreateRouteAsync(dto.RegionId, hasRegionProposal))
                 return Forbid();
 
+            var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
+            if (!routeValidation.IsValid)
+                return BadRequest(new { message = routeValidation.Message });
+
             var now = DateTime.UtcNow;
             var resolvedRegionId = statusValue == "published" && hasRegionProposal
-                ? await ResolveRegionProposalAsync(proposedRegionName!)
+                ? await ResolveRegionProposalAsync(proposedRegionName!, proposedCountry)
                 : dto.RegionId;
 
             var route = new RouteModel
@@ -211,6 +227,9 @@ namespace TouristGuide.Api.Controllers
                     });
             }
 
+            if (hasRegionProposal && !resolvedRegionId.HasValue)
+                await NotifyRegionProposalAsync(proposedRegionName!, proposedCountry, route);
+
             return CreatedAtAction(nameof(GetById), new { id = route.Id },
                 new { data = MapToDto(route), success = true });
         }
@@ -233,6 +252,13 @@ namespace TouristGuide.Api.Controllers
             if (!await CanManageRouteAsync(route))
                 return Forbid();
 
+            var previousProposedRegion = route.ProposedRegionName;
+            var nextProposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
+            if (dto.RegionId.HasValue && nextProposedRegionName is not null)
+                return BadRequest(new { message = "Ne mozete istovremeno izabrati postojeci region i poslati predlog novog regiona." });
+
+            var proposedCountry = NormalizeCountry(dto.Country ?? route.Region?.Country);
+
             if (dto.RegionId.HasValue)
             {
                 if (!await _db.Regions.AnyAsync(r => r.Id == dto.RegionId.Value))
@@ -243,7 +269,7 @@ namespace TouristGuide.Api.Controllers
             }
             else if (dto.ProposedRegionName is not null)
             {
-                route.ProposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
+                route.ProposedRegionName = nextProposedRegionName;
             }
 
             if (dto.Name is not null) route.Name = dto.Name.Trim();
@@ -252,7 +278,14 @@ namespace TouristGuide.Api.Controllers
             if (dto.DurationMin.HasValue) route.DurationMin = dto.DurationMin;
             if (dto.ElevationGainM.HasValue) route.ElevationGain = dto.ElevationGainM;
             if (dto.Description is not null) route.Description = dto.Description.Trim();
-            if (dto.Waypoints is not null) route.Waypoints = dto.Waypoints;
+            if (dto.Waypoints is not null)
+            {
+                var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
+                if (!routeValidation.IsValid)
+                    return BadRequest(new { message = routeValidation.Message });
+
+                route.Waypoints = dto.Waypoints;
+            }
             if (dto.Images is not null) route.Images = dto.Images;
 
             if (dto.Status is not null)
@@ -266,7 +299,7 @@ namespace TouristGuide.Api.Controllers
 
                 if (statusValue == "published" && route.ProposedRegionName is not null)
                 {
-                    route.RegionId = await ResolveRegionProposalAsync(route.ProposedRegionName);
+                    route.RegionId = await ResolveRegionProposalAsync(route.ProposedRegionName, proposedCountry);
                     route.ProposedRegionName = null;
                 }
 
@@ -275,6 +308,12 @@ namespace TouristGuide.Api.Controllers
 
             route.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(route.ProposedRegionName) &&
+                !string.Equals(previousProposedRegion, route.ProposedRegionName, StringComparison.OrdinalIgnoreCase))
+            {
+                await NotifyRegionProposalAsync(route.ProposedRegionName, proposedCountry, route);
+            }
 
             return Ok(new { data = MapToDto(route), success = true });
         }
@@ -388,14 +427,14 @@ namespace TouristGuide.Api.Controllers
                    && await _permissionService.HasPermissionAsync("create_route", regionId);
         }
 
-        private async Task<uint> ResolveRegionProposalAsync(string proposedRegionName)
+        private async Task<uint> ResolveRegionProposalAsync(string proposedRegionName, string country)
         {
             var normalizedName = NormalizeProposedRegionName(proposedRegionName)
                 ?? throw new InvalidOperationException("Naziv predlozenog regiona je obavezan.");
             var normalizedForLookup = normalizedName.ToLowerInvariant();
 
             var existingRegion = await _db.Regions
-                .FirstOrDefaultAsync(r => r.Name.ToLower() == normalizedForLookup);
+                .FirstOrDefaultAsync(r => r.Name.ToLower() == normalizedForLookup && r.Country.ToLower() == country.ToLower());
             if (existingRegion is not null)
                 return existingRegion.Id;
 
@@ -403,7 +442,7 @@ namespace TouristGuide.Api.Controllers
             {
                 Name = normalizedName,
                 Type = "other",
-                Country = "Montenegro",
+                Country = country,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
@@ -423,6 +462,35 @@ namespace TouristGuide.Api.Controllers
             return normalized.Length > 200 ? normalized[..200] : normalized;
         }
 
+        private static string NormalizeCountry(string? value)
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? "Montenegro" : value.Trim();
+            return normalized.Length > 100 ? normalized[..100] : normalized;
+        }
+
+        private static string? NormalizeOptionalSearch(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            return value.Trim().ToLowerInvariant();
+        }
+
+        private async Task NotifyRegionProposalAsync(string proposedRegionName, string country, RouteModel route)
+        {
+            await _notifService.BroadcastToSuperAdminsAsync(
+                "region_pending",
+                "Predlog za novi region",
+                $"Admin je predlozio novi region \"{proposedRegionName}\" kroz rutu \"{route.Name}\".",
+                new
+                {
+                    routeId = route.Id,
+                    regionName = proposedRegionName,
+                    country,
+                    url = $"/admin/routes-management/{route.Id}"
+                });
+        }
+
         private static string? NormalizeStatus(string? status)
         {
             if (string.IsNullOrWhiteSpace(status))
@@ -440,6 +508,7 @@ namespace TouristGuide.Api.Controllers
             regionId = route.RegionId,
             destinationId = route.RegionId,
             proposedRegionName = route.ProposedRegionName,
+            country = route.Region?.Country ?? "Montenegro",
             name = route.Name,
             difficulty = route.Difficulty,
             distanceKm = route.DistanceKm,
@@ -457,6 +526,7 @@ namespace TouristGuide.Api.Controllers
             {
                 regionId = route.Region.Id,
                 name = route.Region.Name,
+                country = route.Region.Country,
                 lat = route.Region.Lat,
                 lng = route.Region.Lng
             }
@@ -469,6 +539,8 @@ namespace TouristGuide.Api.Controllers
 
         [MaxLength(200)]
         public string? ProposedRegionName { get; set; }
+        [MaxLength(100)]
+        public string? Country { get; set; }
         public string? Name { get; set; }
         public string? Difficulty { get; set; }
         public decimal? DistanceKm { get; set; }

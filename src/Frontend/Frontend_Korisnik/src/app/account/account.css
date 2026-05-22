@@ -19,6 +19,7 @@
   background: #fff;
   border-bottom: 1px solid var(--gray-100);
   flex-shrink: 0;
+  gap: 12px;
 }
 
 .back-btn {
@@ -30,6 +31,7 @@
   cursor: pointer;
   transition: background 0.15s;
   flex-shrink: 0;
+  margin-left: auto;
 }
 .back-btn:hover { background: var(--gray-200); }
 .back-btn svg { width: 20px; height: 20px; fill: var(--gray-700); }
@@ -41,8 +43,8 @@
   font-weight: 800;
   color: var(--gray-900);
   flex: 1;
-  text-align: center;
-  padding-right: 38px;
+  text-align: left;
+  padding-right: 0;
 }
 
 /* -- CONTENT -- */
@@ -130,9 +132,22 @@
 .stat-card {
   background: #fff;
   padding: 18px 10px;
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   text-align: center;
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.stat-card:hover {
+  border-color: var(--green-200);
+  box-shadow: 0 8px 22px rgba(15,23,42,0.09);
+  transform: translateY(-1px);
+}
+.stat-card:focus-visible {
+  outline: 2px solid var(--green-400);
+  outline-offset: 2px;
 }
 .stat-value {
   font-family: var(--font-display);
@@ -197,7 +212,14 @@
 .help-bg     { background: var(--gray-100); } .help-bg     svg { fill: var(--gray-500); }
 .privacy-bg  { background: #fef2f2; }          .privacy-bg  svg { fill: var(--danger, #ef4444); }
 
-.link-text { flex: 1; font-weight: 600; color: var(--gray-700); font-size: 15px; }
+.link-text { flex: 1; min-width: 0; font-weight: 600; color: var(--gray-700); font-size: 15px; }
+.link-arrow {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
 .link-arrow svg { width: 18px; height: 18px; fill: var(--gray-300); transition: transform 0.2s; }
 
 /* Dark mode row */
@@ -434,4 +456,59 @@ html[data-theme='dark'] .link-text {
     font-size: 15px;
     padding: 15px;
   }
+}
+
+:host-context(html[data-theme='dark']) .account-container {
+  background: #0f172a !important;
+}
+
+:host-context(html[data-theme='dark']) .header-bar,
+:host-context(html[data-theme='dark']) .footer {
+  background: #0b1220 !important;
+  border-color: #1e293b !important;
+}
+
+:host-context(html[data-theme='dark']) .header-bar h1,
+:host-context(html[data-theme='dark']) .link-text {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .section-title,
+:host-context(html[data-theme='dark']) .stat-label,
+:host-context(html[data-theme='dark']) .user-text p {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .stat-card,
+:host-context(html[data-theme='dark']) .menu-link {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .menu-items-group {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .menu-link:hover {
+  background: #1f2937 !important;
+  border-color: #475569 !important;
+}
+
+:host-context(html[data-theme='dark']) .back-btn,
+:host-context(html[data-theme='dark']) .close-btn {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .back-btn svg,
+:host-context(html[data-theme='dark']) .link-arrow svg {
+  fill: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .personal-bg,
+:host-context(html[data-theme='dark']) .settings-bg,
+:host-context(html[data-theme='dark']) .help-bg,
+:host-context(html[data-theme='dark']) .privacy-bg {
+  background: #1f2937;
 }

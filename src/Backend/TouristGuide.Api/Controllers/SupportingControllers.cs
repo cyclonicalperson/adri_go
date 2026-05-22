@@ -24,6 +24,7 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? type,
+            [FromQuery] string? country,
             [FromQuery] bool? isActive,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
@@ -34,6 +35,11 @@ namespace TouristGuide.Api.Controllers
                 query = query.Where(r => r.Name.Contains(search));
             if (!string.IsNullOrWhiteSpace(type))
                 query = query.Where(r => r.Type == type);
+            if (!string.IsNullOrWhiteSpace(country))
+            {
+                var normalizedCountry = country.Trim().ToLower();
+                query = query.Where(r => r.Country.ToLower() == normalizedCountry);
+            }
             if (isActive.HasValue)
                 query = query.Where(r => r.IsActive == isActive.Value);
 

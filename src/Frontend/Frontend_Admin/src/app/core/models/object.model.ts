@@ -18,6 +18,7 @@ export interface TouristObject {
   /** Alias for destinationId — matches new DB schema (region table) */
   regionId?: number;
   proposedRegionName?: string | null;
+  country?: string;
   name: string;
   category: ObjectCategory;
   description: string;
@@ -31,7 +32,7 @@ export interface TouristObject {
   createdAt: string;
   // API may return either destination (old) or region (new DB)
   destination?: { destinationId: number; name: string } | null;
-  region?: { regionId: number; name: string } | null;
+  region?: { regionId: number; name: string; country?: string } | null;
   activities?: Activity[];
   media?: Media[];
   averageRating?: number;
@@ -42,6 +43,7 @@ export interface CreateObjectRequest {
   destinationId?: number;
   regionId?: number;
   proposedRegionName?: string | null;
+  country?: string;
   name: string;
   category: ObjectCategory;
   description: string;

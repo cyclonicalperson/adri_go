@@ -45,6 +45,10 @@ namespace TouristGuide.Api.Models
         [Column("max_capacity")]
         public short? MaxCapacity { get; set; }
 
+        [Column("activity_tags")]
+        [MaxLength(500)]
+        public string? ActivityTags { get; set; }
+
         // Navigation
         public ICollection<PostTag> PostTags { get; set; } = new List<PostTag>();
     }

@@ -7,6 +7,7 @@ export interface TouristRoute {
   destinationId: number;
   regionId?: number | null;
   proposedRegionName?: string | null;
+  country?: string;
   name: string;
   routeType?: RouteType | null;
   difficulty: RouteDifficulty;
@@ -22,7 +23,7 @@ export interface TouristRoute {
   createdBy: number;
   waypoints?: Waypoint[];
   images?: string[];
-  destination?: { destinationId: number; name: string };
+  destination?: { destinationId: number; name: string; country?: string };
   status?: RouteStatus;
   viewCount?: number;
   saveCount?: number;
@@ -40,6 +41,7 @@ export interface CreateRouteRequest {
   destinationId?: number | null;
   regionId?: number | null;
   proposedRegionName?: string | null;
+  country?: string;
   name: string;
   difficulty: RouteDifficulty;
   distanceKm: number;
@@ -53,6 +55,7 @@ export interface CreateRouteRequest {
   status?: RouteStatus;
   isActive?: boolean;
   waypoints?: Omit<Waypoint, 'waypointId' | 'routeId'>[];
+  images?: string[];
 }
 
 export interface UpdateRouteRequest extends Partial<CreateRouteRequest> {}

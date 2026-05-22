@@ -57,8 +57,6 @@ export class SideMenuComponent {
     if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
     this.router.navigate(['/saved']);
   }
-  goToRoutes() { this.onClose.emit(); this.router.navigate(['/routes']); }
-  goToActivities() { this.onClose.emit(); this.router.navigate(['/activities']); }
   goToChat()       { this.onClose.emit(); this.router.navigate(['/chat']); }
   goToCalendar() { this.onClose.emit(); this.router.navigate(['/calendar']); }
   goToNotifications() { this.onClose.emit(); this.router.navigate(['/notifications']); }

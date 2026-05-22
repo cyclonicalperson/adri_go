@@ -22,6 +22,8 @@ export interface Activity {
   maxCapacity?: number | null;
   tags?: string;
   postId?: number | null;
+  postIds?: number[];
+  locationNames?: string[];
   lat?: number | null;
   lng?: number | null;
   locationName?: string;
@@ -40,6 +42,7 @@ export interface CreateActivityRequest {
   maxCapacity?: number | null;
   tags?: string;
   postId?: number | null;
+  postIds?: number[];
   latitude?: number | null;
   longitude?: number | null;
   status?: ActivityStatus;

@@ -3,7 +3,7 @@
   <!-- ── STATS ──────────────────────────────────────────────────────────── -->
   <div class="stats-strip">
     <div class="stat-chip clickable" [class.active-chip]="activeTab === 'all'" (click)="setTab('all')">
-      <div class="num">{{ activeCount + inactiveCount }}</div>
+      <div class="num">{{ allCount }}</div>
       <div class="lbl">Svi turisti</div>
     </div>
     <div class="stat-chip clickable" [class.active-chip]="activeTab === 'active'" (click)="setTab('active')">
@@ -49,7 +49,21 @@
              [value]="req.search ?? ''"
              (input)="onSearch($any($event.target).value)" />
     </div>
+    <select class="filter-select" [value]="req.language ?? ''" (change)="onLanguageChange($any($event.target).value)">
+      @for (option of languageOptions; track option.value) {
+      <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+    <select class="filter-select" [value]="activeSortValue" (change)="onSortChange($any($event.target).value)">
+      @for (option of sortOptions; track option.value) {
+      <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
     <div class="spacer"></div>
+    <div class="btn-group">
+      <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
+      <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
+    </div>
   </div>
 
   <!-- ── TABLE ──────────────────────────────────────────────────────────── -->
