@@ -566,6 +566,22 @@ html[data-theme='dark'] .saved-routes-close {
   color: var(--gray-900) !important;
 }
 
+/* Fix 2: hover boje u dark modu — tihe, ne blještave */
+html[data-theme='dark'] .menu-link:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: #475569 !important;
+}
+
+html[data-theme='dark'] .setting-row:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+html[data-theme='dark'] .sort-option:hover,
+html[data-theme='dark'] .sheet-option:hover,
+html[data-theme='dark'] .support-action:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
 html[data-theme='dark'] .divider,
 html[data-theme='dark'] .search-divider {
   background: #334155 !important;
