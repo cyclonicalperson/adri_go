@@ -9,6 +9,7 @@ import { RouteService } from '@core/services/route.service';
 import { RouteSafetyService } from '@core/services/route-safety.service';
 import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
 import { WaypointEditorComponent } from '../waypoint-editor/waypoint-editor.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 @Component({
   selector: 'app-route-form',
@@ -27,6 +28,7 @@ export class RouteFormComponent implements OnInit {
   destinations: Region[] = [];
   waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[] = [];
   submitted = false;
+  readonly countries = WORLD_COUNTRIES;
 
   readonly difficultyOptions: { value: RouteDifficulty; label: string }[] = [
     { value: 'EASY', label: 'Lako' },
@@ -55,6 +57,7 @@ export class RouteFormComponent implements OnInit {
     this.form = this.fb.group({
       regionId: [null],
       proposedRegionName: [''],
+      country: [DEFAULT_COUNTRY, [Validators.required, Validators.maxLength(100)]],
       name: ['', Validators.required],
       difficulty: ['MODERATE', Validators.required],
       distanceKm: [null, [Validators.required, Validators.min(0.1)]],
@@ -83,6 +86,7 @@ export class RouteFormComponent implements OnInit {
         this.form.patchValue({
           regionId: r.destinationId ?? r.regionId,
           proposedRegionName: r.proposedRegionName ?? '',
+          country: r.country ?? r.destination?.country ?? DEFAULT_COUNTRY,
           name: r.name,
           difficulty: r.difficulty,
           durationMin: r.durationMin,
@@ -169,6 +173,12 @@ export class RouteFormComponent implements OnInit {
     }
 
     const scopeRegionId = this.proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+    if (this.form.value.regionId && this.proposedRegionName) {
+      this.error = 'Ne mozete istovremeno izabrati region i poslati predlog novog regiona.';
+      this.saving = false;
+      return;
+    }
+
     if (!this.isEdit &&
         (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
          !this.auth.hasPermission('create_route', scopeRegionId))) {
@@ -222,6 +232,18 @@ export class RouteFormComponent implements OnInit {
     if (this.form.get('regionId')?.value) {
       this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
     }
+  }
+
+  onCountryChanged(): void {
+    const selectedRegionId = Number(this.form.get('regionId')?.value);
+    if (selectedRegionId && !this.filteredDestinations.some(region => region.regionId === selectedRegionId)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
+
+  get filteredDestinations(): Region[] {
+    const country = this.form?.get('country')?.value;
+    return country ? this.destinations.filter(region => region.country === country) : this.destinations;
   }
 
   onProposedRegionInput(): void {

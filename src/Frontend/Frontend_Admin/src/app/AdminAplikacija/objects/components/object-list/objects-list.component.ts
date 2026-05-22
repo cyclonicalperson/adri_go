@@ -10,9 +10,10 @@ import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 interface ObjectsListState {
-  req?: Partial<PageRequest & { category?: string; regionId?: number; status?: string }>;
+  req?: Partial<PageRequest & { category?: string; country?: string; regionId?: number; status?: string }>;
   activeStatusFilter?: string;
 }
 
@@ -36,7 +37,9 @@ export class ObjectsListComponent implements OnInit {
   inactiveCount = 0;
   globalTotal = 0;
 
-  req: PageRequest & { category?: string; regionId?: number; status?: string } = {
+  readonly countries = WORLD_COUNTRIES;
+
+  req: PageRequest & { category?: string; country?: string; regionId?: number; status?: string } = {
     page: 1,
     pageSize: 10,
     sortBy: 'createdAt',
@@ -126,6 +129,22 @@ export class ObjectsListComponent implements OnInit {
   onDestinationChange(id: string): void {
     this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
+  }
+
+  onCountryChange(country: string): void {
+    const nextCountry = country || undefined;
+    const selectedRegion = this.regions.find(region => region.regionId === this.req.regionId);
+    this.req = {
+      ...this.req,
+      country: nextCountry,
+      regionId: selectedRegion && nextCountry && selectedRegion.country !== nextCountry ? undefined : this.req.regionId,
+      page: 1,
+    };
+    this.load();
+  }
+
+  get filteredRegions(): Region[] {
+    return this.req.country ? this.regions.filter(region => region.country === this.req.country) : this.regions;
   }
 
   onStatusFilter(val: string): void {

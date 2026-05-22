@@ -24,6 +24,7 @@ export class RouteService {
   getAll(req: PageRequest & {
     destinationId?: number;
     regionId?: number;
+    country?: string;
     difficulty?: string;
     status?: string;
   }): Observable<PaginatedResponse<TouristRoute>> {
@@ -37,6 +38,7 @@ export class RouteService {
 
     const rid = req.regionId ?? req.destinationId;
     if (rid) params = params.set('region_id', rid);
+    if (req.country) params = params.set('country', req.country);
     if (req.difficulty) params = params.set('difficulty', req.difficulty.toLowerCase());
     if (req.status) params = params.set('status', req.status);
 
@@ -81,6 +83,7 @@ export class RouteService {
     const body: any = {
       regionId,
       proposedRegionName,
+      country: payload.country,
       name: payload.name,
       difficulty: payload.difficulty?.toLowerCase() ?? 'moderate',
       distanceKm: payload.distanceKm,
@@ -111,6 +114,7 @@ export class RouteService {
     if (payload.elevationGainM !== undefined) body.elevationGainM = payload.elevationGainM;
     if (payload.description !== undefined) body.description = payload.description;
     if (regionId !== undefined) body.regionId = regionId;
+    if (payload.country !== undefined) body.country = payload.country;
     if (payload.proposedRegionName !== undefined) {
       body.proposedRegionName = proposedRegionName;
       if (proposedRegionName) body.regionId = null;
@@ -173,6 +177,7 @@ function backendToRoute(r: any): TouristRoute {
     destinationId: r.regionId ?? r.destinationId ?? 0,
     regionId: r.regionId ?? r.destinationId ?? null,
     proposedRegionName: r.proposedRegionName ?? null,
+    country: r.country ?? regionData?.country ?? 'Montenegro',
     name: r.name ?? '',
     difficulty: (r.difficulty?.toUpperCase() ?? 'MODERATE') as any,
     distanceKm: r.distanceKm ?? 0,
@@ -194,7 +199,7 @@ function backendToRoute(r: any): TouristRoute {
       sequenceOrder: i + 1,
     })),
     destination: regionData
-      ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name }
+      ? { destinationId: regionData.regionId ?? regionData.id, name: regionData.name, country: regionData.country }
       : undefined,
     viewCount: r.viewCount ?? 0,
     saveCount: r.saveCount ?? 0,

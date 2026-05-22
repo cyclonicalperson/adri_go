@@ -27,7 +27,7 @@ export class DestinationService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(req: PageRequest & { type?: string; region?: string }): Observable<PaginatedResponse<Destination>> {
+  getAll(req: PageRequest & { type?: string; region?: string; country?: string }): Observable<PaginatedResponse<Destination>> {
     let params = new HttpParams()
       .set('page', req.page)
       .set('pageSize', req.pageSize);
@@ -35,6 +35,7 @@ export class DestinationService {
     if (req.sortBy)  params = params.set('sortBy', req.sortBy);
     if (req.sortDir) params = params.set('sortDir', req.sortDir);
     if (req.search)  params = params.set('search', req.search);
+    if (req.country) params = params.set('country', req.country);
     // Mapiramo frontend "type" (CITY, MOUNTAIN...) u backend lowercase (city, mountain...)
     if (req.type)    params = params.set('type', req.type.toLowerCase());
 

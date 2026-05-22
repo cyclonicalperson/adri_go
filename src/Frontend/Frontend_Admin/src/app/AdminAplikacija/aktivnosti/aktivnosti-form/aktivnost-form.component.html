@@ -166,12 +166,14 @@
       <!-- Status -->
       <div class="card">
         <h3 class="card-title">Status</h3>
+        <p class="hint">{{ statusHint }}</p>
         <div class="field">
           <label class="label">Status aktivnosti</label>
           <select class="input" formControlName="status">
             <option value="pending">⏳ Na čekanju (čeka odobrenje)</option>
+            @if (canApproveActivities) {
             <option value="approved">✅ Odobreno</option>
-            <option value="INACTIVE">❌ Neaktivno</option>
+            }
           </select>
         </div>
       </div>
@@ -179,7 +181,7 @@
       <div class="form-actions">
         <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
         <button type="submit" class="btn-save" [disabled]="saving">
-          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj aktivnost') }}
+          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : (canApproveActivities ? 'Kreiraj aktivnost' : 'Predloži aktivnost')) }}
         </button>
       </div>
 

@@ -473,8 +473,8 @@ html[data-theme='dark'] .form-section {
 
 /* Explore map-home white sheet background */
 html[data-theme='dark'] .top-search-strip .search-container {
-  background: #1f2937 !important;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+  background: #111827 !important;
+  box-shadow: none !important;
 }
 
 /* Icon backgrounds in dark mode - keep their color, just slightly muted */
@@ -503,6 +503,26 @@ html[data-theme='dark'] textarea:focus {
   background: #0f172a !important;
   border-color: var(--green-500) !important;
   box-shadow: 0 0 0 3px rgba(34,197,94,0.16) !important;
+}
+
+html[data-theme='dark'] .search-container .search-input,
+html[data-theme='dark'] .search-input-wrapper .search-input {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .search-container,
+html[data-theme='dark'] .search-input-wrapper {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .search-container:focus-within,
+html[data-theme='dark'] .search-input-wrapper:focus-within {
+  border-color: #475569 !important;
+  box-shadow: none !important;
 }
 
 html[data-theme='dark'] .input-area,

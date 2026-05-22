@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { UserService, CalendarItem } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 interface DisplayEvent {
@@ -48,6 +49,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     private router: Router,
     private userService: UserService,
     private authService: AuthService,
+    private translate: SiteTranslateService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -126,12 +128,12 @@ export class CalendarComponent implements OnInit, OnDestroy {
   get dayNames(): string[] {
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(2023, 0, 2 + i);
-      return new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(d);
+      return new Intl.DateTimeFormat(this.locale, { weekday: 'short' }).format(d);
     });
   }
 
   get monthLabel(): string {
-    return this.currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    return this.currentDate.toLocaleDateString(this.locale, { month: 'long', year: 'numeric' });
   }
 
   prevMonth(): void {
@@ -169,7 +171,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   get selectedDayLabel(): string {
-    return this.selectedDay?.date.toLocaleDateString('en-GB', {
+    return this.selectedDay?.date.toLocaleDateString(this.locale, {
       weekday: 'long',
       day: '2-digit',
       month: 'long',
@@ -208,7 +210,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   formatEventRange(event: DisplayEvent): string {
     const date = this.eventDate(event);
     const dateLabel = date
-      ? date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+      ? date.toLocaleDateString(this.locale, { day: '2-digit', month: '2-digit' })
       : 'No date';
 
     return event.time ? `${dateLabel} - ${event.time}` : dateLabel;
@@ -217,10 +219,28 @@ export class CalendarComponent implements OnInit, OnDestroy {
   formatEventSchedule(event: DisplayEvent): string {
     const date = this.eventDate(event);
     const dateLabel = date
-      ? date.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })
+      ? date.toLocaleDateString(this.locale, { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })
       : 'No date';
 
-    return event.time ? `${dateLabel} at ${event.time}` : dateLabel;
+    return event.time ? `${dateLabel} ${this.timeSeparator} ${event.time}` : dateLabel;
+  }
+
+  private get locale(): string {
+    const map: Record<string, string> = {
+      en: 'en-GB',
+      sr: 'sr-Latn-RS',
+      de: 'de-DE',
+      it: 'it-IT',
+      fr: 'fr-FR',
+      ru: 'ru-RU',
+      es: 'es-ES',
+      nl: 'nl-NL',
+    };
+    return map[this.translate.currentLanguage] ?? 'en-GB';
+  }
+
+  private get timeSeparator(): string {
+    return this.translate.currentLanguage === 'sr' ? 'u' : 'at';
   }
 
   private buildCalendar(): void {

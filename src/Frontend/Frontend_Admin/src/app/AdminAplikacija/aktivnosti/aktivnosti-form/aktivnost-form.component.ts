@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { ActivityService } from '@core/services/activity.service';
 import { PostService } from '@core/services/post.service';
+import { AuthService } from '@core/auth/auth.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 interface SimpleObject { objectId: number; name: string; }
@@ -39,9 +40,20 @@ export class AktivnostFormComponent implements OnInit {
     private fb: FormBuilder,
     private activityService: ActivityService,
     private postService: PostService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
+
+  get canApproveActivities(): boolean {
+    return this.auth.hasGlobalPermission('manage_tags');
+  }
+
+  get statusHint(): string {
+    return this.canApproveActivities
+      ? 'Superadmin ili admin sa dozvolom moze odmah odobriti aktivnost.'
+      : 'Aktivnost ce biti poslata superadminu na odobrenje.';
+  }
 
   ngOnInit(): void {
     this.form = this.fb.group({
@@ -56,7 +68,7 @@ export class AktivnostFormComponent implements OnInit {
       objectSearch: [''],
       latitude: [null],
       longitude: [null],
-      status: ['pending'],
+      status: [this.canApproveActivities ? 'approved' : 'pending'],
     });
 
     this.postService.getAll({ page: 1, pageSize: 500, excludeType: 'event', sortBy: 'title', sortDir: 'asc' })
@@ -90,6 +102,11 @@ export class AktivnostFormComponent implements OnInit {
         if (activity.lat && activity.lng) {
           setTimeout(() => this.mapComp?.setPickedLocation(activity.lat!, activity.lng!), 300);
         }
+
+        if (!this.canApproveActivities) {
+          this.form.patchValue({ status: 'pending' });
+          this.form.get('status')?.disable({ emitEvent: false });
+        }
       });
     }
   }
@@ -109,7 +126,7 @@ export class AktivnostFormComponent implements OnInit {
     const payload = {
       name: raw.name,
       category: raw.category,
-      status: (raw.status ?? 'pending').toLowerCase(),
+      status: this.canApproveActivities ? (raw.status ?? 'pending').toLowerCase() : 'pending',
       description: raw.description ?? '',
       duration: raw.duration ?? '',
       difficulty: raw.difficulty ?? '',

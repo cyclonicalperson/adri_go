@@ -203,6 +203,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   filterRadius = 0;
   filterShowOnlySaved = false;
   filterSavedPostIds: number[] = [];
+  filterDestinationCountries: string[] = [];
+  filterDestinationRegions: string[] = [];
   filterActivityCategories: string[] = [];
   filterActivityDifficulties: string[] = [];
   filterActivityLinkedOnly = false;
@@ -222,6 +224,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       || (this.filterRadius > 0 && !!this.userPosition)
       || this.hasAnyCategorySelected
       || this.filterShowOnlySaved
+      || this.filterDestinationCountries.length > 0
+      || this.filterDestinationRegions.length > 0
       || this.filterActivityCategories.length > 0
       || this.filterActivityDifficulties.length > 0
       || this.filterActivityLinkedOnly
@@ -394,6 +398,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
+  }
+
+  goHome(): void {
+    this.router.navigate(['/map-home']);
   }
 
   private showChatAssistantHint(): void {
@@ -1948,6 +1956,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterRadius = state.radius ?? 0;
     this.filterShowOnlySaved = state.showOnlySaved ?? false;
     this.filterSavedPostIds = state.savedPostIds ?? [];
+    this.filterDestinationCountries = state.destinationCountries ?? [];
+    this.filterDestinationRegions = state.destinationRegions ?? [];
     this.filterActivityCategories = state.activityCategories ?? [];
     this.filterActivityDifficulties = state.activityDifficulties ?? [];
     this.filterActivityLinkedOnly = state.activityLinkedOnly ?? false;
@@ -2030,6 +2040,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.filterMinRating > 0 && (loc.avgRating || 0) < this.filterMinRating) return false;
     if (this.filterOpenNow && !this.isLocationOpen(loc)) return false;
+    if (this.filterDestinationCountries.length > 0 && !this.filterDestinationCountries.includes(loc.country || '')) return false;
+    if (this.filterDestinationRegions.length > 0 && !this.filterDestinationRegions.includes(loc.regionName || '')) return false;
     if (!this.locationPassesActivityFilters(loc)) return false;
 
     if (this.filterRadius > 0 && this.userPosition) {

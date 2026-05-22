@@ -778,6 +778,12 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("avg_rating");
 
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1389,6 +1395,20 @@ namespace TouristGuide.Api.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PendingEmail")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pending_email");
+
+                    b.Property<string>("PendingEmailVerificationToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pending_email_verification_token");
+
+                    b.Property<DateTime?>("PendingEmailVerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pending_email_verification_token_expires_at");
 
                     b.Property<string>("ProfileImage")
                         .HasMaxLength(500)

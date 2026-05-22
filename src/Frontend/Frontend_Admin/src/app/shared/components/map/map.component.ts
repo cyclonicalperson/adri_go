@@ -197,12 +197,19 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
     this.heatPoints.forEach(hp => {
       const radius = 800 + hp.intensity * 4000;
-      const green = Math.round(197 * hp.intensity);
-      const alpha = 0.15 + hp.intensity * 0.25;
+      const intensity = Math.max(0, Math.min(1, hp.intensity));
+      const fillColor = intensity > 0.66
+        ? '#dc2626'
+        : intensity > 0.33
+          ? '#f59e0b'
+          : '#2563eb';
+      const alpha = 0.2 + intensity * 0.35;
       const circle = L.circle([hp.lat, hp.lng], {
         radius,
-        color: 'transparent',
-        fillColor: `rgb(34, ${green}, 94)`,
+        color: fillColor,
+        weight: 1,
+        opacity: 0.35,
+        fillColor,
         fillOpacity: alpha,
       });
 

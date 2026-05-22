@@ -28,6 +28,30 @@
       </div>
     </section>
 
+    <section *ngIf="context !== 'map' && destinationCountryOptions.length > 0">
+      <div class="section-header">
+        <h2>Countries</h2>
+      </div>
+      <select class="filter-dropdown" #countryDropdown (change)="onDropdownToggle('destinationCountries', countryDropdown.value); countryDropdown.value = ''">
+        <option value="">{{ selectedSummary(destinationFilters.countries, 'All countries') }}</option>
+        <option *ngFor="let country of destinationCountryOptions" [value]="country">
+          {{ destinationFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
+        </option>
+      </select>
+    </section>
+
+    <section *ngIf="context !== 'map' && filteredDestinationRegionOptions.length > 0">
+      <div class="section-header">
+        <h2>Regions</h2>
+      </div>
+      <select class="filter-dropdown" #regionDropdown (change)="onDropdownToggle('destinationRegions', regionDropdown.value); regionDropdown.value = ''">
+        <option value="">{{ selectedSummary(destinationFilters.regions, 'All regions') }}</option>
+        <option *ngFor="let region of filteredDestinationRegionOptions" [value]="region">
+          {{ destinationFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}
+        </option>
+      </select>
+    </section>
+
     <!-- DISTANCE -->
     <section>
       <div class="section-header">

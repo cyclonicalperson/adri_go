@@ -128,6 +128,43 @@ namespace TouristGuide.Api.Controllers
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token nije prosleden." });
 
+            var emailChangeTourist = await _db.Tourists
+                .FirstOrDefaultAsync(t => t.PendingEmailVerificationToken == token);
+
+            if (emailChangeTourist is not null)
+            {
+                if (emailChangeTourist.PendingEmailVerificationTokenExpiresAt is null ||
+                    emailChangeTourist.PendingEmailVerificationTokenExpiresAt < DateTime.UtcNow)
+                    return BadRequest(new
+                    {
+                        message = "Token za promenu emaila je istekao. Pokrenite promenu ponovo.",
+                        expired = true
+                    });
+
+                if (string.IsNullOrWhiteSpace(emailChangeTourist.PendingEmail))
+                    return BadRequest(new { message = "Novi email nije pronadjen za ovaj token." });
+
+                var pendingEmail = emailChangeTourist.PendingEmail.Trim().ToLowerInvariant();
+                if (await _db.Tourists.AnyAsync(t => t.Id != emailChangeTourist.Id && t.Email != null && t.Email.ToLower() == pendingEmail))
+                    return Conflict(new { message = "Email adresa je vec zauzeta." });
+
+                emailChangeTourist.Email = pendingEmail;
+                emailChangeTourist.PendingEmail = null;
+                emailChangeTourist.PendingEmailVerificationToken = null;
+                emailChangeTourist.PendingEmailVerificationTokenExpiresAt = null;
+                emailChangeTourist.IsEmailVerified = true;
+                emailChangeTourist.UpdatedAt = DateTime.UtcNow;
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new EmailVerificationResultDto
+                {
+                    Message = "Nova email adresa je uspesno potvrdjena.",
+                    AlreadyVerified = false,
+                    VerifiedAt = emailChangeTourist.UpdatedAt
+                });
+            }
+
             var tourist = await _db.Tourists
                 .FirstOrDefaultAsync(t => t.EmailVerificationToken == token);
 
@@ -271,6 +308,36 @@ namespace TouristGuide.Api.Controllers
 
             if (dto.Name is not null)
                 tourist.Name = dto.Name.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+                var currentEmail = tourist.Email?.Trim().ToLowerInvariant();
+
+                if (!string.Equals(normalizedEmail, currentEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (await _db.Tourists.AnyAsync(t => t.Id != tourist.Id && t.Email != null && t.Email.ToLower() == normalizedEmail))
+                        return Conflict(new { message = "Email adresa je vec zauzeta." });
+
+                    var token = Guid.NewGuid().ToString("N");
+                    tourist.PendingEmail = normalizedEmail;
+                    tourist.PendingEmailVerificationToken = token;
+                    tourist.PendingEmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+
+                    try
+                    {
+                        await _emailService.SendEmailChangeVerificationEmailAsync(
+                            normalizedEmail,
+                            tourist.Name ?? "Korisnik",
+                            token,
+                            tourist.Language);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send email change verification to {Email}", normalizedEmail);
+                    }
+                }
+            }
 
             if (dto.Language is not null)
                 tourist.Language = dto.Language.Trim().ToLowerInvariant();
@@ -1078,6 +1145,7 @@ namespace TouristGuide.Api.Controllers
                 Id = tourist.Id,
                 Name = tourist.Name ?? string.Empty,
                 Email = tourist.Email ?? string.Empty,
+                PendingEmail = tourist.PendingEmail,
                 Language = tourist.Language,
                 Bio = tourist.Bio,
                 Location = tourist.Location,

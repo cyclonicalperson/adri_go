@@ -495,6 +495,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.activeFilterState = state;
     const hasActiveFilter =
       state.activeCategories.length > 0 ||
+      (state.destinationCountries?.length ?? 0) > 0 ||
+      (state.destinationRegions?.length ?? 0) > 0 ||
       state.minRating > 0 ||
       state.openNow ||
       state.showOnlySaved ||
@@ -527,6 +529,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if (state.activeCategories.length > 0) {
         const key = (loc.postType || (loc as any).category || '').toLowerCase().replace(/\s+/g, '_');
         if (!state.activeCategories.includes(key)) return false;
+      }
+      if ((state.destinationCountries?.length ?? 0) > 0 && !state.destinationCountries!.includes(loc.country || '')) {
+        return false;
+      }
+      if ((state.destinationRegions?.length ?? 0) > 0 && !state.destinationRegions!.includes(loc.regionName || '')) {
+        return false;
       }
       // Rating filter
       if (state.minRating > 0 && (loc.avgRating || 0) < state.minRating) return false;
@@ -1169,6 +1177,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     const fields = [
       loc.title,
       loc.regionName,
+      loc.country,
       loc.address,
       loc.description,
       loc.postType,

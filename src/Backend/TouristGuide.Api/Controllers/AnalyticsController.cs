@@ -306,9 +306,7 @@ namespace TouristGuide.Api.Controllers
                 }
             }
 
-            var locationQuery = _db.TouristLocationSamples
-                .Where(s => s.RegionId != null && s.Region != null)
-                .AsQueryable();
+            var locationQuery = _db.TouristLocationSamples.AsQueryable();
 
             if (fromDate.HasValue)
             {
@@ -319,9 +317,9 @@ namespace TouristGuide.Api.Controllers
                 .Select(s => new
                 {
                     RegionId = s.RegionId,
-                    RegionName = s.Region!.Name,
-                    Lat = s.Region!.Lat,
-                    Lng = s.Region!.Lng,
+                    RegionName = s.Region != null ? s.Region.Name : null,
+                    Lat = s.Region != null && s.Region.Lat != null ? s.Region.Lat : s.Lat,
+                    Lng = s.Region != null && s.Region.Lng != null ? s.Region.Lng : s.Lng,
                     SessionId = s.SessionId
                 })
                 .ToListAsync();
@@ -329,17 +327,72 @@ namespace TouristGuide.Api.Controllers
             if (locationRaw.Count > 0)
             {
                 var heatmap = locationRaw
+                    .Where(v => v.RegionId != null && !string.IsNullOrWhiteSpace(v.RegionName))
                     .GroupBy(v => new { v.RegionId, v.RegionName, v.Lat, v.Lng })
                     .Select(g => new
                     {
-                        regionId = g.Key.RegionId,
+                        regionId = (long)g.Key.RegionId!.Value,
                         regionName = g.Key.RegionName,
                         latitude = g.Key.Lat,
                         longitude = g.Key.Lng,
                         visitCount = g.Select(x => x.SessionId).Distinct().Count()
                     })
                     .OrderByDescending(m => m.visitCount)
+                    .Cast<object>()
                     .ToList();
+
+                var proposalIds = locationRaw
+                    .Where(v => v.RegionId == null && v.SessionId.StartsWith("post-proposal-", StringComparison.OrdinalIgnoreCase))
+                    .Select(v => v.SessionId["post-proposal-".Length..])
+                    .Select(value => uint.TryParse(value, out var id) ? id : 0)
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToList();
+
+                if (proposalIds.Count > 0)
+                {
+                    var proposalPosts = await _db.Posts
+                        .Where(p => proposalIds.Contains(p.Id) && p.Lat != null && p.Lng != null)
+                        .Select(p => new
+                        {
+                            p.Id,
+                            p.Title,
+                            p.ProposedRegionName,
+                            p.Country,
+                            p.Lat,
+                            p.Lng
+                        })
+                        .ToDictionaryAsync(p => p.Id);
+
+                    var proposalMovements = locationRaw
+                        .Where(v => v.RegionId == null && v.SessionId.StartsWith("post-proposal-", StringComparison.OrdinalIgnoreCase))
+                        .Select(v => new
+                        {
+                            Sample = v,
+                            PostId = uint.TryParse(v.SessionId["post-proposal-".Length..], out var id) ? id : 0
+                        })
+                        .Where(x => x.PostId > 0 && proposalPosts.ContainsKey(x.PostId))
+                        .GroupBy(x => x.PostId)
+                        .Select(g =>
+                        {
+                            var post = proposalPosts[g.Key];
+                            return new
+                            {
+                                regionId = -(long)post.Id,
+                                regionName = string.IsNullOrWhiteSpace(post.ProposedRegionName)
+                                    ? $"Predlog lokacije: {post.Title}"
+                                    : $"Predlog lokacije: {post.Title} ({post.ProposedRegionName})",
+                                latitude = post.Lat,
+                                longitude = post.Lng,
+                                visitCount = g.Select(x => x.Sample.SessionId).Distinct().Count(),
+                                country = post.Country,
+                                proposalPostId = post.Id
+                            };
+                        })
+                        .Cast<object>();
+
+                    heatmap.AddRange(proposalMovements);
+                }
 
                 return Ok(new { data = heatmap, success = true, source = "tourist_location_sample" });
             }

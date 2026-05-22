@@ -2,9 +2,17 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
 import { TouristActivitiesService } from '../services/tourist-activities.service';
 import { TouristRoutesService } from '../services/tourist-routes.service';
+import { environment } from '../../environments/environment';
+import { WORLD_COUNTRIES } from '../shared/data/world-countries';
+
+interface DestinationRegionOption {
+  name: string;
+  country: string;
+}
 
 @Component({
   selector: 'app-filters',
@@ -42,6 +50,8 @@ export class FiltersComponent implements OnInit {
     other:           '#6b7280',
   };
 
+  categorySelectValue = '';
+
   categories = [
     { id: 'attraction',      label: 'Attractions',   icon: '🏖️', selected: false },
     { id: 'restaurant',      label: 'Restaurants',   icon: '🍴', selected: false },
@@ -66,6 +76,13 @@ export class FiltersComponent implements OnInit {
   savedPostIds: number[] = [];
   fromDate: string = '';
   toDate: string = '';
+  readonly destinationCountryOptions = WORLD_COUNTRIES;
+  private destinationRegionItems: DestinationRegionOption[] = [];
+  destinationRegionOptions: string[] = [];
+  destinationFilters = {
+    countries: [] as string[],
+    regions: [] as string[],
+  };
   activityCategoryOptions: string[] = [];
   activityDifficultyOptions: string[] = [];
   routeDifficultyOptions: string[] = [];
@@ -89,7 +106,8 @@ export class FiltersComponent implements OnInit {
     private route: ActivatedRoute,
     private filterState: FilterStateService,
     private activitiesService: TouristActivitiesService,
-    private routesService: TouristRoutesService
+    private routesService: TouristRoutesService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -108,6 +126,10 @@ export class FiltersComponent implements OnInit {
     this.openNow       = state.openNow;
     this.showOnlySaved = state.showOnlySaved ?? false;
     this.savedPostIds  = state.savedPostIds ?? [];
+    this.destinationFilters = {
+      countries: [...(state.destinationCountries ?? [])],
+      regions: [...(state.destinationRegions ?? [])],
+    };
     this.activityFilters = {
       categories: [...(state.activityCategories ?? [])],
       difficulties: [...(state.activityDifficulties ?? [])],
@@ -126,6 +148,7 @@ export class FiltersComponent implements OnInit {
     if (state.activeCategories.length > 0) {
       this.categories.forEach(c => { c.selected = state.activeCategories.includes(c.id); });
     }
+    this.loadDestinationFilterOptions();
     if (this.showContentFilters) {
       this.loadContentFilterOptions();
     }
@@ -138,6 +161,15 @@ export class FiltersComponent implements OnInit {
   toggleCategory(cat: any): void {
     cat.selected = !cat.selected;
     this.onAnyChange();
+  }
+
+  onCategoryDropdown(value: string): void {
+    if (!value) return;
+    const category = this.categories.find(cat => cat.id === value);
+    if (category) {
+      this.toggleCategory(category);
+    }
+    this.categorySelectValue = '';
   }
 
   setRating(rating: number): void {
@@ -162,9 +194,51 @@ export class FiltersComponent implements OnInit {
     this.onAnyChange();
   }
 
+  toggleDestinationFilter(group: 'countries' | 'regions', value: string): void {
+    const list = this.destinationFilters[group];
+    this.destinationFilters[group] = list.includes(value)
+      ? list.filter(item => item !== value)
+      : [...list, value];
+
+    if (group === 'countries') {
+      const availableRegions = new Set(this.filteredDestinationRegionOptions);
+      this.destinationFilters.regions = this.destinationFilters.regions.filter(region => availableRegions.has(region));
+    }
+
+    this.onAnyChange();
+  }
+
   toggleLinkedActivitiesOnly(): void {
     this.activityFilters.linkedOnly = !this.activityFilters.linkedOnly;
     this.onAnyChange();
+  }
+
+  onDropdownToggle(
+    group: 'destinationCountries' | 'destinationRegions' | 'activityCategories' | 'activityDifficulties' | 'routeDifficulties' | 'routeRegions',
+    value: string
+  ): void {
+    if (!value) return;
+
+    switch (group) {
+      case 'destinationCountries':
+        this.toggleDestinationFilter('countries', value);
+        break;
+      case 'destinationRegions':
+        this.toggleDestinationFilter('regions', value);
+        break;
+      case 'activityCategories':
+        this.toggleActivityFilter('categories', value);
+        break;
+      case 'activityDifficulties':
+        this.toggleActivityFilter('difficulties', value);
+        break;
+      case 'routeDifficulties':
+        this.toggleRouteFilter('difficulties', value);
+        break;
+      case 'routeRegions':
+        this.toggleRouteFilter('regions', value);
+        break;
+    }
   }
 
   setRouteDistanceBand(value: string): void {
@@ -198,6 +272,15 @@ export class FiltersComponent implements OnInit {
     return labels[normalized] ?? this.formatActivityCategory(value);
   }
 
+  selectedCategorySummary(): string {
+    const selected = this.categories.filter(category => category.selected).map(category => category.label);
+    return selected.length ? selected.join(', ') : 'All categories';
+  }
+
+  selectedSummary(values: string[], fallback: string, formatter: (value: string) => string = value => value): string {
+    return values.length ? values.map(formatter).join(', ') : fallback;
+  }
+
   onAnyChange(): void {
     const state = this.buildState();
     this.filterState.set(state);
@@ -213,6 +296,7 @@ export class FiltersComponent implements OnInit {
     this.savedPostIds  = [];
     this.fromDate      = '';
     this.toDate        = '';
+    this.destinationFilters = { countries: [], regions: [] };
     this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
     this.routeFilters = { difficulties: [], regions: [], distanceBand: '', durationBand: '' };
     this.filterState.clear();
@@ -231,6 +315,8 @@ export class FiltersComponent implements OnInit {
       openNow:          this.openNow,
       radius:           this.radius,
       activeCategories: selected,
+      destinationCountries: this.destinationFilters.countries,
+      destinationRegions: this.destinationFilters.regions,
       showOnlySaved:    this.showOnlySaved,
       savedPostIds:     this.savedPostIds,
       activityCategories: this.activityFilters.categories,
@@ -266,6 +352,41 @@ export class FiltersComponent implements OnInit {
         this.routeRegionOptions = [];
       },
     });
+  }
+
+  private loadDestinationFilterOptions(): void {
+    this.http.get<{ data: Array<{ name?: string; country?: string }> }>(`${environment.apiUrl}/regions?pageSize=100`)
+      .subscribe({
+        next: res => {
+          const regions = res.data ?? [];
+          this.destinationRegionItems = regions
+            .filter(item => !!item.name)
+            .map(item => ({
+              name: item.name!.trim(),
+              country: (item.country || '').trim(),
+            }));
+          this.destinationRegionOptions = this.uniqueSorted(this.destinationRegionItems.map(item => item.name));
+          const availableRegions = new Set(this.filteredDestinationRegionOptions);
+          this.destinationFilters.regions = this.destinationFilters.regions.filter(region => availableRegions.has(region));
+        },
+        error: () => {
+          this.destinationRegionItems = [];
+          this.destinationRegionOptions = [];
+        },
+      });
+  }
+
+  get filteredDestinationRegionOptions(): string[] {
+    if (this.destinationFilters.countries.length === 0) {
+      return this.destinationRegionOptions;
+    }
+
+    const selectedCountries = new Set(this.destinationFilters.countries);
+    return this.uniqueSorted(
+      this.destinationRegionItems
+        .filter(item => selectedCountries.has(item.country))
+        .map(item => item.name)
+    );
   }
 
   private uniqueSorted(values: string[]): string[] {

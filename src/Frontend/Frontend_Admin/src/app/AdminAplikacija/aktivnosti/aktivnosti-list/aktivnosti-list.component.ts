@@ -101,6 +101,10 @@ export class AktivnostiListComponent implements OnInit {
     return this.auth.hasGlobalPermission('manage_tags');
   }
 
+  get canProposeActivities(): boolean {
+    return this.canManageActivities || this.auth.hasPermissionInAnyScope('manage_own_posts');
+  }
+
   private loadGlobalTotal(): void {
     this.activityService.getAll({ page: 1, pageSize: 1 }).subscribe({
       next: res => {

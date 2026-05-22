@@ -28,6 +28,13 @@ interface ChangeLogEntry {
   type: 'grant' | 'revoke';
 }
 
+interface PermissionPreset {
+  id: string;
+  label: string;
+  description: string;
+  codes: string[];
+}
+
 @Component({
   selector: 'app-permissions-management',
   templateUrl: './permissions-management.component.html',
@@ -58,6 +65,99 @@ export class PermissionsManagementComponent implements OnInit {
   // ── Čuvanje ───────────────────────────────────────────────────────────
   saving = false;
   saveMsg: string | null = null;
+  selectedPresetId = '';
+
+  readonly permissionPresets: PermissionPreset[] = [
+    {
+      id: 'content-basic',
+      label: 'Sadrzajni admin',
+      description: 'Osnovni unos sopstvenih objava, dogadjaja i moderacija recenzija.',
+      codes: ['manage_own_posts', 'manage_reviews', 'create_accommodation', 'create_restaurant', 'create_event'],
+    },
+    {
+      id: 'hospitality-editor',
+      label: 'Smestajni admin',
+      description: 'Hoteli, apartmani, restorani i recenzije vezane za ugostiteljstvo.',
+      codes: ['manage_own_posts', 'create_accommodation', 'create_restaurant', 'manage_reviews'],
+    },
+    {
+      id: 'food-nightlife-editor',
+      label: 'Gastro i nocni zivot',
+      description: 'Restorani, kafici, klubovi, barovi i recenzije gostiju.',
+      codes: ['manage_own_posts', 'create_restaurant', 'create_club', 'manage_reviews'],
+    },
+    {
+      id: 'events-editor',
+      label: 'Event admin',
+      description: 'Koncerti, festivali, ture i lokalni dogadjaji bez pristupa ostalim modulima.',
+      codes: ['manage_own_posts', 'create_event', 'manage_reviews'],
+    },
+    {
+      id: 'tourism-operator',
+      label: 'Turisticki operater',
+      description: 'Rute, ture, sport i dogadjaji.',
+      codes: ['manage_own_posts', 'create_route', 'create_sports', 'create_event', 'manage_reviews'],
+    },
+    {
+      id: 'outdoor-routes-editor',
+      label: 'Outdoor i rute',
+      description: 'Planinarske/biciklisticke rute, sportski objekti i teren.',
+      codes: ['manage_own_posts', 'create_route', 'create_sports', 'view_analytics'],
+    },
+    {
+      id: 'culture-editor',
+      label: 'Kultura i znamenitosti',
+      description: 'Kulturna mesta, spomenici, rute i prevodi.',
+      codes: ['manage_own_posts', 'create_cultural_site', 'create_monument', 'create_route', 'manage_translations'],
+    },
+    {
+      id: 'commerce-editor',
+      label: 'Shop admin',
+      description: 'Prodavnice, trzni centri i osnovno uredjivanje sopstvenih objava.',
+      codes: ['manage_own_posts', 'create_shop', 'manage_reviews'],
+    },
+    {
+      id: 'regional-editor',
+      label: 'Regionalni urednik',
+      description: 'Siri urednicki paket za admina koji pokriva vecinu sadrzaja u jednom regionu.',
+      codes: [
+        'manage_own_posts',
+        'create_accommodation',
+        'create_restaurant',
+        'create_club',
+        'create_event',
+        'create_route',
+        'create_cultural_site',
+        'create_monument',
+        'create_sports',
+        'create_shop',
+        'manage_reviews',
+        'view_analytics',
+      ],
+    },
+    {
+      id: 'insights-reviewer',
+      label: 'Analitika i moderacija',
+      description: 'Pregled analitike, turista i moderacija recenzija.',
+      codes: ['view_analytics', 'view_tourists', 'manage_reviews'],
+    },
+    {
+      id: 'taxonomy-editor',
+      label: 'Tagovi i prevodi',
+      description: 'Odobravanje aktivnosti/tagova, prevodi i uredjivanje taksonomije aplikacije.',
+      codes: ['manage_tags', 'manage_translations', 'manage_reviews'],
+    },
+    {
+      id: 'support-admin',
+      label: 'Podrska korisnicima',
+      description: 'Pregled turista, tiketa i recenzija bez kreiranja novog turistickog sadrzaja.',
+      codes: ['view_tourists', 'manage_tickets', 'manage_reviews'],
+    },
+  ];
+
+  get selectedPresetDescription(): string {
+    return this.permissionPresets.find(preset => preset.id === this.selectedPresetId)?.description ?? '';
+  }
 
   // ── Log izmjena — dinamički gradi se iz akcija ─────────────────────────
   changeLog: ChangeLogEntry[] = [];
@@ -120,6 +220,7 @@ export class PermissionsManagementComponent implements OnInit {
     this.activePermCodes = new Set();
     this.userPermissions = [];
     this.saveMsg = null;
+    this.selectedPresetId = '';
     this.loadUserPerms(u.userId);
   }
 
@@ -242,6 +343,20 @@ export class PermissionsManagementComponent implements OnInit {
   }
 
   // ── Log izmjena ────────────────────────────────────────────────────────
+  applyPreset(presetId: string): void {
+    if (!this.selectedUser) return;
+    this.selectedPresetId = presetId;
+    const preset = this.permissionPresets.find(item => item.id === presetId);
+    if (!preset) return;
+
+    const allowedCodes = new Set(this.allPermissions.map(permission => permission.code));
+    this.activePermCodes = new Set(
+      preset.codes.filter(code => allowedCodes.has(code as PermissionCode)) as PermissionCode[],
+    );
+    this.refreshPermCount(this.selectedUser.userId, null);
+    this.saveMsg = `Preset "${preset.label}" je primenjen. Sacuvajte da bi promene otisle na server.`;
+  }
+
   private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {
     // Optimistički dodaj entry lokalno (bez čekanja API-ja)
     const entry: ChangeLogEntry = {

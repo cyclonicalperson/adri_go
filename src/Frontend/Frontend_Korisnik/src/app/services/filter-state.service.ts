@@ -5,6 +5,8 @@ export interface FilterState {
   openNow: boolean;
   radius: number;
   activeCategories: string[]; // DB keys; empty = all active
+  destinationCountries?: string[];
+  destinationRegions?: string[];
   showOnlySaved?: boolean;    // show only saved post IDs
   activityCategories?: string[];
   activityDifficulties?: string[];
@@ -27,6 +29,8 @@ export class FilterStateService {
       openNow: false,
       radius: 0,
       activeCategories: [],
+      destinationCountries: [],
+      destinationRegions: [],
       showOnlySaved: false,
       savedPostIds: [],
       activityCategories: [],
@@ -61,6 +65,8 @@ export class FilterStateService {
       || s.openNow
       || s.radius > 0
       || s.activeCategories.length > 0
+      || (s.destinationCountries?.length ?? 0) > 0
+      || (s.destinationRegions?.length ?? 0) > 0
       || !!s.showOnlySaved
       || (s.activityCategories?.length ?? 0) > 0
       || (s.activityDifficulties?.length ?? 0) > 0

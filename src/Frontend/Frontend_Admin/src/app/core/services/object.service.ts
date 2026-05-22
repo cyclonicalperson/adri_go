@@ -71,7 +71,7 @@ export class ObjectService {
   constructor(private http: HttpClient) { }
 
   getAll(
-    req: PageRequest & { destinationId?: number; regionId?: number; category?: string; status?: string }
+    req: PageRequest & { destinationId?: number; regionId?: number; country?: string; category?: string; status?: string }
   ): Observable<PaginatedResponse<TouristObject>> {
     let params = new HttpParams()
       .set('page', req.page)
@@ -81,6 +81,7 @@ export class ObjectService {
     if (req.sortBy) params = params.set('sortBy', req.sortBy);
     if (req.sortDir) params = params.set('sortDir', req.sortDir!);
     if (req.search) params = params.set('search', req.search);
+    if (req.country) params = params.set('country', req.country);
 
     const rid = req.regionId ?? req.destinationId;
     if (rid) params = params.set('region_id', rid);
@@ -120,6 +121,7 @@ export class ObjectService {
     const body: any = {
       regionId: proposedRegionName ? null : (payload.regionId ?? payload.destinationId),
       proposedRegionName,
+      country: payload.country,
       title: payload.name,
       postType: CATEGORY_TO_POST_TYPE[payload.category] ?? 'other',
       description: payload.description,
@@ -156,6 +158,7 @@ export class ObjectService {
       .map(m => m.url);
     if (payload.status !== undefined) body['status'] = payload.status;
     if (payload.activityIds !== undefined) body['tagIds'] = payload.activityIds;
+    if (payload.country !== undefined) body['country'] = payload.country;
     if (payload.proposedRegionName !== undefined) {
       const proposedRegionName = normalizeProposedRegionName(payload.proposedRegionName);
       body['proposedRegionName'] = proposedRegionName;
@@ -202,6 +205,7 @@ function postToObject(p: any): TouristObject {
     destinationId: p.regionId ?? 0,
     regionId: regionId,
     proposedRegionName: p.proposedRegionName ?? null,
+    country: p.country ?? regionData?.country ?? 'Montenegro',
     name: p.title ?? '',
     category: (POST_TYPE_TO_CATEGORY[p.postType] ?? 'OTHER') as any,
     description: p.description ?? '',
@@ -214,7 +218,7 @@ function postToObject(p: any): TouristObject {
     createdBy: p.adminId ?? p.adminId ?? 0,
     createdAt: p.createdAt ?? '',
     destination: regionName ? { destinationId: regionId, name: regionName } : null,
-    region: regionName ? { regionId: regionId, name: regionName } : null,
+    region: regionName ? { regionId: regionId, name: regionName, country: p.country ?? regionData?.country } : null,
     averageRating: p.avgRating ?? null,
     reviewCount: p.reviewCount ?? 0,
     activities: (p.tagIds ?? []).map((id: number, idx: number) => ({

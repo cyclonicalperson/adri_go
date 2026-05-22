@@ -53,45 +53,46 @@
 
   </div>
 
-  <div class="auth-modal-overlay" *ngIf="showAuthModal" (click)="closeAuthModal($event)">
-    <div class="auth-modal" (click)="$event.stopPropagation()">
-      <h3>Login Required</h3>
-      <p>Please log in to add locations to your calendar.</p>
-      <div class="auth-modal-actions">
-        <button class="btn-cancel" (click)="closeAuthModal($event)">Cancel</button>
-        <button class="btn-login" (click)="goToLogin($event)">Login</button>
-      </div>
+</div>
+
+<div class="auth-modal-overlay" *ngIf="showAuthModal" (click)="closeAuthModal($event)">
+  <div class="auth-modal" (click)="$event.stopPropagation()">
+    <h3>Login Required</h3>
+    <p>Please log in to add locations to your calendar.</p>
+    <div class="auth-modal-actions">
+      <button class="btn-cancel" (click)="closeAuthModal($event)">Cancel</button>
+      <button class="btn-login" (click)="goToLogin($event)">Login</button>
     </div>
   </div>
+</div>
 
-  <div *ngIf="showCalendarScheduler" class="card-scheduler-overlay" (click)="closeCalendarScheduler(); $event.stopPropagation()">
-    <div class="card-scheduler-card" (click)="$event.stopPropagation()">
-      <div class="card-scheduler-icon">
-        <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-      </div>
-      <h3 class="card-scheduler-title">Schedule on calendar</h3>
-      <p class="card-scheduler-body">Choose when you want this post to appear in your calendar.</p>
-      <label class="card-scheduler-label" for="cardCalendarDateTime">Date and time</label>
-      <div class="card-scheduler-input-wrap">
-        <input
-          #cardCalendarDateTimeInput
-          id="cardCalendarDateTime"
-          class="card-scheduler-input"
-          type="datetime-local"
-          [(ngModel)]="selectedCalendarDateTime"
-          [min]="calendarMinDateTime">
-        <button
-          type="button"
-          class="card-scheduler-picker-btn"
-          aria-label="Open date picker"
-          tabindex="-1"
-          (click)="openDateTimePicker(cardCalendarDateTimeInput)"></button>
-      </div>
-      <div *ngIf="calendarScheduleError" class="card-scheduler-error">{{ calendarScheduleError }}</div>
-      <div class="card-scheduler-actions">
-        <button class="card-scheduler-cancel" (click)="closeCalendarScheduler()">Cancel</button>
-        <button class="card-scheduler-add" (click)="addToCalendar()">Add</button>
-      </div>
+<div *ngIf="showCalendarScheduler" class="card-scheduler-overlay" (click)="closeCalendarScheduler(); $event.stopPropagation()">
+  <div class="card-scheduler-card" (click)="$event.stopPropagation()">
+    <div class="card-scheduler-icon">
+      <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+    </div>
+    <h3 class="card-scheduler-title">Schedule on calendar</h3>
+    <p class="card-scheduler-body">Choose when you want this post to appear in your calendar.</p>
+    <label class="card-scheduler-label" for="cardCalendarDateTime">Date and time</label>
+    <div class="card-scheduler-input-wrap">
+      <input
+        #cardCalendarDateTimeInput
+        id="cardCalendarDateTime"
+        class="card-scheduler-input"
+        type="datetime-local"
+        [(ngModel)]="selectedCalendarDateTime"
+        [min]="calendarMinDateTime">
+      <button
+        type="button"
+        class="card-scheduler-picker-btn"
+        aria-label="Open date picker"
+        tabindex="-1"
+        (click)="openDateTimePicker(cardCalendarDateTimeInput)"></button>
+    </div>
+    <div *ngIf="calendarScheduleError" class="card-scheduler-error">{{ calendarScheduleError }}</div>
+    <div class="card-scheduler-actions">
+      <button class="card-scheduler-cancel" (click)="closeCalendarScheduler()">Cancel</button>
+      <button class="card-scheduler-add" (click)="addToCalendar()">Add</button>
     </div>
   </div>
 </div>

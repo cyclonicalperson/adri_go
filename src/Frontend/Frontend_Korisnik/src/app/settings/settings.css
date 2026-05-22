@@ -560,11 +560,16 @@ input:checked + .slider:before { transform: translateX(21px); }
 }
 
 :host-context(html[data-theme='dark']) .header,
-:host-context(html[data-theme='dark']) .group-items,
 :host-context(html[data-theme='dark']) .setting-row,
 :host-context(html[data-theme='dark']) .settings-sheet {
   background: #111827;
   border-color: #334155 !important;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .group-items {
+  background: transparent;
+  border-color: transparent !important;
   box-shadow: none;
 }
 

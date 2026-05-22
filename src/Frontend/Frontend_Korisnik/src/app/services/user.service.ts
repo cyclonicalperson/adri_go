@@ -11,6 +11,7 @@ import { Location } from './location.service';
 export interface UserProfile {
   fullName: string;
   emailOrPhone: string;
+  pendingEmail?: string | null;
   profilePic?: string;
   language: string;
   bio?: string;
@@ -25,6 +26,7 @@ export interface UserProfile {
 
 export interface UpdateProfilePayload {
   name?: string;
+  email?: string;
   language?: string;
   bio?: string;
   location?: string;
@@ -122,6 +124,7 @@ interface TouristProfileResponse {
   id: number;
   name: string;
   email: string;
+  pendingEmail?: string | null;
   language: string;
   bio?: string | null;
   location?: string | null;
@@ -311,6 +314,7 @@ export class UserService {
     return {
       fullName: profile?.name ?? '',
       emailOrPhone: profile?.email ?? '',
+      pendingEmail: profile?.pendingEmail ?? null,
       profilePic: profile?.profileImage ?? undefined,
       language: profile?.language ?? 'en',
       bio: profile?.bio ?? '',

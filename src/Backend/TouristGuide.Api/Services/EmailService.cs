@@ -170,6 +170,25 @@ namespace TouristGuide.Api.Services
             await SendEmailAsync(toEmail, subject, body);
         }
 
+        public async Task SendEmailChangeVerificationEmailAsync(string toEmail, string toName, string verificationToken, string? language = null)
+        {
+            var lang = NormalizeLanguage(language, VerificationStrings);
+            var verificationLink = BuildFrontendUrl(
+                configKey: "Email:TouristBaseUrl",
+                fallbackBaseUrl: "http://localhost:4201",
+                pathAndQuery: $"/verify-email?token={Uri.EscapeDataString(verificationToken)}&lang={Uri.EscapeDataString(lang)}");
+
+            var body = BuildEmailTemplate(
+                title: $"Potvrdite novu email adresu, {HtmlEncode(toName)}",
+                intro: "Primili smo zahtev za promenu email adrese na AdriGo nalogu.",
+                bodyHtml: "<p>Kliknite na dugme ispod da potvrdite novu email adresu. Promena ce biti prihvacena tek nakon potvrde.</p>",
+                actionLabel: "Potvrdi novu email adresu",
+                actionUrl: verificationLink,
+                footerNote: "Link je vazeci 24 sata. Ako niste trazili promenu emaila, ignorisite ovu poruku.");
+
+            await SendEmailAsync(toEmail, "Potvrdite novu email adresu - AdriGo", body);
+        }
+
         /// <summary>
         /// Šalje email za resetovanje lozinke turisti u njegovom jeziku.
         /// </summary>
