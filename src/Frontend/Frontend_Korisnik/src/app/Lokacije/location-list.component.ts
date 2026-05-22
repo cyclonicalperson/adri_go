@@ -211,6 +211,31 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return this.uniqueSorted(this.allRoutes.map(item => item.regionName || '').filter(Boolean));
   }
 
+  get destinationRegionItems(): { name: string; country: string }[] {
+    const seen = new Set<string>();
+    return this.allLocations
+      .map(location => ({
+        name: (location.regionName || '').trim(),
+        country: (location.country || '').trim(),
+      }))
+      .filter(item => {
+        if (!item.name) return false;
+        const key = `${item.name}|${item.country}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  get availableSavedPostIds(): number[] {
+    return Array.from(new Set(
+      this.allLocations
+        .filter(location => location.isSaved)
+        .map(location => location.id)
+        .filter(id => Number.isFinite(id))
+    ));
+  }
+
   get activeResultCount(): number {
     switch (this.activeContentType) {
       case 'activities': return this.activities.length;

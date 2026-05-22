@@ -10,7 +10,20 @@
     <button class="clear-btn" (click)="clearAll()">Clear All</button>
   </div>
 
+  <div class="content-type-tabs" *ngIf="showContentTypeTabs" role="tablist" aria-label="Filter content type">
+    <button
+      *ngFor="let tab of contentTypeTabs"
+      type="button"
+      class="content-type-tab"
+      [class.active]="activeContentType === tab.value"
+      (click)="setActiveContentType(tab.value)">
+      {{ tab.label }}
+    </button>
+  </div>
+
   <div class="scroll-content">
+
+    <ng-container *ngIf="showDestinationFilters">
 
     <!-- CATEGORIES -->
     <section>
@@ -28,7 +41,7 @@
       </div>
     </section>
 
-    <section *ngIf="context !== 'map' && destinationCountryOptions.length > 0">
+    <section *ngIf="destinationCountryOptions.length > 0">
       <div class="section-header">
         <h2>Countries</h2>
       </div>
@@ -40,12 +53,16 @@
       </select>
     </section>
 
-    <section *ngIf="context !== 'map' && filteredDestinationRegionOptions.length > 0">
+    <section>
       <div class="section-header">
         <h2>Regions</h2>
       </div>
-      <select class="filter-dropdown" #regionDropdown (change)="onDropdownToggle('destinationRegions', regionDropdown.value); regionDropdown.value = ''">
-        <option value="">{{ selectedSummary(destinationFilters.regions, 'All regions') }}</option>
+      <select
+        class="filter-dropdown"
+        #regionDropdown
+        [disabled]="destinationRegionsLoading && filteredDestinationRegionOptions.length === 0"
+        (change)="onDropdownToggle('destinationRegions', regionDropdown.value); regionDropdown.value = ''">
+        <option value="">{{ destinationRegionsLoading ? 'Loading regions...' : selectedSummary(destinationFilters.regions, 'All regions') }}</option>
         <option *ngFor="let region of filteredDestinationRegionOptions" [value]="region">
           {{ destinationFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}
         </option>
@@ -141,7 +158,9 @@
       </div>
     </section>
 
-    <ng-container *ngIf="showContentFilters">
+    </ng-container>
+
+    <ng-container *ngIf="showActivityFilters">
       <section *ngIf="activityCategoryOptions.length > 0">
         <div class="section-header">
           <h2>Activity Categories</h2>
@@ -189,6 +208,10 @@
           </label>
         </div>
       </section>
+
+    </ng-container>
+
+    <ng-container *ngIf="showRouteFilters">
 
       <section *ngIf="routeDifficultyOptions.length > 0">
         <div class="section-header">

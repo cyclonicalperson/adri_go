@@ -490,6 +490,8 @@
   <app-filters
     *ngIf="isFiltersOpen && activeContentType === 'destinations'"
     context="explore"
+    [preloadedDestinationRegions]="destinationRegionItems"
+    [availableSavedPostIds]="availableSavedPostIds"
     (closed)="closeFilters()"
     (applied)="onFiltersApplied($event)">
   </app-filters>

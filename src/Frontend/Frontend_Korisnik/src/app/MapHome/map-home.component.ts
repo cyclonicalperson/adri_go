@@ -13,7 +13,7 @@ import { FiltersComponent } from '../Filteri/filters.component';
 import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
-import { FilterStateService, FilterState } from '../services/filter-state.service';
+import { FilterStateService, FilterState, FilterContentType } from '../services/filter-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { UserService, CalendarItem, UserProfile, ServerPreferences } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
@@ -137,6 +137,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   savedLocationsContext: Location[] = [];
   calendarItemsContext: CalendarItem[] = [];
   private serverPreferenceTypes: string[] = [];
+  private savedLocationsLoaded = false;
 
   // ─── Navigation state ────────────────────────────────────────────────────
   isNavigating = false;
@@ -212,6 +213,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   filterRouteRegions: string[] = [];
   filterRouteDistanceBand = '';
   filterRouteDurationBand = '';
+  mapFilterContentType: FilterContentType = 'destinations';
   userPosition: [number, number] | null = null;
   routeIsRoutable = true;
   private routeProblem: 'none' | 'not-routable' | 'service-unavailable' = 'none';
@@ -232,7 +234,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       || this.filterRouteDifficulties.length > 0
       || this.filterRouteRegions.length > 0
       || !!this.filterRouteDistanceBand
-      || !!this.filterRouteDurationBand;
+      || !!this.filterRouteDurationBand
+      || this.mapFilterContentType !== 'destinations';
   }
 
   /** True when at least one category chip is selected (filled) */
@@ -254,6 +257,37 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get hasPersonalizedRecommendations(): boolean {
     return false;
+  }
+
+  get mapDestinationRegionItems(): { name: string; country: string }[] {
+    const seen = new Set<string>();
+    return this.locationsList
+      .map(location => ({
+        name: (location.regionName || '').trim(),
+        country: (location.country || '').trim(),
+      }))
+      .filter(item => {
+        if (!item.name) return false;
+        const key = `${item.name}|${item.country}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  get availableSavedPostIds(): number[] {
+    const ids = this.savedLocationsLoaded
+      ? [
+          ...this.savedLocationsContext.map(item => item.id),
+          ...this.locationsList.filter(location => location.isSaved).map(location => location.id),
+        ]
+      : [
+          ...this.savedLocationsContext.map(item => item.id),
+          ...this.locationsList.filter(location => location.isSaved).map(location => location.id),
+          ...this.filterSavedPostIds,
+        ];
+
+    return Array.from(new Set(ids.filter(id => Number.isFinite(id))));
   }
 
   get searchPromptSuggestions(): string[] {
@@ -431,6 +465,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.locationsList = res.data as MapLocation[];
         this.updateDistancesAndRecommendations();
         this.syncGuestSavedContext();
+        this.syncAvailableSavedFilterIds();
         this.refreshRecommendations();
         this.addMarkers();
         this.tryHydratePlannerFromQuery();
@@ -480,6 +515,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.savedLocationsContext = [];
       this.calendarItemsContext = [];
       this.serverPreferenceTypes = [];
+      this.savedLocationsLoaded = true;
+      this.syncAvailableSavedFilterIds();
       return;
     }
 
@@ -492,12 +529,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (result) => {
         this.userProfile = result.profile;
         this.savedLocationsContext = result.saved;
+        this.savedLocationsLoaded = true;
         this.calendarItemsContext = result.calendar;
         this.serverPreferenceTypes = (result.serverPrefs?.postTypePreferences ?? [])
           .slice(0, 5)
           .map(p => p.postType)
           .filter(Boolean);
         this.refreshRecommendations();
+        this.syncAvailableSavedFilterIds();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -505,6 +544,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.savedLocationsContext = [];
         this.calendarItemsContext = [];
         this.serverPreferenceTypes = [];
+        this.savedLocationsLoaded = true;
+        this.syncAvailableSavedFilterIds();
         this.refreshRecommendations();
         this.cdr.detectChanges();
       }
@@ -517,6 +558,33 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.savedLocationsContext = [];
+  }
+
+  private syncAvailableSavedFilterIds(): void {
+    const savedPostIds = this.availableSavedPostIds;
+    const state = this.filterStateService.get();
+    const nextShowOnlySaved = state.showOnlySaved && savedPostIds.length === 0
+      ? false
+      : (state.showOnlySaved ?? false);
+
+    if (
+      this.areNumberArraysEqual(state.savedPostIds ?? [], savedPostIds)
+      && (state.showOnlySaved ?? false) === nextShowOnlySaved
+    ) {
+      return;
+    }
+
+    this.filterStateService.set({
+      ...state,
+      showOnlySaved: nextShowOnlySaved,
+      savedPostIds,
+    });
+    this.applyFilterState();
+  }
+
+  private areNumberArraysEqual(first: number[], second: number[]): boolean {
+    if (first.length !== second.length) return false;
+    return first.every((value, index) => value === second[index]);
   }
 
   private refreshRecommendations(): void {
@@ -2026,6 +2094,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private passesFilters(loc: MapLocation): boolean {
+    if (this.mapFilterContentType === 'routes') {
+      return false;
+    }
+
+    if (this.mapFilterContentType === 'activities' && !this.locationPassesActivityContent(loc)) {
+      return false;
+    }
+
     if (this.filterShowOnlySaved && this.filterSavedPostIds.length > 0) {
       if (!this.filterSavedPostIds.includes(loc.id)) return false;
     }
@@ -2042,7 +2118,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.filterOpenNow && !this.isLocationOpen(loc)) return false;
     if (this.filterDestinationCountries.length > 0 && !this.filterDestinationCountries.includes(loc.country || '')) return false;
     if (this.filterDestinationRegions.length > 0 && !this.filterDestinationRegions.includes(loc.regionName || '')) return false;
-    if (!this.locationPassesActivityFilters(loc)) return false;
 
     if (this.filterRadius > 0 && this.userPosition) {
       const coordinates = this.getLocationCoordinates(loc);
@@ -2058,24 +2133,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return true;
   }
 
-  private locationPassesActivityFilters(loc: MapLocation): boolean {
-    const hasActivityFilters = this.filterActivityLinkedOnly
-      || this.filterActivityCategories.length > 0
-      || this.filterActivityDifficulties.length > 0;
-
-    if (!hasActivityFilters) {
-      return true;
-    }
-
+  private locationPassesActivityContent(loc: MapLocation): boolean {
     const linkedActivities = this.activitiesList.filter(activity => activity.postId === loc.id);
-    if (this.filterActivityLinkedOnly && linkedActivities.length === 0) {
+    if (linkedActivities.length === 0) {
       return false;
-    }
-
-    const needsActivityMatch = this.filterActivityCategories.length > 0
-      || this.filterActivityDifficulties.length > 0;
-    if (!needsActivityMatch) {
-      return true;
     }
 
     return linkedActivities.some(activity => {
@@ -2112,7 +2173,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const selectedKeys = this.categories.filter(c => c.active).map(c => c.key);
     this.routeMarkers.forEach(({ route, marker }) => {
       const visible = !this.isNavigating
-        && (!this.hasAnyCategorySelected || selectedKeys.includes('route'))
+        && (this.mapFilterContentType === 'routes' || (this.hasAnyCategorySelected && selectedKeys.includes('route')))
         && this.routePassesRadiusFilter(route)
         && this.routeMatchesExploreFilters(route);
 
@@ -2934,6 +2995,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isFiltersOpen = false;
 
   openFilters(): void {
+    this.syncAvailableSavedFilterIds();
     this.isFiltersOpen = true;
     this.cdr.detectChanges();
   }
@@ -2955,6 +3017,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   onFiltersChanged(state?: FilterState): void {
     // Reactive: called on every filter change while panel is open — panel stays open
     this.applyFilterState();
+    this.applyMarkerFilter();
+    this.refreshRecommendations();
+    if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
+    this.cdr.detectChanges();
+  }
+
+  onMapFilterContentTypeChanged(type: FilterContentType): void {
+    this.mapFilterContentType = type;
+    this.selectedLocation = null;
+    this.selectedPublicRoute = null;
     this.applyMarkerFilter();
     this.refreshRecommendations();
     if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);

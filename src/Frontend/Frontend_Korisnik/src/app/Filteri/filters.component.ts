@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { FilterStateService, FilterState } from '../services/filter-state.service';
+import { Observable } from 'rxjs';
+import { map, shareReplay, tap } from 'rxjs/operators';
+import { FilterStateService, FilterState, FilterContentType } from '../services/filter-state.service';
 import { TouristActivitiesService } from '../services/tourist-activities.service';
 import { TouristRoutesService } from '../services/tourist-routes.service';
 import { environment } from '../../environments/environment';
@@ -33,9 +35,22 @@ export class FiltersComponent implements OnInit {
   @Input() inlineMode = false;
 
   @Input() showContentFilters = false;
+  @Input() showContentTypeTabs = false;
+  @Input() activeContentType: FilterContentType = 'destinations';
+  @Input() set preloadedDestinationRegions(value: DestinationRegionOption[] | null | undefined) {
+    this.preloadedDestinationRegionItems = this.normalizeRegionItems(value ?? []);
+    if (this.preloadedDestinationRegionItems.length > 0) {
+      this.applyDestinationRegionItems(this.preloadedDestinationRegionItems);
+    }
+  }
+  @Input() set availableSavedPostIds(value: number[] | null | undefined) {
+    this.availableSavedPostIdsInternal = this.uniqueNumbers(value ?? []);
+    this.syncSavedPostIdsFromInput();
+  }
 
   @Output() closed  = new EventEmitter<void>();
   @Output() applied = new EventEmitter<FilterState>();
+  @Output() activeContentTypeChange = new EventEmitter<FilterContentType>();
 
   readonly categoryColors: Record<string, string> = {
     accommodation:   '#3b82f6',
@@ -78,6 +93,7 @@ export class FiltersComponent implements OnInit {
   toDate: string = '';
   readonly destinationCountryOptions = WORLD_COUNTRIES;
   private destinationRegionItems: DestinationRegionOption[] = [];
+  private preloadedDestinationRegionItems: DestinationRegionOption[] = [];
   destinationRegionOptions: string[] = [];
   destinationFilters = {
     countries: [] as string[],
@@ -98,8 +114,17 @@ export class FiltersComponent implements OnInit {
     distanceBand: '',
     durationBand: '',
   };
+  destinationRegionsLoading = false;
+  readonly contentTypeTabs: { value: FilterContentType; label: string }[] = [
+    { value: 'destinations', label: 'Destinacije' },
+    { value: 'activities', label: 'Aktivnosti' },
+    { value: 'routes', label: 'Rute' },
+  ];
 
   private returnTo: string = 'map-home';
+  private availableSavedPostIdsInternal: number[] = [];
+  private static destinationRegionCache: DestinationRegionOption[] | null = null;
+  private static destinationRegionRequest$: Observable<DestinationRegionOption[]> | null = null;
 
   constructor(
     private router: Router,
@@ -126,6 +151,7 @@ export class FiltersComponent implements OnInit {
     this.openNow       = state.openNow;
     this.showOnlySaved = state.showOnlySaved ?? false;
     this.savedPostIds  = state.savedPostIds ?? [];
+    this.syncSavedPostIdsFromInput();
     this.destinationFilters = {
       countries: [...(state.destinationCountries ?? [])],
       regions: [...(state.destinationRegions ?? [])],
@@ -156,6 +182,25 @@ export class FiltersComponent implements OnInit {
 
   getCategoryColor(id: string): string {
     return this.categoryColors[id] ?? '#6b7280';
+  }
+
+  get showDestinationFilters(): boolean {
+    return !this.showContentFilters || this.activeContentType === 'destinations';
+  }
+
+  get showActivityFilters(): boolean {
+    return this.showContentFilters && this.activeContentType === 'activities';
+  }
+
+  get showRouteFilters(): boolean {
+    return this.showContentFilters && this.activeContentType === 'routes';
+  }
+
+  setActiveContentType(type: FilterContentType): void {
+    if (this.activeContentType === type) return;
+
+    this.activeContentType = type;
+    this.activeContentTypeChange.emit(type);
   }
 
   toggleCategory(cat: any): void {
@@ -293,14 +338,18 @@ export class FiltersComponent implements OnInit {
     this.minRating     = 0;
     this.openNow       = false;
     this.showOnlySaved = false;
-    this.savedPostIds  = [];
+    this.savedPostIds  = [...this.availableSavedPostIdsInternal];
     this.fromDate      = '';
     this.toDate        = '';
     this.destinationFilters = { countries: [], regions: [] };
     this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
     this.routeFilters = { difficulties: [], regions: [], distanceBand: '', durationBand: '' };
-    this.filterState.clear();
-    this.applied.emit(this.filterState.getDefault());
+    const defaultState = {
+      ...this.filterState.getDefault(),
+      savedPostIds: this.savedPostIds,
+    };
+    this.filterState.set(defaultState);
+    this.applied.emit(defaultState);
   }
 
   closeFilters(): void {
@@ -355,23 +404,37 @@ export class FiltersComponent implements OnInit {
   }
 
   private loadDestinationFilterOptions(): void {
-    this.http.get<{ data: Array<{ name?: string; country?: string }> }>(`${environment.apiUrl}/regions?pageSize=100`)
+    if (this.preloadedDestinationRegionItems.length > 0) {
+      this.applyDestinationRegionItems(this.preloadedDestinationRegionItems);
+      return;
+    }
+
+    if (FiltersComponent.destinationRegionCache) {
+      this.applyDestinationRegionItems(FiltersComponent.destinationRegionCache);
+      return;
+    }
+
+    this.destinationRegionsLoading = true;
+    if (!FiltersComponent.destinationRegionRequest$) {
+      FiltersComponent.destinationRegionRequest$ = this.http.get<{ data: Array<{ name?: string; country?: string }> }>(`${environment.apiUrl}/regions?pageSize=100`)
+        .pipe(
+          map(res => this.normalizeRegionItems(res.data ?? [])),
+          tap(items => { FiltersComponent.destinationRegionCache = items; }),
+          shareReplay(1),
+        );
+    }
+
+    FiltersComponent.destinationRegionRequest$
       .subscribe({
-        next: res => {
-          const regions = res.data ?? [];
-          this.destinationRegionItems = regions
-            .filter(item => !!item.name)
-            .map(item => ({
-              name: item.name!.trim(),
-              country: (item.country || '').trim(),
-            }));
-          this.destinationRegionOptions = this.uniqueSorted(this.destinationRegionItems.map(item => item.name));
-          const availableRegions = new Set(this.filteredDestinationRegionOptions);
-          this.destinationFilters.regions = this.destinationFilters.regions.filter(region => availableRegions.has(region));
+        next: items => {
+          this.applyDestinationRegionItems(items);
+          this.destinationRegionsLoading = false;
         },
         error: () => {
+          FiltersComponent.destinationRegionRequest$ = null;
           this.destinationRegionItems = [];
           this.destinationRegionOptions = [];
+          this.destinationRegionsLoading = false;
         },
       });
   }
@@ -392,6 +455,40 @@ export class FiltersComponent implements OnInit {
   private uniqueSorted(values: string[]): string[] {
     return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
       .sort((a, b) => a.localeCompare(b));
+  }
+
+  private applyDestinationRegionItems(items: DestinationRegionOption[]): void {
+    this.destinationRegionItems = this.normalizeRegionItems(items);
+    this.destinationRegionOptions = this.uniqueSorted(this.destinationRegionItems.map(item => item.name));
+    const availableRegions = new Set(this.filteredDestinationRegionOptions);
+    this.destinationFilters.regions = this.destinationFilters.regions.filter(region => availableRegions.has(region));
+    this.destinationRegionsLoading = false;
+  }
+
+  private normalizeRegionItems(items: Array<{ name?: string | null; country?: string | null }>): DestinationRegionOption[] {
+    const seen = new Set<string>();
+    return items
+      .map(item => ({
+        name: (item.name || '').trim(),
+        country: (item.country || '').trim(),
+      }))
+      .filter(item => {
+        if (!item.name) return false;
+        const key = `${item.name}|${item.country}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  private syncSavedPostIdsFromInput(): void {
+    if (this.availableSavedPostIdsInternal.length === 0) return;
+
+    this.savedPostIds = [...this.availableSavedPostIdsInternal];
+  }
+
+  private uniqueNumbers(values: number[]): number[] {
+    return Array.from(new Set(values.filter(value => Number.isFinite(value))));
   }
 
   applyFilters(): void {

@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 
+export type FilterContentType = 'destinations' | 'activities' | 'routes';
+
 export interface FilterState {
   minRating: number;
   openNow: boolean;

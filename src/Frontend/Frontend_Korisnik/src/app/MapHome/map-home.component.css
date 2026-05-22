@@ -1053,7 +1053,7 @@ app-location-details-card {
   background: rgba(15, 23, 42, 0.92) !important;
   color: #e2e8f0;
   border-color: var(--cat-color, #475569);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 :host-context(html[data-theme='dark']) .search-suggestion-chip {
@@ -1070,7 +1070,7 @@ app-location-details-card {
 
 :host-context(html[data-theme='dark']) .cat-chip.active {
   color: #fff;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+  box-shadow: none;
 }
 
 /* ============================================================

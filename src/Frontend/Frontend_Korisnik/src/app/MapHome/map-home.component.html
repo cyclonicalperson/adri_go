@@ -487,6 +487,12 @@
   <app-filters
     *ngIf="isFiltersOpen"
     context="map"
+    [showContentFilters]="true"
+    [showContentTypeTabs]="true"
+    [activeContentType]="mapFilterContentType"
+    [preloadedDestinationRegions]="mapDestinationRegionItems"
+    [availableSavedPostIds]="availableSavedPostIds"
+    (activeContentTypeChange)="onMapFilterContentTypeChanged($event)"
     (closed)="closeInlineFilters()"
     (applied)="onFiltersChanged($event)">
   </app-filters>

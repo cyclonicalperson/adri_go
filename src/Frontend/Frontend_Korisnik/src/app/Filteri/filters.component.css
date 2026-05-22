@@ -111,6 +111,41 @@
 }
 .clear-btn:hover { background: var(--green-50); }
 
+.content-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--gray-100);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.content-type-tab {
+  min-height: 38px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  color: var(--gray-600);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.content-type-tab.active {
+  border-color: var(--green-500);
+  background: var(--green-500);
+  color: #fff;
+}
+
+.content-type-tab:not(.active):hover {
+  border-color: var(--green-300);
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
 /* ── SCROLL CONTENT ──────────────────────────────────────────── */
 .scroll-content {
   flex: 1;
@@ -384,7 +419,8 @@ input:checked + .slider:before { transform: translateX(21px); }
 }
 
 :host-context(html[data-theme='dark']) .header,
-:host-context(html[data-theme='dark']) .footer {
+:host-context(html[data-theme='dark']) .footer,
+:host-context(html[data-theme='dark']) .content-type-tabs {
   background: #0b1220;
   border-color: #1e293b;
 }
@@ -398,6 +434,7 @@ input:checked + .slider:before { transform: translateX(21px); }
 :host-context(html[data-theme='dark']) .filter-dropdown,
 :host-context(html[data-theme='dark']) .chip,
 :host-context(html[data-theme='dark']) .filter-chip,
+:host-context(html[data-theme='dark']) .content-type-tab,
 :host-context(html[data-theme='dark']) .rating-card,
 :host-context(html[data-theme='dark']) .toggle-card,
 :host-context(html[data-theme='dark']) .date-input {
@@ -407,15 +444,23 @@ input:checked + .slider:before { transform: translateX(21px); }
 }
 
 :host-context(html[data-theme='dark']) .chip:not(.active),
-:host-context(html[data-theme='dark']) .filter-chip:not(.active) {
+:host-context(html[data-theme='dark']) .filter-chip:not(.active),
+:host-context(html[data-theme='dark']) .content-type-tab:not(.active) {
   background: #111827 !important;
   color: #e2e8f0;
 }
 
 :host-context(html[data-theme='dark']) .chip:hover,
-:host-context(html[data-theme='dark']) .filter-chip:hover {
+:host-context(html[data-theme='dark']) .filter-chip:hover,
+:host-context(html[data-theme='dark']) .content-type-tab:not(.active):hover {
   background: #1f2937 !important;
   color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .content-type-tab.active {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
 }
 
 :host-context(html[data-theme='dark']) .filter-dropdown {
