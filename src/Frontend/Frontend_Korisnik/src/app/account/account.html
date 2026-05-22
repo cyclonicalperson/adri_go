@@ -31,19 +31,19 @@
       </div>
     </div>
 
-    <div class="stats-grid" *ngIf="!isGuest">
-      <div class="stat-card">
+    <div class="stats-grid">
+      <button type="button" class="stat-card" (click)="goToSaved()" aria-label="Open saved locations">
         <span class="stat-value">{{userData.stats.saved || 0}}</span>
         <span class="stat-label">Saved</span>
-      </div>
-      <div class="stat-card">
+      </button>
+      <button type="button" class="stat-card" (click)="goToReviews()" aria-label="Open locations for reviews">
         <span class="stat-value">{{userData.stats.reviews || 0}}</span>
         <span class="stat-label">Reviews</span>
-      </div>
-      <div class="stat-card">
+      </button>
+      <button type="button" class="stat-card" (click)="goToCalendar()" aria-label="Open calendar">
         <span class="stat-value">{{userData.stats.upcoming || 0}}</span>
         <span class="stat-label">Calendar</span>
-      </div>
+      </button>
     </div>
 
     <section class="menu-section">

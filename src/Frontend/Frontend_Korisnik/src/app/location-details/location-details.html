@@ -323,39 +323,4 @@
     </div>
   </div>
 
-  <div *ngIf="showCalendarScheduler" class="auth-modal-overlay" (click)="closeCalendarScheduler()">
-    <div class="calendar-scheduler-card" (click)="$event.stopPropagation()">
-      <div class="calendar-scheduler-icon">
-        <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-      </div>
-      <h3 class="auth-modal-title">Schedule on calendar</h3>
-      <p class="auth-modal-body">
-        {{ isEvent ? 'Choose a time while this event is active.' : 'Choose when you want this post to appear in your calendar.' }}
-      </p>
-      <label class="calendar-scheduler-label" for="calendarDateTime">Date and time</label>
-      <div class="calendar-scheduler-input-wrap">
-        <input
-          #calendarDateTimeInput
-          id="calendarDateTime"
-          class="calendar-scheduler-input"
-          type="datetime-local"
-          [attr.lang]="currentLanguage"
-          [(ngModel)]="selectedCalendarDateTime"
-          [min]="calendarMinDateTime"
-          [max]="calendarMaxDateTime || null">
-        <button
-          type="button"
-          class="calendar-scheduler-picker-btn"
-          aria-label="Open date picker"
-          tabindex="-1"
-          (click)="openDateTimePicker(calendarDateTimeInput)"></button>
-      </div>
-      <div *ngIf="calendarScheduleError" class="calendar-scheduler-error">{{ calendarScheduleError }}</div>
-      <div class="auth-modal-actions">
-        <button class="auth-modal-cancel" (click)="closeCalendarScheduler()">Cancel</button>
-        <button class="auth-modal-login" (click)="addToCalendar()">Add</button>
-      </div>
-    </div>
-  </div>
-
 </div>

@@ -21,6 +21,7 @@ export class PersonalInfoComponent implements OnInit {
   editMode   = false;
   saveSuccess = false;
   saveError   = '';
+  saveInfo    = '';
 
   form = {
     fullName: '',
@@ -106,15 +107,18 @@ export class PersonalInfoComponent implements OnInit {
     this.editMode   = !this.editMode;
     this.saveSuccess = false;
     this.saveError   = '';
+    this.saveInfo    = '';
   }
 
   saveChanges(): void {
     if (this.isSaving) return;
     this.isSaving  = true;
     this.saveError = '';
+    this.saveInfo = '';
 
     const payload = {
       name:      this.form.fullName.trim(),
+      email:     this.form.emailOrPhone.trim(),
       bio:       this.form.bio.trim(),
       location:  this.form.location.trim(),
       interests: [...this.selectedInterests],
@@ -126,20 +130,26 @@ export class PersonalInfoComponent implements OnInit {
         // Sync local state with what the server confirmed
         if (this.userData) {
           this.userData.fullName   = updated.fullName || this.form.fullName;
+          this.userData.emailOrPhone = updated.emailOrPhone || this.userData.emailOrPhone;
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
           this.userData.profilePic = updated.profilePic ?? this.userData.profilePic;
         }
+        const emailChangedImmediately = updated.emailOrPhone &&
+          updated.emailOrPhone.toLowerCase() === this.form.emailOrPhone.trim().toLowerCase();
         this.authService.updateCurrentTourist({
           name: updated.fullName || this.form.fullName,
-          email: updated.emailOrPhone || this.form.emailOrPhone,
+          email: emailChangedImmediately ? updated.emailOrPhone : this.userData?.emailOrPhone,
           language: updated.language || this.userData?.language,
           profileImage: updated.profilePic ?? this.userData?.profilePic ?? null,
         });
         this.isSaving    = false;
         this.editMode    = false;
         this.saveSuccess = true;
+        if (!emailChangedImmediately && this.form.emailOrPhone.trim()) {
+          this.saveInfo = 'Proverite novi email i potvrdite link da bi promena bila prihvacena.';
+        }
         setTimeout(() => (this.saveSuccess = false), 3000);
         this.cdr.detectChanges();
       },

@@ -79,6 +79,36 @@
   border-bottom: 1px solid $gray-100;
 }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid $gray-100;
+
+  .card-title {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+}
+
+.link-clear {
+  border: none;
+  background: $gray-100;
+  color: $gray-700;
+  border-radius: $radius-md;
+  padding: 7px 10px;
+  font: 700 12px $font-sans;
+  cursor: pointer;
+
+  &:hover {
+    background: $gray-200;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -191,6 +221,100 @@
   color: $gray-500;
   margin-bottom: 12px;
   line-height: 1.5;
+}
+
+.multi-select-panel {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1.5px solid $gray-200;
+  border-radius: $radius-md;
+  background: $gray-50;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.destination-search {
+  margin-bottom: 8px;
+}
+
+.destination-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: $radius-md;
+  background: $white;
+  color: $gray-700;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+
+  input {
+    width: 16px;
+    height: 16px;
+    accent-color: $primary;
+    flex-shrink: 0;
+  }
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    border-color: $primary-mid;
+    background: rgba(34,197,94,.06);
+  }
+
+  &.selected {
+    border-color: $primary;
+    background: rgba(34,197,94,.1);
+    color: $gray-900;
+  }
+}
+
+.empty-selection {
+  padding: 12px;
+  color: $gray-500;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.selected-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: $radius-md;
+  background: $gray-50;
+  color: $gray-600;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selected-chip {
+  max-width: 100%;
+  border-radius: $radius-md;
+  background: $white;
+  border: 1px solid $gray-200;
+  color: $gray-700;
+  padding: 5px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .map-placeholder {

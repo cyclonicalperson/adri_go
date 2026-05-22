@@ -69,6 +69,9 @@
 }
 
 .ftab {
+  flex: 0 0 auto;
+  min-width: auto;
+  min-height: 36px;
   padding: 7px 14px;
   border-radius: $radius-sm;
   border: 1px solid $gray-200;
@@ -80,6 +83,7 @@
   color: $gray-500;
   font-family: $font-sans;
   white-space: nowrap;
+  text-align: center;
 
   &:hover {
     border-color: $primary;

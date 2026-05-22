@@ -36,7 +36,30 @@
 
 .header h1 { font-size: 18px; font-weight: 800; flex: 1; margin: 0; }
 
-.back-btn { background: none; border: none; font-size: 32px; cursor: pointer; }
+.back-btn {
+  background: #eef2f7;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  transform: translateY(-1px);
+  background: #e2e8f0;
+}
+
+.back-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--gray-700, #334155);
+}
 
 .mark-read {
   background: #f0fdf4;
@@ -210,7 +233,15 @@
 
 :host-context(html[data-theme='dark']) .back-btn {
   color: #e5edf6;
-  background: transparent;
+  background: #111827;
+}
+
+:host-context(html[data-theme='dark']) .back-btn:hover {
+  background: #0f172a;
+}
+
+:host-context(html[data-theme='dark']) .back-btn svg {
+  fill: #e5edf6;
 }
 
 :host-context(html[data-theme='dark']) .mark-read {

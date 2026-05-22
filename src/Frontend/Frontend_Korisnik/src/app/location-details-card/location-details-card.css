@@ -532,3 +532,34 @@
   background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;
 }
+
+:host-context(html[data-theme='dark']) .card-scheduler-card,
+:host-context(html[data-theme='dark']) .auth-modal {
+  background: #111827;
+  color: #e2e8f0;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-title,
+:host-context(html[data-theme='dark']) .auth-modal h3 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-body,
+:host-context(html[data-theme='dark']) .card-scheduler-label,
+:host-context(html[data-theme='dark']) .auth-modal p {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+  color-scheme: dark;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-cancel,
+:host-context(html[data-theme='dark']) .btn-cancel {
+  background: #1f2937;
+  color: #cbd5e1;
+}

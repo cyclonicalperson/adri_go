@@ -11,6 +11,7 @@ import { Location } from './location.service';
 export interface UserProfile {
   fullName: string;
   emailOrPhone: string;
+  pendingEmail?: string | null;
   profilePic?: string;
   language: string;
   bio?: string;
@@ -25,6 +26,7 @@ export interface UserProfile {
 
 export interface UpdateProfilePayload {
   name?: string;
+  email?: string;
   language?: string;
   bio?: string;
   location?: string;
@@ -84,6 +86,42 @@ export interface CalendarSchedulePayload {
   scheduledAt?: string | null;
 }
 
+/**
+ * Describes an item the user wants to place on the calendar. It is handed to
+ * the Calendar page (via router state) so the user can pick the day/time there
+ * instead of using an inline date picker.
+ */
+export interface PendingScheduleBase {
+  title: string;
+  imageUrl?: string | null;
+  address?: string | null;
+}
+
+export interface PendingPostSchedule extends PendingScheduleBase {
+  kind: 'post';
+  postId: number;
+  postType: string;
+  isEvent: boolean;
+  /** ISO start/end of the event — when set, scheduling is limited to this range. */
+  eventStart?: string | null;
+  eventEnd?: string | null;
+}
+
+export interface PendingCuratedRouteSchedule extends PendingScheduleBase {
+  kind: 'curatedRoute';
+  routeId: number;
+}
+
+export interface PendingPrivateRouteSchedule extends PendingScheduleBase {
+  kind: 'privateRoute';
+  privateRoute: Omit<PrivateRouteCalendarPayload, 'scheduledAt'>;
+}
+
+export type PendingSchedule =
+  | PendingPostSchedule
+  | PendingCuratedRouteSchedule
+  | PendingPrivateRouteSchedule;
+
 export interface PostTypePreference {
   postType: string;
   likeCount: number;
@@ -122,6 +160,7 @@ interface TouristProfileResponse {
   id: number;
   name: string;
   email: string;
+  pendingEmail?: string | null;
   language: string;
   bio?: string | null;
   location?: string | null;
@@ -311,6 +350,7 @@ export class UserService {
     return {
       fullName: profile?.name ?? '',
       emailOrPhone: profile?.email ?? '',
+      pendingEmail: profile?.pendingEmail ?? null,
       profilePic: profile?.profileImage ?? undefined,
       language: profile?.language ?? 'en',
       bio: profile?.bio ?? '',

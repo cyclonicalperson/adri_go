@@ -9,130 +9,206 @@
   </div>
 
   <div class="calendar-scroll">
-    <section class="calendar-hero">
-      <div class="hero-copy">
-        <span class="eyebrow">Your saved plan</span>
-        <h2>See your saved destinations on the calendar and in the list below.</h2>
-        <p>{{ upcomingEvents.length + pastEvents.length }} saved item<span *ngIf="upcomingEvents.length + pastEvents.length !== 1">s</span> in your itinerary.</p>
+
+    <!-- SCHEDULING BANNER -->
+    <div class="schedule-banner" *ngIf="isSchedulingMode">
+      <div class="schedule-banner-icon">
+        <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
       </div>
-      <button class="map-btn" (click)="goToMap()">Open map</button>
+      <div class="schedule-banner-text">
+        <strong>Pick a day for "{{ schedulingItem?.title }}"</strong>
+        <span *ngIf="schedulingRangeLabel">This event runs {{ schedulingRangeLabel }} — choose a day within that window.</span>
+        <span *ngIf="!schedulingRangeLabel">Tap any upcoming day to schedule it.</span>
+      </div>
+      <button class="schedule-banner-cancel" type="button" (click)="cancelScheduling()">Cancel</button>
+    </div>
+
+    <!-- PAGE TITLE -->
+    <section class="page-title-row">
+      <div class="page-title-text">
+        <span class="eyebrow">Your itinerary</span>
+        <h2>Calendar</h2>
+        <p class="page-title-meta">{{ itinerarySummary }}</p>
+      </div>
+      <div class="page-title-actions">
+        <button class="map-view-btn" (click)="goToMap()">
+          <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+          Map view
+        </button>
+      </div>
     </section>
 
-    <section class="calendar-panel">
-      <div class="month-nav">
-        <button class="nav-btn" (click)="prevMonth()" aria-label="Previous month">
-          <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-        </button>
-        <h2>{{ monthLabel }}</h2>
-        <button class="nav-btn" (click)="nextMonth()" aria-label="Next month">
-          <svg viewBox="0 0 24 24"><path d="m8.59 16.59 1.41 1.41 6-6-6-6-1.41 1.41L13.17 12z"/></svg>
-        </button>
-      </div>
+    <!-- MAIN LAYOUT: calendar (left) + side panel (right) -->
+    <div class="calendar-layout">
 
-      <div class="weekdays">
-        <span *ngFor="let dayName of dayNames">{{ dayName }}</span>
-      </div>
+      <!-- CALENDAR PANEL -->
+      <section class="calendar-panel">
+        <div class="month-nav">
+          <!--<span class="month-nav-meta">{{ itinerarySummary }}</span>-->
 
-      <div class="month-grid">
-        <ng-container *ngFor="let week of weeks; trackBy: trackWeek">
-          <div class="day-cell"
-               *ngFor="let day of week; trackBy: trackDay"
-               [class.other-month]="!day.isCurrentMonth"
-               [class.today]="day.isToday"
-               [class.has-events]="day.events.length > 0"
-               (click)="openDayDetails(day)">
-            <div class="day-number">{{ day.date.getDate() }}</div>
-
-            <button class="event-chip"
-                    *ngFor="let event of day.events; trackBy: trackEvent"
-                    [class.past-chip]="pastEvents.some(item => item.id === event.id)"
-                    [title]="event.title + ' (' + formatEventRange(event) + ')'"
-                    (click)="$event.stopPropagation(); viewEventDetails(event.id)">
-              <span>{{ event.title }}</span>
+          <div class="month-nav-text">
+            <button class="month-picker-toggle" type="button" (click)="togglePicker()"
+                    [class.open]="isPickerOpen" aria-label="Choose month and year"
+                    title="Click to choose a month and year">
+              <svg class="cal-icon" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+              <h3>{{ monthLabel }}</h3>
+              <span class="month-picker-chevron">
+                <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+              </span>
             </button>
 
-            <button
-              *ngIf="hiddenEventCount(day) > 0"
-              class="more-events-btn"
-              type="button"
-              (click)="$event.stopPropagation(); openDayDetails(day)">
-              +{{ hiddenEventCount(day) }} more
+            <!-- MONTH / YEAR PICKER -->
+            <div class="month-picker" *ngIf="isPickerOpen">
+              <div class="month-picker-year">
+                <button class="nav-btn" type="button" (click)="pickerPrevYear()" aria-label="Previous year">
+                  <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <span class="picker-year-label">{{ pickerYear }}</span>
+                <button class="nav-btn" type="button" (click)="pickerNextYear()" aria-label="Next year">
+                  <svg viewBox="0 0 24 24"><path d="m8.59 16.59 1.41 1.41 6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+                </button>
+              </div>
+              <div class="month-picker-grid">
+                <button class="month-picker-cell"
+                        *ngFor="let name of monthNames; let i = index"
+                        type="button"
+                        [class.selected]="isPickedMonth(i)"
+                        [class.is-now]="isCurrentRealMonth(i)"
+                        (click)="selectMonth(i)">
+                  {{ name }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="month-nav-controls">
+            <button class="nav-btn" (click)="prevMonth()" aria-label="Previous month">
+              <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <button class="today-btn" type="button" (click)="goToToday()">Today</button>
+            <button class="nav-btn" (click)="nextMonth()" aria-label="Next month">
+              <svg viewBox="0 0 24 24"><path d="m8.59 16.59 1.41 1.41 6-6-6-6-1.41 1.41L13.17 12z"/></svg>
             </button>
           </div>
-        </ng-container>
-      </div>
-    </section>
-
-    <section class="events-section">
-    <div class="date-heading" *ngIf="upcomingEvents.length > 0">
-        <h3>Upcoming destinations</h3>
-      <span class="event-count-badge">{{ upcomingEvents.length }}</span>
-    </div>
-
-      <div class="event-card" *ngFor="let event of upcomingEvents; trackBy: trackEvent" (click)="viewEventDetails(event.id)">
-      <img [src]="getEventImage(event)" [alt]="event.title" class="event-image"
-        (error)="$any($event.target).src='assets/Budva.jpg'">
-      <div class="event-info">
-        <h3 class="event-name">{{ event.title }}</h3>
-          <div class="event-schedule">
-            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-            {{ formatEventSchedule(event) }}
-          </div>
-        <div class="event-time">
-          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-            {{ event.location || 'Location pending' }}
         </div>
-        <span class="event-status status-confirmed">UPCOMING</span>
-      </div>
-      <div class="event-actions">
-          <button class="remove-btn" title="Remove from calendar" (click)="$event.stopPropagation(); removeEvent(event.id)">
-          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Remove
-        </button>
-        <button class="details-link">
-          Details
-          <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-        </button>
-      </div>
-    </div>
 
-      <div class="date-heading past-heading" *ngIf="pastEvents.length > 0">
-        <h3>Past destinations</h3>
-        <span class="event-count-badge past-badge">{{ pastEvents.length }}</span>
-    </div>
+        <div class="month-picker-backdrop" *ngIf="isPickerOpen" (click)="closePicker()"></div>
 
-      <div class="event-card past-card" *ngFor="let event of pastEvents; trackBy: trackEvent" (click)="viewEventDetails(event.id)">
-      <img [src]="getEventImage(event)" [alt]="event.title" class="event-image"
-             (error)="$any($event.target).src='assets/Budva.jpg'">
-      <div class="event-info">
-        <h3 class="event-name">{{ event.title }}</h3>
-          <div class="event-schedule">
-            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
-            {{ formatEventSchedule(event) }}
-          </div>
-        <div class="event-time">
-          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-            {{ event.location || 'Location pending' }}
-          </div>
-          <span class="event-status status-completed">COMPLETED</span>
+        <div class="weekdays">
+          <span *ngFor="let dayName of dayNames">{{ dayName }}</span>
         </div>
-        <div class="event-actions">
-          <button class="remove-btn" title="Remove from calendar" (click)="$event.stopPropagation(); removeEvent(event.id)">
-            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            Remove
-          </button>
-          <button class="details-link">
-            Details
-            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-          </button>
-        </div>
-      </div>
 
-      <div class="empty-events" *ngIf="!isLoading && upcomingEvents.length === 0 && pastEvents.length === 0">
-        No destinations scheduled yet. Save destinations from location pages to add them here.
-      </div>
-    </section>
+        <div class="month-grid">
+          <ng-container *ngFor="let week of weeks; trackBy: trackWeek">
+            <div class="day-cell"
+                 *ngFor="let day of week; trackBy: trackDay"
+                 [class.other-month]="!day.isCurrentMonth"
+                 [class.today]="day.isToday"
+                 [class.has-events]="day.events.length > 0"
+                 [class.schedule-selectable]="isSchedulingMode && isDayAvailable(day)"
+                 [class.schedule-disabled]="isSchedulingMode && !isDayAvailable(day)"
+                 (click)="onDayClick(day)">
+              <div class="day-number">{{ day.date.getDate() }}</div>
+
+              <button class="event-chip"
+                      *ngFor="let event of day.events; trackBy: trackEvent"
+                      [class.past-chip]="pastEvents.some(item => item.id === event.id)"
+                      [style.--chip-color]="getEventColor(event)"
+                      [title]="event.title + ' (' + formatEventRange(event) + ')'"
+                      (click)="onChipClick($event, event)">
+                <span>{{ event.title }}</span>
+              </button>
+
+              <button
+                *ngIf="hiddenEventCount(day) > 0"
+                class="more-events-btn"
+                type="button"
+                (click)="$event.stopPropagation(); onDayClick(day)">
+                +{{ hiddenEventCount(day) }} more
+              </button>
+
+              <span class="schedule-add-hint" *ngIf="isSchedulingMode && isDayAvailable(day)">+</span>
+
+              <!-- Compact (mobile) view: colored dots instead of text chips -->
+              <div class="day-dots" *ngIf="dayDots(day).length">
+                <span class="day-dot"
+                      *ngFor="let ev of dayDots(day); trackBy: trackEvent"
+                      [style.background]="getEventColor(ev)"></span>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+      </section>
+
+      <!-- SIDE PANEL: Next up + Recently -->
+      <aside class="events-side">
+
+        <section class="side-block">
+          <h3 class="side-title">Next up</h3>
+
+          <div class="side-empty" *ngIf="!isLoading && upcomingEvents.length === 0">
+            No upcoming destinations yet.
+          </div>
+
+          <div class="side-card"
+               *ngFor="let event of upcomingEvents; trackBy: trackEvent"
+               (click)="viewEventDetails(event.id)">
+            <img [src]="getEventImage(event)" [alt]="event.title" class="side-card-image"
+                 (error)="$any($event.target).src='assets/Budva.jpg'">
+            <div class="side-card-info">
+              <div class="side-card-meta">
+                <span class="event-dot" [style.background]="getEventColor(event)"></span>
+                <span class="status-pill" [class.is-tomorrow]="isTomorrow(event)">
+                  {{ isTomorrow(event) ? 'TOMORROW' : 'UPCOMING' }}
+                </span>
+                <span class="meta-dot">·</span>
+                <span class="meta-date">{{ formatShortDate(event) }}</span>
+              </div>
+              <h4 class="side-card-title">{{ event.title }}</h4>
+              <div class="side-card-row" *ngIf="event.location">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 0 1 9.5 9 2.5 2.5 0 0 1 12 6.5 2.5 2.5 0 0 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>
+                {{ event.location }}
+              </div>
+              <div class="side-card-row" *ngIf="event.time">
+                <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                {{ event.time }}
+              </div>
+            </div>
+            <button class="side-card-remove" title="Remove from calendar"
+                    (click)="$event.stopPropagation(); removeEvent(event.id)">
+              <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="side-block" *ngIf="pastEvents.length > 0">
+          <h3 class="side-title">Recently</h3>
+
+          <div class="side-card past"
+               *ngFor="let event of pastEvents; trackBy: trackEvent"
+               (click)="viewEventDetails(event.id)">
+            <img [src]="getEventImage(event)" [alt]="event.title" class="side-card-image"
+                 (error)="$any($event.target).src='assets/Budva.jpg'">
+            <div class="side-card-info">
+              <h4 class="side-card-title">
+                <span class="event-dot" [style.background]="getEventColor(event)"></span>
+                {{ event.title }}
+              </h4>
+              <p class="side-card-sub">Completed · {{ formatShortDateMixed(event) }}</p>
+            </div>
+            <button class="side-card-remove" title="Remove from calendar"
+                    (click)="$event.stopPropagation(); removeEvent(event.id)">
+              <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <div class="side-empty" *ngIf="!isLoading && upcomingEvents.length === 0 && pastEvents.length === 0">
+          No destinations scheduled yet. Save destinations from location pages to add them here.
+        </div>
+
+      </aside>
     </div>
+  </div>
 
   <div *ngIf="selectedDay" class="day-detail-overlay" (click)="closeDayDetails()">
     <section class="day-detail-panel" (click)="$event.stopPropagation()">
@@ -160,6 +236,30 @@
             Remove
           </button>
         </article>
+      </div>
+    </section>
+  </div>
+
+  <!-- TIME PICKER (scheduling) -->
+  <div *ngIf="showTimePicker" class="day-detail-overlay" (click)="closeTimePicker()">
+    <section class="time-picker-card" (click)="$event.stopPropagation()">
+      <div class="time-picker-head">
+        <span class="eyebrow">Schedule</span>
+        <h2>{{ schedulingItem?.title }}</h2>
+      </div>
+      <p class="time-picker-day">{{ scheduleDayLabel }}</p>
+      <label class="time-picker-label" for="scheduleTime">Time</label>
+      <input id="scheduleTime" class="time-picker-input" type="time"
+             [(ngModel)]="scheduleTime"
+             [min]="scheduleTimeMin || null"
+             [max]="scheduleTimeMax || null">
+      <div *ngIf="scheduleError" class="time-picker-error">{{ scheduleError }}</div>
+      <div class="time-picker-actions">
+        <button class="time-picker-cancel" type="button" (click)="closeTimePicker()">Cancel</button>
+        <button class="time-picker-confirm" type="button"
+                [disabled]="isSavingSchedule" (click)="confirmSchedule()">
+          {{ isSavingSchedule ? 'Adding…' : 'Add to calendar' }}
+        </button>
       </div>
     </section>
   </div>

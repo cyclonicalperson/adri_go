@@ -9,13 +9,15 @@ import { RouteDifficulty, RouteStatus, TouristRoute } from '@core/models/route.m
 import { AdminListStateService } from '@core/services/admin-list-state.service';
 import { RegionService } from '@core/services/region.service';
 import { RouteService } from '@core/services/route.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { BadgeComponent, BadgeVariant } from '@shared/components/badge/badge.component';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 type StatusFilter = '' | RouteStatus;
 
 interface RoutesListState {
-  req?: Partial<PageRequest & { regionId?: number; difficulty?: string; status?: StatusFilter }>;
+  req?: Partial<PageRequest & { country?: string; regionId?: number; difficulty?: string; status?: StatusFilter }>;
 }
 
 @Component({
@@ -32,11 +34,13 @@ interface RoutesListState {
 export class RoutesListComponent implements OnInit {
   routes: TouristRoute[] = [];
   destinations: Region[] = [];
+  readonly countries = WORLD_COUNTRIES;
   total = 0;
   totalPages = 1;
 
   req: PageRequest & {
     regionId?: number;
+    country?: string;
     difficulty?: string;
     status?: StatusFilter;
   } = { page: 1, pageSize: 12, sortBy: 'name', sortDir: 'asc' };
@@ -78,6 +82,7 @@ export class RoutesListComponent implements OnInit {
     private router: Router,
     private auth: AuthService,
     private listState: AdminListStateService,
+    private csv: CsvExportService,
   ) {}
 
   ngOnInit(): void {
@@ -134,6 +139,22 @@ export class RoutesListComponent implements OnInit {
     this.load();
   }
 
+  onCountryChange(country: string): void {
+    const nextCountry = country || undefined;
+    const selectedRegion = this.destinations.find(region => region.regionId === this.req.regionId);
+    this.req = {
+      ...this.req,
+      country: nextCountry,
+      regionId: selectedRegion && nextCountry && selectedRegion.country !== nextCountry ? undefined : this.req.regionId,
+      page: 1,
+    };
+    this.load();
+  }
+
+  get filteredDestinations(): Region[] {
+    return this.req.country ? this.destinations.filter(region => region.country === this.req.country) : this.destinations;
+  }
+
   onStatusChange(status: StatusFilter): void {
     this.req = { ...this.req, status: status || undefined, page: 1 };
     this.load();
@@ -174,6 +195,27 @@ export class RoutesListComponent implements OnInit {
   goNew(): void {
     if (!this.canCreateRoutes) return;
     void this.router.navigate(['/admin/routes-management/new']);
+  }
+
+  printReport(): void {
+    window.print();
+  }
+
+  exportCsv(): void {
+    const today = new Date().toISOString().slice(0, 10);
+    this.csv.download(
+      `rute_${today}.csv`,
+      ['Naziv', 'Tezina', 'Destinacija', 'Distanca', 'Trajanje', 'Uspon', 'Status'],
+      this.routes.map(route => [
+        route.name,
+        this.difficultyLabel(route.difficulty),
+        route.destination?.name ?? '',
+        route.distanceKm ?? '',
+        route.durationMin ?? '',
+        route.elevationGainM ?? '',
+        this.statusLabel(route.status),
+      ]),
+    );
   }
 
   goDetails(route: TouristRoute): void {
@@ -335,6 +377,7 @@ export class RoutesListComponent implements OnInit {
       page: 1,
       pageSize: 1,
       search: this.req.search,
+      country: this.req.country,
       regionId: this.req.regionId,
       difficulty: this.req.difficulty,
       sortBy: 'name',

@@ -29,6 +29,7 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? accountStatus,
+            [FromQuery] string? language,
             [FromQuery] string? sortBy,
             [FromQuery] string? sortDir,
             [FromQuery] int page = 1,
@@ -38,16 +39,27 @@ namespace TouristGuide.Api.Controllers
 
             // ── Filteri ───────────────────────────────────────────────────────
             if (!string.IsNullOrWhiteSpace(search))
+            {
+                var normalizedSearch = search.Trim();
                 query = query.Where(t =>
-                    (t.Name != null && t.Name.Contains(search)) ||
-                    (t.Email != null && t.Email.Contains(search)));
+                    (t.Name != null && EF.Functions.ILike(t.Name, $"%{normalizedSearch}%")) ||
+                    (t.Email != null && EF.Functions.ILike(t.Email, $"%{normalizedSearch}%")) ||
+                    (t.Location != null && EF.Functions.ILike(t.Location, $"%{normalizedSearch}%")));
+            }
+
+            if (!string.IsNullOrWhiteSpace(language))
+            {
+                var normalizedLanguage = language.Trim().ToLower();
+                query = query.Where(t => t.Language != null && t.Language.ToLower() == normalizedLanguage);
+            }
 
             switch (accountStatus?.ToLower())
             {
                 case "active":
-                    query = query.Where(t => t.IsActive && t.IsEmailVerified);
+                    query = query.Where(t => t.IsActive);
                     break;
                 case "inactive":
+                case "suspended":
                     query = query.Where(t => !t.IsActive);
                     break;
                 case "unverified":

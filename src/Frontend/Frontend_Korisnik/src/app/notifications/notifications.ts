@@ -183,7 +183,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
     const routeId = this.readPayloadNumber(payload, 'routeId', 'route_id');
     if (routeId) {
-      return '/routes';
+      return '/location-list?type=routes';
     }
 
     return url && url.startsWith('/') ? url : null;

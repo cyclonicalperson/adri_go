@@ -15,7 +15,8 @@ public sealed record ChatMessage(
 
 public sealed record ChatRequest(
     [property: JsonPropertyName("message")] string Message,
-    [property: JsonPropertyName("history")] IReadOnlyList<ChatMessage>? History = null);
+    [property: JsonPropertyName("history")] IReadOnlyList<ChatMessage>? History = null,
+    [property: JsonPropertyName("language")] string? Language = null);
 
 public sealed record ChatResponse(
     [property: JsonPropertyName("reply")]     string Reply,
@@ -144,12 +145,6 @@ internal sealed class GeminiChatService : IGeminiChatService
     private static readonly Lazy<List<GeminiTool>> CachedTools =
         new(BuildTourismTools, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    // FIX #3: System prompt je konstanta — ne treba ga graditi svaki request.
-    private static readonly GeminiSystemInstruction CachedSystemInstruction = new()
-    {
-        Parts = [new GeminiPart { Text = BuildSystemPrompt() }]
-    };
-
     // Maksimalan broj agentic petlji radi zaštite od beskonačnih petlji
     private const int MaxToolRounds = 8;
     // Maksimalan broj poruka istorije koje se šalju modelu (context truncation)
@@ -258,7 +253,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             {
                 Contents          = contents,
                 Tools             = CachedTools.Value,
-                SystemInstruction = CachedSystemInstruction,
+                SystemInstruction = BuildSystemInstruction(request.Language),
                 GenerationConfig  = new GeminiGenerationConfig
                 {
                     MaxOutputTokens = maxTokens,
@@ -1414,6 +1409,18 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     // ── System prompt ─────────────────────────────────────────────────────────
 
+    private static GeminiSystemInstruction BuildSystemInstruction(string? preferredLanguage)
+    {
+        var languageInstruction = string.IsNullOrWhiteSpace(preferredLanguage)
+            ? ""
+            : $"\n\nUSER INTERFACE LANGUAGE: {preferredLanguage.Trim().ToLowerInvariant()}. Prefer this language for the reply unless the user explicitly asks for another language. If the logged-in profile tool returns a different Language field, the profile language wins.";
+
+        return new GeminiSystemInstruction
+        {
+            Parts = [new GeminiPart { Text = BuildSystemPrompt() + languageInstruction }]
+        };
+    }
+
     private static string BuildSystemPrompt() => """
         You are a friendly and knowledgeable tourism assistant for the Globecode regional tourist guide application.
         You have access to a comprehensive database of tourist regions, locations (accommodation, restaurants,
@@ -1424,7 +1431,9 @@ internal sealed class GeminiChatService : IGeminiChatService
         - ALWAYS use the provided tools to fetch real data — NEVER invent facts, names, ratings, or descriptions.
         - Call tools first, then formulate your answer based on what the tools return.
         - If a tool returns no results, honestly say so and suggest broadening the search.
-        - Respond in the SAME LANGUAGE the user writes in (auto-detect language).
+        - Prefer the logged-in tourist profile language when available.
+        - If no profile language is available, use the USER INTERFACE LANGUAGE appended to this instruction.
+        - If neither is available, respond in the same language the user writes in.
         - Support pagination: if HasMore is true, offer to show more results.
         - Be concise but informative — highlight the most important details.
         - When listing multiple results, use a structured format (numbered list or table).

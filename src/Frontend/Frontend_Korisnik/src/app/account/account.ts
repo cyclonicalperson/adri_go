@@ -125,4 +125,7 @@ export class AccountComponent implements OnInit, OnDestroy {
   goToSettings()     { this.router.navigate(['/settings']); }
   goToLogin()        { this.router.navigate(['/login']); }
   closeLoginPopup()  { this.showLoginPopup = false; }
+  goToSaved()        { this.router.navigate(['/saved']); }
+  goToCalendar()     { this.router.navigate(['/calendar']); }
+  goToReviews()      { this.router.navigate(['/location-list']); }
 }

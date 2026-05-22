@@ -11,6 +11,7 @@ namespace TouristGuide.Api.DTOs
         public uint? RegionId { get; set; }
         public string? RegionName { get; set; }
         public string? ProposedRegionName { get; set; }
+        public string Country { get; set; } = "Montenegro";
         public string Title { get; set; } = string.Empty;
         public string PostType { get; set; } = string.Empty;
         public string? Description { get; set; }

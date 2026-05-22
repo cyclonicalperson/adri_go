@@ -13,6 +13,7 @@ import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { MapComponent, MapMarker } from '@shared/components/map/map.component';
 import { EventCalendarComponent } from '../event-calendar/event-calendar.component';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 type ViewMode = 'table' | 'calendar';
 
@@ -25,6 +26,7 @@ type ViewMode = 'table' | 'calendar';
 export class EventsListComponent implements OnInit {
   events: Post[] = [];
   regions: Region[] = [];
+  readonly countries = WORLD_COUNTRIES;
   total = 0;
   globalTotal = 0;
   totalPages = 1;
@@ -45,6 +47,7 @@ export class EventsListComponent implements OnInit {
 
   req: PageRequest & {
     regionId?: number;
+    country?: string;
     status?: PostStatus;
     category?: string;
   } = { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' };
@@ -139,6 +142,7 @@ export class EventsListComponent implements OnInit {
       sortBy: this.req.sortBy,
       sortDir: this.req.sortDir,
       search: this.req.search,
+      country: this.req.country,
       regionId: this.req.regionId,
       status: this.req.status,
     }).subscribe({
@@ -222,6 +226,22 @@ export class EventsListComponent implements OnInit {
   onRegionChange(id: string): void {
     this.req = { ...this.req, regionId: id ? +id : undefined, page: 1 };
     this.load();
+  }
+
+  onCountryChange(country: string): void {
+    const nextCountry = country || undefined;
+    const selectedRegion = this.regions.find(region => region.regionId === this.req.regionId);
+    this.req = {
+      ...this.req,
+      country: nextCountry,
+      regionId: selectedRegion && nextCountry && selectedRegion.country !== nextCountry ? undefined : this.req.regionId,
+      page: 1,
+    };
+    this.load();
+  }
+
+  get filteredRegions(): Region[] {
+    return this.req.country ? this.regions.filter(region => region.country === this.req.country) : this.regions;
   }
 
   onStatusFilter(val: string): void {

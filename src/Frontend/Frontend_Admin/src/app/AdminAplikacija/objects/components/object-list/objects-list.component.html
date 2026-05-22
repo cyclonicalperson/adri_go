@@ -79,9 +79,16 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
+    <select class="filter-select" [value]="req.country ?? ''" (change)="onCountryChange($any($event.target).value)">
+      <option value="">Sve drzave</option>
+      @for (country of countries; track country) {
+      <option [value]="country">{{ country }}</option>
+      }
+    </select>
+
     <select class="filter-select" [value]="req.regionId ?? ''" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Svi regioni</option>
-      @for (r of regions; track r.regionId) {
+      @for (r of filteredRegions; track r.regionId) {
       <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>

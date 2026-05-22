@@ -30,6 +30,20 @@
 
 .header-left { display: flex; align-items: center; gap: 8px; }
 
+.logo-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.logo-button:focus-visible {
+  outline: 2px solid var(--green-400);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
 .logo-icon { display: flex; align-items: center; }
 .logo-icon .logo-img { width: 72px; height: auto; display: block; }
 
@@ -74,6 +88,7 @@
   justify-content: center;
   transition: background 0.15s;
   overflow: visible;
+  cursor: pointer;
 }
 .header-menu-btn:hover { background: var(--gray-200); }
 .header-menu-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }
@@ -310,12 +325,16 @@
   .map-wrapper.navigating .top-ui-layer {
     display: none;
   }
+
+  .search-results-dropdown {
+    max-height: min(34dvh, calc(100dvh - 250px));
+  }
 }
-.search-filter-btn:hover { color: var(--green-500); }
+.search-filter-btn:hover { color: var(--gray-700); }
 .search-filter-btn svg {
   width: 17px;
   height: 17px;
-  fill: var(--green-500);
+  fill: var(--gray-500);
 }
 
 .search-suggestions {
@@ -368,7 +387,9 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.14);
-  overflow: hidden;
+  max-height: min(48dvh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 100;
 }
 
@@ -580,7 +601,7 @@
   border-radius: 50%;
   border: 2px solid #fff;
 }
-.search-filter-btn.filter-active { color: var(--green-600); }
+.search-filter-btn.filter-active { color: var(--gray-700); }
 /* Hide the "Filters" label on mobile */
 .search-filter-btn span:not(.filter-badge) { display: none; }
 
@@ -974,8 +995,9 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .sheet-header,
 :host-context(html[data-theme='dark']) .search-results-dropdown,
 :host-context(html[data-theme='dark']) .search-no-results {
-  border-color: #334155;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+  background: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
 }
 
 :host-context(html[data-theme='dark']) .search-input,
@@ -983,6 +1005,17 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .search-result-rating,
 :host-context(html[data-theme='dark']) .sheet-title {
   color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .search-container:focus-within {
+  border-color: #475569 !important;
+  box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .search-input {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 :host-context(html[data-theme='dark']) .search-input::placeholder,
@@ -995,9 +1028,16 @@ app-location-details-card {
 
 :host-context(html[data-theme='dark']) .search-icon svg,
 :host-context(html[data-theme='dark']) .search-clear-btn svg,
+:host-context(html[data-theme='dark']) .search-filter-btn svg,
 :host-context(html[data-theme='dark']) .sheet-chevron,
 :host-context(html[data-theme='dark']) .search-no-results svg {
-  fill: #334155;
+  fill: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .search-filter-btn,
+:host-context(html[data-theme='dark']) .search-filter-btn.filter-active,
+:host-context(html[data-theme='dark']) .search-filter-btn:hover {
+  color: #cbd5e1;
 }
 
 :host-context(html[data-theme='dark']) .search-divider,
@@ -1010,7 +1050,7 @@ app-location-details-card {
   background: rgba(15, 23, 42, 0.92) !important;
   color: #e2e8f0;
   border-color: var(--cat-color, #475569);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 :host-context(html[data-theme='dark']) .search-suggestion-chip {
@@ -1027,7 +1067,7 @@ app-location-details-card {
 
 :host-context(html[data-theme='dark']) .cat-chip.active {
   color: #fff;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+  box-shadow: none;
 }
 
 /* ============================================================
@@ -1476,6 +1516,12 @@ app-location-details-card {
   .chat-fab-hint {
     width: 300px;
   }
+
+  .map-wrapper.navigating .chat-fab-wrap.chat-fab-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
+  }
 }
 
 /* ============================================================
@@ -1573,6 +1619,12 @@ app-location-details-card {
     opacity: 1;
     pointer-events: auto;
     transform: none;
+  }
+
+  .map-wrapper.navigating .locate-btn.locate-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
   }
 }
 

@@ -10,6 +10,7 @@ export interface Location {
   adminName: string;
   regionId?: number;
   regionName?: string;
+  country?: string;
   title: string;
   postType: string;
   description?: string;

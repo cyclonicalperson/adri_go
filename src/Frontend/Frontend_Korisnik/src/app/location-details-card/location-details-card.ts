@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, OnDestroy, ChangeDetectorRef } 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { UserService, CalendarMutationResult } from '../services/user.service';
+import { UserService, PendingSchedule } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType } from '../utils/post-type.utils';
@@ -23,10 +23,6 @@ export class LocationDetailsCardComponent implements OnDestroy {
   defaultImage = 'assets/Budva.jpg';
   calendarMessage = '';
   showAuthModal = false;
-
-  showCalendarScheduler = false;
-  selectedCalendarDateTime = '';
-  calendarScheduleError = '';
 
   constructor(
     private router: Router,
@@ -81,6 +77,10 @@ export class LocationDetailsCardComponent implements OnDestroy {
     this.onAddToRoute.emit();
   }
 
+  /**
+   * Starts the calendar-scheduling flow: navigates to the Calendar page where
+   * the user picks the day/time. Events carry their date window.
+   */
   openCalendarScheduler(event: Event): void {
     event.stopPropagation();
     if (!this.locationData?.id) return;
@@ -90,67 +90,37 @@ export class LocationDetailsCardComponent implements OnDestroy {
       return;
     }
 
-    this.selectedCalendarDateTime = this.calendarMinDateTime;
-    this.calendarScheduleError = '';
-    this.showCalendarScheduler = true;
-    this.setBodyScrollLock(true);
-  }
-
-  closeCalendarScheduler(): void {
-    this.showCalendarScheduler = false;
-    this.calendarScheduleError = '';
-    this.setBodyScrollLock(false);
-  }
-
-  openDateTimePicker(input: HTMLInputElement): void {
-    const anyInput = input as HTMLInputElement & { showPicker?: () => void };
-    if (typeof anyInput.showPicker === 'function') {
-      try { anyInput.showPicker(); return; } catch { /* fall through */ }
-    }
-    input.focus();
-  }
-
-  addToCalendar(): void {
-    if (!this.locationData?.id) return;
-    if (!this.selectedCalendarDateTime) {
-      this.calendarScheduleError = 'Choose date and time.';
-      return;
-    }
-
-    const selectedDate = new Date(this.selectedCalendarDateTime);
-    if (isNaN(selectedDate.getTime())) {
-      this.calendarScheduleError = 'Choose a valid date and time.';
-      return;
-    }
-    if (selectedDate < new Date()) {
-      this.calendarScheduleError = 'Choose a future date and time.';
-      return;
-    }
-
-    this.userService.addLocationToCalendar({
-      id: this.locationData.id,
+    const range = this.getEventRange();
+    const pending: PendingSchedule = {
+      kind: 'post',
+      postId: this.locationData.id,
       title: this.locationData.title || '',
       postType: this.locationData.postType || this.locationData.category || '',
-      address: this.locationData.address || this.locationData.regionName || '',
-      regionName: this.locationData.regionName,
-      images: this.locationData.images,
-      imageUrl: this.locationData.imageUrl,
-    }, { scheduledAt: this.selectedCalendarDateTime }).subscribe({
-      next: (res) => {
-        this.calendarMessage = res.alreadyAdded
-          ? '📅 Already in calendar'
-          : (res.localOnly ? '📅 Saved locally!' : '📅 Added to calendar!');
-        this.closeCalendarScheduler();
-        this.cdr.detectChanges();
-        setTimeout(() => { this.calendarMessage = ''; this.cdr.detectChanges(); }, 3000);
-      },
-      error: () => {
-        this.calendarMessage = 'Could not add to calendar.';
-        this.closeCalendarScheduler();
-        this.cdr.detectChanges();
-        setTimeout(() => { this.calendarMessage = ''; this.cdr.detectChanges(); }, 2500);
-      }
-    });
+      isEvent: this.isEvent,
+      eventStart: this.isEvent ? (range?.start ?? null) : null,
+      eventEnd:   this.isEvent ? (range?.end ?? null) : null,
+      address:    this.locationData.address || this.locationData.regionName || '',
+      imageUrl:   this.locationData.imageUrl ?? null,
+    };
+
+    this.router.navigate(['/calendar'], { state: { pendingSchedule: pending } });
+  }
+
+  /** Parses the event start/end window from the post details JSON, if present. */
+  private getEventRange(): { start: string | null; end: string | null } | null {
+    const raw = this.locationData?.details;
+    if (!raw) return null;
+    try {
+      const details = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const start = details?.startAt ? new Date(details.startAt) : null;
+      const end   = details?.endAt ? new Date(details.endAt) : null;
+      return {
+        start: start && !isNaN(start.getTime()) ? start.toISOString() : null,
+        end:   end && !isNaN(end.getTime()) ? end.toISOString() : null,
+      };
+    } catch {
+      return null;
+    }
   }
 
   get isEvent(): boolean {
@@ -168,19 +138,10 @@ export class LocationDetailsCardComponent implements OnDestroy {
     this.router.navigate(['/login']);
   }
 
-  get calendarMinDateTime(): string {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  }
-
   ngOnDestroy(): void {
-    this.setBodyScrollLock(false);
-  }
-
-  private setBodyScrollLock(locked: boolean): void {
-    if (typeof document === 'undefined') return;
-    document.body.style.overflow = locked ? 'hidden' : '';
-    document.body.style.touchAction = locked ? 'none' : '';
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
   }
 }
