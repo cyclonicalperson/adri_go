@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of, Observable, Subscription } from 'rxjs';
+import { catchError, forkJoin, of, Subscription } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -15,7 +15,7 @@ import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
 import { FilterStateService, FilterState, FilterContentType } from '../services/filter-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
-import { UserService, CalendarItem, UserProfile, ServerPreferences } from '../services/user.service';
+import { UserService, CalendarItem, UserProfile, ServerPreferences, PendingSchedule } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
 import { ComputedRoute, NavigationStep, RoutingService, RouteSummary, isRoutingUnavailableError } from '../services/routing.service';
 import { TravelMode, TouristPreferencesService } from '../services/tourist-preferences.service';
@@ -175,12 +175,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   savedRoutes: SavedRoute[] = [];
   showSavedRoutes = false;
   saveRouteMessage = '';
-
-  // ─── Curated route → calendar scheduler ──────────────────────────────────
-  showRouteCalendarScheduler = false;
-  routeCalendarDateTime = '';
-  routeCalendarError = '';
-  isSavingRouteToCalendar = false;
 
   // ─── Locate-me FAB ───────────────────────────────────────────────────────
   isLocating = false;
@@ -1891,6 +1885,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  /**
+   * Starts the calendar-scheduling flow for the current route: builds a
+   * PendingSchedule and navigates to the Calendar page where the user picks
+   * the day/time.
+   */
   saveTripToCalendar(): void {
     if (!this.authService.isLoggedIn) {
       this.showAuthPopup = true;
@@ -1960,61 +1959,58 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const snapshot = this.routePlanner.snapshot;
-    let request$: Observable<any> | null = null;
+    const routeTitle = this.routeDestTitle || this.getRouteTitle();
+    let pending: PendingSchedule | null = null;
 
     if (snapshot.sourceRouteId != null) {
-      request$ = this.userService.addRouteToCalendar(snapshot.sourceRouteId, { scheduledAt: this.routeCalendarDateTime });
+      pending = {
+        kind: 'curatedRoute',
+        routeId: snapshot.sourceRouteId,
+        title: routeTitle,
+        imageUrl: null,
+        address: null,
+      };
     } else if (snapshot.sourcePrivateRouteId != null) {
       const saved = this.savedRoutesService.getById(snapshot.sourcePrivateRouteId);
       if (!saved) {
-        this.routeCalendarError = 'This private route is no longer available.';
+        this.plannerMessage = 'This private route is no longer available.';
+        setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
+        this.cdr.detectChanges();
         return;
       }
-      request$ = this.userService.addPrivateRouteToCalendar({
+      pending = {
+        kind: 'privateRoute',
         title: saved.title,
-        waypoints: JSON.stringify(saved.stops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
-        travelMode: saved.travelMode,
-        scenicMode: saved.scenicMode,
-        distanceKm: saved.distanceKm,
-        durationMin: saved.durationMin,
-        scheduledAt: this.routeCalendarDateTime,
-      });
-    } else if (this.plannerStops.length > 0) {
+        imageUrl: null,
+        address: null,
+        privateRoute: {
+          title: saved.title,
+          waypoints: JSON.stringify(saved.stops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+          travelMode: saved.travelMode,
+          scenicMode: saved.scenicMode,
+          distanceKm: saved.distanceKm,
+          durationMin: saved.durationMin,
+        },
+      };
+    } else {
       // Route built directly in the planner — save the current stops as a new private route.
-      request$ = this.userService.addPrivateRouteToCalendar({
-        title: this.routeDestTitle || this.getRouteTitle(),
-        waypoints: JSON.stringify(this.plannerStops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
-        travelMode: this.travelMode,
-        scenicMode: this.scenicMode,
-        distanceKm: this.routeSummary.distanceKm || undefined,
-        durationMin: Math.round(this.routeSummary.durationMin) || undefined,
-        scheduledAt: this.routeCalendarDateTime,
-      });
+      pending = {
+        kind: 'privateRoute',
+        title: routeTitle,
+        imageUrl: null,
+        address: null,
+        privateRoute: {
+          title: routeTitle,
+          waypoints: JSON.stringify(this.plannerStops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+          travelMode: this.travelMode,
+          scenicMode: this.scenicMode,
+          distanceKm: this.routeSummary.distanceKm || undefined,
+          durationMin: Math.round(this.routeSummary.durationMin) || undefined,
+        },
+      };
     }
 
-    if (!request$) {
-      return;
-    }
-
-    this.isSavingRouteToCalendar = true;
-    this.routeCalendarError = '';
-
-    request$.subscribe({
-      next: (res: any) => {
-        this.isSavingRouteToCalendar = false;
-        this.showRouteCalendarScheduler = false;
-        this.plannerMessage = res?.alreadyAdded
-          ? 'This route is already in your calendar.'
-          : 'Route added to your calendar.';
-        setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3500);
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.isSavingRouteToCalendar = false;
-        this.routeCalendarError = err?.error?.message || 'Could not add route to calendar.';
-        this.cdr.detectChanges();
-      },
-    });
+    this.router.navigate(['/calendar'], { state: { pendingSchedule: pending } });
   }
 
   private applyFilterState(): void {

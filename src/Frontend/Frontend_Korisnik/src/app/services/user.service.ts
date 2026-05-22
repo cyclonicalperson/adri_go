@@ -86,6 +86,42 @@ export interface CalendarSchedulePayload {
   scheduledAt?: string | null;
 }
 
+/**
+ * Describes an item the user wants to place on the calendar. It is handed to
+ * the Calendar page (via router state) so the user can pick the day/time there
+ * instead of using an inline date picker.
+ */
+export interface PendingScheduleBase {
+  title: string;
+  imageUrl?: string | null;
+  address?: string | null;
+}
+
+export interface PendingPostSchedule extends PendingScheduleBase {
+  kind: 'post';
+  postId: number;
+  postType: string;
+  isEvent: boolean;
+  /** ISO start/end of the event — when set, scheduling is limited to this range. */
+  eventStart?: string | null;
+  eventEnd?: string | null;
+}
+
+export interface PendingCuratedRouteSchedule extends PendingScheduleBase {
+  kind: 'curatedRoute';
+  routeId: number;
+}
+
+export interface PendingPrivateRouteSchedule extends PendingScheduleBase {
+  kind: 'privateRoute';
+  privateRoute: Omit<PrivateRouteCalendarPayload, 'scheduledAt'>;
+}
+
+export type PendingSchedule =
+  | PendingPostSchedule
+  | PendingCuratedRouteSchedule
+  | PendingPrivateRouteSchedule;
+
 export interface PostTypePreference {
   postType: string;
   likeCount: number;
