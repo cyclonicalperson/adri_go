@@ -12,13 +12,14 @@ import {
   TouristNotificationPreferenceUpdate,
   TouristNotificationService
 } from '../services/tourist-notification.service';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 type SettingsSheet = 'accounts' | 'content' | 'booking' | 'support' | 'language' | 'notifications' | null;
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './settings.html',
   styleUrls: ['./settings.css']
 })
@@ -88,6 +89,7 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.authService.isLoggedIn) {
+      // Guest can access settings but only see guest-relevant options
       return;
     }
 

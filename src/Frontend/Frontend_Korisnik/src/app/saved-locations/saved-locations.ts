@@ -7,11 +7,12 @@ import { FilterStateService } from '../services/filter-state.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-saved-locations',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AppHeaderComponent],
   templateUrl: './saved-locations.html',
   styleUrls: ['./saved-locations.css']
 })

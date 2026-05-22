@@ -2690,12 +2690,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToAccount(): void {
-    if (this.authService.isLoggedIn) {
-      this.activeTab = 'account';
-      this.router.navigate(['/account']);
-    } else {
-      this.showAuthPopup = true;
-    }
+    this.activeTab = 'account';
+    this.router.navigate(['/account']);
   }
 
   toggleListView(): void {

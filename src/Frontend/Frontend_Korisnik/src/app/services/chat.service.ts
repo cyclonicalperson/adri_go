@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
+import { Location, LocationService } from './location.service';
 
 // ── Modeli poruka ─────────────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ export interface ChatMessage {
   content:   string;
   status:    MessageStatus;
   timestamp: Date;
+  locationCards?: Location[];
 }
 
 /** Format koji backend prima: POST /api/chat */
@@ -33,6 +35,21 @@ interface GeminiHistoryMessage {
 interface GeminiChatResponse {
   reply:     string;
   toolsUsed: string[];
+  referencedPosts?: ChatPostReference[];
+}
+
+interface ChatPostReference {
+  id: number;
+  title: string;
+  postType?: string | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+  regionName?: string | null;
+}
+
+interface AssistantReply {
+  content: string;
+  locationCards: Location[];
 }
 
 const MAX_HISTORY = 20; // maksimalan broj poruka u historiji koja se šalje
@@ -56,6 +73,7 @@ export class ChatService {
   constructor(
     private readonly http: HttpClient,
     private readonly auth: AuthService,
+    private readonly locationService: LocationService,
   ) {}
 
   async sendMessage(userText: string): Promise<void> {
@@ -71,7 +89,7 @@ export class ChatService {
 
     try {
       const reply = await this.callChatApi(text);
-      this.updateMessage(assistantMsg.id, reply, 'done');
+      this.updateMessage(assistantMsg.id, reply.content, 'done', reply.locationCards);
     } catch (err) {
       const message = this.extractErrorMessage(err);
       this._error.set(message);
@@ -88,7 +106,7 @@ export class ChatService {
 
   // ── HTTP poziv ka .NET backendu ───────────────────────────────────────────
 
-  private async callChatApi(userMessage: string): Promise<string> {
+  private async callChatApi(userMessage: string): Promise<AssistantReply> {
     const body: GeminiChatRequest = {
       message: userMessage,
       history: this.buildHistory(),
@@ -104,7 +122,49 @@ export class ChatService {
       throw new Error('Server nije vratio odgovor.');
     }
 
-    return response.reply;
+    return {
+      content: response.reply,
+      locationCards: await this.hydrateReferencedPosts(response.referencedPosts ?? []),
+    };
+  }
+
+  private async hydrateReferencedPosts(references: ChatPostReference[]): Promise<Location[]> {
+    const uniqueIds = Array.from(new Set(
+      references
+        .map(ref => Number(ref.id))
+        .filter(id => Number.isFinite(id) && id > 0)
+    )).slice(0, 4);
+
+    const locations: Location[] = [];
+    for (const id of uniqueIds) {
+      try {
+        locations.push(await firstValueFrom(this.locationService.getLocationById(id)));
+      } catch {
+        const fallback = references.find(ref => Number(ref.id) === id);
+        if (fallback) locations.push(this.referenceToLocation(fallback));
+      }
+    }
+
+    return locations;
+  }
+
+  private referenceToLocation(reference: ChatPostReference): Location {
+    return {
+      id: Number(reference.id),
+      adminId: 0,
+      adminName: '',
+      title: reference.title,
+      postType: reference.postType ?? '',
+      regionName: reference.regionName ?? undefined,
+      status: 'published',
+      viewCount: 0,
+      likeCount: 0,
+      saveCount: 0,
+      reviewCount: reference.reviewCount ?? 0,
+      avgRating: reference.rating ?? undefined,
+      createdAt: '',
+      updatedAt: '',
+    };
   }
 
   // ── Gradnja historije za backend ──────────────────────────────────────────
@@ -139,9 +199,14 @@ export class ChatService {
     return msg;
   }
 
-  private updateMessage(id: string, content: string, status: MessageStatus): void {
+  private updateMessage(
+    id: string,
+    content: string,
+    status: MessageStatus,
+    locationCards: Location[] = []
+  ): void {
     this._messages.update(msgs =>
-      msgs.map(m => m.id === id ? { ...m, content, status } : m),
+      msgs.map(m => m.id === id ? { ...m, content, status, locationCards } : m),
     );
   }
 

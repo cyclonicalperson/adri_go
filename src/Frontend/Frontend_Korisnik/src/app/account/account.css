@@ -280,7 +280,9 @@ html[data-theme='dark'] .link-text {
     background: var(--gray-50) !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: hidden !important;
+    /* SCROLL FIX: container prima scroll evente sa celog ekrana */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
   }
 
   /* Header — identičan kao Settings */
@@ -289,6 +291,10 @@ html[data-theme='dark'] .link-text {
     background: var(--gray-50) !important;
     border-bottom: none !important;
     box-shadow: none !important;
+    /* Sticky da ostaje vidljiv pri skrolu */
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
   }
   .header-bar h1 {
     font-size: 22px;
@@ -301,21 +307,15 @@ html[data-theme='dark'] .link-text {
     background: var(--gray-100);
   }
 
-  /* Scroll sadržaj — centrirana kolona, isti width kao Settings */
+  /* Scroll sadržaj — centrirana kolona, scroll je na account-container */
   .scroll-content {
     width: min(780px, calc(100vw - 48px)) !important;
     margin: 0 auto !important;
     padding: 24px 0 60px !important;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex: 1;
-  }
-
-  /* Poništi staro > * pravilo */
-  .scroll-content > * {
-    width: auto;
-    margin-left: 0;
-    margin-right: 0;
+    /* Ne override-uje scroll — container vec skroluje */
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
+    flex: none !important;
   }
 
   /* User card */
@@ -347,12 +347,11 @@ html[data-theme='dark'] .link-text {
   }
   .stat-value { font-size: 26px; }
 
-  /* Menu sekcije — identično kao Settings .settings-group */
+  /* Menu sekcije */
   .menu-section {
     margin-bottom: 24px;
   }
 
-  /* Naslov sekcije — identičan kao .group-label u Settings */
   .section-title {
     font-size: 11px;
     font-weight: 800;
@@ -362,7 +361,6 @@ html[data-theme='dark'] .link-text {
     margin: 0 0 8px 6px;
   }
 
-  /* Kartica grupe — identična kao .group-items u Settings */
   .menu-items-group {
     display: block !important;
     background: #fff !important;
@@ -373,7 +371,6 @@ html[data-theme='dark'] .link-text {
     gap: 0 !important;
   }
 
-  /* Redovi — identični kao .setting-row u Settings */
   .menu-link {
     display: flex !important;
     align-items: center !important;
@@ -395,14 +392,11 @@ html[data-theme='dark'] .link-text {
   }
   .menu-link:hover {
     background: var(--gray-50) !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
   }
   .menu-link:active {
     background: var(--green-50) !important;
   }
 
-  /* Ikonica — identična kao .row-icon u Settings */
   .link-icon {
     width: 36px !important;
     height: 36px !important;
@@ -410,28 +404,160 @@ html[data-theme='dark'] .link-text {
     flex-shrink: 0 !important;
   }
 
-  /* Tekst linka */
   .link-text {
     font-size: 14px !important;
     font-weight: 600 !important;
   }
 
-  /* Chevron */
   .link-arrow svg {
     fill: var(--gray-300) !important;
   }
 
-  /* Footer */
+  /* Footer — sticky na dnu */
   .footer {
     padding: 16px 18px calc(16px + env(safe-area-inset-bottom, 0)) !important;
     background: var(--gray-50) !important;
     border-top: none !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 10 !important;
   }
   .logout-btn {
-    max-width: 640px;
+    max-width: 780px;
     margin: 0 auto;
     border-radius: var(--radius-md);
     font-size: 15px;
     padding: 15px;
   }
+}
+
+/* ── Profile pic edit overlay ── */
+.profile-pic-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-pic-wrapper.clickable-profile {
+  cursor: pointer;
+}
+
+.edit-profile-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.profile-pic-wrapper.clickable-profile:hover .edit-profile-overlay,
+.profile-pic-wrapper.clickable-profile:active .edit-profile-overlay {
+  opacity: 1;
+}
+
+/* Guest name styling */
+.guest-name {
+  color: var(--gray-500, #64748b);
+  font-style: italic;
+}
+
+/* Lock icon for guest */
+.guest-lock {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  color: var(--gray-400, #94a3b8);
+}
+
+.guest-lock svg {
+  fill: var(--gray-400, #94a3b8);
+}
+
+/* Login button (guest footer) */
+.login-btn {
+  background: var(--primary, #22c55e) !important;
+  color: #fff !important;
+}
+
+.login-btn:hover {
+  background: #16a34a !important;
+}
+
+/* Modal overlay & dialog (for login popup) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-dialog {
+  background: var(--surface, #fff);
+  border-radius: 20px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-icon {
+  margin-bottom: 12px;
+  color: var(--primary, #22c55e);
+}
+
+.modal-icon svg {
+  fill: var(--primary, #22c55e);
+}
+
+.modal-dialog h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  color: var(--text-primary, #0f172a);
+}
+
+.modal-dialog p {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  margin: 0 0 20px;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-btn-cancel {
+  flex: 1;
+  padding: 13px;
+  background: var(--gray-100, #f1f5f9);
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-secondary, #475569);
+}
+
+.modal-btn-confirm {
+  flex: 1;
+  padding: 13px;
+  background: var(--primary, #22c55e);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
 }

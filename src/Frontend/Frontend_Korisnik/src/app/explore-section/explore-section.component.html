@@ -1,27 +1,21 @@
 <div class="list-container">
 
   <!-- Header -->
-  <div class="header-bar">
-    <button class="back-btn" (click)="goBack()">
-      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <h1 class="header-title">{{ sectionLabel }}</h1>
-    <div class="header-actions">
-      <div class="sort-dropdown" *ngIf="hasSearched">
-        <button class="sort-btn" (click)="sortOpen = !sortOpen" [class.sort-btn-active]="sortOpen">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
-          Sort
-        </button>
-        <div class="sort-menu" *ngIf="sortOpen">
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'distance:asc'" (click)="onSort('distance:asc'); sortOpen=false">Nearest</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'createdAt:desc'" (click)="onSort('createdAt:desc'); sortOpen=false">Newest</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'title:asc'" (click)="onSort('title:asc'); sortOpen=false">Name A-Z</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'rating:desc'" (click)="onSort('rating:desc'); sortOpen=false">Rating</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'reviews:desc'" (click)="onSort('reviews:desc'); sortOpen=false">Reviews</button>
-        </div>
+  <app-header title="{{ sectionLabel }}">
+    <div class="sort-dropdown" *ngIf="hasSearched">
+      <button class="sort-btn" (click)="sortOpen = !sortOpen" [class.sort-btn-active]="sortOpen">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
+        Sort
+      </button>
+      <div class="sort-menu" *ngIf="sortOpen">
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'distance:asc'" (click)="onSort('distance:asc'); sortOpen=false">Nearest</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'createdAt:desc'" (click)="onSort('createdAt:desc'); sortOpen=false">Newest</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'title:asc'" (click)="onSort('title:asc'); sortOpen=false">Name A-Z</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'rating:desc'" (click)="onSort('rating:desc'); sortOpen=false">Rating</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'reviews:desc'" (click)="onSort('reviews:desc'); sortOpen=false">Reviews</button>
       </div>
     </div>
-  </div>
+  </app-header>
 
   <!-- Loading -->
   <div class="loading-state" *ngIf="isLoading">

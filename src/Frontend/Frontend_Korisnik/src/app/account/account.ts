@@ -7,11 +7,12 @@ import { AuthService } from '../services/auth.service';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ThemeService } from '../services/theme.service';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './account.html',
   styleUrls: ['./account.css']
 })
@@ -20,6 +21,8 @@ export class AccountComponent implements OnInit, OnDestroy {
   userData: UserProfile | null = null;
   loading: boolean = true;
   isDarkMode: boolean = false;
+  isGuest: boolean = false;
+  showLoginPopup: boolean = false;
   private themeSubscription?: Subscription;
 
   constructor(
@@ -36,8 +39,16 @@ export class AccountComponent implements OnInit, OnDestroy {
       this.isDarkMode = theme === 'dark';
     });
 
-    if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+    this.isGuest = !this.authService.isLoggedIn;
+    if (this.isGuest) {
+      this.userData = {
+        fullName: 'Guest',
+        emailOrPhone: 'Not signed in',
+        language: 'en',
+        interests: [],
+        stats: { saved: 0, reviews: 0, upcoming: 0 }
+      };
+      this.loading = false;
       return;
     }
     this.loadUserData();
@@ -96,9 +107,22 @@ export class AccountComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
+  goToEditProfile() {
+    if (this.isGuest) return;
+    this.router.navigate(['/account/personal-info']);
+  }
+
   // Navigacija ka podstranicama
-  goToPersonalInfo() { this.router.navigate(['/account/personal-info']); }
+  goToPersonalInfo() {
+    if (this.isGuest) {
+      this.showLoginPopup = true;
+      return;
+    }
+    this.router.navigate(['/account/personal-info']);
+  }
   goToHelp()         { this.router.navigate(['/account/help']); }
   goToPrivacy()      { this.router.navigate(['/account/privacy']); }
   goToSettings()     { this.router.navigate(['/settings']); }
+  goToLogin()        { this.router.navigate(['/login']); }
+  closeLoginPopup()  { this.showLoginPopup = false; }
 }

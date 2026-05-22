@@ -1,14 +1,12 @@
 <div class="notif-container">
-  <div class="header">
-    <button class="back-btn" (click)="goBack()">‹</button>
-    <h1>Notifications</h1>
-    <button class="mark-read"
+  <app-header title="Notifications">
+    <button class="notif-mark-read-btn"
             (click)="markAllRead()"
             [disabled]="unreadCount === 0"
             *ngIf="authService.isLoggedIn">
       Mark all read
     </button>
-  </div>
+  </app-header>
 
   <div class="filter-bar">
     <button *ngFor="let f of filters"

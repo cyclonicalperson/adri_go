@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { UserService, CalendarItem } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 interface DisplayEvent {
   id: number;       // PlannerItem id — used for removal
@@ -28,7 +29,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AppHeaderComponent],
   templateUrl: './calendar.html',
   styleUrls: ['./calendar.css']
 })

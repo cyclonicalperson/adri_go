@@ -8,11 +8,12 @@ import { Location, LocationService } from '../services/location.service';
 import { RecommendationService } from '../services/recommendation.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-explore-section',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './explore-section.component.html',
   styleUrls: ['./explore-section.component.css']
 })

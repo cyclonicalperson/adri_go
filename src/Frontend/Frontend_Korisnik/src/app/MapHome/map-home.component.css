@@ -748,11 +748,8 @@
 }
 
 /* ── LOCATION CARD POPUP ─────────────────────────────────────── */
+/* Kartica je fixed i pozicionirana u location-details-card.css */
 app-location-details-card {
-  position: absolute !important;
-  bottom: 80px;
-  left: 12px;
-  right: 12px;
   z-index: 9999 !important;
   display: block;
 }

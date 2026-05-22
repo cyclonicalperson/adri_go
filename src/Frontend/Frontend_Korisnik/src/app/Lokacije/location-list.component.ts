@@ -17,6 +17,13 @@ import { formatPostType } from '../utils/post-type.utils';
 const SECTION_LIMIT = 10;
 type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
 
+interface PopularDestination {
+  name: string;
+  placeCount: number;
+  imageUrl: string;
+  topRating: number;
+}
+
 @Component({
   selector: 'app-location-list',
   standalone: true,
@@ -59,6 +66,17 @@ export class LocationListComponent implements OnInit, OnDestroy {
   nearYouLocations: Location[] = [];
   recommendedLocations: Location[] = [];
   topRatedLocations: Location[] = [];
+  popularDestinations: PopularDestination[] = [];
+
+  get allLocationCount(): number {
+    return this.allLocations.length;
+  }
+
+  get discoverTitle(): string {
+    return this.allLocationCount > 0
+      ? `Discover ${this.allLocationCount} curated places`
+      : 'Discover curated places';
+  }
 
   // Filter state
   isFilterActive = false;
@@ -75,9 +93,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get activeSectionLabel(): string {
     switch (this.activeSectionView) {
-      case 'near-you': return '📍 Near You';
-      case 'recommended': return '✨ Recommended for You';
-      case 'top-rated': return '🌟 Top Rated';
+      case 'near-you': return 'Near you';
+      case 'recommended': return 'Recommended for you';
+      case 'top-rated': return 'Top rated';
       default: return '';
     }
   }
@@ -350,6 +368,19 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  openDestination(destination: PopularDestination): void {
+    this.searchQuery = destination.name;
+    this.submittedSearchQuery = destination.name;
+    this.isSearchActive = true;
+    this.isFilterActive = false;
+    this.activeSectionView = null;
+    this.showDropdown = false;
+    this.sortMenuOpen = false;
+    this.locations = this.applySort(this.allLocations.filter(loc => this.getDestinationName(loc) === destination.name));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    this.cdr.markForCheck();
+  }
+
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
 
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
@@ -439,7 +470,57 @@ export class LocationListComponent implements OnInit, OnDestroy {
       this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
     }
 
+    this.buildPopularDestinations();
     this.cdr.markForCheck();
+  }
+
+  private buildPopularDestinations(): void {
+    const groups = new Map<string, Location[]>();
+
+    this.allLocations.forEach(loc => {
+      const name = this.getDestinationName(loc);
+      if (!name) return;
+      const items = groups.get(name) ?? [];
+      items.push(loc);
+      groups.set(name, items);
+    });
+
+    this.popularDestinations = Array.from(groups.entries())
+      .map(([name, items]) => {
+        const ranked = [...items].sort((a, b) => this.getPopularityScore(b) - this.getPopularityScore(a));
+        const top = ranked[0];
+
+        return {
+          name,
+          placeCount: items.length,
+          imageUrl: this.getFirstImage(top),
+          topRating: top?.avgRating ?? top?.rating ?? 0,
+        };
+      })
+      .filter(destination => destination.placeCount > 0)
+      .sort((a, b) => (b.topRating * 4 + b.placeCount) - (a.topRating * 4 + a.placeCount))
+      .slice(0, 5);
+  }
+
+  private getPopularityScore(loc: Location): number {
+    return ((loc.avgRating ?? loc.rating ?? 0) * 10) +
+      (loc.reviewCount ?? 0) +
+      (loc.likeCount ?? 0) +
+      (loc.saveCount ?? 0) +
+      ((loc.viewCount ?? 0) / 10);
+  }
+
+  private getDestinationName(loc: Partial<Location>): string {
+    const regionName = (loc.regionName || '').trim();
+    if (regionName) return regionName;
+
+    const addressPart = (loc.address || '')
+      .split(',')
+      .map(part => part.trim())
+      .filter(Boolean)
+      .pop();
+
+    return addressPart || '';
   }
 
   private showFeedback(msg: string): void {

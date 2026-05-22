@@ -5,13 +5,14 @@ import { Router } from '@angular/router';
 import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 type RouteSort = 'created-desc' | 'distance-asc' | 'distance-desc' | 'duration-asc' | 'name-asc';
 
 @Component({
   selector: 'app-routes',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBadgeComponent],
+  imports: [CommonModule, FormsModule, NotificationBadgeComponent, AppHeaderComponent],
   templateUrl: './routes.component.html',
   styleUrls: ['./routes.component.css'],
 })

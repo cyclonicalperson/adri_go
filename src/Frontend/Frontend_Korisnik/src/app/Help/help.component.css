@@ -224,55 +224,47 @@
    ============================================================ */
 
 @media (min-width: 900px) {
-  
+
+  /* Pun ekran, ne plutajuca kartica */
   .subpage-container {
-    /* 1. Magično centriranje na sredinu ekrana */
     position: fixed !important;
-    inset: auto !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    
-    /* 2. Ograničavanje dimenzija (Da izgleda kao App Window) */
-    width: 95% !important;
-    max-width: 600px !important; /* Idealna širina za FAQ i Help formu */
-    height: 85vh !important;     /* 15% praznog prostora (7.5% gore, 7.5% dole) */
-    
-    /* 3. Dizajniranje plutajuće kartice */
-    background: #ffffff !important;
-    border-radius: 28px !important; /* Elegantno zaobljene ivice */
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important; 
-    border: 1px solid rgba(0, 0, 0, 0.05) !important;
-    z-index: 1000 !important;
-    
-    /* 4. Sređivanje pozadine "iza" kartice */
-    /* Puni ceo ekran sivkastom bojom i dodaje veliku senku ispod kartice */
-    box-shadow: 0 0 0 100vw #e2e8f0, 0 25px 60px rgba(0, 0, 0, 0.15) !important;
-  }
-
-  /* Vizuelno prostraniji header na desktopu */
-  .header-bar {
-    padding: 20px 32px !important;
-  }
-
-  /* Više vazduha unutar Help sekcije */
-  .scroll-content {
-    padding: 32px 40px !important;
+    inset: 0 !important;
+    background: var(--gray-50) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    border: none !important;
+    /* SCROLL FIX: scroll prima eventi sa celog ekrana */
     overflow-y: auto !important;
-    flex: 1 !important;
+    overflow-x: hidden !important;
+    display: block !important;
   }
 
-  /* Blagi hover efekat na FAQ na desktopu */
+  /* Header sticky na vrhu */
+  .header-bar {
+    padding: 16px 32px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: var(--gray-50) !important;
+  }
+
+  /* Sadrzaj u centriranoj koloni, ne skroluje sam */
+  .scroll-content {
+    width: min(700px, calc(100vw - 48px)) !important;
+    margin: 0 auto !important;
+    padding: 32px 0 60px !important;
+    overflow: visible !important;
+    flex: none !important;
+    box-sizing: border-box;
+  }
+
+  /* Hover efekat na FAQ */
   .faq-item:hover {
     box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     transform: translateY(-1px);
-  }
-
-  /* Blagi hover efekat na Quick Action dugmad */
-  .quick-action-btn:hover {
-    background: #f8fafc;
-    padding-left: 20px; /* Suptilan efekat uvlačenja na miš */
   }
 }
