@@ -1,4 +1,4 @@
-<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating">
+<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating" [class.sidebar-is-collapsed]="sidebarCollapsed">
 
   <div class="app-header">
     <button type="button" class="header-left logo-button" (click)="goHome()" aria-label="AdriGo home">
@@ -27,6 +27,17 @@
     <div id="map"></div>
   </div>
 
+  <!-- Desktop-only sidebar collapse button (outside sidebar so it's always visible) -->
+  <button
+    class="sidebar-collapse-btn-desktop"
+    (click)="toggleSidebar()"
+    [attr.aria-label]="sidebarCollapsed ? 'Proširi panel' : 'Skupi panel'">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path *ngIf="!sidebarCollapsed" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/>
+      <path *ngIf="sidebarCollapsed" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
+    </svg>
+  </button>
+
   <div *ngIf="showRoutePanel && !isNavigating" class="route-pill">
     <div class="route-pill-icon">
       <svg viewBox="0 0 24 24">
@@ -46,7 +57,7 @@
     </button>
   </div>
 
-  <div class="sidebar">
+  <div class="sidebar" [class.sidebar-collapsed]="sidebarCollapsed">
 
     <div class="top-search-strip">
       <div class="search-wrapper">
@@ -154,7 +165,13 @@
       </button>
     </div>
 
-    <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded">
+    <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded" [class.sidebar-collapsed]="sidebarCollapsed">
+      <button class="sidebar-collapse-btn" (click)="toggleSidebar()" [attr.aria-label]="sidebarCollapsed ? 'Proširi panel' : 'Skupi panel'">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path *ngIf="!sidebarCollapsed" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/>
+          <path *ngIf="sidebarCollapsed" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
+        </svg>
+      </button>
       <div class="sheet-header" (click)="toggleSheet()">
         <div class="sheet-header-left">
           <span class="sheet-title">{{ showRoutePanel ? (routeDestTitle || 'Route') : 'Explore nearby' }}</span>

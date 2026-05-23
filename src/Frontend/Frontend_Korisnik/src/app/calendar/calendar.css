@@ -1279,13 +1279,15 @@
   }
 
   .day-detail-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
   }
 
   .day-detail-panel {
-    max-height: 82dvh;
-    border-radius: 24px 24px 0 0;
+    width: min(360px, 100%);
+    max-height: min(78dvh, 620px);
+    border-radius: 24px;
   }
 
   /* On phone, only show remove permanently (no hover) */

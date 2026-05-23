@@ -74,7 +74,7 @@
       <div class="section-header">
         <h2>Distance from you</h2>
       </div>
-      <div class="slider-box">
+      <div class="slider-box" [class.active]="radius > 0" style="--filter-color: #0ea5e9;">
         <div class="slider-labels">
           <span>Radius</span>
           <span class="highlight">{{ radius === 0 ? '∞ Unlimited' : radius + ' km' }}</span>
@@ -101,6 +101,7 @@
       <div class="rating-grid">
         <button *ngFor="let r of [1,2,3,4,5]" class="rating-card"
                 [class.active]="minRating === r"
+                [style.--filter-color]="getRatingFilterColor(r)"
                 (click)="setRating(r)">
           ⭐ {{ r }}+
         </button>
@@ -112,7 +113,7 @@
       <div class="section-header">
         <h2>Availability</h2>
       </div>
-      <div class="toggle-card">
+      <div class="toggle-card" [class.active]="openNow" style="--filter-color: #22c55e;">
         <div class="toggle-text">
           <h3>Open Now</h3>
           <p>Show only places open right now</p>
@@ -130,11 +131,11 @@
         <h2>Period (for Events)</h2>
       </div>
       <div class="date-picker-row">
-        <div class="date-input">
+        <div class="date-input" [class.active]="!!fromDate" style="--filter-color: #8b5cf6;">
           <label>FROM</label>
           <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onAnyChange()">
         </div>
-        <div class="date-input">
+        <div class="date-input" [class.active]="!!toDate" style="--filter-color: #8b5cf6;">
           <label>TO</label>
           <input type="date" [(ngModel)]="toDate" (ngModelChange)="onAnyChange()">
         </div>
@@ -146,7 +147,7 @@
       <div class="section-header">
         <h2>Saved Locations</h2>
       </div>
-      <div class="toggle-card">
+      <div class="toggle-card" [class.active]="showOnlySaved" style="--filter-color: #3b82f6;">
         <div class="toggle-text">
           <h3>Show Only Saved</h3>
           <p>Display only your {{ savedPostIds.length }} saved destinations</p>
@@ -166,14 +167,15 @@
           <h2>Activity Categories</h2>
         </div>
         <div class="filter-chip-grid">
-          <button
-            type="button"
-            class="filter-chip"
-            *ngFor="let category of activityCategoryOptions"
-            [class.active]="activityFilters.categories.includes(category)"
-            (click)="toggleActivityFilter('categories', category)">
-            {{ formatActivityCategory(category) }}
-          </button>
+            <button
+              type="button"
+              class="filter-chip"
+              *ngFor="let category of activityCategoryOptions"
+              [class.active]="activityFilters.categories.includes(category)"
+              [style.--filter-color]="getActivityCategoryColor(category)"
+              (click)="toggleActivityFilter('categories', category)">
+              {{ formatActivityCategory(category) }}
+            </button>
         </div>
       </section>
 
@@ -184,12 +186,13 @@
         <div class="filter-chip-grid">
           <button
             type="button"
-            class="filter-chip"
-            *ngFor="let difficulty of activityDifficultyOptions"
-            [class.active]="activityFilters.difficulties.includes(difficulty)"
-            (click)="toggleActivityFilter('difficulties', difficulty)">
-            {{ difficulty }}
-          </button>
+              class="filter-chip"
+              *ngFor="let difficulty of activityDifficultyOptions"
+              [class.active]="activityFilters.difficulties.includes(difficulty)"
+              [style.--filter-color]="getDifficultyFilterColor(difficulty)"
+              (click)="toggleActivityFilter('difficulties', difficulty)">
+              {{ difficulty }}
+            </button>
         </div>
       </section>
 
@@ -197,7 +200,7 @@
         <div class="section-header">
           <h2>Activity Links</h2>
         </div>
-        <div class="toggle-card">
+        <div class="toggle-card" [class.active]="activityFilters.linkedOnly" style="--filter-color: #14b8a6;">
           <div class="toggle-text">
             <h3>Linked Only</h3>
             <p>Show destinations that have activities attached</p>
@@ -220,12 +223,13 @@
         <div class="filter-chip-grid">
           <button
             type="button"
-            class="filter-chip"
-            *ngFor="let difficulty of routeDifficultyOptions"
-            [class.active]="routeFilters.difficulties.includes(difficulty)"
-            (click)="toggleRouteFilter('difficulties', difficulty)">
-            {{ formatRouteDifficulty(difficulty) }}
-          </button>
+              class="filter-chip"
+              *ngFor="let difficulty of routeDifficultyOptions"
+              [class.active]="routeFilters.difficulties.includes(difficulty)"
+              [style.--filter-color]="getDifficultyFilterColor(difficulty)"
+              (click)="toggleRouteFilter('difficulties', difficulty)">
+              {{ formatRouteDifficulty(difficulty) }}
+            </button>
         </div>
       </section>
 
@@ -236,12 +240,13 @@
         <div class="filter-chip-grid">
           <button
             type="button"
-            class="filter-chip"
-            *ngFor="let region of routeRegionOptions"
-            [class.active]="routeFilters.regions.includes(region)"
-            (click)="toggleRouteFilter('regions', region)">
-            {{ region }}
-          </button>
+              class="filter-chip"
+              *ngFor="let region of routeRegionOptions"
+              [class.active]="routeFilters.regions.includes(region)"
+              [style.--filter-color]="getStableFilterColor(region)"
+              (click)="toggleRouteFilter('regions', region)">
+              {{ region }}
+            </button>
         </div>
       </section>
 
@@ -250,9 +255,9 @@
           <h2>Route Distance</h2>
         </div>
         <div class="filter-chip-grid">
-          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'short'" (click)="setRouteDistanceBand('short')">Up to 5 km</button>
-          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'medium'" (click)="setRouteDistanceBand('medium')">5-15 km</button>
-          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'long'" (click)="setRouteDistanceBand('long')">15+ km</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'short'" [style.--filter-color]="getRouteDistanceBandColor('short')" (click)="setRouteDistanceBand('short')">Up to 5 km</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'medium'" [style.--filter-color]="getRouteDistanceBandColor('medium')" (click)="setRouteDistanceBand('medium')">5-15 km</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'long'" [style.--filter-color]="getRouteDistanceBandColor('long')" (click)="setRouteDistanceBand('long')">15+ km</button>
         </div>
       </section>
 
@@ -261,9 +266,9 @@
           <h2>Route Duration</h2>
         </div>
         <div class="filter-chip-grid">
-          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'quick'" (click)="setRouteDurationBand('quick')">Up to 1h</button>
-          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'half-day'" (click)="setRouteDurationBand('half-day')">1-4h</button>
-          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'full-day'" (click)="setRouteDurationBand('full-day')">4h+</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'quick'" [style.--filter-color]="getRouteDurationBandColor('quick')" (click)="setRouteDurationBand('quick')">Up to 1h</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'half-day'" [style.--filter-color]="getRouteDurationBandColor('half-day')" (click)="setRouteDurationBand('half-day')">1-4h</button>
+          <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'full-day'" [style.--filter-color]="getRouteDurationBandColor('full-day')" (click)="setRouteDurationBand('full-day')">4h+</button>
         </div>
       </section>
     </ng-container>

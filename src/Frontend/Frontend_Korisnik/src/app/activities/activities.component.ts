@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
@@ -11,7 +10,7 @@ type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
 @Component({
   selector: 'app-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBadgeComponent, AppHeaderComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './activities.component.html',
   styleUrls: ['./activities.component.css'],
 })

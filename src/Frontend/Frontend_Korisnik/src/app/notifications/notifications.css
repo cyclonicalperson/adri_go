@@ -3,6 +3,7 @@
   background-color: #f9fafb;
   display: flex;
   flex-direction: column;
+}
 
 /* Mark-all-read button inside shared header */
 .notif-mark-read-btn {

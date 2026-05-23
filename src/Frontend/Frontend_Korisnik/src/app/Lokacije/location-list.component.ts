@@ -1040,6 +1040,50 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return activity.color || '#22c55e';
   }
 
+  getActivityCategoryFilterColor(value: string): string {
+    const normalized = this.normalizeFilterColorKey(value);
+    if (/(water|swim|beach|kayak|rafting|more|plaza)/.test(normalized)) return '#0ea5e9';
+    if (/(food|wine|restaurant|dining|hrana|vino)/.test(normalized)) return '#ef4444';
+    if (/(culture|museum|history|kultura|istorija|muzej)/.test(normalized)) return '#f59e0b';
+    if (/(night|club|bar|party|noc)/.test(normalized)) return '#8b5cf6';
+    if (/(shop|market|shopping|kupovina)/.test(normalized)) return '#f97316';
+    if (/(walk|hike|trail|mountain|planina|setnja)/.test(normalized)) return '#22c55e';
+    if (/(wellness|spa|relax|yoga)/.test(normalized)) return '#14b8a6';
+    return this.getStableFilterColor(value);
+  }
+
+  getDifficultyFilterColor(value: string): string {
+    const normalized = this.normalizeFilterColorKey(value);
+    if (/(easy|light|beginner|low|lako)/.test(normalized)) return '#22c55e';
+    if (/(medium|moderate|standard|srednje)/.test(normalized)) return '#f59e0b';
+    if (/(hard|difficult|advanced|high|tesko)/.test(normalized)) return '#ef4444';
+    return this.getStableFilterColor(value);
+  }
+
+  getRouteDistanceBandColor(value: string): string {
+    if (value === 'short') return '#22c55e';
+    if (value === 'medium') return '#f59e0b';
+    return '#ef4444';
+  }
+
+  getRouteDurationBandColor(value: string): string {
+    if (value === 'quick') return '#10b981';
+    if (value === 'half-day') return '#0ea5e9';
+    return '#8b5cf6';
+  }
+
+  getStableFilterColor(value: string): string {
+    const palette = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#ef4444'];
+    const key = this.normalizeFilterColorKey(value);
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+    return palette[Math.abs(hash) % palette.length];
+  }
+
+  private normalizeFilterColorKey(value: string): string {
+    return (value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
   formatRouteDifficulty(value?: string | null): string {
     if (!value) return 'Route';
     return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();

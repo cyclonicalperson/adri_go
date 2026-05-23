@@ -88,7 +88,7 @@
           [class.user-bubble]="isUserMessage(msg)"
           [class.assistant-bubble]="!isUserMessage(msg)"
           [class.error-bubble]="isErrorMessage(msg)"
-          [class.has-location-cards]="!isUserMessage(msg) && (msg.locationCards?.length || 0) > 0">
+          [class.has-location-cards]="!isUserMessage(msg) && ((msg.locationCards?.length || 0) > 0 || hasRouteCards(msg) || hasActivityCards(msg))">
 
           @if (isThinkingMessage(msg)) {
             <div class="thinking-state" aria-label="Pretražujem…">
@@ -124,6 +124,89 @@
                         }
                         @if (card.reviewCount || card.reviews) {
                           <span>{{ card.reviewCount || card.reviews }} reviews</span>
+                        }
+                      </span>
+                    </span>
+                    <span class="chat-location-arrow" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (!isUserMessage(msg) && hasRouteCards(msg)) {
+              <div class="chat-route-cards" aria-label="Predložene rute">
+                <div class="chat-cards-label">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M3 12h18M3 6l6 6-6 6"/>
+                  </svg>
+                  Rute
+                </div>
+                @for (route of msg.routeCards; track route.id) {
+                  <button class="chat-route-card" type="button" (click)="openRouteOnMap(route)">
+                    <img
+                      class="chat-location-image"
+                      [src]="getRouteImage(route)"
+                      [alt]="route.name || 'Ruta'">
+                    <span class="chat-location-info">
+                      <span class="chat-location-category chat-route-label">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+                          <path d="M3 12h18M3 6l6 6-6 6"/>
+                        </svg>
+                        RUTA &nbsp;·&nbsp; {{ getRouteDifficultyLabel(route.difficulty) }}
+                      </span>
+                      <span class="chat-location-title">{{ route.name }}</span>
+                      <span class="chat-location-meta">
+                        @if (route.regionName) {
+                          <span>{{ route.regionName }}</span>
+                        }
+                        @if (route.distanceKm) {
+                          <span>{{ route.distanceKm | number:'1.1-1' }} km</span>
+                        }
+                        @if (route.durationMin) {
+                          <span>{{ formatRouteDuration(route.durationMin) }}</span>
+                        }
+                      </span>
+                    </span>
+                    <span class="chat-route-map-btn" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+
+            @if (!isUserMessage(msg) && hasActivityCards(msg)) {
+              <div class="chat-activity-cards" aria-label="Mjesta za aktivnosti">
+                <div class="chat-cards-label">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 8v4l3 3"/>
+                  </svg>
+                  Aktivnosti
+                </div>
+                @for (card of msg.activityLocationCards; track card.id) {
+                  <button class="chat-location-card chat-activity-card" type="button" (click)="openActivityLocation(card)">
+                    <img
+                      class="chat-location-image"
+                      [src]="getLocationImage(card)"
+                      [alt]="card.title || 'Aktivnost'">
+                    <span class="chat-location-info">
+                      <span class="chat-location-category chat-activity-label">
+                        <span class="chat-activity-dot" aria-hidden="true"></span>
+                        {{ getLocationCategory(card) }}
+                      </span>
+                      <span class="chat-location-title">{{ card.title }}</span>
+                      <span class="chat-location-meta">
+                        @if (card.regionName) {
+                          <span>{{ card.regionName }}</span>
+                        }
+                        @if (card.avgRating || card.rating) {
+                          <span>★ {{ (card.avgRating || card.rating) | number:'1.1-1' }}</span>
                         }
                       </span>
                     </span>

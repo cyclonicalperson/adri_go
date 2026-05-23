@@ -7,7 +7,7 @@
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.3 7 13 7 13s7-7.7 7-13c0-3.87-3.13-7-7-7zm0 9.25A2.25 2.25 0 1 1 12 6.75a2.25 2.25 0 0 1 0 4.5z"/></svg>
       </span>
       <span class="logo-text">AdriGo</span>
-    </button>
+    </div>
     <button class="menu-btn" (click)="goToNotifications()">
       <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
       <app-notification-badge />
@@ -110,11 +110,6 @@
     </div><!-- /search-row-wrapper -->
 
     <div class="search-actions-row">
-      <button class="main-search-btn" (click)="executeSearch(searchInput.value)">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-        Search
-      </button>
-
       <div class="sort-dropdown" *ngIf="activeResultCount > 0 || isSearchActive || hasActiveTypeFilters">
         <button class="sort-btn" (click)="sortMenuOpen = !sortMenuOpen" [class.sort-btn-active]="sortMenuOpen">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
@@ -558,6 +553,7 @@
               class="filter-chip"
               *ngFor="let category of activityCategoryOptions"
               [class.active]="activityFilters.categories.includes(category)"
+              [style.--filter-color]="getActivityCategoryFilterColor(category)"
               (click)="toggleActivityFilter('categories', category)">
               {{ formatActivityCategory(category) }}
             </button>
@@ -572,13 +568,14 @@
               class="filter-chip"
               *ngFor="let difficulty of activityDifficultyOptions"
               [class.active]="activityFilters.difficulties.includes(difficulty)"
+              [style.--filter-color]="getDifficultyFilterColor(difficulty)"
               (click)="toggleActivityFilter('difficulties', difficulty)">
               {{ difficulty }}
             </button>
           </div>
         </div>
 
-        <label class="filter-toggle-row">
+        <label class="filter-toggle-row" [class.active]="activityFilters.linkedOnly" style="--filter-color: #14b8a6;">
           <input type="checkbox" [checked]="activityFilters.linkedOnly" (change)="toggleLinkedActivitiesOnly()">
           <span>Only activities linked to destinations</span>
         </label>
@@ -593,6 +590,7 @@
               class="filter-chip"
               *ngFor="let difficulty of routeDifficultyOptions"
               [class.active]="routeFilters.difficulties.includes(difficulty)"
+              [style.--filter-color]="getDifficultyFilterColor(difficulty)"
               (click)="toggleRouteFilter('difficulties', difficulty)">
               {{ formatRouteDifficulty(difficulty) }}
             </button>
@@ -607,6 +605,7 @@
               class="filter-chip"
               *ngFor="let region of routeRegionOptions"
               [class.active]="routeFilters.regions.includes(region)"
+              [style.--filter-color]="getStableFilterColor(region)"
               (click)="toggleRouteFilter('regions', region)">
               {{ region }}
             </button>
@@ -616,18 +615,18 @@
         <div class="filter-group">
           <h3>Distance</h3>
           <div class="filter-chip-grid">
-            <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'short'" (click)="setRouteDistanceBand('short')">Up to 5 km</button>
-            <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'medium'" (click)="setRouteDistanceBand('medium')">5-15 km</button>
-            <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'long'" (click)="setRouteDistanceBand('long')">15+ km</button>
+            <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'short'" [style.--filter-color]="getRouteDistanceBandColor('short')" (click)="setRouteDistanceBand('short')">Up to 5 km</button>
+            <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'medium'" [style.--filter-color]="getRouteDistanceBandColor('medium')" (click)="setRouteDistanceBand('medium')">5-15 km</button>
+            <button type="button" class="filter-chip" [class.active]="routeFilters.distanceBand === 'long'" [style.--filter-color]="getRouteDistanceBandColor('long')" (click)="setRouteDistanceBand('long')">15+ km</button>
           </div>
         </div>
 
         <div class="filter-group">
           <h3>Duration</h3>
           <div class="filter-chip-grid">
-            <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'quick'" (click)="setRouteDurationBand('quick')">Up to 1h</button>
-            <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'half-day'" (click)="setRouteDurationBand('half-day')">1-4h</button>
-            <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'full-day'" (click)="setRouteDurationBand('full-day')">4h+</button>
+            <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'quick'" [style.--filter-color]="getRouteDurationBandColor('quick')" (click)="setRouteDurationBand('quick')">Up to 1h</button>
+            <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'half-day'" [style.--filter-color]="getRouteDurationBandColor('half-day')" (click)="setRouteDurationBand('half-day')">1-4h</button>
+            <button type="button" class="filter-chip" [class.active]="routeFilters.durationBand === 'full-day'" [style.--filter-color]="getRouteDurationBandColor('full-day')" (click)="setRouteDurationBand('full-day')">4h+</button>
           </div>
         </div>
       </ng-container>

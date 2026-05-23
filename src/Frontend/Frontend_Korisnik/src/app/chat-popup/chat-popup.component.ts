@@ -6,9 +6,12 @@ import {
 import { CommonModule }          from '@angular/common';
 import { FormsModule }           from '@angular/forms';
 import { Router }                from '@angular/router';
+import { firstValueFrom }        from 'rxjs';
 import { ChatService, ChatMessage } from '../services/chat.service';
 import { AuthService }           from '../services/auth.service';
 import { Location }              from '../services/location.service';
+import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { RoutePlannerService }   from '../services/route-planner.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType }        from '../utils/post-type.utils';
 
@@ -32,6 +35,8 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly routesService = inject(TouristRoutesService);
+  private readonly routePlanner = inject(RoutePlannerService);
 
   readonly messages    = this.chat.messages;
   readonly isLoading   = this.chat.isLoading;
@@ -115,6 +120,76 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
     this.router.navigate(['/location-details', location.id]);
   }
 
+  openRouteOnMap(route: TouristRouteItem): void {
+    // Ako ruta vec ima waypoints, direktno otvaramo mapu
+    if (route.waypoints && route.waypoints.length > 0) {
+      this.loadRouteOnMap(route);
+      return;
+    }
+    // Inace fetchujemo puni detalj rute (getRoutes() ne vraca waypoints)
+    firstValueFrom(this.routesService.getRouteById(route.id)).then(full => {
+      if (full && full.waypoints && full.waypoints.length > 0) {
+        this.loadRouteOnMap(full);
+      } else {
+        // Nema waypoints — idemo na /routes stranicu
+        this.closePopup.emit();
+        this.router.navigate(['/routes']);
+      }
+    }).catch(() => {
+      this.closePopup.emit();
+      this.router.navigate(['/routes']);
+    });
+  }
+
+  private loadRouteOnMap(route: TouristRouteItem): void {
+    this.routePlanner.replaceStops(
+      this.routesService.routeToPlannerStops(route),
+      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+    );
+    this.closePopup.emit();
+    // Navigiramo sa query parametrom koji prisiljava mapu da refreshuje planner state
+    // cak i kada je korisnik vec na /map-home stranici
+    this.router.navigate(['/map-home'], {
+      queryParams: { plannerRefresh: Date.now() },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  openActivityLocation(location: Location): void {
+    if (!location.id) return;
+    this.closePopup.emit();
+    this.router.navigate(['/location-details', location.id]);
+  }
+
+  getRouteImage(route: TouristRouteItem): string {
+    const images = route.images;
+    let first = '';
+    if (Array.isArray(images)) first = images[0] || '';
+    else if (typeof images === 'string') {
+      try {
+        const parsed = JSON.parse(images);
+        first = Array.isArray(parsed) ? (parsed[0] || '') : images;
+      } catch { first = images; }
+    }
+    return resolveBackendAssetUrl(first, 'assets/Budva.jpg');
+  }
+
+  getRouteDifficultyLabel(difficulty?: string): string {
+    const map: Record<string, string> = {
+      easy: 'Lako', medium: 'Srednje', hard: 'Teško',
+      beginner: 'Početnik', advanced: 'Napredno',
+    };
+    return map[(difficulty || '').toLowerCase()] || difficulty || 'Ruta';
+  }
+
+  formatRouteDuration(minutes: number): string {
+    if (!minutes) return '';
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m ? `${h}h ${m}min` : `${h}h`;
+  }
+
   getLocationImage(location: Location): string {
     const image = this.firstImage(location);
     return resolveBackendAssetUrl(image, 'assets/Budva.jpg');
@@ -122,6 +197,14 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
 
   getLocationCategory(location: Location): string {
     return formatPostType(location.postType || location.category);
+  }
+
+  hasRouteCards(msg: ChatMessage): boolean {
+    return !!(msg.routeCards && msg.routeCards.length > 0);
+  }
+
+  hasActivityCards(msg: ChatMessage): boolean {
+    return !!(msg.activityLocationCards && msg.activityLocationCards.length > 0);
   }
 
   private firstImage(location: Location): string {
