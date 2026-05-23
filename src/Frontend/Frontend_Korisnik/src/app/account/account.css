@@ -1481,9 +1481,6 @@ html[data-theme='dark'] .link-text {
 }
 
 :host-context(html[data-theme='dark']) .dark-slider:before {
-<<<<<<< Updated upstream
-  background: #f8fafc;
-=======
   background: #475569;
 }
 
@@ -1498,5 +1495,4 @@ html[data-theme='dark'] .link-text {
 
 :host-context(html[data-theme='dark']) .guest-banner-sub {
   color: #64748b;
->>>>>>> Stashed changes
 }

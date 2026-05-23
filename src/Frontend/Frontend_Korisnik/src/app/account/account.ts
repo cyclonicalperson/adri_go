@@ -16,23 +16,17 @@ type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' 
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './account.html',
   styleUrls: ['./account.css']
 })
 export class AccountComponent implements OnInit, OnDestroy {
-<<<<<<< Updated upstream
-  userData: UserProfile | null = null;
-  loading = true;
-  isDarkMode = false;
-=======
 
   userData: UserProfile | null = null;
   loading: boolean = true;
   isDarkMode: boolean = false;
   isGuest: boolean = false;
   showLoginPopup: boolean = false;
->>>>>>> Stashed changes
   private themeSubscription?: Subscription;
 
   constructor(
