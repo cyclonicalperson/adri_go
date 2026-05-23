@@ -8,6 +8,7 @@ import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ThemeService } from '../services/theme.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 const FALLBACK_PROFILE_IMAGE = '/assets/default-profile.svg';
 type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' | 'generic' };
@@ -20,9 +21,18 @@ type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' 
   styleUrls: ['./account.css']
 })
 export class AccountComponent implements OnInit, OnDestroy {
+<<<<<<< Updated upstream
   userData: UserProfile | null = null;
   loading = true;
   isDarkMode = false;
+=======
+
+  userData: UserProfile | null = null;
+  loading: boolean = true;
+  isDarkMode: boolean = false;
+  isGuest: boolean = false;
+  showLoginPopup: boolean = false;
+>>>>>>> Stashed changes
   private themeSubscription?: Subscription;
 
   constructor(
@@ -119,11 +129,26 @@ export class AccountComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
-  goToPersonalInfo(): void { this.router.navigate(['/account/personal-info']); }
-  goToHelp(): void { this.router.navigate(['/account/help']); }
-  goToPrivacy(): void { this.router.navigate(['/account/privacy']); }
-  goToSettings(): void { this.router.navigate(['/settings']); }
-  goToSaved(): void { this.router.navigate(['/saved']); }
-  goToMyReviews(): void { this.router.navigate(['/account/reviews']); }
-  goToCalendar(): void { this.router.navigate(['/calendar']); }
+  goToEditProfile(): void {
+    if (this.isGuest) return;
+    this.router.navigate(['/account/personal-info']);
+  }
+
+  goToPersonalInfo(): void {
+    if (this.isGuest) {
+      this.showLoginPopup = true;
+      return;
+    }
+    this.router.navigate(['/account/personal-info']);
+  }
+  goToHelp(): void         { this.router.navigate(['/account/help']); }
+  goToPrivacy(): void      { this.router.navigate(['/account/privacy']); }
+  goToSettings(): void     { this.router.navigate(['/settings']); }
+  goToSaved(): void        { if (this.isGuest) { this.showLoginPopup = true; return; } this.router.navigate(['/saved']); }
+  goToMyReviews(): void    { if (this.isGuest) { this.showLoginPopup = true; return; } this.router.navigate(['/account/reviews']); }
+  goToCalendar(): void     { if (this.isGuest) { this.showLoginPopup = true; return; } this.router.navigate(['/calendar']); }
+  goToLogin(): void        { this.router.navigate(['/login']); }
+  closeLoginPopup(): void  { this.showLoginPopup = false; }
+  showGuestPopup(): void   { this.showLoginPopup = true; }
+  goToReviews(): void      { this.router.navigate(['/location-list']); }
 }

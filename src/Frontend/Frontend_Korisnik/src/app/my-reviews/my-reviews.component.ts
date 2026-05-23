@@ -9,6 +9,7 @@ import { Location, LocationService } from '../services/location.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { MyReviewItem, UserService } from '../services/user.service';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { formatPostType } from '../utils/post-type.utils';
 
 type ReviewTab = 'all' | 'place' | 'route' | 'activity';
@@ -81,7 +82,7 @@ function createDefaultReviewFilters(): ReviewMiniFilterState {
 @Component({
   selector: 'app-my-reviews',
   standalone: true,
-  imports: [CommonModule, FormsModule, MobileTouristNavComponent],
+  imports: [CommonModule, FormsModule, MobileTouristNavComponent, AppHeaderComponent],
   templateUrl: './my-reviews.component.html',
   styleUrls: ['./my-reviews.component.css']
 })
