@@ -243,7 +243,8 @@ public sealed record GetNearbyRequest(
     double RadiusKm = 5.0,
     IReadOnlyList<string>? PostTypes = null,
     double? MinRating = null,
-    int Limit = 10);
+    int Limit = 10,
+    int Offset = 0);
 
 public sealed record GetSimilarPostsRequest(
     uint PostId,
@@ -283,7 +284,8 @@ public sealed record GetRecommendationsRequest(
     uint RegionId,
     uint? TouristId = null,
     string ContextMode = "onsite",
-    int Limit = 10);
+    int Limit = 10,
+    int Offset = 0);
 
 public sealed record RecommendationItem(
     uint EntityId,
@@ -328,7 +330,8 @@ public sealed record RegionAnalyticsSummary(
 public sealed record GetNewContentRequest(
     uint? RegionId = null,
     int DaysBack = 30,
-    int Limit = 20);
+    int Limit = 20,
+    int Offset = 0);
 
 public sealed record NewContentItem(
     uint EntityId,
@@ -383,7 +386,8 @@ public sealed record SearchActivitiesRequest(
     string? Difficulty = null,
     int? MinCapacity = null,
     int? MaxCapacity = null,
-    int Limit = 50);
+    int Limit = 50,
+    uint? RegionId = null);
 
 // ── Omiljene lokacije i rute (TouristFavorite) ────────────────────────────────
 
@@ -481,7 +485,8 @@ public sealed record GetTopContentUnifiedRequest(
     string? PostType = null,
     bool IncludeRoutes = true,
     uint? RegionId = null,
-    int Limit = 10);
+    int Limit = 10,
+    int Offset = 0);
 
 // ── Name-resolution helper DTO-vi (interni) ─────────────────────────────────────────────
 

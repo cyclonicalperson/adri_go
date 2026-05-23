@@ -623,13 +623,12 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
     // ── Proximity / Preporuke ─────────────────────────────────────────────────
 
-    public async Task<IReadOnlyList<PostSummary>> GetNearbyAsync(
+    public async Task<PagedResult<PostSummary>> GetNearbyAsync(
         GetNearbyRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("tourism_get_nearby: lat={Lat} lng={Lng} radius={Radius}",
-            request.Latitude, request.Longitude, request.RadiusKm);
+        _logger.LogInformation("tourism_get_nearby: lat={Lat} lng={Lng} radius={Radius} limit={Limit} offset={Offset}",
+            request.Latitude, request.Longitude, request.RadiusKm, request.Limit, request.Offset);
 
-        // Bbox pre-filter u SQL-u — isti pattern kao SearchPostsAsync
         var deltaLat = (decimal)(request.RadiusKm / 111.0);
         var deltaLng = (decimal)(request.RadiusKm / (111.0 * Math.Cos(request.Latitude * Math.PI / 180.0)));
         var minLat = (decimal)request.Latitude - deltaLat;
@@ -652,7 +651,7 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
         var all = await query.ToListAsync(cancellationToken);
 
-        return all
+        var withDist = all
             .Select(x =>
             {
                 var dist = CalculateDistanceKm(
@@ -662,6 +661,11 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
             })
             .Where(t => t.dist <= request.RadiusKm)
             .OrderBy(t => t.dist)
+            .ToList();
+
+        var total = withDist.Count;
+        var page = withDist
+            .Skip(request.Offset)
             .Take(request.Limit)
             .Select(t => new PostSummary(
                 t.post.Id, t.post.RegionId, t.post.Title, t.post.PostType,
@@ -671,6 +675,8 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
                 null, t.post.Lat, t.post.Lng, t.dist,
                 t.post.PostTags.Select(pt => pt.Tag.Name).ToList()))
             .ToList();
+
+        return new PagedResult<PostSummary>(page, total, request.Offset + page.Count < total);
     }
 
     public async Task<IReadOnlyList<PostSummary>> GetSimilarPostsAsync(
@@ -891,16 +897,15 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
     // ── Personalizovane preporuke ──────────────────────────────────────────────
 
-    public async Task<IReadOnlyList<RecommendationItem>> GetRecommendationsAsync(
+    public async Task<PagedResult<RecommendationItem>> GetRecommendationsAsync(
         GetRecommendationsRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "tourism_get_recommendations: regionId={RegionId} touristId={TouristId} mode={Mode} limit={Limit}",
-            request.RegionId, request.TouristId, request.ContextMode, request.Limit);
+            "tourism_get_recommendations: regionId={RegionId} touristId={TouristId} mode={Mode} limit={Limit} offset={Offset}",
+            request.RegionId, request.TouristId, request.ContextMode, request.Limit, request.Offset);
 
         var mode = request.ContextMode.Trim().ToLowerInvariant() == "planning" ? "planning" : "onsite";
 
-        // Učitaj postove za datu regiju
         var postQuery = _db.Posts.AsNoTracking()
             .Include(x => x.PostTags).ThenInclude(pt => pt.Tag)
             .Where(x => x.RegionId == request.RegionId && x.Status == "published");
@@ -920,6 +925,7 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
             .Take(60)
             .ToListAsync(cancellationToken);
 
+        IReadOnlyList<RecommendationItem> ranked;
         if (!request.TouristId.HasValue)
         {
             var anonymous = posts
@@ -928,22 +934,28 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
                 .Where(x => x.Score > 0)
                 .OrderByDescending(x => x.Score)
                 .ToList();
-
-            return DiversifyAndTake(anonymous, request.Limit);
+            ranked = DiversifyAndTake(anonymous, anonymous.Count);
+        }
+        else
+        {
+            var profile = await BuildPreferenceProfileAsync(request.TouristId.Value, cancellationToken);
+            var all = profile.HasSignals
+                ? posts.Select(p => ScorePersonalizedPost(profile, p, mode))
+                    .Concat(routes.Select(r => ScorePersonalizedRoute(profile, r)))
+                : posts.Select(p => ScoreAnonymousPost(p, mode))
+                    .Concat(routes.Select(ScoreAnonymousRoute));
+            ranked = DiversifyAndTake(
+                all.Where(x => x.Score > 0).OrderByDescending(x => x.Score).ToList(),
+                all.Count());
         }
 
-        // Personalizovano — izgradi profil turiste
-        var profile = await BuildPreferenceProfileAsync(request.TouristId.Value, cancellationToken);
+        var total = ranked.Count;
+        var page = ranked
+            .Skip(request.Offset)
+            .Take(Math.Clamp(request.Limit, 1, 20))
+            .ToList();
 
-        var ranked = profile.HasSignals
-            ? posts.Select(p => ScorePersonalizedPost(profile, p, mode))
-                .Concat(routes.Select(r => ScorePersonalizedRoute(profile, r)))
-            : posts.Select(p => ScoreAnonymousPost(p, mode))
-                .Concat(routes.Select(ScoreAnonymousRoute));
-
-        return DiversifyAndTake(
-            ranked.Where(x => x.Score > 0).OrderByDescending(x => x.Score).ToList(),
-            request.Limit);
+        return new PagedResult<RecommendationItem>(page, total, request.Offset + page.Count < total);
     }
 
     // ── Recommendation helpers ─────────────────────────────────────────────────
@@ -1307,11 +1319,11 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
     // ── Novi sadržaj ─────────────────────────────────────────────────────
 
-    public async Task<IReadOnlyList<NewContentItem>> GetNewContentAsync(
+    public async Task<PagedResult<NewContentItem>> GetNewContentAsync(
         GetNewContentRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("tourism_get_new_content: regionId={RegionId} daysBack={DaysBack}",
-            request.RegionId, request.DaysBack);
+        _logger.LogInformation("tourism_get_new_content: regionId={RegionId} daysBack={DaysBack} limit={Limit} offset={Offset}",
+            request.RegionId, request.DaysBack, request.Limit, request.Offset);
 
         var cutoff = DateTime.UtcNow.AddDays(-Math.Abs(request.DaysBack));
 
@@ -1323,7 +1335,6 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
         var newPosts = await postQuery
             .OrderByDescending(x => x.PublishedAt)
-            .Take(request.Limit)
             .Select(x => new NewContentItem(
                 x.Id, "post", x.Title, x.PostType, x.RegionId, null,
                 x.PublishedAt!.Value,
@@ -1338,17 +1349,23 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
         var newRoutes = await routeQuery
             .OrderByDescending(x => x.CreatedAt)
-            .Take(request.Limit)
             .Select(x => new NewContentItem(
                 x.Id, "route", x.Name, "route", x.RegionId, null,
                 x.CreatedAt, null))
             .ToListAsync(cancellationToken);
 
-        return newPosts
+        var all = newPosts
             .Concat(newRoutes)
             .OrderByDescending(x => x.PublishedAt)
+            .ToList();
+
+        var total = all.Count;
+        var page = all
+            .Skip(request.Offset)
             .Take(request.Limit)
             .ToList();
+
+        return new PagedResult<NewContentItem>(page, total, request.Offset + page.Count < total);
     }
 
     // ── Trend poseta ───────────────────────────────────────────────────
@@ -1481,12 +1498,23 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
     public async Task<IReadOnlyList<TagSummary>> SearchActivitiesAsync(
         SearchActivitiesRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("tourism_search_activities: query={Query} category={Category} minCap={Min} maxCap={Max}",
-            request.Query, request.Category, request.MinCapacity, request.MaxCapacity);
+        _logger.LogInformation("tourism_search_activities: query={Query} category={Category} minCap={Min} maxCap={Max} regionId={RegionId}",
+            request.Query, request.Category, request.MinCapacity, request.MaxCapacity, request.RegionId);
 
         var query = _db.Tags.AsNoTracking()
             .Include(x => x.PostTags)
             .Where(x => x.Category == "aktivnost");
+
+        // Ako je regionId zadat, vrati samo aktivnosti koje se pojavljuju na lokacijama u toj regiji
+        if (request.RegionId.HasValue)
+        {
+            var regionPostIds = await _db.Posts.AsNoTracking()
+                .Where(p => p.RegionId == request.RegionId.Value && p.Status == "published")
+                .Select(p => p.Id)
+                .ToListAsync(cancellationToken);
+
+            query = query.Where(t => t.PostTags.Any(pt => regionPostIds.Contains(pt.PostId)));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.Query))
         {
@@ -1709,12 +1737,12 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
 
     // ── Top sadržaj – objedinjeno (postovi + rute) ────────────────────────────────
 
-    public async Task<IReadOnlyList<TopContentItem>> GetTopContentUnifiedAsync(
+    public async Task<PagedResult<TopContentItem>> GetTopContentUnifiedAsync(
         GetTopContentUnifiedRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "tourism_get_top_content_unified: sortBy={SortBy} postType={PostType} includeRoutes={IncludeRoutes} regionId={RegionId}",
-            request.SortBy, request.PostType, request.IncludeRoutes, request.RegionId);
+            "tourism_get_top_content_unified: sortBy={SortBy} postType={PostType} includeRoutes={IncludeRoutes} regionId={RegionId} limit={Limit} offset={Offset}",
+            request.SortBy, request.PostType, request.IncludeRoutes, request.RegionId, request.Limit, request.Offset);
 
         var postAnalytics = await GetPostAnalyticsAsync(
             new GetPostAnalyticsRequest(null, request.RegionId, 200), cancellationToken);
@@ -1758,6 +1786,13 @@ public sealed class AiTourismQueryService : IAiTourismQueryService
             _              => combined.OrderByDescending(x => x.TotalViews)
         };
 
-        return sorted.Take(request.Limit).ToList();
+        var all = sorted.ToList();
+        var total = all.Count;
+        var page = all
+            .Skip(request.Offset)
+            .Take(request.Limit)
+            .ToList();
+
+        return new PagedResult<TopContentItem>(page, total, request.Offset + page.Count < total);
     }
 }

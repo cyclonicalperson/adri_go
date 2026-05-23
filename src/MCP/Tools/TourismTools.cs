@@ -232,14 +232,17 @@ internal static class TourismTools
 
     [McpServerTool(Name = "tourism_search_activities", Title = "Search Activities", ReadOnly = true, Idempotent = true)]
     [Description(
-        "Search activities and things to do. " +
+        "Search activities and things to do in a specific region or globally. " +
+        "When the user asks for activities in a specific place (e.g. 'activities in Zabljak', 'sta ima u Zabljaku'), " +
+        "use regionName to scope the search, then call tourism_search_posts with the returned activity tag names. " +
         "Category options: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER. " +
         "Omit category to get all activities. " +
         "Use query for free-text search (e.g. 'spa', 'rafting', 'ski'). " +
         "Use minCapacity/maxCapacity to find activities suitable for a specific group size.")]
-    public static Task<IReadOnlyList<TagSummary>> SearchActivities(
+    public static async Task<IReadOnlyList<TagSummary>> SearchActivities(
         ITourismQueryService tourismService,
         CancellationToken cancellationToken,
+        [Description("Region name or partial name (e.g. 'Zabljak', 'Budva'). When provided, results are scoped to activities available in that region.")] string? regionName = null,
         [Description("Optional free-text search on activity name or description.")] string? query = null,
         [Description("Optional category: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER.")] string? category = null,
         [Description("Optional difficulty: EASY, MEDIUM, HARD.")] string? difficulty = null,
@@ -247,8 +250,10 @@ internal static class TourismTools
         [Description("Maximum group capacity.")] int? maxCapacity = null,
         [Description("Maximum number of results (default 50).")] int? limit = null)
     {
-        return tourismService.SearchActivitiesAsync(
-            new SearchActivitiesRequest(query, category, difficulty, minCapacity, maxCapacity, limit ?? 50),
+        var resolvedRegionId = await ResolveRegionId(null, regionName, tourismService, cancellationToken);
+
+        return await tourismService.SearchActivitiesAsync(
+            new SearchActivitiesRequest(query, category, difficulty, minCapacity, maxCapacity, limit ?? 50, resolvedRegionId),
             cancellationToken);
     }
 
@@ -294,7 +299,7 @@ internal static class TourismTools
         "Find locations near a specific GPS coordinate within a given radius. Results are sorted by distance. " +
         "Use postTypes to filter by category (e.g. ['accommodation'] for nearby hotels). " +
         "Default radius is 5 km.")]
-    public static Task<IReadOnlyList<PostSummary>> GetNearby(
+    public static Task<PagedResult<PostSummary>> GetNearby(
         [Description("Latitude of the center point.")] double latitude,
         [Description("Longitude of the center point.")] double longitude,
         ITourismQueryService tourismService,
@@ -302,10 +307,11 @@ internal static class TourismTools
         [Description("Search radius in kilometers (default 5).")] double? radiusKm = null,
         [Description("Optional post type filter: accommodation, restaurant, attraction, etc.")] IReadOnlyList<string>? postTypes = null,
         [Description("Optional minimum rating filter (0-5).")] double? minRating = null,
-        [Description("Maximum number of results (default 10).")] int? limit = null)
+        [Description("Maximum number of results (default 10).")] int? limit = null,
+        [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
     {
         return tourismService.GetNearbyAsync(
-            new GetNearbyRequest(latitude, longitude, radiusKm ?? 5.0, postTypes, minRating, limit ?? 10),
+            new GetNearbyRequest(latitude, longitude, radiusKm ?? 5.0, postTypes, minRating, limit ?? 10, offset ?? 0),
             cancellationToken);
     }
 
@@ -333,18 +339,19 @@ internal static class TourismTools
         "Provide the region name (e.g. 'Zabljak', 'Durmitor') — IDs are resolved automatically. " +
         "contextMode: onsite (default, excludes accommodation) or planning (includes accommodation). " +
         "If the tourist is logged in, backend derives personalization from the forwarded JWT token.")]
-    public static async Task<IReadOnlyList<RecommendationItem>> GetRecommendations(
+    public static async Task<PagedResult<RecommendationItem>> GetRecommendations(
         ITourismQueryService tourismService,
         CancellationToken cancellationToken,
         [Description("Region name or partial name (e.g. 'Zabljak', 'Durmitor', 'Budva').")] string? regionName = null,
         [Description("Context mode: onsite (default, excludes accommodation) or planning (includes accommodation).")] string? contextMode = null,
-        [Description("Maximum number of results (default 10, max 20).")] int? limit = null)
+        [Description("Maximum number of results (default 10, max 20).")] int? limit = null,
+        [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
     {
         var resolvedId = await ResolveRegionId(null, regionName, tourismService, cancellationToken);
-        if (resolvedId is null) return [];
+        if (resolvedId is null) return new PagedResult<RecommendationItem>([], 0, false);
 
         return await tourismService.GetRecommendationsAsync(
-            new GetRecommendationsRequest(resolvedId.Value, null, contextMode ?? "onsite", Math.Clamp(limit ?? 10, 1, 20)),
+            new GetRecommendationsRequest(resolvedId.Value, null, contextMode ?? "onsite", Math.Clamp(limit ?? 10, 1, 20), offset ?? 0),
             cancellationToken);
     }
 
@@ -359,19 +366,20 @@ internal static class TourismTools
         "By default includes both locations and routes (includeRoutes=true). " +
         "Use postType to filter only a specific type of location (e.g. 'restaurant'). " +
         "Use regionName to filter by destination (e.g. 'Zabljak').")]
-    public static async Task<IReadOnlyList<TopContentItem>> GetTopContent(
+    public static async Task<PagedResult<TopContentItem>> GetTopContent(
         ITourismQueryService tourismService,
         CancellationToken cancellationToken,
         [Description("Sort metric: views (default), likes, shares, rating, review_count.")] string sortBy = "views",
         [Description("Optional post type filter: accommodation, restaurant, attraction, etc. When set, routes are excluded automatically.")] string? postType = null,
         [Description("If true, includes routes in results alongside locations (default true).")] bool includeRoutes = true,
         [Description("Region name or partial name (e.g. 'Zabljak'). Resolved automatically.")] string? regionName = null,
-        [Description("Maximum number of results (default 10).")] int? limit = null)
+        [Description("Maximum number of results (default 10).")] int? limit = null,
+        [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
     {
         var resolvedRegionId = await ResolveRegionId(null, regionName, tourismService, cancellationToken);
 
         return await tourismService.GetTopContentUnifiedAsync(
-            new GetTopContentUnifiedRequest(sortBy, postType, includeRoutes, resolvedRegionId, limit ?? 10),
+            new GetTopContentUnifiedRequest(sortBy, postType, includeRoutes, resolvedRegionId, limit ?? 10, offset ?? 0),
             cancellationToken);
     }
 
@@ -379,17 +387,18 @@ internal static class TourismTools
     [Description(
         "Get recently published locations and routes, ordered by publish date. " +
         "Use regionName to filter by destination (e.g. 'Zabljak').")]
-    public static async Task<IReadOnlyList<NewContentItem>> GetNewContent(
+    public static async Task<PagedResult<NewContentItem>> GetNewContent(
         ITourismQueryService tourismService,
         CancellationToken cancellationToken,
         [Description("Region name or partial name (e.g. 'Zabljak'). Resolved automatically.")] string? regionName = null,
         [Description("How many days back to look for new content (default 30).")] int? daysBack = null,
-        [Description("Maximum number of results (default 20).")] int? limit = null)
+        [Description("Maximum number of results (default 20).")] int? limit = null,
+        [Description("Number of results to skip for pagination (default 0).")] int? offset = null)
     {
         var resolvedRegionId = await ResolveRegionId(null, regionName, tourismService, cancellationToken);
 
         return await tourismService.GetNewContentAsync(
-            new GetNewContentRequest(resolvedRegionId, daysBack ?? 30, limit ?? 20),
+            new GetNewContentRequest(resolvedRegionId, daysBack ?? 30, limit ?? 20, offset ?? 0),
             cancellationToken);
     }
 

@@ -27,14 +27,14 @@ internal interface ITourismQueryService
     // ── Turisti ───────────────────────────────────────────────────────────────
 
     // ── Proximity / Preporuke ─────────────────────────────────────────────────
-    Task<IReadOnlyList<PostSummary>> GetNearbyAsync(GetNearbyRequest request, CancellationToken cancellationToken);
+    Task<PagedResult<PostSummary>> GetNearbyAsync(GetNearbyRequest request, CancellationToken cancellationToken);
     Task<IReadOnlyList<PostSummary>> GetSimilarPostsAsync(GetSimilarPostsRequest request, CancellationToken cancellationToken);
 
     // ── Događaji ──────────────────────────────────────────────────────────────
     Task<PagedResult<EventSummary>> SearchEventsAsync(SearchEventsRequest request, CancellationToken cancellationToken);
 
     // ── Personalizovane preporuke ──────────────────────────────────────────────
-    Task<IReadOnlyList<RecommendationItem>> GetRecommendationsAsync(GetRecommendationsRequest request, CancellationToken cancellationToken);
+    Task<PagedResult<RecommendationItem>> GetRecommendationsAsync(GetRecommendationsRequest request, CancellationToken cancellationToken);
 
     // ── Recenzije ruta ────────────────────────────────────────────────────────────
     Task<PagedResult<ReviewSummary>> GetRouteReviewsAsync(GetRouteReviewsRequest request, CancellationToken cancellationToken);
@@ -42,7 +42,7 @@ internal interface ITourismQueryService
     // ── Analitika regija ─────────────────────────────────────────────────────────
 
     // ── Novi sadržaj ─────────────────────────────────────────────────────────────
-    Task<IReadOnlyList<NewContentItem>> GetNewContentAsync(GetNewContentRequest request, CancellationToken cancellationToken);
+    Task<PagedResult<NewContentItem>> GetNewContentAsync(GetNewContentRequest request, CancellationToken cancellationToken);
 
     // ── Trend poseta ─────────────────────────────────────────────────────────────
     Task<IReadOnlyList<VisitTrendPoint>> GetVisitTrendsAsync(GetVisitTrendsRequest request, CancellationToken cancellationToken);
@@ -66,7 +66,7 @@ internal interface ITourismQueryService
     Task<IReadOnlyList<DirectionRequestSummary>> GetDirectionStatsAsync(GetDirectionStatsRequest request, CancellationToken cancellationToken);
 
     // ── Top sadržaj (postovi + rute objedinjeno) ─────────────────────────────────
-    Task<IReadOnlyList<TopContentItem>> GetTopContentUnifiedAsync(GetTopContentUnifiedRequest request, CancellationToken cancellationToken);
+    Task<PagedResult<TopContentItem>> GetTopContentUnifiedAsync(GetTopContentUnifiedRequest request, CancellationToken cancellationToken);
 
     // ── Name-resolution helperi (interno — koriste se u Tool sloju) ────────────────
     /// <summary>Traži prvu aktivnu regiju čije ime sadrži zadati string (case-insensitive).</summary>
