@@ -48,3 +48,14 @@
     <span class="footer-label">Account</span>
   </button>
 </nav>
+
+<div class="auth-modal-overlay" *ngIf="showAuthPopup" (click)="closeAuthPopup()">
+  <div class="auth-modal" (click)="$event.stopPropagation()">
+    <h3>Login Required</h3>
+    <p>Please log in to view your account.</p>
+    <div class="auth-modal-actions">
+      <button class="btn-cancel" type="button" (click)="closeAuthPopup()">Cancel</button>
+      <button class="btn-login" type="button" (click)="goToLogin()">Login</button>
+    </div>
+  </div>
+</div>

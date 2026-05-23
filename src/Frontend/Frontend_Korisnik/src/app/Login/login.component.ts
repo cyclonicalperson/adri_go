@@ -312,6 +312,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.router.navigate(['/map-home']);
   }
 
+  goHome(): void {
+    this.router.navigate(['/map-home']);
+  }
+
   goToRegister(): void {
     this.router.navigate(['/choose-role']);
   }

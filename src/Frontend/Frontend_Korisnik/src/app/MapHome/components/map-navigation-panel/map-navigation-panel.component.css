@@ -462,3 +462,30 @@
   .nav-arrived-text strong { color: #fff; }
   .nav-arrived-text span   { color: rgba(255,255,255,0.6); }
 }
+
+:host-context(html[data-theme='dark']) .nav-bottom-bar,
+:host-context(html[data-theme='dark']) .nav-panel-summary,
+:host-context(html[data-theme='dark']) .nav-mode-switch {
+  background: #111827;
+  border-color: #334155;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+:host-context(html[data-theme='dark']) .nav-bottom-mode-switch {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .nav-mode-switch .nav-mode-option,
+:host-context(html[data-theme='dark']) .nav-bottom-mode-switch .nav-mode-option {
+  background: #1f2937;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .nav-mode-switch .nav-mode-option.active,
+:host-context(html[data-theme='dark']) .nav-bottom-mode-switch .nav-mode-option.active {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #dcfce7;
+  box-shadow: none;
+}

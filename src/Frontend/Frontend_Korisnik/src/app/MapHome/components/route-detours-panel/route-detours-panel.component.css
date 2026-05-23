@@ -90,3 +90,27 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+:host-context(html[data-theme='dark']) .detours-panel {
+  background: #1f2937;
+  border: 1px solid #334155;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .panel-heading h3,
+:host-context(html[data-theme='dark']) .detour-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .detour-card {
+  background: #111827;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .detour-copy p {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .detour-meta {
+  color: #64748b;
+}

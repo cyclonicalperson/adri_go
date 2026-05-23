@@ -153,4 +153,5 @@ export class ResetPasswordComponent implements OnInit {
 
   goToLogin(): void { this.router.navigate(['/login']); }
   goToForgotPassword(): void { this.router.navigate(['/forgot-password']); }
+  goHome(): void { this.router.navigate(['/map-home']); }
 }

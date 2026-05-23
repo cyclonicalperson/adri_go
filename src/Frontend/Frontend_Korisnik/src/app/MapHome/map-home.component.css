@@ -91,7 +91,20 @@
   cursor: pointer;
 }
 .header-menu-btn:hover { background: var(--gray-200); }
-.header-menu-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }
+.header-menu-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--gray-600);
+  stroke: none;
+}
+
+.header-theme-btn svg {
+  fill: none;
+  stroke: var(--gray-600);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* ── MAP ─────────────────────────────────────────────────────── */
 .map-container {
@@ -942,22 +955,6 @@ app-location-details-card {
     transform: translateX(-380px);
   }
 
-  /* Header also slides when sidebar collapses */
-  .app-header {
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .map-wrapper.sidebar-is-collapsed .app-header {
-    transform: translateX(-380px);
-  }
-
-  /* Footer also slides */
-  .app-footer {
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .map-wrapper.sidebar-is-collapsed .app-footer {
-    transform: translateX(-380px);
-  }
-
   .map-container {
     position: fixed;
     top: 0;
@@ -965,13 +962,6 @@ app-location-details-card {
     width: calc(100vw - 380px);
     height: 100vh;
     z-index: 1;
-    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* When sidebar is collapsed, map takes full width */
-  .map-wrapper.sidebar-is-collapsed .map-container {
-    left: 0;
-    width: 100vw;
   }
 
   .top-search-strip {
@@ -1124,6 +1114,29 @@ app-location-details-card {
   background: #111827 !important;
   border-color: #334155 !important;
   box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .app-header,
+:host-context(html[data-theme='dark']) .sidebar {
+  background: #111827;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn:hover {
+  background: #273449;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn svg {
+  fill: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .header-theme-btn svg {
+  fill: none;
+  stroke: #facc15;
 }
 
 :host-context(html[data-theme='dark']) .search-input,
@@ -1798,4 +1811,88 @@ app-location-details-card {
   .map-wrapper.filters-open .map-container { /* no change */ }
   .map-wrapper.filters-open .top-search-strip { /* no change */ }
   .map-wrapper.filters-open .top-ui-layer { /* no change */ }
+}
+
+/* Saved routes dark mode: keep sheet text readable against dark surfaces. */
+:host-context(html[data-theme='dark']) .saved-routes-overlay.overlay-open {
+  background: rgba(2, 6, 23, 0.68);
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-sheet {
+  background: #111827 !important;
+  border: 1px solid #334155;
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-sheet-header {
+  border-bottom-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-title,
+:host-context(html[data-theme='dark']) .saved-route-card-title {
+  color: #f8fafc !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card {
+  background: #1f2937 !important;
+  border-color: #334155 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card:hover {
+  background: #263244 !important;
+  border-color: #475569 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card-meta,
+:host-context(html[data-theme='dark']) .saved-routes-empty,
+:host-context(html[data-theme='dark']) .saved-routes-empty span {
+  color: #cbd5e1 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-empty p {
+  color: #f8fafc !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-close {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card-icon {
+  background: rgba(34, 197, 94, 0.16) !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card-delete {
+  color: #cbd5e1 !important;
+}
+
+:host-context(html[data-theme='dark']) .route-mode-badge {
+  background: rgba(59, 130, 246, 0.18) !important;
+  color: #bfdbfe !important;
+}
+
+/* Desktop sidebar collapse: hide the whole left rail and let the map fill the viewport. */
+@media (min-width: 900px) {
+  .app-header,
+  .app-footer,
+  app-location-details-card {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .map-container {
+    transition:
+      left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .map-wrapper.sidebar-is-collapsed .app-header,
+  .map-wrapper.sidebar-is-collapsed .app-footer,
+  .map-wrapper.sidebar-is-collapsed app-location-details-card {
+    transform: translateX(-380px);
+  }
+
+  .map-wrapper.sidebar-is-collapsed .map-container {
+    left: 0 !important;
+    width: 100vw !important;
+  }
 }

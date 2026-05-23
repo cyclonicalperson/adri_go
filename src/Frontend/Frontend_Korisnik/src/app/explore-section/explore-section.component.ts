@@ -179,6 +179,28 @@ export class ExploreSectionComponent implements OnInit {
   goBack(): void { this.router.navigate(['/location-list']); }
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
   goToLogin(): void { this.router.navigate(['/login']); }
+  goToMap(): void { this.router.navigate(['/map-home']); }
+  goToSaved(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view and manage saved locations.');
+      return;
+    }
+    this.router.navigate(['/saved']);
+  }
+  goToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your calendar.');
+      return;
+    }
+    this.router.navigate(['/calendar']);
+  }
+  goToAccount(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your account.');
+      return;
+    }
+    this.router.navigate(['/account']);
+  }
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
   formatPostType(type?: string | null): string { return formatPostType(type); }
 

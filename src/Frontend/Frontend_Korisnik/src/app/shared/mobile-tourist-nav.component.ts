@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 type TouristNavTab = 'map' | 'explore' | 'saved' | 'calendar' | 'activities' | 'routes' | 'account';
 
@@ -13,8 +14,12 @@ type TouristNavTab = 'map' | 'explore' | 'saved' | 'calendar' | 'activities' | '
 })
 export class MobileTouristNavComponent {
   @Input() active: TouristNavTab = 'map';
+  showAuthPopup = false;
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService,
+  ) {}
 
   goToMap(): void {
     this.router.navigate(['/map-home']);
@@ -41,6 +46,19 @@ export class MobileTouristNavComponent {
   }
 
   goToAccount(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
     this.router.navigate(['/account']);
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+  }
+
+  goToLogin(): void {
+    this.showAuthPopup = false;
+    this.router.navigate(['/login']);
   }
 }

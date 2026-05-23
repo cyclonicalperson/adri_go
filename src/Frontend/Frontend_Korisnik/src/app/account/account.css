@@ -1336,3 +1336,62 @@ html[data-theme='dark'] .link-text {
     padding: 28px 40px;
   }
 }
+
+/* Final dark-mode contrast pass for account/settings-style cards. */
+:host-context(html[data-theme='dark']) .account-container {
+  --account-surface: #111827;
+  --account-border: #334155;
+  --account-shadow-soft: none;
+  background: #0f172a !important;
+  color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .scroll-content {
+  background: #0f172a !important;
+}
+
+:host-context(html[data-theme='dark']) .profile-stat-card,
+:host-context(html[data-theme='dark']) .desktop-stat-card,
+:host-context(html[data-theme='dark']) .account-list,
+:host-context(html[data-theme='dark']) .management-list,
+:host-context(html[data-theme='dark']) .support-list,
+:host-context(html[data-theme='dark']) .logout-list {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .account-link-card {
+  background: #111827 !important;
+  border-color: #334155 !important;
+}
+
+:host-context(html[data-theme='dark']) .account-link-card:hover,
+:host-context(html[data-theme='dark']) .profile-stat-card:hover {
+  background: #1f2937 !important;
+}
+
+:host-context(html[data-theme='dark']) .profile-stat-label,
+:host-context(html[data-theme='dark']) .account-link-title,
+:host-context(html[data-theme='dark']) .logout-row .account-link-title {
+  color: #f8fafc !important;
+}
+
+:host-context(html[data-theme='dark']) .profile-stat-subtitle,
+:host-context(html[data-theme='dark']) .account-link-subtitle,
+:host-context(html[data-theme='dark']) .logout-row .account-link-subtitle,
+:host-context(html[data-theme='dark']) .section-title {
+  color: #94a3b8 !important;
+}
+
+:host-context(html[data-theme='dark']) .account-link-arrow {
+  color: #94a3b8 !important;
+}
+
+:host-context(html[data-theme='dark']) .dark-slider {
+  background: #334155;
+}
+
+:host-context(html[data-theme='dark']) .dark-slider:before {
+  background: #f8fafc;
+}
