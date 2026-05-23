@@ -4,7 +4,7 @@
       <span class="planner-label">Trip planner</span>
       <h3>Build a route from real destination pins</h3>
     </div>
-    <button type="button" class="planner-toggle" [class.active]="plannerMode" (click)="plannerModeToggled.emit()">
+    <button *ngIf="!isNavigating" type="button" class="planner-toggle" [class.active]="plannerMode" (click)="plannerModeToggled.emit()">
       {{ plannerMode ? 'Builder on' : 'Tap pins' }}
     </button>
   </div>

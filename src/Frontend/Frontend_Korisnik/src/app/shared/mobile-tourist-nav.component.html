@@ -1,0 +1,50 @@
+<nav class="app-footer">
+  <button class="footer-btn" [class.active]="active === 'map'" (click)="goToMap()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+    </span>
+    <span class="footer-label">Map</span>
+  </button>
+
+  <button class="footer-btn" [class.active]="active === 'explore'" (click)="goToExplore()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/></svg>
+    </span>
+    <span class="footer-label">Explore</span>
+  </button>
+
+  <button class="footer-btn" [class.active]="active === 'saved'" (click)="goToSaved()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+    </span>
+    <span class="footer-label">Saved</span>
+  </button>
+
+  <button class="footer-btn" [class.active]="active === 'calendar'" (click)="goToCalendar()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+    </span>
+    <span class="footer-label">Calendar</span>
+  </button>
+
+  <button class="footer-btn" [class.active]="active === 'activities'" (click)="goToActivities()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+    </span>
+    <span class="footer-label">Activities</span>
+  </button>
+
+  <button class="footer-btn" [class.active]="active === 'routes'" (click)="goToRoutes()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/></svg>
+    </span>
+    <span class="footer-label">Routes</span>
+  </button>
+
+  <button class="footer-btn" [class.active]="active === 'account'" (click)="goToAccount()">
+    <span class="footer-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </span>
+    <span class="footer-label">Account</span>
+  </button>
+</nav>

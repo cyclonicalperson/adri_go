@@ -34,6 +34,9 @@ import { PrivacyPolicyComponent } from './privacy-policy/privacy-policy.componen
 import { AuthCallbackComponent } from './auth-callback/auth-callback.component';
 
 import { ExploreSectionComponent } from './explore-section/explore-section.component';
+import { RoutesComponent } from './routes/routes.component';
+import { ActivitiesComponent } from './activities/activities.component';
+import { MyReviewsComponent } from './my-reviews/my-reviews.component';
 import { ChatComponent } from './chat/chat.component';
 
 export const routes: Routes = [
@@ -67,6 +70,7 @@ export const routes: Routes = [
 
   // ACCOUNT PODSTRANICE
   { path: 'account/personal-info', component: PersonalInfoComponent },
+  { path: 'account/reviews', component: MyReviewsComponent },
   { path: 'account/help', component: HelpComponent },
   { path: 'account/privacy', component: PrivacyComponent },
 

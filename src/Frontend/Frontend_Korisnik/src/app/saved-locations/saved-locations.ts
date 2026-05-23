@@ -23,16 +23,16 @@ export class SavedLocationsComponent implements OnInit {
   isGuest: boolean = false;
 
   filters = [
-    { id: 'All',             label: 'All' },
-    { id: 'attraction',      label: 'Attractions' },
-    { id: 'restaurant',      label: 'Restaurants' },
-    { id: 'cultural_site',   label: 'Culture' },
-    { id: 'monument',        label: 'Monuments' },
-    { id: 'club',            label: 'Nightlife' },
-    { id: 'sports_facility', label: 'Activities' },
-    { id: 'event',           label: 'Events' },
-    { id: 'accommodation',   label: 'Stays' },
-    { id: 'shop',            label: 'Shopping' },
+    { id: 'All',             label: 'All',         icon: '📍', color: '#22c55e' },
+    { id: 'attraction',      label: 'Attractions', icon: '🏖️', color: '#10b981' },
+    { id: 'restaurant',      label: 'Restaurants', icon: '🍴', color: '#ef4444' },
+    { id: 'cultural_site',   label: 'Culture',     icon: '🏛️', color: '#f59e0b' },
+    { id: 'monument',        label: 'Monuments',   icon: '🗿', color: '#d97706' },
+    { id: 'club',            label: 'Nightlife',   icon: '🎉', color: '#8b5cf6' },
+    { id: 'sports_facility', label: 'Activities',  icon: '🎡', color: '#22c55e' },
+    { id: 'event',           label: 'Events',      icon: '📅', color: '#ec4899' },
+    { id: 'accommodation',   label: 'Stays',       icon: '🏨', color: '#3b82f6' },
+    { id: 'shop',            label: 'Shopping',    icon: '🛍️', color: '#f97316' },
   ];
 
   savedItems: any[] = [];

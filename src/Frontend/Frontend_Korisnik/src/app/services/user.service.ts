@@ -16,6 +16,7 @@ export interface UserProfile {
   language: string;
   bio?: string;
   location?: string;
+  createdAt?: string;
   interests: string[];
   stats: {
     saved: number;
@@ -48,6 +49,16 @@ export interface CalendarItem {
   imageUrl: string | null;
 }
 
+export interface MyReviewItem {
+  reviewId: number;
+  postId?: number | null;
+  routeId?: number | null;
+  entityTitle: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  status: string;
+}
 export interface TouristRouteWaypoint {
   lat: number;
   lng: number;
@@ -162,6 +173,7 @@ interface TouristProfileResponse {
   email: string;
   pendingEmail?: string | null;
   language: string;
+  createdAt?: string | null;
   bio?: string | null;
   location?: string | null;
   profileImage?: string | null;
@@ -207,6 +219,16 @@ export class UserService {
     }
 
     return this.http.get<CalendarItem[]>(`${this.authApiUrl}/calendar`);
+  }
+
+  getMyReviews(): Observable<MyReviewItem[]> {
+    if (!this.authService.isLoggedIn) {
+      return of([]);
+    }
+
+    return this.http
+      .get<{ success: boolean; total: number; data: MyReviewItem[] }>(`${this.authApiUrl}/my-reviews`)
+      .pipe(map(res => Array.isArray(res?.data) ? res.data : []));
   }
 
   addToCalendar(postId: number, schedule?: CalendarSchedulePayload): Observable<any> {
@@ -353,6 +375,7 @@ export class UserService {
       pendingEmail: profile?.pendingEmail ?? null,
       profilePic: profile?.profileImage ?? undefined,
       language: profile?.language ?? 'en',
+      createdAt: profile?.createdAt ?? undefined,
       bio: profile?.bio ?? '',
       location: profile?.location ?? '',
       interests: Array.isArray(profile?.interests) ? profile.interests : [],
