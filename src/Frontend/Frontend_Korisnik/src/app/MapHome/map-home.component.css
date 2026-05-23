@@ -166,7 +166,7 @@
   right: 0;
   max-height: 60px;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   scrollbar-width: none;
   background: #fff;
   border-radius: 20px 20px 0 0;
@@ -181,6 +181,95 @@
   overflow-y: auto;
 }
 .top-ui-layer::-webkit-scrollbar { display: none; }
+
+/* ── SIDEBAR COLLAPSE BUTTON ──────────────────────────────── */
+.sidebar-collapse-btn {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 48px;
+  background: #fff;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--gray-400);
+  box-shadow: 3px 0 10px rgba(0,0,0,0.08);
+  z-index: 16;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+.sidebar-collapse-btn:hover {
+  background: var(--gray-50, #f9fafb);
+  color: var(--gray-600);
+}
+
+/* Desktop standalone collapse button — always visible, outside the sidebar */
+.sidebar-collapse-btn-desktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  /* Hide the in-panel mobile button on desktop */
+  .top-ui-layer .sidebar-collapse-btn {
+    display: none;
+  }
+
+  /* Show the standalone desktop button */
+  .sidebar-collapse-btn-desktop {
+    display: flex;
+    position: fixed;
+    left: 380px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 56px;
+    background: #fff;
+    border: none;
+    border-radius: 0 12px 12px 0;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--gray-500);
+    box-shadow: 3px 0 14px rgba(0,0,0,0.12);
+    z-index: 25;
+    padding: 0;
+    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s, color 0.15s;
+  }
+  .sidebar-collapse-btn-desktop:hover {
+    background: var(--gray-50, #f9fafb);
+    color: var(--gray-700);
+  }
+  .map-wrapper.sidebar-is-collapsed .sidebar-collapse-btn-desktop {
+    left: 0;
+  }
+}
+
+/* Dark mode for collapse buttons */
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn,
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn-desktop {
+  background: #1e293b;
+  color: #94a3b8;
+  box-shadow: 3px 0 14px rgba(0,0,0,0.35);
+}
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn:hover,
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn-desktop:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.top-ui-layer.sidebar-collapsed {
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+.top-ui-layer.sidebar-collapsed .sidebar-collapse-btn {
+  pointer-events: auto;
+  right: -20px;
+}
 
 .sheet-header {
   display: flex;
@@ -769,11 +858,8 @@
 }
 
 /* ── LOCATION CARD POPUP ─────────────────────────────────────── */
+/* Kartica je fixed i pozicionirana u location-details-card.css */
 app-location-details-card {
-  position: absolute !important;
-  bottom: 80px;
-  left: 12px;
-  right: 12px;
   z-index: 9999 !important;
   display: block;
 }
@@ -849,11 +935,48 @@ app-location-details-card {
     z-index: 20;
     background: #fff;
     border-right: 1px solid var(--gray-100);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.sidebar-collapsed {
+    transform: translateX(-380px);
+  }
+
+  /* Header also slides when sidebar collapses */
+  .app-header {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .map-wrapper.sidebar-is-collapsed .app-header {
+    transform: translateX(-380px);
+  }
+
+  /* Footer also slides */
+  .app-footer {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .map-wrapper.sidebar-is-collapsed .app-footer {
+    transform: translateX(-380px);
+  }
+
+  .map-container {
+    position: fixed;
+    top: 0;
+    left: 380px;
+    width: calc(100vw - 380px);
+    height: 100vh;
+    z-index: 1;
+    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* When sidebar is collapsed, map takes full width */
+  .map-wrapper.sidebar-is-collapsed .map-container {
+    left: 0;
+    width: 100vw;
   }
 
   .top-search-strip {
     position: static;
-    padding: 12px 16px 4px;
+    padding: 12px 16px 14px;
     flex-shrink: 0;
     pointer-events: auto;
   }
@@ -884,7 +1007,7 @@ app-location-details-card {
 
   .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
   .top-ui-layer > app-trip-planner-panel {
-    margin-top: 0;
+    margin-top: 14px;
   }
 
   /* ── Map fills right side ──────────────────────────────── */
@@ -1069,8 +1192,33 @@ app-location-details-card {
 }
 
 :host-context(html[data-theme='dark']) .cat-chip.active {
+  background: var(--cat-color, #22c55e) !important;
+  border-color: var(--cat-color, #22c55e);
   color: #fff;
-  box-shadow: none;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--cat-color, #22c55e) 34%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .route-pill {
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+}
+
+:host-context(html[data-theme='dark']) .route-pill-icon {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+:host-context(html[data-theme='dark']) .route-pill-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .route-pill-meta {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .route-pill-clear {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
 }
 
 /* ============================================================

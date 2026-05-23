@@ -1,0 +1,134 @@
+/* ── Shared App Header ── */
+.app-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: #fff;
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,0.08));
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  min-height: 62px;
+  gap: 8px;
+}
+
+/* Left slot — always 38px wide so title stays centred */
+.app-header-left {
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+}
+
+/* Back button */
+.app-header-back-btn {
+  background: var(--gray-100, #f1f5f9);
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.app-header-back-btn:hover  { background: var(--gray-200, #e2e8f0); }
+.app-header-back-btn:active { background: var(--gray-300, #cbd5e1); }
+.app-header-back-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--gray-700, #374151);
+}
+
+/* Title */
+.app-header-title {
+  flex: 1;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display, inherit);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gray-900, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Right slot */
+.app-header-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Icon button (notifications, etc.) */
+.app-header-icon-btn {
+  position: relative;
+  background: var(--gray-100, #f1f5f9);
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.app-header-icon-btn:hover  { background: var(--gray-200, #e2e8f0); }
+.app-header-icon-btn:active { background: var(--gray-300, #cbd5e1); }
+.app-header-icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--gray-700, #374151);
+}
+
+/* ── Dark mode ── */
+:host-context(html[data-theme='dark']) .app-header-bar {
+  background: #111827;
+  border-bottom: 1px solid #334155;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .app-header-back-btn,
+:host-context(html[data-theme='dark']) .app-header-icon-btn {
+  background: #1f2937;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .app-header-back-btn:hover,
+:host-context(html[data-theme='dark']) .app-header-icon-btn:hover {
+  background: #263244;
+}
+
+:host-context(html[data-theme='dark']) .app-header-back-btn svg,
+:host-context(html[data-theme='dark']) .app-header-icon-btn svg {
+  fill: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .app-header-title {
+  color: #f8fafc;
+}
+
+/* ── Desktop ── */
+@media (min-width: 900px) {
+  .app-header-bar {
+    padding: 12px 32px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app-header-bar {
+    padding: 12px 40px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .app-header-bar {
+    padding: 12px 56px;
+  }
+}

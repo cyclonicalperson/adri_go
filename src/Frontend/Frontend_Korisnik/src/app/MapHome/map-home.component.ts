@@ -930,6 +930,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.lastHydratedQueryKey = key;
 
+    // plannerRefresh: dolazi iz chat popup-a kada korisnik klikne na rutu karticu
+    // Prisiljava syncPlannerStateFromServices() i renderPlannerRoute() bez brisanja stanja
+    if (this.latestQueryParams['plannerRefresh']) {
+      this.syncPlannerStateFromServices();
+      this.renderPlannerRoute();
+      this.cdr.detectChanges();
+      return;
+    }
+
     // Opened from a calendar route entry — load that route onto the map.
     const routeParam = Number(this.latestQueryParams['routeId']);
     if (Number.isFinite(routeParam) && routeParam > 0) {
@@ -1914,47 +1923,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.openRouteCalendarScheduler();
   }
 
-  get minRouteCalendarDateTime(): string {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
-  }
-
   openRouteCalendarScheduler(): void {
-    this.routeCalendarDateTime = '';
-    this.routeCalendarError = '';
-    this.showRouteCalendarScheduler = true;
-    this.cdr.detectChanges();
-  }
-
-  closeRouteCalendarScheduler(): void {
-    this.showRouteCalendarScheduler = false;
-    this.routeCalendarError = '';
-    this.cdr.detectChanges();
-  }
-
-  confirmRouteCalendarSave(): void {
-    if (this.isSavingRouteToCalendar) {
-      return;
-    }
-
     if (this.plannerStops.length > 1 && !this.routeIsRoutable) {
-      this.routeCalendarError = this.getRouteProblemMessage();
-      return;
-    }
-
-    if (!this.routeCalendarDateTime) {
-      this.routeCalendarError = 'Choose date and time.';
-      return;
-    }
-
-    const selected = new Date(this.routeCalendarDateTime);
-    if (isNaN(selected.getTime())) {
-      this.routeCalendarError = 'Choose a valid date and time.';
-      return;
-    }
-    if (selected < new Date()) {
-      this.routeCalendarError = 'Choose a future date and time.';
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3200);
+      this.cdr.detectChanges();
       return;
     }
 
@@ -2989,6 +2962,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isFiltersOpen = false;
+  sidebarCollapsed = false;
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    // Let Leaflet know the map container resized
+    setTimeout(() => {
+      this.map?.invalidateSize();
+    }, 380);
+    this.cdr.detectChanges();
+  }
 
   openFilters(): void {
     this.syncAvailableSavedFilterIds();
@@ -3080,12 +3063,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToAccount(): void {
-    if (this.authService.isLoggedIn) {
-      this.activeTab = 'account';
-      this.router.navigate(['/account']);
-    } else {
-      this.showAuthPopup = true;
-    }
+    this.activeTab = 'account';
+    this.router.navigate(['/account']);
   }
 
   toggleListView(): void {

@@ -351,4 +351,40 @@ namespace TouristGuide.Api.Controllers
             return uint.TryParse(val, out var id) ? id : null;
         }
     }
+
+    // =========================================================================
+    // PUBLIC STATS — /api/public-stats
+    // Anonimu dostupne platformske statistike za login stranicu
+    // =========================================================================
+
+    [ApiController]
+    [Route("api/public-stats")]
+    public class PublicStatsController : ControllerBase
+    {
+        private readonly AppDbContext _db;
+        public PublicStatsController(AppDbContext db) { _db = db; }
+
+        // GET /api/public-stats
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicStats()
+        {
+            var totalLocations = await _db.Posts
+                .CountAsync(p => p.Status == "published" && p.PostType != "event");
+
+            var totalRegions = await _db.Regions.CountAsync();
+
+            var avgRating = await _db.Reviews
+                .Where(r => r.Status == "APPROVED" && r.Rating > 0)
+                .AverageAsync(r => (double?)r.Rating) ?? 0.0;
+
+            return Ok(new
+            {
+                totalLocations,
+                totalRegions,
+                avgRating = Math.Round(avgRating, 1),
+                success = true
+            });
+        }
+    }
 }

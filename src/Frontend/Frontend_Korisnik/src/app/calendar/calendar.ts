@@ -7,6 +7,7 @@ import { UserService, CalendarItem, PendingSchedule } from '../services/user.ser
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService } from '../services/site-translate.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 interface DisplayEvent {
   id: number;       // PlannerItem id — used for removal
@@ -31,7 +32,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './calendar.html',
   styleUrls: ['./calendar.css']
 })

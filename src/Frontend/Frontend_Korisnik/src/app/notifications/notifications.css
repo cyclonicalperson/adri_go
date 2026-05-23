@@ -5,6 +5,28 @@
   flex-direction: column;
 }
 
+/* Mark-all-read button inside shared header */
+.notif-mark-read-btn {
+  padding: 6px 12px;
+  background: var(--green-50, #f0fdf4);
+  border: 1.5px solid var(--green-300, #86efac);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-700, #15803d);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  transition: background 0.15s, border-color 0.15s;
+}
+.notif-mark-read-btn:hover {
+  background: var(--green-100, #dcfce7);
+}
+.notif-mark-read-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .header {
   display: flex;
   align-items: center;
