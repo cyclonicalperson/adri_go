@@ -7,11 +7,12 @@ import { FilterStateService } from '../services/filter-state.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-saved-locations',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AppHeaderComponent],
   templateUrl: './saved-locations.html',
   styleUrls: ['./saved-locations.css']
 })
@@ -105,6 +106,18 @@ export class SavedLocationsComponent implements OnInit {
     return formatPostType(type);
   }
 
+  getActivityTags(item: any, limit = 3): string[] {
+    const rawTags = item?.tagNames ?? item?.TagNames ?? [];
+    const tags = Array.isArray(rawTags)
+      ? rawTags
+      : String(rawTags || '').split(/[;,]/);
+
+    return Array.from(new Set(tags
+      .map(tag => String(tag).trim())
+      .filter(Boolean)))
+      .slice(0, limit);
+  }
+
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -162,7 +175,8 @@ export class SavedLocationsComponent implements OnInit {
       isLiked: !!(post as any).isLiked,
       isSaved: true,  // all items here are saved by definition
       likeCount: (post as any).likeCount || 0,
-      saveCount: (post as any).saveCount || 0
+      saveCount: (post as any).saveCount || 0,
+      tagNames: (post as any).tagNames ?? (post as any).TagNames ?? []
     };
   }
 

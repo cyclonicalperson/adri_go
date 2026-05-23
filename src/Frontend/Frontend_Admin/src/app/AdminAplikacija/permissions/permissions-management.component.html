@@ -57,6 +57,21 @@
           <button class="btn-outline-sm" (click)="revokeAll()">✗ Ništa</button>
         </div>
 
+        <div class="preset-box">
+          <label class="preset-label">Preset dozvola</label>
+          <select class="preset-select" [(ngModel)]="selectedPresetId" (ngModelChange)="applyPreset($event)">
+            <option value="">Izaberite najcesci tip admina</option>
+            @for (preset of permissionPresets; track preset.id) {
+            <option [value]="preset.id">{{ preset.label }}</option>
+            }
+          </select>
+          @if (selectedPresetId) {
+          <div class="preset-desc">
+            {{ selectedPresetDescription }}
+          </div>
+          }
+        </div>
+
         @for (perm of allPermissions; track perm.code) {
         <div class="perm-toggle-row">
           <div>

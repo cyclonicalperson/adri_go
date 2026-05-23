@@ -8,7 +8,17 @@
       <option [value]="opt.value">{{ opt.label }}</option>
       }
     </select>
+    <select class="select-type" [value]="req.country ?? ''" (change)="onCountryChange($any($event.target).value)">
+      <option value="">Sve drzave</option>
+      @for (country of countries; track country) {
+      <option [value]="country">{{ country }}</option>
+      }
+    </select>
+    @if (canManageDestinations) {
     <button class="btn-new" (click)="goNew()">+ Nova destinacija</button>
+    }
+    <button class="btn-new btn-secondary" (click)="printReport()">🖨️ Štampaj</button>
+    <button class="btn-new btn-secondary" (click)="exportCsv()">📊 CSV</button>
   </div>
 
   @if (loading) {
@@ -41,8 +51,10 @@
           <td>{{ d.country }}</td>
           <td class="num">{{ d.objectCount ?? 0 }}</td>
           <td class="actions-cell" (click)="$event.stopPropagation()">
+            @if (canManageDestinations) {
             <button class="btn-edit" (click)="goEdit(d)">Izmeni</button>
             <button class="btn-delete" (click)="confirmDelete(d)">Obriši</button>
+            }
           </td>
         </tr>
         }

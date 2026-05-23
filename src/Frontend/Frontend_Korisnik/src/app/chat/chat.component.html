@@ -1,0 +1,220 @@
+<div class="chat-container">
+
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <div class="chat-header">
+    <button class="back-btn" (click)="goBack()" aria-label="Nazad">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+
+    <div class="header-info">
+      <div class="ai-avatar" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>AI Turistički Asistent</h1>
+        <div class="status-row">
+          <span class="status-dot" [class.status-thinking]="isLoading()" aria-hidden="true"></span>
+          <span class="status-label">{{ isLoading() ? 'Pretražuje podatke…' : 'Dostupan' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <button
+      class="clear-btn"
+      (click)="clearChat()"
+      [disabled]="!hasMessages()"
+      aria-label="Obriši razgovor"
+      title="Obriši razgovor">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+        <path d="M10 11v6M14 11v6"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ── Messages ──────────────────────────────────────────────── -->
+  <div class="messages-area" role="log" aria-live="polite" aria-label="Chat poruke">
+
+    <!-- Welcome ekran (prazno stanje) -->
+    @if (!hasMessages()) {
+      <div class="welcome" aria-label="Dobrodošli">
+        <div class="welcome-icon" aria-hidden="true">🗺️</div>
+        <h2>Zdravo{{ touristName() ? ', ' + touristName() : '' }}!</h2>
+        <p>Pitaj me šta god želiš o destinacijama, hotelima,<br>restoranima, rutama i aktivnostima.</p>
+
+        @if (!isLoggedIn()) {
+          <div class="login-hint" role="note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>
+              <button class="inline-link" (click)="goToLogin()">Prijavi se</button>
+              za personalizovane preporuke, čuvanje lokacija i planer putovanja.
+            </span>
+          </div>
+        }
+
+        <div class="suggestions" role="list" aria-label="Brza pitanja">
+          @for (s of suggestions; track s) {
+            <button
+              class="suggestion-chip"
+              role="listitem"
+              (click)="sendSuggestion(s)"
+              [disabled]="isLoading()">
+              {{ s }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Lista poruka -->
+    @for (msg of messages(); track trackById($index, msg)) {
+      <div
+        class="message-row"
+        [class.user-row]="isUserMessage(msg)"
+        [class.assistant-row]="!isUserMessage(msg)">
+
+        <!-- Avatar asistenta -->
+        @if (!isUserMessage(msg)) {
+          <div class="msg-avatar" aria-hidden="true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+        }
+
+        <!-- Bubble -->
+        <div
+          class="message-bubble"
+          [class.user-bubble]="isUserMessage(msg)"
+          [class.assistant-bubble]="!isUserMessage(msg)"
+          [class.error-bubble]="isErrorMessage(msg)"
+          [class.has-location-cards]="!isUserMessage(msg) && (msg.locationCards?.length || 0) > 0">
+
+          @if (isThinkingMessage(msg)) {
+            <!-- ── Thinking / Loading state ── -->
+            <div class="thinking-state" aria-label="Asistent pretražuje bazu podataka…">
+              <div class="thinking-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="thinking-label">Pretražujem podatke…</span>
+            </div>
+
+          } @else {
+            <!-- ── Sadržaj poruke ── -->
+            <div
+              class="bubble-content"
+              [innerHTML]="formatContent(msg.content)"
+              [attr.aria-label]="isUserMessage(msg) ? 'Vi: ' + msg.content : 'Asistent: ' + msg.content">
+            </div>
+
+            @if (!isUserMessage(msg) && msg.locationCards?.length) {
+              <div class="chat-location-cards" aria-label="Predložene objave">
+                @for (card of msg.locationCards; track card.id) {
+                  <button class="chat-location-card" type="button" (click)="openLocationDetails(card)">
+                    <img
+                      class="chat-location-image"
+                      [src]="getLocationImage(card)"
+                      [alt]="card.title || 'Objava'">
+                    <span class="chat-location-info">
+                      <span class="chat-location-category">
+                        <span class="chat-location-dot" aria-hidden="true"></span>
+                        {{ getLocationCategory(card) }}
+                      </span>
+                      <span class="chat-location-title">{{ card.title }}</span>
+                      <span class="chat-location-meta">
+                        @if (card.regionName) {
+                          <span>{{ card.regionName }}</span>
+                        }
+                        @if (card.avgRating || card.rating) {
+                          <span>★ {{ (card.avgRating || card.rating) | number:'1.1-1' }}</span>
+                        }
+                        @if (card.reviewCount || card.reviews) {
+                          <span>{{ card.reviewCount || card.reviews }} reviews</span>
+                        }
+                      </span>
+                    </span>
+                    <span class="chat-location-arrow" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Timestamp (za asistenta) -->
+        @if (!isUserMessage(msg) && !isThinkingMessage(msg)) {
+          <div class="msg-time" aria-hidden="true">
+            {{ msg.timestamp | date:'HH:mm' }}
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Error banner -->
+    @if (error()) {
+      <div class="error-banner" role="alert">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ error() }}
+      </div>
+    }
+
+    <div #messagesEnd style="height:4px"></div>
+  </div>
+
+  <!-- ── Input area ─────────────────────────────────────────────── -->
+  <div class="input-area">
+    <div class="input-wrapper" [class.input-active]="inputText.trim().length > 0">
+      <textarea
+        #inputField
+        class="message-input"
+        [(ngModel)]="inputText"
+        (keydown)="onKeydown($event)"
+        (input)="autoResize()"
+        placeholder="Postavi pitanje o destinacijama, rutama, hotelima…"
+        rows="1"
+        [disabled]="isLoading()"
+        aria-label="Upiši poruku"
+        autocomplete="off"
+        spellcheck="false">
+      </textarea>
+
+      <button
+        class="send-btn"
+        (click)="send()"
+        [disabled]="!inputText.trim() || isLoading()"
+        [attr.aria-label]="isLoading() ? 'Asistent razmišlja…' : 'Pošalji poruku'">
+        @if (isLoading()) {
+          <!-- Spinner dok Gemini razmišlja -->
+          <div class="send-spinner" aria-hidden="true"></div>
+        } @else {
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        }
+      </button>
+    </div>
+
+    <p class="input-hint">
+      Enter → pošalji &nbsp;·&nbsp; Shift+Enter → novi red
+    </p>
+  </div>
+
+</div>

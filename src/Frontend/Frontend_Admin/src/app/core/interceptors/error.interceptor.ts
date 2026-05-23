@@ -34,10 +34,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         }
       }
 
-      if (err.status === 403 && !isOnPublicPage) {
-        router.navigate(['/login']);
-      }
-
       // Propusti originalni HttpErrorResponse da komponente mogu čitati err.error?.status
       return throwError(() => err);
     })

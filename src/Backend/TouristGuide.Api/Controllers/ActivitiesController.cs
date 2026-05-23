@@ -91,6 +91,39 @@ namespace TouristGuide.Api.Controllers
             public string? Tags { get; set; }
         }
 
+        private static ActivityData ReadActivityData(Tag tag)
+        {
+            var legacy = DecodeColor(tag.Color);
+            legacy.Description = tag.Description ?? legacy.Description;
+            legacy.Duration = tag.Duration ?? legacy.Duration;
+            legacy.Difficulty = tag.Difficulty ?? legacy.Difficulty;
+            legacy.MaxCapacity = tag.MaxCapacity.HasValue ? tag.MaxCapacity.Value : legacy.MaxCapacity;
+            legacy.Tags = tag.ActivityTags ?? legacy.Tags;
+            return legacy;
+        }
+
+        private static string? NormalizeOptionalText(string? value, int? maxLength = null)
+        {
+            if (value is null)
+                return null;
+
+            var normalized = value.Trim();
+            if (normalized.Length == 0)
+                return null;
+
+            return maxLength.HasValue && normalized.Length > maxLength.Value
+                ? normalized[..maxLength.Value]
+                : normalized;
+        }
+
+        private static short? NormalizeCapacity(int? value)
+        {
+            if (!value.HasValue || value.Value <= 0)
+                return null;
+
+            return (short)Math.Min(short.MaxValue, value.Value);
+        }
+
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll(
@@ -100,19 +133,24 @@ namespace TouristGuide.Api.Controllers
         {
             var isAdminRequest = User.IsInRole("admin") || User.IsInRole("superadmin");
             var query = _context.Tags.Where(t => t.Category == "aktivnost").AsQueryable();
+            var canManageTags = false;
 
             if (isAdminRequest)
             {
-                if (!await _permissionService.CanManageTagsAsync())
-                    return Forbid();
+                canManageTags = await _permissionService.CanManageTagsAsync();
 
-                if (!_adminIdentityService.IsSuperAdmin())
+                if (canManageTags && !_adminIdentityService.IsSuperAdmin())
                 {
                     var adminId = _adminIdentityService.GetAdminId();
                     if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
                     var adminTagIds = await _context.PostTags
                         .Where(pt => pt.Post.AdminId == adminId.Value).Select(pt => pt.TagId).Distinct().ToListAsync();
                     query = query.Where(t => adminTagIds.Contains(t.Id));
+                }
+                else if (!canManageTags)
+                {
+                    query = query.Where(t => t.Color == null
+                        || (!t.Color.ToLower().Contains("|pending|") && !t.Color.ToLower().EndsWith("|pending")));
                 }
             }
             else
@@ -134,7 +172,7 @@ namespace TouristGuide.Api.Controllers
                 foreach (var k in known)
                     query = query.Where(t => t.Color == null || !t.Color.ToUpper().StartsWith(k));
             }
-            if (!string.IsNullOrWhiteSpace(status) && isAdminRequest)
+            if (!string.IsNullOrWhiteSpace(status) && isAdminRequest && canManageTags)
             {
                 var sl = status.ToLower();
                 query = query.Where(t => t.Color != null &&
@@ -165,7 +203,13 @@ namespace TouristGuide.Api.Controllers
             {
                 var veze = linkedPosts.Where(pt => pt.TagId == t.Id).ToList();
                 var prviPost = veze.FirstOrDefault()?.Post;
-                var d = DecodeColor(t.Color);
+                var d = ReadActivityData(t);
+                var postIds = veze.Select(pt => pt.PostId).Distinct().ToList();
+                var locationNames = veze
+                    .Select(pt => pt.Post.Region?.Name ?? pt.Post.Address ?? pt.Post.Title)
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct()
+                    .ToList();
                 return new
                 {
                     id = t.Id,
@@ -182,6 +226,8 @@ namespace TouristGuide.Api.Controllers
                     lng = prviPost?.Lng,
                     locationName = prviPost?.Region?.Name ?? prviPost?.Address ?? "",
                     postId = veze.FirstOrDefault()?.PostId,
+                    postIds,
+                    locationNames,
                     viewCount = (uint)veze.Sum(pt => (long)pt.Post.ViewCount),
                     linkedPosts = veze.Count,
                     status = d.Status == "pending" ? "pending" : "approved"
@@ -202,15 +248,14 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetById(uint id)
         {
             var isAdminRequest = User.IsInRole("admin") || User.IsInRole("superadmin");
-            if (isAdminRequest && !await _permissionService.CanManageTagsAsync())
-                return Forbid();
+            var canManageTags = isAdminRequest && await _permissionService.CanManageTagsAsync();
 
             var tag = await _context.Tags
                 .Include(t => t.PostTags).ThenInclude(pt => pt.Post).ThenInclude(p => p.Region)
                 .FirstOrDefaultAsync(t => t.Id == id && t.Category == "aktivnost");
             if (tag == null) return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
 
-            if (isAdminRequest && !_adminIdentityService.IsSuperAdmin())
+            if (isAdminRequest && canManageTags && !_adminIdentityService.IsSuperAdmin())
             {
                 var adminId = _adminIdentityService.GetAdminId();
                 if (adminId == null) return Unauthorized(new { message = "Identitet korisnika nije moguće utvrditi." });
@@ -218,8 +263,14 @@ namespace TouristGuide.Api.Controllers
             }
 
             var prviPost = tag.PostTags.FirstOrDefault()?.Post;
-            var d = DecodeColor(tag.Color);
-            if (!isAdminRequest && d.Status == "pending")
+            var postIds = tag.PostTags.Select(pt => pt.PostId).Distinct().ToList();
+            var locationNames = tag.PostTags
+                .Select(pt => pt.Post.Region?.Name ?? pt.Post.Address ?? pt.Post.Title)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct()
+                .ToList();
+            var d = ReadActivityData(tag);
+            if ((!isAdminRequest || !canManageTags) && d.Status == "pending")
                 return NotFound(new { message = $"Aktivnost sa ID={id} nije pronadjena." });
             return Ok(new
             {
@@ -239,7 +290,9 @@ namespace TouristGuide.Api.Controllers
                     lat = prviPost?.Lat,
                     lng = prviPost?.Lng,
                     locationName = prviPost?.Region?.Name ?? prviPost?.Address ?? "",
-                    postId = tag.PostTags.FirstOrDefault()?.PostId
+                    postId = tag.PostTags.FirstOrDefault()?.PostId,
+                    postIds,
+                    locationNames
                 },
                 success = true
             });
@@ -249,29 +302,46 @@ namespace TouristGuide.Api.Controllers
         [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Create([FromBody] CreateActivityDto dto)
         {
-            if (!await _permissionService.CanManageTagsAsync())
-                return Forbid();
-
             if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest(new { message = "Naziv aktivnosti je obavezan." });
 
             var subcat = dto.Category?.ToUpper() ?? "OTHER";
             var hex = ColorMap.GetValueOrDefault(subcat, "#6b7280");
             var statusFlag = string.Equals(dto.Status, "pending", StringComparison.OrdinalIgnoreCase) ? "pending" : "approved";
+            var canManageTags = await _permissionService.CanManageTagsAsync();
+            if (!canManageTags)
+            {
+                var canPropose = statusFlag == "pending" &&
+                    await _permissionService.HasPermissionInAnyScopeAsync("manage_own_posts");
+                if (!canPropose)
+                    return Forbid();
+            }
+
+            var requestedPostIds = dto.PostIds?.Where(postId => postId > 0).Distinct().ToList();
+            if (requestedPostIds is { Count: > 0 } && !await CanAttachToPostsAsync(requestedPostIds))
+                return Forbid();
+            if (requestedPostIds is not { Count: > 0 } && dto.PostId.HasValue && !await CanAttachToPostAsync(dto.PostId.Value))
+                return Forbid();
 
             var noviTag = new Tag
             {
                 Name = dto.Name.Trim(),
                 Category = "aktivnost",
-                Color = EncodeColor(subcat, hex, statusFlag, dto.Description, dto.Duration, dto.Difficulty, dto.MaxCapacity, dto.Tags),
+                Color = EncodeColor(subcat, hex, statusFlag, null, null, null, null, null),
+                Description = NormalizeOptionalText(dto.Description, 500),
+                Duration = NormalizeOptionalText(dto.Duration, 50),
+                Difficulty = NormalizeOptionalText(dto.Difficulty?.ToUpperInvariant(), 10),
+                MaxCapacity = NormalizeCapacity(dto.MaxCapacity),
+                ActivityTags = NormalizeOptionalText(dto.Tags, 500),
             };
             _context.Tags.Add(noviTag);
             await _context.SaveChangesAsync();
 
-            if (dto.PostId.HasValue)
+            if (requestedPostIds is { Count: > 0 })
             {
-                if (!await CanAttachToPostAsync(dto.PostId.Value))
-                    return Forbid();
-
+                await ReplaceActivityPostsAsync(noviTag.Id, requestedPostIds);
+            }
+            else if (dto.PostId.HasValue)
+            {
                 if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
                 {
                     _context.PostTags.Add(new PostTag { PostId = dto.PostId.Value, TagId = noviTag.Id });
@@ -308,7 +378,7 @@ namespace TouristGuide.Api.Controllers
 
             if (!string.IsNullOrWhiteSpace(dto.Name)) tag.Name = dto.Name.Trim();
 
-            var existing = DecodeColor(tag.Color);
+            var existing = ReadActivityData(tag);
             var subcat = !string.IsNullOrWhiteSpace(dto.Category) ? dto.Category.ToUpper() : existing.Subcat;
             var hex = ColorMap.GetValueOrDefault(subcat, existing.Hex);
             var statusFlag = !string.IsNullOrWhiteSpace(dto.Status) ? dto.Status.ToLower() : existing.Status;
@@ -320,7 +390,12 @@ namespace TouristGuide.Api.Controllers
             var newCap = dto.MaxCapacity.HasValue ? dto.MaxCapacity : existing.MaxCapacity;
             var newTags = dto.Tags != null ? dto.Tags : existing.Tags;
 
-            tag.Color = EncodeColor(subcat, hex, statusFlag, newDesc, newDur, newDiff, newCap, newTags);
+            tag.Color = EncodeColor(subcat, hex, statusFlag, null, null, null, null, null);
+            tag.Description = NormalizeOptionalText(newDesc, 500);
+            tag.Duration = NormalizeOptionalText(newDur, 50);
+            tag.Difficulty = NormalizeOptionalText(newDiff?.ToUpperInvariant(), 10);
+            tag.MaxCapacity = NormalizeCapacity(newCap);
+            tag.ActivityTags = NormalizeOptionalText(newTags, 500);
             await _context.SaveChangesAsync();
 
             // PostTag logika:
@@ -331,6 +406,14 @@ namespace TouristGuide.Api.Controllers
             {
                 var links = await _context.PostTags.Where(pt => pt.TagId == id).ToListAsync();
                 if (links.Count > 0) { _context.PostTags.RemoveRange(links); await _context.SaveChangesAsync(); }
+            }
+            else if (dto.PostIds is not null)
+            {
+                var postIds = dto.PostIds.Where(postId => postId > 0).Distinct().ToList();
+                if (!await CanAttachToPostsAsync(postIds))
+                    return Forbid();
+
+                await ReplaceActivityPostsAsync(id, postIds);
             }
             else if (dto.PostId.HasValue)
             {
@@ -388,6 +471,32 @@ namespace TouristGuide.Api.Controllers
 
             return await _context.Posts.AnyAsync(p => p.Id == postId && p.AdminId == adminId.Value);
         }
+
+        private async Task<bool> CanAttachToPostsAsync(IReadOnlyCollection<uint> postIds)
+        {
+            if (postIds.Count == 0)
+                return true;
+
+            if (_adminIdentityService.IsSuperAdmin())
+                return await _context.Posts.CountAsync(p => postIds.Contains(p.Id)) == postIds.Count;
+
+            var adminId = _adminIdentityService.GetAdminId();
+            if (adminId == null)
+                return false;
+
+            return await _context.Posts.CountAsync(p => postIds.Contains(p.Id) && p.AdminId == adminId.Value) == postIds.Count;
+        }
+
+        private async Task ReplaceActivityPostsAsync(uint tagId, IReadOnlyCollection<uint> postIds)
+        {
+            var existingLinks = await _context.PostTags.Where(pt => pt.TagId == tagId).ToListAsync();
+            _context.PostTags.RemoveRange(existingLinks);
+
+            foreach (var postId in postIds)
+                _context.PostTags.Add(new PostTag { PostId = postId, TagId = tagId });
+
+            await _context.SaveChangesAsync();
+        }
     }
 
     public class CreateActivityDto
@@ -404,6 +513,7 @@ namespace TouristGuide.Api.Controllers
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public uint? PostId { get; set; }
+        public List<uint>? PostIds { get; set; }
         /// <summary>true = eksplicitno odvezi od lokacije (standalone)</summary>
         public bool ClearPost { get; set; } = false;
     }

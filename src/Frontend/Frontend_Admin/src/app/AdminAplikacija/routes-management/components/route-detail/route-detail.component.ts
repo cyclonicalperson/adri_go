@@ -1,6 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { RouteStatus, TouristRoute } from '@core/models/route.model';
 import { Review } from '@core/models/review.model';
 import { RouteService } from '@core/services/route.service';
@@ -35,6 +36,7 @@ export class RouteDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private routeService: RouteService,
+    private auth: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -156,6 +158,17 @@ export class RouteDetailComponent implements OnInit {
     }
   }
 
+  get canManageRoute(): boolean {
+    const route = this.routeData;
+    if (!route) return false;
+
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.routeScopeRegionId(route)) &&
+        route.createdBy === this.auth.currentUser?.userId
+      );
+  }
+
   formatDuration(minutes: number): string {
     if (!minutes) return '-';
     if (minutes < 60) return `${minutes} min`;
@@ -170,12 +183,12 @@ export class RouteDetailComponent implements OnInit {
   }
 
   goEdit(): void {
-    if (!this.routeData) return;
+    if (!this.routeData || !this.canManageRoute) return;
     void this.router.navigate(['/admin/routes-management', this.routeData.routeId, 'edit']);
   }
 
   confirmApprove(): void {
-    if (!this.routeData || this.routeData.status !== 'draft') return;
+    if (!this.routeData || this.routeData.status !== 'draft' || !this.canManageRoute) return;
     this.showApproveDialog = true;
   }
 
@@ -184,7 +197,7 @@ export class RouteDetailComponent implements OnInit {
   }
 
   doApprove(): void {
-    if (!this.routeData) return;
+    if (!this.routeData || !this.canManageRoute) return;
 
     this.routeService.update(this.routeData.routeId, { status: 'published' }).subscribe(res => {
       this.routeData = res.data;
@@ -193,7 +206,7 @@ export class RouteDetailComponent implements OnInit {
   }
 
   confirmReject(): void {
-    if (!this.routeData || this.routeData.status !== 'draft') return;
+    if (!this.routeData || this.routeData.status !== 'draft' || !this.canManageRoute) return;
     this.showRejectDialog = true;
   }
 
@@ -202,7 +215,7 @@ export class RouteDetailComponent implements OnInit {
   }
 
   doReject(): void {
-    if (!this.routeData) return;
+    if (!this.routeData || !this.canManageRoute) return;
 
     this.routeService.update(this.routeData.routeId, { status: 'archived' }).subscribe(res => {
       this.routeData = res.data;
@@ -211,6 +224,7 @@ export class RouteDetailComponent implements OnInit {
   }
 
   confirmDelete(): void {
+    if (!this.canManageRoute) return;
     this.showDeleteDialog = true;
   }
 
@@ -219,7 +233,7 @@ export class RouteDetailComponent implements OnInit {
   }
 
   doDelete(): void {
-    if (!this.routeData) return;
+    if (!this.routeData || !this.canManageRoute) return;
 
     this.routeService.delete(this.routeData.routeId).subscribe(() => {
       void this.router.navigate(['/admin/routes-management']);
@@ -237,5 +251,14 @@ export class RouteDetailComponent implements OnInit {
       default:
         return 'Nepoznato';
     }
+  }
+
+  private routeScopeRegionId(route: TouristRoute): number | undefined {
+    if (route.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = route.regionId ?? route.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

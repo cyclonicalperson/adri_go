@@ -24,6 +24,7 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? type,
+            [FromQuery] string? country,
             [FromQuery] bool? isActive,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
@@ -34,6 +35,11 @@ namespace TouristGuide.Api.Controllers
                 query = query.Where(r => r.Name.Contains(search));
             if (!string.IsNullOrWhiteSpace(type))
                 query = query.Where(r => r.Type == type);
+            if (!string.IsNullOrWhiteSpace(country))
+            {
+                var normalizedCountry = country.Trim().ToLower();
+                query = query.Where(r => r.Country.ToLower() == normalizedCountry);
+            }
             if (isActive.HasValue)
                 query = query.Where(r => r.IsActive == isActive.Value);
 
@@ -343,6 +349,42 @@ namespace TouristGuide.Api.Controllers
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
+        }
+    }
+
+    // =========================================================================
+    // PUBLIC STATS — /api/public-stats
+    // Anonimu dostupne platformske statistike za login stranicu
+    // =========================================================================
+
+    [ApiController]
+    [Route("api/public-stats")]
+    public class PublicStatsController : ControllerBase
+    {
+        private readonly AppDbContext _db;
+        public PublicStatsController(AppDbContext db) { _db = db; }
+
+        // GET /api/public-stats
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicStats()
+        {
+            var totalLocations = await _db.Posts
+                .CountAsync(p => p.Status == "published" && p.PostType != "event");
+
+            var totalRegions = await _db.Regions.CountAsync();
+
+            var avgRating = await _db.Reviews
+                .Where(r => r.Status == "APPROVED" && r.Rating > 0)
+                .AverageAsync(r => (double?)r.Rating) ?? 0.0;
+
+            return Ok(new
+            {
+                totalLocations,
+                totalRegions,
+                avgRating = Math.Round(avgRating, 1),
+                success = true
+            });
         }
     }
 }

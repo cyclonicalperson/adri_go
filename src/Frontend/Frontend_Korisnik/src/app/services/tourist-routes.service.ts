@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { PlannerStop } from './route-planner.service';
 
 export interface TouristRouteWaypoint {
   lat: number;
@@ -19,6 +20,9 @@ export interface TouristRouteItem {
   elevationGainM?: number;
   regionName?: string | null;
   createdAt?: string;
+  images?: string | string[];
+  viewCount?: number;
+  saveCount?: number;
   waypoints: TouristRouteWaypoint[];
 }
 
@@ -44,6 +48,25 @@ export class TouristRoutesService {
     );
   }
 
+  getRouteById(id: number): Observable<TouristRouteItem | null> {
+    return this.http.get<any>(`${this.url}/${id}`).pipe(
+      map(res => (res?.data ? this.normalize(res.data) : null)),
+    );
+  }
+
+  // Curated route waypoints become synthetic planner stops. Negative ids keep
+  // them out of post-only flows (e.g. the calendar stop-loop filters id > 0).
+  routeToPlannerStops(route: TouristRouteItem): PlannerStop[] {
+    return route.waypoints.map((point, index) => ({
+      id: -(route.id * 1000 + index + 1),
+      title: point.name || `${route.name} ${index + 1}`,
+      postType: 'route',
+      lat: point.lat,
+      lng: point.lng,
+      regionName: route.regionName ?? undefined,
+    }));
+  }
+
   private normalize(item: any): TouristRouteItem {
     const waypoints = this.parseWaypoints(item.waypoints);
     return {
@@ -56,6 +79,9 @@ export class TouristRoutesService {
       elevationGainM: item.elevationGainM ?? item.elevationGain ?? null,
       regionName: item.region?.name ?? item.regionName ?? null,
       createdAt: item.createdAt,
+      images: item.images ?? [],
+      viewCount: Number(item.viewCount ?? 0),
+      saveCount: Number(item.saveCount ?? 0),
       waypoints,
     };
   }

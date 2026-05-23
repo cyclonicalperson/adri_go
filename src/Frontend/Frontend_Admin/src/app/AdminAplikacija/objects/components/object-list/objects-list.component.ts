@@ -10,9 +10,10 @@ import { Region } from '@core/models/region.model';
 import { PageRequest } from '@core/models/api-response.model';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
 import { TruncatePipe } from '@shared/pipes/truncate.pipe';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 interface ObjectsListState {
-  req?: Partial<PageRequest & { category?: string; regionId?: number; status?: string }>;
+  req?: Partial<PageRequest & { category?: string; country?: string; regionId?: number; status?: string }>;
   activeStatusFilter?: string;
 }
 
@@ -36,7 +37,9 @@ export class ObjectsListComponent implements OnInit {
   inactiveCount = 0;
   globalTotal = 0;
 
-  req: PageRequest & { category?: string; regionId?: number; status?: string } = {
+  readonly countries = WORLD_COUNTRIES;
+
+  req: PageRequest & { category?: string; country?: string; regionId?: number; status?: string } = {
     page: 1,
     pageSize: 10,
     sortBy: 'createdAt',
@@ -64,6 +67,18 @@ export class ObjectsListComponent implements OnInit {
 
   get canManageObjects(): boolean {
     return this.auth.hasPermission('manage_own_posts');
+  }
+
+  get canCreateObjects(): boolean {
+    return this.canManageObjects;
+  }
+
+  canEditObject(objectItem: TouristObject): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.objectScopeRegionId(objectItem)) &&
+        objectItem.createdBy === this.auth.currentUser?.userId
+      );
   }
 
   private recomputeGlobalTotal(): void {
@@ -116,6 +131,22 @@ export class ObjectsListComponent implements OnInit {
     this.load();
   }
 
+  onCountryChange(country: string): void {
+    const nextCountry = country || undefined;
+    const selectedRegion = this.regions.find(region => region.regionId === this.req.regionId);
+    this.req = {
+      ...this.req,
+      country: nextCountry,
+      regionId: selectedRegion && nextCountry && selectedRegion.country !== nextCountry ? undefined : this.req.regionId,
+      page: 1,
+    };
+    this.load();
+  }
+
+  get filteredRegions(): Region[] {
+    return this.req.country ? this.regions.filter(region => region.country === this.req.country) : this.regions;
+  }
+
   onStatusFilter(val: string): void {
     this.activeStatusFilter = val;
     const statusMap: Record<string, string> = {
@@ -148,10 +179,12 @@ export class ObjectsListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateObjects) return;
     this.router.navigate(['/admin/lokacije/new']);
   }
 
   goEdit(objectItem: TouristObject): void {
+    if (!this.canEditObject(objectItem)) return;
     this.router.navigate(['/admin/lokacije', objectItem.objectId, 'edit']);
   }
 
@@ -170,6 +203,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   confirmDelete(objectItem: TouristObject): void {
+    if (!this.canEditObject(objectItem)) return;
     this.deleteTarget = objectItem;
   }
 
@@ -190,7 +224,7 @@ export class ObjectsListComponent implements OnInit {
   rejectTarget: TouristObject | null = null;
 
   confirmApprove(objectItem: TouristObject): void {
-    if (this.objectStatus(objectItem) === 'draft') {
+    if (this.objectStatus(objectItem) === 'draft' && this.canEditObject(objectItem)) {
       this.approveTarget = objectItem;
     }
   }
@@ -213,7 +247,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   confirmReject(objectItem: TouristObject): void {
-    if (this.objectStatus(objectItem) === 'draft') {
+    if (this.objectStatus(objectItem) === 'draft' && this.canEditObject(objectItem)) {
       this.rejectTarget = objectItem;
     }
   }
@@ -257,7 +291,7 @@ export class ObjectsListComponent implements OnInit {
         o.name,
         o.category,
         o.address || '—',
-        o.region?.name ?? o.destination?.name ?? '—',
+        o.region?.name ?? o.destination?.name ?? o.proposedRegionName ?? '—',
         o.latitude || '',
         o.longitude || '',
         o.averageRating != null ? o.averageRating.toFixed(1) : '—',
@@ -338,7 +372,7 @@ export class ObjectsListComponent implements OnInit {
   }
 
   ownerName(objectItem: TouristObject): string {
-    return objectItem.destination?.name ?? objectItem.region?.name ?? 'Sistem';
+    return objectItem.destination?.name ?? objectItem.region?.name ?? objectItem.proposedRegionName ?? 'Sistem';
   }
 
   objectStatus(objectItem: TouristObject): string {
@@ -364,6 +398,11 @@ export class ObjectsListComponent implements OnInit {
       req: this.req,
       activeStatusFilter: this.activeStatusFilter,
     });
+  }
+
+  private objectScopeRegionId(objectItem: TouristObject): number | undefined {
+    const regionId = objectItem.regionId ?? objectItem.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 
   private statusFilterFromApiStatus(status?: string): string {

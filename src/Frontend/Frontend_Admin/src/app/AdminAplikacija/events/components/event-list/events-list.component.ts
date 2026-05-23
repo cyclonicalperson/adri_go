@@ -13,6 +13,7 @@ import { TruncatePipe } from '@shared/pipes/truncate.pipe';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { MapComponent, MapMarker } from '@shared/components/map/map.component';
 import { EventCalendarComponent } from '../event-calendar/event-calendar.component';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 type ViewMode = 'table' | 'calendar';
 
@@ -25,6 +26,7 @@ type ViewMode = 'table' | 'calendar';
 export class EventsListComponent implements OnInit {
   events: Post[] = [];
   regions: Region[] = [];
+  readonly countries = WORLD_COUNTRIES;
   total = 0;
   globalTotal = 0;
   totalPages = 1;
@@ -45,6 +47,7 @@ export class EventsListComponent implements OnInit {
 
   req: PageRequest & {
     regionId?: number;
+    country?: string;
     status?: PostStatus;
     category?: string;
   } = { page: 1, pageSize: 10, sortBy: 'createdAt', sortDir: 'desc' };
@@ -92,7 +95,16 @@ export class EventsListComponent implements OnInit {
   }
 
   get canCreateEvents(): boolean {
-    return this.auth.hasPermission('create_event');
+    return this.auth.hasPermission('manage_own_posts') &&
+      this.auth.hasPermission('create_event');
+  }
+
+  canManageEvent(event: Post): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.eventScopeRegionId(event)) &&
+        event.adminId === this.auth.currentUser?.userId
+      );
   }
 
   private recomputeGlobalTotal(): void {
@@ -130,6 +142,7 @@ export class EventsListComponent implements OnInit {
       sortBy: this.req.sortBy,
       sortDir: this.req.sortDir,
       search: this.req.search,
+      country: this.req.country,
       regionId: this.req.regionId,
       status: this.req.status,
     }).subscribe({
@@ -215,6 +228,22 @@ export class EventsListComponent implements OnInit {
     this.load();
   }
 
+  onCountryChange(country: string): void {
+    const nextCountry = country || undefined;
+    const selectedRegion = this.regions.find(region => region.regionId === this.req.regionId);
+    this.req = {
+      ...this.req,
+      country: nextCountry,
+      regionId: selectedRegion && nextCountry && selectedRegion.country !== nextCountry ? undefined : this.req.regionId,
+      page: 1,
+    };
+    this.load();
+  }
+
+  get filteredRegions(): Region[] {
+    return this.req.country ? this.regions.filter(region => region.country === this.req.country) : this.regions;
+  }
+
   onStatusFilter(val: string): void {
     this.activeStatusFilter = val;
     this.req = { ...this.req, status: (val as PostStatus) || undefined, page: 1 };
@@ -239,14 +268,17 @@ export class EventsListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateEvents) return;
     this.router.navigate(['/admin/events/new']);
   }
 
   goEdit(e: Post): void {
+    if (!this.canManageEvent(e)) return;
     this.router.navigate(['/admin/events', e.postId, 'edit']);
   }
 
   confirmDelete(e: Post): void {
+    if (!this.canManageEvent(e)) return;
     this.deleteTarget = e;
   }
 
@@ -286,7 +318,7 @@ export class EventsListComponent implements OnInit {
   }
 
   doDelete(): void {
-    if (!this.deleteTarget) return;
+    if (!this.deleteTarget || !this.canManageEvent(this.deleteTarget)) return;
     this.postService.delete(this.deleteTarget.postId)
       .subscribe(() => {
         this.deleteTarget = null;
@@ -299,6 +331,7 @@ export class EventsListComponent implements OnInit {
   statusChangeValue: PostStatus | null = null;
 
   requestStatusChange(e: Post, status: PostStatus): void {
+    if (!this.canManageEvent(e)) return;
     this.statusChangeTarget = e;
     this.statusChangeValue = status;
   }
@@ -314,7 +347,7 @@ export class EventsListComponent implements OnInit {
     this.statusChangeTarget = null;
     this.statusChangeValue = null;
 
-    if (!event || !status) return;
+    if (!event || !status || !this.canManageEvent(event)) return;
 
     this.postService.update(event.postId, { status }).subscribe({
       next: () => {
@@ -430,5 +463,14 @@ export class EventsListComponent implements OnInit {
 
   postStatusLabel(status: PostStatus): string {
     return { published: '✅ Objavljeno', draft: '⏳ Na čekanju', archived: '📦 Arhivirano' }[status] ?? status;
+  }
+
+  private eventScopeRegionId(event: Post): number | undefined {
+    if (event.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = event.regionId ?? event.region?.regionId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

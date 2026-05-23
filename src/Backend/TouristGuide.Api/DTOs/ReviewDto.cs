@@ -7,6 +7,7 @@ namespace TouristGuide.Api.DTOs
         public string TouristName { get; set; } = string.Empty;
         public int Rating { get; set; }
         public string? Comment { get; set; }
+        public string Status { get; set; } = "APPROVED";
         public DateTime CreatedAt { get; set; }
     }
 }

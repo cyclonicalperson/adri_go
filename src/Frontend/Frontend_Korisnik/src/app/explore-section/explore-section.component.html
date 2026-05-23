@@ -1,27 +1,21 @@
 <div class="list-container">
 
   <!-- Header -->
-  <div class="header-bar">
-    <button class="back-btn" (click)="goBack()">
-      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <h1 class="header-title">{{ sectionLabel }}</h1>
-    <div class="header-actions">
-      <div class="sort-dropdown" *ngIf="hasSearched">
-        <button class="sort-btn" (click)="sortOpen = !sortOpen" [class.sort-btn-active]="sortOpen">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
-          Sort
-        </button>
-        <div class="sort-menu" *ngIf="sortOpen">
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'distance:asc'" (click)="onSort('distance:asc'); sortOpen=false">Nearest</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'createdAt:desc'" (click)="onSort('createdAt:desc'); sortOpen=false">Newest</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'title:asc'" (click)="onSort('title:asc'); sortOpen=false">Name A-Z</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'rating:desc'" (click)="onSort('rating:desc'); sortOpen=false">Rating</button>
-          <button class="sort-option" [class.sort-option-active]="sortValue === 'reviews:desc'" (click)="onSort('reviews:desc'); sortOpen=false">Reviews</button>
-        </div>
+  <app-header title="{{ sectionLabel }}">
+    <div class="sort-dropdown" *ngIf="hasSearched">
+      <button class="sort-btn" (click)="sortOpen = !sortOpen" [class.sort-btn-active]="sortOpen">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
+        Sort
+      </button>
+      <div class="sort-menu" *ngIf="sortOpen">
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'distance:asc'" (click)="onSort('distance:asc'); sortOpen=false">Nearest</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'createdAt:desc'" (click)="onSort('createdAt:desc'); sortOpen=false">Newest</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'title:asc'" (click)="onSort('title:asc'); sortOpen=false">Name A-Z</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'rating:desc'" (click)="onSort('rating:desc'); sortOpen=false">Rating</button>
+        <button class="sort-option" [class.sort-option-active]="sortValue === 'reviews:desc'" (click)="onSort('reviews:desc'); sortOpen=false">Reviews</button>
       </div>
     </div>
-  </div>
+  </app-header>
 
   <!-- Loading -->
   <div class="loading-state" *ngIf="isLoading">
@@ -87,13 +81,16 @@
             <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             {{ loc.likeCount }}
           </span>
-          <span class="info-item">
-            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
-            {{ loc.reviewCount }}
-          </span>
-        </div>
-        <div class="divider"></div>
-        <button class="view-details-btn">
+        <span class="info-item">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+          {{ loc.reviewCount }}
+        </span>
+      </div>
+      <div class="activity-tags-row" *ngIf="getActivityTags(loc).length > 0">
+        <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(loc)">{{ tag }}</span>
+      </div>
+      <div class="divider"></div>
+      <button class="view-details-btn">
           VIEW DETAILS
           <span class="arrow-icon">
             <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
@@ -140,18 +137,6 @@
         <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
       </span>
       <span class="footer-label">Calendar</span>
-    </button>
-    <button class="footer-btn" (click)="router.navigate(['/activities'])">
-      <span class="footer-icon">
-        <svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-      </span>
-      <span class="footer-label">Activities</span>
-    </button>
-    <button class="footer-btn" (click)="router.navigate(['/routes'])">
-      <span class="footer-icon">
-        <svg viewBox="0 0 24 24"><path d="M9 20.42l-6-2.11V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39l4-1.4V7.14l-4 1.4v9.49zm-5-1.13l3 1.06V8.54L5 7.48v9.42zm11-.27l3 1.06V8.27l-3-1.06v9.42z"/></svg>
-      </span>
-      <span class="footer-label">Routes</span>
     </button>
     <button class="footer-btn" (click)="router.navigate(['/account'])">
       <span class="footer-icon">

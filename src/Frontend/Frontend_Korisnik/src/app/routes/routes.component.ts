@@ -4,13 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 type RouteSort = 'created-desc' | 'distance-asc' | 'distance-desc' | 'duration-asc' | 'name-asc';
 
 @Component({
   selector: 'app-routes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './routes.component.html',
   styleUrls: ['./routes.component.css'],
 })
@@ -67,15 +68,8 @@ export class RoutesComponent implements OnInit {
     if (route.waypoints.length === 0) return;
 
     this.routePlanner.replaceStops(
-      route.waypoints.map((point, index) => ({
-        id: -(route.id * 1000 + index + 1),
-        title: point.name || `${route.name} ${index + 1}`,
-        postType: 'route',
-        lat: point.lat,
-        lng: point.lng,
-        regionName: route.regionName ?? undefined,
-      })),
-      { plannerMode: true, scenicMode: false, travelMode: 'walking' },
+      this.routesService.routeToPlannerStops(route),
+      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
     );
     this.router.navigate(['/map-home']);
   }

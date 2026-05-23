@@ -1,9 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
 import { DestinationService } from '@core/services/destination.service';
 import { DestinationType } from '@core/models/destination.model';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 @Component({
   selector: 'app-destination-form',
@@ -19,6 +21,7 @@ export class DestinationFormComponent implements OnInit {
   id: number | null = null;
   saving = false;
   error: string | null = null;
+  readonly countries = WORLD_COUNTRIES;
 
   readonly typeOptions: { value: DestinationType; label: string }[] = [
     { value: 'CITY', label: 'Grad' },
@@ -34,6 +37,7 @@ export class DestinationFormComponent implements OnInit {
     private service: DestinationService,
     private route: ActivatedRoute,
     private router: Router,
+    private auth: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -41,7 +45,7 @@ export class DestinationFormComponent implements OnInit {
       name: ['', Validators.required],
       type: ['CITY', Validators.required],
       description: ['', Validators.required],
-      country: ['Montenegro', Validators.required],
+      country: [DEFAULT_COUNTRY, Validators.required],
       latitude: [null, [Validators.required, Validators.min(-90), Validators.max(90)]],
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
     });
@@ -49,19 +53,26 @@ export class DestinationFormComponent implements OnInit {
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
-    if (this.isEdit) {
-      this.service.getById(this.id!).subscribe((res: { data: any; }) => {
-        const d = res.data;
-        this.form.patchValue({
-          name: d.name,
-          type: d.type,
-          description: d.description,
-          country: d.country ?? 'Montenegro',
-          latitude: d.latitude,
-          longitude: d.longitude,
+    this.auth.ensurePermissionsLoaded().subscribe(() => {
+      if (!this.canManageDestinations) {
+        this.router.navigate([this.canManageContent && !this.isEdit ? '/admin/lokacije/new' : '/admin/lokacije']);
+        return;
+      }
+
+      if (this.isEdit) {
+        this.service.getById(this.id!).subscribe((res: { data: any; }) => {
+          const d = res.data;
+          this.form.patchValue({
+            name: d.name,
+            type: d.type,
+            description: d.description,
+            country: d.country ?? DEFAULT_COUNTRY,
+            latitude: d.latitude,
+            longitude: d.longitude,
+          });
         });
-      });
-    }
+      }
+    });
   }
 
   onMapClick(ev: MapClickEvent): void {
@@ -71,7 +82,20 @@ export class DestinationFormComponent implements OnInit {
   get lat(): number { return this.form.get('latitude')?.value ?? 43.85; }
   get lng(): number { return this.form.get('longitude')?.value ?? 18.41; }
 
+  get canManageDestinations(): boolean {
+    return this.auth.isSuperAdmin;
+  }
+
+  get canManageContent(): boolean {
+    return this.auth.hasPermissionInAnyScope('manage_own_posts');
+  }
+
   submit(): void {
+    if (!this.canManageDestinations) {
+      this.router.navigate([this.canManageContent && !this.isEdit ? '/admin/lokacije/new' : '/admin/lokacije']);
+      return;
+    }
+
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving = true;
     this.error = null;

@@ -16,6 +16,15 @@ namespace TouristGuide.Api.Models
         [Column("region_id")]
         public uint? RegionId { get; set; }
 
+        [Column("proposed_region_name")]
+        [MaxLength(200)]
+        public string? ProposedRegionName { get; set; }
+
+        [Required]
+        [Column("country")]
+        [MaxLength(100)]
+        public string Country { get; set; } = "Montenegro";
+
         [Required]
         [Column("title")]
         [MaxLength(300)]

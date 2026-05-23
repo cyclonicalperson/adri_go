@@ -57,9 +57,16 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
+    <select class="filter-select" [value]="req.country ?? ''" (change)="onCountryChange($any($event.target).value)">
+      <option value="">Sve drzave</option>
+      @for (country of countries; track country) {
+      <option [value]="country">{{ country }}</option>
+      }
+    </select>
+
     <select class="filter-select" (change)="onRegionChange($any($event.target).value)">
       <option value="">Svi regioni</option>
-      @for (r of regions; track r.regionId) {
+      @for (r of filteredRegions; track r.regionId) {
       <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
@@ -142,7 +149,7 @@
           </td>
           <td>
             <span class="badge" [class]="postStatusBadgeClass(e.status)">{{ postStatusLabel(e.status) }}</span>
-            @if (e.status === 'draft' && canManageEvents) {
+            @if (e.status === 'draft' && canManageEvent(e)) {
             <div style="margin-top:6px;display:flex;gap:6px">
               <button class="btn-icon approve-btn" title="Odobri" (click)="setEventStatus(e, 'published')">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="setEventStatus(e, 'archived')">❌</button>
@@ -174,7 +181,7 @@
             <div class="actions">
               <button class="btn-icon map-btn" title="Mapa" (click)="showOnMap(e)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="openDetail(e)">👁️</button>
-              @if (canManageEvents) {
+              @if (canManageEvent(e)) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(e)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(e)">🗑️</button>
               }
@@ -272,7 +279,7 @@
 
     <div class="modal-footer">
       <button class="btn btn-outline" (click)="closeDetail()">Zatvori</button>
-      @if (canManageEvents) {
+      @if (canManageEvent(detailEvent)) {
       <button class="btn btn-primary" (click)="goEdit(detailEvent); closeDetail()">✏️ Izmeni</button>
       }
     </div>

@@ -30,6 +30,13 @@ namespace TouristGuide.Api.DTOs
         public bool IsIndividual { get; set; }
         public string? ProfileImage { get; set; }
         public List<string> Permissions { get; set; } = new();
+        public List<AuthenticatedPermissionGrantDto> PermissionGrants { get; set; } = new();
+    }
+
+    public class AuthenticatedPermissionGrantDto
+    {
+        public string Code { get; set; } = string.Empty;
+        public uint? RegionId { get; set; }
     }
 
     /// <summary>
@@ -89,6 +96,7 @@ namespace TouristGuide.Api.DTOs
         public uint Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? PendingEmail { get; set; }
         public string Language { get; set; } = string.Empty;
         public string? Bio { get; set; }
         public string? Location { get; set; }
@@ -120,6 +128,10 @@ namespace TouristGuide.Api.DTOs
     {
         [MaxLength(200)]
         public string? Name { get; set; }
+
+        [EmailAddress]
+        [MaxLength(255)]
+        public string? Email { get; set; }
 
         [MaxLength(5)]
         public string? Language { get; set; }

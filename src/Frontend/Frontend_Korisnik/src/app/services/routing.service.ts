@@ -30,6 +30,7 @@ export type RouteViewportMode = 'mobile' | 'desktop';
 
 export interface RouteComputeOptions {
   viewport?: RouteViewportMode;
+  allowFallback?: boolean;
 }
 
 export interface ExternalNavigationLink {
@@ -37,6 +38,18 @@ export interface ExternalNavigationLink {
   label: string;
   url: string;
   primary?: boolean;
+}
+
+export class RoutingUnavailableError extends Error {
+  override name = 'RoutingUnavailableError';
+}
+
+export class RouteNotRoutableError extends Error {
+  override name = 'RouteNotRoutableError';
+}
+
+export function isRoutingUnavailableError(error: unknown): boolean {
+  return error instanceof RoutingUnavailableError;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -70,7 +83,11 @@ export class RoutingService {
       const liveRoute = await this.fetchLiveRoute(coordinates, travelMode);
       this.routeCache.set(cacheKey, { route: liveRoute, storedAt: Date.now() });
       return this.normalizeForViewport(liveRoute, options.viewport);
-    } catch {
+    } catch (error) {
+      if (options.allowFallback === false) {
+        throw error;
+      }
+
       const distanceKm = this.estimateStraightDistanceKm(coordinates);
       const fallbackRoute: ComputedRoute = {
         geometry: [...coordinates],
@@ -246,6 +263,8 @@ export class RoutingService {
     travelMode: TravelMode,
   ): Promise<ComputedRoute> {
     let lastError: Error | null = null;
+    let unavailableError: RoutingUnavailableError | null = null;
+    let notRoutableError: RouteNotRoutableError | null = null;
     const profiles = this.resolveRoutingProfiles(travelMode);
     const primaryProfileCount = travelMode === 'driving' ? profiles.length : 1;
     const primaryProfiles = profiles.slice(0, primaryProfileCount);
@@ -255,7 +274,10 @@ export class RoutingService {
       try {
         const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile));
         if (data?.code && data.code !== 'Ok') {
-          lastError = new Error(`OSRM route failed with code ${data.code}.`);
+          lastError = this.buildRouteFailure(data.code);
+          if (lastError instanceof RouteNotRoutableError) {
+            notRoutableError = lastError;
+          }
           continue;
         }
         const route = data?.routes?.[0];
@@ -276,6 +298,11 @@ export class RoutingService {
         return { geometry, distanceKm, durationMin, usedFallback: false };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Failed to fetch route.');
+        if (lastError instanceof RoutingUnavailableError) {
+          unavailableError = lastError;
+        } else if (lastError instanceof RouteNotRoutableError) {
+          notRoutableError = lastError;
+        }
       }
     }
 
@@ -289,6 +316,11 @@ export class RoutingService {
         return await this.fetchRouteForProfile(coordinates, profile);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Failed to fetch route.');
+        if (lastError instanceof RoutingUnavailableError) {
+          unavailableError = lastError;
+        } else if (lastError instanceof RouteNotRoutableError) {
+          notRoutableError = lastError;
+        }
       }
     }
 
@@ -297,7 +329,7 @@ export class RoutingService {
       return segmentedRoute;
     }
 
-    throw lastError ?? new Error('No routing profiles succeeded.');
+    throw unavailableError ?? notRoutableError ?? lastError ?? new Error('No routing profiles succeeded.');
   }
 
   private async fetchSegmentedRoute(
@@ -353,7 +385,7 @@ export class RoutingService {
   private async fetchRouteForProfile(coordinates: [number, number][], profile: string): Promise<ComputedRoute> {
     const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile));
     if (data?.code && data.code !== 'Ok') {
-      throw new Error(`OSRM route failed with code ${data.code}.`);
+      throw this.buildRouteFailure(data.code);
     }
 
     const route = data?.routes?.[0];
@@ -373,17 +405,38 @@ export class RoutingService {
 
   private async fetchJsonWithTimeout(url: string): Promise<any> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, this.requestTimeoutMs);
 
     try {
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
+        if (response.status >= 500) {
+          throw new RoutingUnavailableError(`Routing server returned status ${response.status}.`);
+        }
         throw new Error(`OSRM request failed with status ${response.status}.`);
       }
       return await response.json();
+    } catch (error) {
+      const errorName = error instanceof DOMException || error instanceof Error ? error.name : '';
+      if (timedOut || errorName === 'AbortError' || error instanceof TypeError) {
+        throw new RoutingUnavailableError('Routing server is unavailable.');
+      }
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  private buildRouteFailure(code: string): Error {
+    if (code === 'NoRoute' || code === 'NoSegment') {
+      return new RouteNotRoutableError(`OSRM route failed with code ${code}.`);
+    }
+
+    return new Error(`OSRM route failed with code ${code}.`);
   }
 
   private buildInstruction(step: any): string {

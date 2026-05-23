@@ -11,6 +11,7 @@ import { Location } from './location.service';
 export interface UserProfile {
   fullName: string;
   emailOrPhone: string;
+  pendingEmail?: string | null;
   profilePic?: string;
   language: string;
   bio?: string;
@@ -25,6 +26,7 @@ export interface UserProfile {
 
 export interface UpdateProfilePayload {
   name?: string;
+  email?: string;
   language?: string;
   bio?: string;
   location?: string;
@@ -34,7 +36,9 @@ export interface UpdateProfilePayload {
 
 export interface CalendarItem {
   id: number;
-  postId: number;
+  postId: number | null;
+  routeId?: number | null;
+  touristRouteId?: number | null;
   title: string;
   postType: string;
   address: string;
@@ -54,6 +58,30 @@ export interface MyReviewItem {
   createdAt: string;
   status: string;
 }
+export interface TouristRouteWaypoint {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+export interface TouristRouteDetails {
+  id: number;
+  title: string;
+  waypoints: TouristRouteWaypoint[];
+  travelMode: string;
+  scenicMode: boolean;
+}
+
+export interface PrivateRouteCalendarPayload {
+  touristRouteId?: number;
+  title?: string;
+  waypoints?: string;
+  travelMode?: string;
+  scenicMode?: boolean;
+  distanceKm?: number;
+  durationMin?: number;
+  scheduledAt: string;
+}
 
 export interface CalendarMutationResult {
   message: string;
@@ -63,6 +91,46 @@ export interface CalendarMutationResult {
   alreadyCount?: number;
   savedTripId?: string;
 }
+
+export interface CalendarSchedulePayload {
+  scheduledAt?: string | null;
+}
+
+/**
+ * Describes an item the user wants to place on the calendar. It is handed to
+ * the Calendar page (via router state) so the user can pick the day/time there
+ * instead of using an inline date picker.
+ */
+export interface PendingScheduleBase {
+  title: string;
+  imageUrl?: string | null;
+  address?: string | null;
+}
+
+export interface PendingPostSchedule extends PendingScheduleBase {
+  kind: 'post';
+  postId: number;
+  postType: string;
+  isEvent: boolean;
+  /** ISO start/end of the event — when set, scheduling is limited to this range. */
+  eventStart?: string | null;
+  eventEnd?: string | null;
+}
+
+export interface PendingCuratedRouteSchedule extends PendingScheduleBase {
+  kind: 'curatedRoute';
+  routeId: number;
+}
+
+export interface PendingPrivateRouteSchedule extends PendingScheduleBase {
+  kind: 'privateRoute';
+  privateRoute: Omit<PrivateRouteCalendarPayload, 'scheduledAt'>;
+}
+
+export type PendingSchedule =
+  | PendingPostSchedule
+  | PendingCuratedRouteSchedule
+  | PendingPrivateRouteSchedule;
 
 export interface PostTypePreference {
   postType: string;
@@ -102,6 +170,7 @@ interface TouristProfileResponse {
   id: number;
   name: string;
   email: string;
+  pendingEmail?: string | null;
   language: string;
   bio?: string | null;
   location?: string | null;
@@ -160,19 +229,65 @@ export class UserService {
       .pipe(map(res => Array.isArray(res?.data) ? res.data : []));
   }
 
-  addToCalendar(postId: number): Observable<any> {
+  addToCalendar(postId: number, schedule?: CalendarSchedulePayload): Observable<any> {
     if (!this.authService.isLoggedIn) {
       return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
-    return this.http.post(`${this.authApiUrl}/calendar/${postId}`, {});
+    return this.http.post(`${this.authApiUrl}/calendar/${postId}`, schedule ?? {});
   }
 
-  addLocationToCalendar(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }): Observable<CalendarMutationResult> {
+  addRouteToCalendar(routeId: number, schedule?: CalendarSchedulePayload): Observable<any> {
+    if (!this.authService.isLoggedIn) {
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
+    }
+
+    return this.http.post(`${this.authApiUrl}/calendar/route/${routeId}`, schedule ?? {});
+  }
+
+  addPrivateRouteToCalendar(payload: PrivateRouteCalendarPayload): Observable<any> {
+    if (!this.authService.isLoggedIn) {
+      return throwError(() => ({ status: 401, message: 'Login required.' }));
+    }
+
+    return this.http.post(`${this.authApiUrl}/calendar/tourist-route`, payload);
+  }
+
+  getTouristRoute(id: number): Observable<TouristRouteDetails | null> {
+    if (!this.authService.isLoggedIn) {
+      return of(null);
+    }
+
+    return this.http.get<any>(`${this.authApiUrl}/tourist-routes/${id}`).pipe(
+      map(res => {
+        if (!res) return null;
+        let waypoints: TouristRouteWaypoint[] = [];
+        try {
+          const parsed = typeof res.waypoints === 'string' ? JSON.parse(res.waypoints) : res.waypoints;
+          waypoints = (Array.isArray(parsed) ? parsed : [])
+            .map((p: any) => ({ lat: Number(p.lat ?? p.latitude), lng: Number(p.lng ?? p.longitude), name: p.name ?? '' }))
+            .filter((p: TouristRouteWaypoint) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+        } catch {
+          waypoints = [];
+        }
+        return {
+          id: Number(res.id),
+          title: res.title ?? '',
+          waypoints,
+          travelMode: res.travelMode ?? 'driving',
+          scenicMode: !!res.scenicMode,
+        };
+      }),
+    );
+  }
+
+  addLocationToCalendar(location: Pick<Location, 'id' | 'title' | 'postType' | 'address' | 'regionName' | 'images'> & { imageUrl?: string | null }, schedule?: CalendarSchedulePayload): Observable<CalendarMutationResult> {
     if (this.authService.isLoggedIn) {
-      return this.http.post<any>(`${this.authApiUrl}/calendar/${location.id}`, {}).pipe(
+      return this.http.post<any>(`${this.authApiUrl}/calendar/${location.id}`, schedule ?? {}).pipe(
         map(res => ({
-          message: res?.alreadyAdded
+          message: res?.updated
+            ? 'Calendar date updated.'
+            : res?.alreadyAdded
             ? 'Already in your server-synced calendar.'
             : 'Added to your server-synced calendar.',
           alreadyAdded: !!res?.alreadyAdded,
@@ -186,8 +301,8 @@ export class UserService {
 
   saveTripToCalendar(
     stops: PlannerStop[],
-    routeSummary: RouteSummary,
-    options: {
+    _routeSummary: RouteSummary,
+    _options: {
       title: string;
       travelMode: TravelMode;
       scenicMode: boolean;
@@ -216,13 +331,10 @@ export class UserService {
       map(results => {
         const addedCount = results.filter(result => !result.failed && !result.alreadyAdded).length;
         const alreadyCount = results.filter(result => result.alreadyAdded).length;
-        const suffix = options.emailNotifications
-          ? ' A summary will also appear in your email digest.'
-          : '';
 
         return {
           message: addedCount > 0
-            ? `${addedCount} stop(s) added to your calendar.${suffix}`
+            ? `${addedCount} stop(s) added to your calendar.`
             : alreadyCount > 0
               ? 'These stops are already in your calendar.'
               : 'We could not save this trip to the calendar.',
@@ -246,18 +358,19 @@ export class UserService {
       .pipe(map(res => res?.data ?? null));
   }
 
-  removeFromCalendar(postId: number, plannerItemId?: number): Observable<any> {
+  removeCalendarItem(plannerItemId: number): Observable<any> {
     if (!this.authService.isLoggedIn) {
       return throwError(() => ({ status: 401, message: 'Login required.' }));
     }
 
-    return this.http.delete(`${this.authApiUrl}/calendar/${postId}`);
+    return this.http.delete(`${this.authApiUrl}/calendar/item/${plannerItemId}`);
   }
 
   private mapProfile(profile: TouristProfileResponse): UserProfile {
     return {
       fullName: profile?.name ?? '',
       emailOrPhone: profile?.email ?? '',
+      pendingEmail: profile?.pendingEmail ?? null,
       profilePic: profile?.profileImage ?? undefined,
       language: profile?.language ?? 'en',
       bio: profile?.bio ?? '',

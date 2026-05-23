@@ -8,11 +8,12 @@ import { Location, LocationService } from '../services/location.service';
 import { RecommendationService } from '../services/recommendation.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-explore-section',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './explore-section.component.html',
   styleUrls: ['./explore-section.component.css']
 })
@@ -180,6 +181,18 @@ export class ExploreSectionComponent implements OnInit {
   goToLogin(): void { this.router.navigate(['/login']); }
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
   formatPostType(type?: string | null): string { return formatPostType(type); }
+
+  getActivityTags(loc: Partial<Location>, limit = 3): string[] {
+    const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? [];
+    const tags = Array.isArray(rawTags)
+      ? rawTags
+      : String(rawTags || '').split(/[;,]/);
+
+    return Array.from(new Set(tags
+      .map(tag => String(tag).trim())
+      .filter(Boolean)))
+      .slice(0, limit);
+  }
 
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
     if (!loc?.images) return 'assets/placeholder.jpg';

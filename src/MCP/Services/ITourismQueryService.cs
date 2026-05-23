@@ -1,4 +1,4 @@
-using Mcp.Dtos;
+using TouristGuide.Ai.Contracts;
 
 namespace Mcp.Services;
 
@@ -23,12 +23,8 @@ internal interface ITourismQueryService
     Task<IReadOnlyList<TagSummary>> SearchTagsAsync(SearchTagsRequest request, CancellationToken cancellationToken);
 
     // ── Analitika ─────────────────────────────────────────────────────────────
-    Task<IReadOnlyList<PostAnalyticsSummary>> GetPostAnalyticsAsync(GetPostAnalyticsRequest request, CancellationToken cancellationToken);
-    Task<IReadOnlyList<PostAnalyticsSummary>> GetTopContentAsync(GetTopContentRequest request, CancellationToken cancellationToken);
 
     // ── Turisti ───────────────────────────────────────────────────────────────
-    Task<TouristStats> GetTouristStatsAsync(GetTouristStatsRequest request, CancellationToken cancellationToken);
-    Task<PagedResult<TouristSummary>> SearchTouristsAsync(SearchTouristsRequest request, CancellationToken cancellationToken);
 
     // ── Proximity / Preporuke ─────────────────────────────────────────────────
     Task<IReadOnlyList<PostSummary>> GetNearbyAsync(GetNearbyRequest request, CancellationToken cancellationToken);
@@ -44,7 +40,6 @@ internal interface ITourismQueryService
     Task<PagedResult<ReviewSummary>> GetRouteReviewsAsync(GetRouteReviewsRequest request, CancellationToken cancellationToken);
 
     // ── Analitika regija ─────────────────────────────────────────────────────────
-    Task<RegionAnalyticsSummary?> GetRegionAnalyticsAsync(GetRegionAnalyticsRequest request, CancellationToken cancellationToken);
 
     // ── Novi sadržaj ─────────────────────────────────────────────────────────────
     Task<IReadOnlyList<NewContentItem>> GetNewContentAsync(GetNewContentRequest request, CancellationToken cancellationToken);
@@ -69,4 +64,17 @@ internal interface ITourismQueryService
 
     // ── Analytics: zahtevi za pravac ─────────────────────────────────────────
     Task<IReadOnlyList<DirectionRequestSummary>> GetDirectionStatsAsync(GetDirectionStatsRequest request, CancellationToken cancellationToken);
+
+    // ── Top sadržaj (postovi + rute objedinjeno) ─────────────────────────────────
+    Task<IReadOnlyList<TopContentItem>> GetTopContentUnifiedAsync(GetTopContentUnifiedRequest request, CancellationToken cancellationToken);
+
+    // ── Name-resolution helperi (interno — koriste se u Tool sloju) ────────────────
+    /// <summary>Traži prvu aktivnu regiju čije ime sadrži zadati string (case-insensitive).</summary>
+    Task<uint?> ResolveRegionIdAsync(string regionName, CancellationToken cancellationToken);
+
+    /// <summary>Traži prvi objavljeni post čiji naslov sadrži zadati string (case-insensitive).</summary>
+    Task<ResolveEntityResult> ResolvePostAsync(string postName, CancellationToken cancellationToken);
+
+    /// <summary>Traži prvu objavljenu rutu čiji naziv sadrži zadati string (case-insensitive).</summary>
+    Task<ResolveEntityResult> ResolveRouteAsync(string routeName, CancellationToken cancellationToken);
 }

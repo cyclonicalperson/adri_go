@@ -20,6 +20,7 @@ namespace TouristGuide.Api.Data
         public DbSet<TermsAcceptance> TermsAcceptances { get; set; }
         public DbSet<AdminNotification> AdminNotifications { get; set; }
         public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
+        public DbSet<AdminSecret> AdminSecrets { get; set; }
 
         // Sadržaj
         public DbSet<Region> Regions { get; set; }
@@ -43,9 +44,11 @@ namespace TouristGuide.Api.Data
         // Planer
         public DbSet<VisitPlanner> VisitPlanners { get; set; }
         public DbSet<PlannerItem> PlannerItems { get; set; }
+        public DbSet<TouristRoute> TouristRoutes { get; set; }
 
         // Komunikacija
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<TouristNotificationPreference> TouristNotificationPreferences { get; set; }
         public DbSet<MailingList> MailingList { get; set; }
 
         // Analitika
@@ -210,6 +213,12 @@ namespace TouristGuide.Api.Data
                 .HasOne(l => l.PerformedByAdmin)
                 .WithMany()
                 .HasForeignKey(l => l.PerformedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AdminSecret>()
+                .HasOne(s => s.UpdatedByAdmin)
+                .WithMany()
+                .HasForeignKey(s => s.UpdatedBy)
                 .OnDelete(DeleteBehavior.SetNull);
 
             // ════════════════════════════════════════════════════════════════
@@ -433,6 +442,18 @@ namespace TouristGuide.Api.Data
                 .HasForeignKey(i => i.RouteId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<PlannerItem>()
+                .HasOne(i => i.TouristRoute)
+                .WithMany(r => r.PlannerItems)
+                .HasForeignKey(i => i.TouristRouteId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<TouristRoute>()
+                .HasOne(r => r.Tourist)
+                .WithMany()
+                .HasForeignKey(r => r.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // ════════════════════════════════════════════════════════════════
             //  Notification relacije
             // ════════════════════════════════════════════════════════════════
@@ -441,6 +462,16 @@ namespace TouristGuide.Api.Data
                 .HasOne(n => n.Tourist)
                 .WithMany(t => t.Notifications)
                 .HasForeignKey(n => n.TouristId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TouristNotificationPreference>()
+                .HasIndex(x => new { x.TouristId, x.NotificationType })
+                .IsUnique();
+
+            modelBuilder.Entity<TouristNotificationPreference>()
+                .HasOne(x => x.Tourist)
+                .WithMany(t => t.NotificationPreferences)
+                .HasForeignKey(x => x.TouristId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // ════════════════════════════════════════════════════════════════

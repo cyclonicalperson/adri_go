@@ -5,6 +5,10 @@ export interface UserPosition {
   lng: number;
 }
 
+type CachedUserPosition = UserPosition & {
+  timestamp: number;
+};
+
 interface StoredUserSettings {
   locationSharing?: boolean;
 }
@@ -17,6 +21,7 @@ interface StoredTouristPreferences {
 export class GeolocationService {
   private readonly SETTINGS_KEY = 'user_settings';
   private readonly PREFERENCES_KEY = 'adrigo_user_preferences_v2';
+  private lastKnownPosition: CachedUserPosition | null = null;
 
   isSupported(): boolean {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
@@ -46,6 +51,16 @@ export class GeolocationService {
     }
   }
 
+  getLastKnownPosition(maxAgeMs = 120000): UserPosition | null {
+    if (!this.lastKnownPosition) return null;
+    if (Date.now() - this.lastKnownPosition.timestamp > maxAgeMs) return null;
+
+    return {
+      lat: this.lastKnownPosition.lat,
+      lng: this.lastKnownPosition.lng,
+    };
+  }
+
   async requestCurrentPosition(options?: PositionOptions): Promise<UserPosition | null> {
     if (!this.isSupported()) {
       console.warn('Geolocation nije podržan u ovom browseru.');
@@ -73,7 +88,7 @@ export class GeolocationService {
     const tryGet = (opts: PositionOptions) =>
       new Promise<UserPosition | null>((resolve) => {
         navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          (pos) => resolve(this.rememberPosition(pos)),
           () => resolve(null),
           opts,
         );
@@ -107,13 +122,13 @@ export class GeolocationService {
     }
 
     const defaults: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 5000,
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 30000,
     };
 
     return navigator.geolocation.watchPosition(
-      (pos) => onPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => onPosition(this.rememberPosition(pos)),
       (error) => onError?.(error),
       { ...defaults, ...options },
     );
@@ -145,5 +160,18 @@ export class GeolocationService {
 
   private toRadians(value: number): number {
     return value * Math.PI / 180;
+  }
+
+  private rememberPosition(pos: GeolocationPosition): UserPosition {
+    this.lastKnownPosition = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      timestamp: Date.now(),
+    };
+
+    return {
+      lat: this.lastKnownPosition.lat,
+      lng: this.lastKnownPosition.lng,
+    };
   }
 }

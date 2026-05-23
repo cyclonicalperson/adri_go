@@ -1,11 +1,6 @@
 <div class="saved-container">
 
-  <div class="header">
-    <button class="back-btn" (click)="goBack()">
-      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <h1>Saved</h1>
-  </div>
+  <app-header title="Saved"></app-header>
 
   <div class="filter-scroll" *ngIf="!isLoading || savedItems.length > 0">
     <div class="chips-row">
@@ -82,6 +77,10 @@
               {{item.status}}
             </span>
             <span class="reviews">({{item.reviews}} reviews)</span>
+          </div>
+
+          <div class="activity-tags-row" *ngIf="getActivityTags(item).length > 0">
+            <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(item)">{{ tag }}</span>
           </div>
 
           <div class="divider"></div>

@@ -20,6 +20,7 @@ namespace TouristGuide.Api.Controllers
         private readonly AppDbContext _context;
         private readonly IReviewService _reviewService;
         private readonly AdminPermissionService _permissionService;
+        private readonly NotificationService _notificationService;
 
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
@@ -32,11 +33,16 @@ namespace TouristGuide.Api.Controllers
             "draft", "published", "archived"
         };
 
-        public PostsController(AppDbContext context, IReviewService reviewService, AdminPermissionService permissionService)
+        public PostsController(
+            AppDbContext context,
+            IReviewService reviewService,
+            AdminPermissionService permissionService,
+            NotificationService notificationService)
         {
             _context = context;
             _reviewService = reviewService;
             _permissionService = permissionService;
+            _notificationService = notificationService;
         }
 
         [HttpGet]
@@ -46,13 +52,14 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] string? type,
             [FromQuery] string? excludeType,
             [FromQuery] string? status,
+            [FromQuery] string? country,
             [FromQuery] string? sortBy,
             [FromQuery] string? sortDir,
             [FromQuery] string? search,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            var query = BuildFilteredPostsQuery(region_id, type, status, forcePublishedOnly: false, out var error);
+            var query = BuildFilteredPostsQuery(region_id, type, status, country, forcePublishedOnly: false, out var error);
             if (error is not null)
                 return error;
 
@@ -98,10 +105,11 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetPublic(
             [FromQuery] uint? region_id,
             [FromQuery] string? type,
+            [FromQuery] string? country,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            var query = BuildFilteredPostsQuery(region_id, type, "published", forcePublishedOnly: true, out var error);
+            var query = BuildFilteredPostsQuery(region_id, type, "published", country, forcePublishedOnly: true, out var error);
             if (error is not null)
                 return error;
 
@@ -115,20 +123,21 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] decimal? lat,
             [FromQuery] decimal? lng,
             [FromQuery] string? type,
+            [FromQuery] string? country,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
             var search = q?.Trim();
             if (string.IsNullOrWhiteSpace(search))
             {
-                var publicQuery = BuildFilteredPostsQuery(null, type, "published", forcePublishedOnly: true, out var publicError);
+                var publicQuery = BuildFilteredPostsQuery(null, type, "published", country, forcePublishedOnly: true, out var publicError);
                 if (publicError is not null)
                     return publicError;
 
                 return Ok(await BuildPagedPostsResponse(publicQuery!, page, pageSize));
             }
 
-            var query = BuildFilteredPostsQuery(null, type, "published", forcePublishedOnly: true, out var error);
+            var query = BuildFilteredPostsQuery(null, type, "published", country, forcePublishedOnly: true, out var error);
             if (error is not null)
                 return error;
 
@@ -245,7 +254,7 @@ namespace TouristGuide.Api.Controllers
                 .Where(r => r.PostId == id && r.Status == "APPROVED")
                 .AverageAsync(r => (decimal?)r.Rating);
 
-            return Ok(MapToDto(post, isLiked, isSaved, liveLikeCount, liveSaveCount, liveReviewCount, liveAvgRating));
+            return Ok(MapToDto(post, isLiked, isSaved, liveLikeCount, liveSaveCount, liveReviewCount, liveAvgRating, await CanSeePendingActivitiesAsync()));
         }
 
         [HttpGet("my-saved")]
@@ -273,8 +282,9 @@ namespace TouristGuide.Api.Controllers
                 .Select(l => l.PostId)
                 .ToListAsync());
 
+            var includePendingActivities = await CanSeePendingActivitiesAsync();
             var postsDto = savedItems
-                .Select(sp => MapToDto(sp.Post, isLiked: likedPostIds.Contains(sp.PostId), isSaved: true))
+                .Select(sp => MapToDto(sp.Post, isLiked: likedPostIds.Contains(sp.PostId), isSaved: true, includePendingActivities: includePendingActivities))
                 .ToList();
             return Ok(postsDto);
         }
@@ -287,9 +297,21 @@ namespace TouristGuide.Api.Controllers
             if (!result.PostExists)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
+            var touristId = GetAuthorizedTouristId();
+            var myReview = touristId.HasValue
+                ? await _context.Reviews
+                    .AsNoTracking()
+                    .Where(r => r.PostId == id && r.TouristId == touristId.Value)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Select(r => new { r.Id, r.Status })
+                    .FirstOrDefaultAsync()
+                : null;
+
             return Ok(new
             {
                 total = result.Reviews.Count,
+                myReviewStatus = myReview?.Status,
+                myReviewId = myReview?.Id,
                 data = result.Reviews
             });
         }
@@ -349,6 +371,13 @@ namespace TouristGuide.Api.Controllers
             if (!adminExists)
                 return BadRequest(new { message = $"Admin sa ID={dto.AdminId} ne postoji." });
 
+            var proposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
+            if (dto.RegionId.HasValue && proposedRegionName is not null)
+                return BadRequest(new { message = "Ne mozete istovremeno izabrati postojeci region i poslati predlog novog regiona." });
+
+            var hasRegionProposal = !dto.RegionId.HasValue && proposedRegionName is not null;
+            var country = await ResolveCountryForPostAsync(dto.Country, dto.RegionId);
+
             if (dto.RegionId.HasValue)
             {
                 var regionExists = await _context.Regions.AnyAsync(r => r.Id == dto.RegionId.Value);
@@ -356,14 +385,22 @@ namespace TouristGuide.Api.Controllers
                     return BadRequest(new { message = $"Region sa ID={dto.RegionId} ne postoji." });
             }
 
-            if (!await CanCreatePostAsync(postTypeLower, dto.RegionId))
+            if (statusLower == "published" && hasRegionProposal && !IsSuperAdmin())
+                return Forbid();
+
+            if (!await CanCreatePostAsync(postTypeLower, dto.RegionId, hasRegionProposal))
                 return Forbid();
 
             var now = DateTime.UtcNow;
+            var resolvedRegionId = statusLower == "published" && hasRegionProposal
+                ? await ResolveRegionProposalAsync(proposedRegionName!, country)
+                : dto.RegionId;
             var post = new Post
             {
                 AdminId = dto.AdminId,
-                RegionId = dto.RegionId,
+                RegionId = resolvedRegionId,
+                ProposedRegionName = resolvedRegionId.HasValue ? null : proposedRegionName,
+                Country = country,
                 Title = dto.Title.Trim(),
                 PostType = postTypeLower,
                 Description = dto.Description?.Trim(),
@@ -387,6 +424,11 @@ namespace TouristGuide.Api.Controllers
             if (dto.TagIds is not null)
                 await ReplacePostTagsAsync(post.Id, dto.TagIds);
 
+            if (hasRegionProposal && !resolvedRegionId.HasValue)
+                await NotifyRegionProposalAsync(proposedRegionName!, post);
+
+            await RecordHeatmapSampleForProposedLocationAsync(post);
+
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
             await _context.Entry(post).Collection(p => p.PostTags).Query().Include(pt => pt.Tag).LoadAsync();
@@ -394,7 +436,7 @@ namespace TouristGuide.Api.Controllers
             return CreatedAtAction(
                 nameof(GetById),
                 new { id = post.Id },
-                MapToDto(post)
+                MapToDto(post, includePendingActivities: await CanSeePendingActivitiesAsync())
             );
         }
 
@@ -450,13 +492,27 @@ namespace TouristGuide.Api.Controllers
             if (!await CanManagePostAsync(post))
                 return Forbid();
 
+            var previousProposedRegion = post.ProposedRegionName;
+            var nextProposedRegionName = NormalizeProposedRegionName(dto.ProposedRegionName);
+            if (dto.RegionId.HasValue && nextProposedRegionName is not null)
+                return BadRequest(new { message = "Ne mozete istovremeno izabrati postojeci region i poslati predlog novog regiona." });
+
             if (dto.RegionId.HasValue)
             {
                 var regionExists = await _context.Regions.AnyAsync(r => r.Id == dto.RegionId.Value);
                 if (!regionExists)
                     return BadRequest(new { message = $"Region sa ID={dto.RegionId} ne postoji." });
                 post.RegionId = dto.RegionId.Value;
+                post.ProposedRegionName = null;
+                post.Country = await ResolveCountryForPostAsync(dto.Country, dto.RegionId.Value);
             }
+            else if (dto.ProposedRegionName is not null)
+            {
+                post.ProposedRegionName = nextProposedRegionName;
+            }
+
+            if (dto.Country is not null)
+                post.Country = NormalizeCountry(dto.Country);
 
             if (dto.Title is not null)
                 post.Title = dto.Title.Trim();
@@ -466,6 +522,11 @@ namespace TouristGuide.Api.Controllers
                 var typeLower = dto.PostType.ToLower().Trim();
                 if (!AllowedPostTypes.Contains(typeLower))
                     return BadRequest(new { message = $"Nepoznat tip '{dto.PostType}'. Dozvoljeni: {string.Join(", ", AllowedPostTypes)}" });
+
+                if (!string.Equals(typeLower, post.PostType, StringComparison.OrdinalIgnoreCase) &&
+                    !await CanCreatePostAsync(typeLower, post.RegionId, !string.IsNullOrWhiteSpace(post.ProposedRegionName)))
+                    return Forbid();
+
                 post.PostType = typeLower;
             }
 
@@ -502,6 +563,15 @@ namespace TouristGuide.Api.Controllers
                 if (!AllowedStatuses.Contains(statusLower))
                     return BadRequest(new { message = "Status mora biti: draft, published ili archived." });
 
+                if (statusLower == "published" && post.ProposedRegionName is not null && !IsSuperAdmin())
+                    return Forbid();
+
+                if (statusLower == "published" && post.ProposedRegionName is not null)
+                {
+                    post.RegionId = await ResolveRegionProposalAsync(post.ProposedRegionName, post.Country);
+                    post.ProposedRegionName = null;
+                }
+
                 if (statusLower == "published" && post.Status != "published")
                     post.PublishedAt = DateTime.UtcNow;
 
@@ -515,11 +585,19 @@ namespace TouristGuide.Api.Controllers
             post.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            if (!string.IsNullOrWhiteSpace(post.ProposedRegionName) &&
+                !string.Equals(previousProposedRegion, post.ProposedRegionName, StringComparison.OrdinalIgnoreCase))
+            {
+                await NotifyRegionProposalAsync(post.ProposedRegionName, post);
+            }
+
+            await RecordHeatmapSampleForProposedLocationAsync(post);
+
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
             await _context.Entry(post).Collection(p => p.PostTags).Query().Include(pt => pt.Tag).LoadAsync();
 
-            return Ok(MapToDto(post));
+            return Ok(MapToDto(post, includePendingActivities: await CanSeePendingActivitiesAsync()));
         }
 
         [HttpDelete("{id}")]
@@ -673,6 +751,7 @@ namespace TouristGuide.Api.Controllers
             uint? regionId,
             string? type,
             string? status,
+            string? country,
             bool forcePublishedOnly,
             out IActionResult? error)
         {
@@ -687,6 +766,11 @@ namespace TouristGuide.Api.Controllers
 
             if (regionId.HasValue)
                 query = query.Where(p => p.RegionId == regionId.Value);
+
+            var normalizedCountry = NormalizeOptionalSearch(country);
+            if (normalizedCountry is not null)
+                query = query.Where(p => p.Country.ToLower() == normalizedCountry
+                    || (p.Region != null && p.Region.Country.ToLower() == normalizedCountry));
 
             if (!string.IsNullOrWhiteSpace(type))
             {
@@ -777,12 +861,14 @@ namespace TouristGuide.Api.Controllers
                 .Select(g => new { PostId = g.Key, Count = (uint)g.Count(), Avg = g.Average(r => (decimal?)r.Rating) })
                 .ToDictionaryAsync(x => x.PostId, x => x);
 
+            var includePendingActivities = await CanSeePendingActivitiesAsync();
             var data = posts.Select(post => MapToDto(
                 post,
                 likeCountOverride:   likeCounts.TryGetValue(post.Id, out var lc) ? lc : 0u,
                 saveCountOverride:   saveCounts.TryGetValue(post.Id, out var sc) ? sc : 0u,
                 reviewCountOverride: reviewStats.TryGetValue(post.Id, out var rs) ? rs.Count : 0u,
-                avgRatingOverride:   reviewStats.TryGetValue(post.Id, out var ra) ? ra.Avg : null
+                avgRatingOverride:   reviewStats.TryGetValue(post.Id, out var ra) ? ra.Avg : null,
+                includePendingActivities: includePendingActivities
             )).ToList();
 
             return new
@@ -814,6 +900,7 @@ namespace TouristGuide.Api.Controllers
                         (p.Description != null && p.Description.ToLower().Contains(term)) ||
                         (p.Address != null && p.Address.ToLower().Contains(term)) ||
                         p.PostType.ToLower().Contains(term) ||
+                        p.Country.ToLower().Contains(term) ||
                         (p.Region != null && (
                             p.Region.Name.ToLower().Contains(term) ||
                             p.Region.Country.ToLower().Contains(term))))
@@ -824,6 +911,8 @@ namespace TouristGuide.Api.Controllers
                         (p.Address != null && (p.Address.ToLower().Contains(term) || p.Address.ToLower().Contains(alternateTerm))) ||
                         p.PostType.ToLower().Contains(term) ||
                         p.PostType.ToLower().Contains(alternateTerm) ||
+                        p.Country.ToLower().Contains(term) ||
+                        p.Country.ToLower().Contains(alternateTerm) ||
                         (p.Region != null && (
                             p.Region.Name.ToLower().Contains(term) ||
                             p.Region.Name.ToLower().Contains(alternateTerm) ||
@@ -898,13 +987,29 @@ namespace TouristGuide.Api.Controllers
                 .Replace("ð", "dj");
         }
 
-        private static PostDto MapToDto(Post post, bool? isLiked = null, bool? isSaved = null, uint? likeCountOverride = null, uint? saveCountOverride = null, uint? reviewCountOverride = null, decimal? avgRatingOverride = null) => new()
+        private static PostDto MapToDto(
+            Post post,
+            bool? isLiked = null,
+            bool? isSaved = null,
+            uint? likeCountOverride = null,
+            uint? saveCountOverride = null,
+            uint? reviewCountOverride = null,
+            decimal? avgRatingOverride = null,
+            bool includePendingActivities = false)
         {
+            var visibleTags = post.PostTags?
+                .Where(pt => includePendingActivities || pt.Tag == null || !IsPendingActivityTag(pt.Tag))
+                .ToList() ?? new List<PostTag>();
+
+            return new PostDto
+            {
             Id = post.Id,
             AdminId = post.AdminId,
             AdminName = post.Admin?.FullName ?? string.Empty,
             RegionId = post.RegionId,
             RegionName = post.Region?.Name,
+            ProposedRegionName = post.ProposedRegionName,
+            Country = post.Country,
             Title = post.Title,
             PostType = post.PostType,
             Description = post.Description,
@@ -927,11 +1032,17 @@ namespace TouristGuide.Api.Controllers
             PublishedAt = post.PublishedAt,
             CreatedAt = post.CreatedAt,
             UpdatedAt = post.UpdatedAt,
-            TagIds = post.PostTags?.Select(pt => pt.TagId).ToList() ?? new List<uint>(),
-            TagNames = post.PostTags?.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList() ?? new List<string>(),
+            TagIds = visibleTags.Select(pt => pt.TagId).ToList(),
+            TagNames = visibleTags.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList(),
             IsLiked = isLiked,
             IsSaved = isSaved
-        };
+            };
+        }
+
+        private static bool IsPendingActivityTag(Tag tag) =>
+            string.Equals(tag.Category, "aktivnost", StringComparison.OrdinalIgnoreCase) &&
+            tag.Color is not null &&
+            (tag.Color.ToLowerInvariant().Contains("|pending|") || tag.Color.ToLowerInvariant().EndsWith("|pending"));
 
         private static ReviewDto MapToReviewDto(Review review, string? touristName = null) => new()
         {
@@ -999,17 +1110,30 @@ namespace TouristGuide.Api.Controllers
                 || string.Equals(role, "superadmin", StringComparison.OrdinalIgnoreCase);
         }
 
+        private async Task<bool> CanSeePendingActivitiesAsync() =>
+            IsSuperAdmin() ||
+            (IsAdminUser() && await _permissionService.HasPermissionAsync("manage_tags"));
+
         private async Task<bool> CanViewUnpublishedPostAsync(Post post)
         {
             if (!IsAdminUser())
                 return false;
+
+            if (!string.IsNullOrWhiteSpace(post.ProposedRegionName))
+            {
+                var adminId = GetCurrentAdminId();
+                if (adminId is null || adminId.Value != post.AdminId)
+                    return IsSuperAdmin();
+
+                return await _permissionService.HasPermissionInAnyScopeAsync("manage_own_posts");
+            }
 
             return await _permissionService.CanManageOwnContentAsync(post.AdminId, post.RegionId);
         }
 
         private Task<bool> CanManagePostAsync(Post post) => CanViewUnpublishedPostAsync(post);
 
-        private async Task<bool> CanCreatePostAsync(string postType, uint? regionId)
+        private async Task<bool> CanCreatePostAsync(string postType, uint? regionId, bool hasRegionProposal)
         {
             if (!IsAdminUser())
                 return false;
@@ -1017,11 +1141,135 @@ namespace TouristGuide.Api.Controllers
             if (IsSuperAdmin())
                 return true;
 
+            if (hasRegionProposal)
+            {
+                if (!await _permissionService.HasPermissionInAnyScopeAsync("manage_own_posts"))
+                    return false;
+
+                var proposedPermissionCode = GetCreatePermissionCode(postType);
+                return proposedPermissionCode is null ||
+                       await _permissionService.HasPermissionInAnyScopeAsync(proposedPermissionCode);
+            }
+
             if (!await _permissionService.HasPermissionAsync("manage_own_posts", regionId))
                 return false;
 
             var permissionCode = GetCreatePermissionCode(postType);
             return permissionCode is null || await _permissionService.HasPermissionAsync(permissionCode, regionId);
+        }
+
+        private async Task<uint> ResolveRegionProposalAsync(string proposedRegionName, string? country)
+        {
+            var normalizedName = NormalizeProposedRegionName(proposedRegionName)
+                ?? throw new InvalidOperationException("Naziv predlozenog regiona je obavezan.");
+            var normalizedForLookup = normalizedName.ToLowerInvariant();
+            var normalizedCountry = NormalizeCountry(country);
+
+            var existingRegion = await _context.Regions
+                .FirstOrDefaultAsync(r => r.Name.ToLower() == normalizedForLookup && r.Country.ToLower() == normalizedCountry.ToLower());
+            if (existingRegion is not null)
+                return existingRegion.Id;
+
+            var region = new Region
+            {
+                Name = normalizedName,
+                Type = "other",
+                Country = normalizedCountry,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Regions.Add(region);
+            await _context.SaveChangesAsync();
+
+            return region.Id;
+        }
+
+        private static string? NormalizeProposedRegionName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            var normalized = value.Trim();
+            return normalized.Length > 200 ? normalized[..200] : normalized;
+        }
+
+        private static string NormalizeCountry(string? value)
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? "Montenegro" : value.Trim();
+            return normalized.Length > 100 ? normalized[..100] : normalized;
+        }
+
+        private static string? NormalizeOptionalSearch(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            return value.Trim().ToLowerInvariant();
+        }
+
+        private async Task<string> ResolveCountryForPostAsync(string? requestedCountry, uint? regionId)
+        {
+            if (!string.IsNullOrWhiteSpace(requestedCountry))
+                return NormalizeCountry(requestedCountry);
+
+            if (regionId.HasValue)
+            {
+                var regionCountry = await _context.Regions
+                    .Where(r => r.Id == regionId.Value)
+                    .Select(r => r.Country)
+                    .FirstOrDefaultAsync();
+
+                if (!string.IsNullOrWhiteSpace(regionCountry))
+                    return NormalizeCountry(regionCountry);
+            }
+
+            return "Montenegro";
+        }
+
+        private async Task NotifyRegionProposalAsync(string proposedRegionName, Post post)
+        {
+            await _notificationService.BroadcastToSuperAdminsAsync(
+                "region_pending",
+                "Predlog za novi region",
+                $"Admin je predlozio novi region \"{proposedRegionName}\" kroz lokaciju \"{post.Title}\".",
+                new
+                {
+                    postId = post.Id,
+                    regionName = proposedRegionName,
+                    country = post.Country,
+                    url = $"/admin/objects/{post.Id}"
+                });
+        }
+
+        private async Task RecordHeatmapSampleForProposedLocationAsync(Post post)
+        {
+            if (!post.Lat.HasValue || !post.Lng.HasValue)
+                return;
+
+            if (!string.Equals(post.Status, "draft", StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrWhiteSpace(post.ProposedRegionName))
+                return;
+
+            var sessionId = $"post-proposal-{post.Id}";
+            var recentExists = await _context.TouristLocationSamples.AnyAsync(s =>
+                s.SessionId == sessionId &&
+                s.RecordedAt >= DateTime.UtcNow.AddDays(-30));
+
+            if (recentExists)
+                return;
+
+            _context.TouristLocationSamples.Add(new TouristLocationSample
+            {
+                TouristId = null,
+                SessionId = sessionId,
+                RegionId = post.RegionId,
+                Lat = post.Lat.Value,
+                Lng = post.Lng.Value,
+                RecordedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
         }
 
         private static string? GetCreatePermissionCode(string postType) => postType switch

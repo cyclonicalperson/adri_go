@@ -9,7 +9,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, catchError, map, of, take, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, finalize, map, of, shareReplay, take, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { TokenStorageService } from './token-storage.service';
 
@@ -33,6 +33,12 @@ export interface AuthUser {
   accountStatus: 'active' | 'suspended' | 'pending';
   profileImage?: string | null;
   permissions?: string[];  // Nova polja iz backenda (permission codes)
+  permissionGrants?: PermissionGrant[];
+}
+
+export interface PermissionGrant {
+  code: string;
+  regionId: number | null;
 }
 
 export interface AuthResponse {
@@ -51,11 +57,13 @@ export class AuthService {
   );
 
   private readonly apiUrl = `${environment.apiUrl}/auth`;
+  private permissionsSyncedForUserId: number | null = null;
+  private permissionsLoad$?: Observable<AuthUser | null>;
 
   currentUser$ = this._currentUser$.asObservable();
 
   constructor() {
-    this.syncStoredUserPermissions();
+    this.ensurePermissionsLoaded().subscribe();
   }
 
   login(payload: LoginRequest): Observable<AuthResponse> {
@@ -64,6 +72,7 @@ export class AuthService {
         // Backend (pravi): { token, expiresAtUtc, user: { id, fullName, email, role, ... } }
         // Mock:            { accessToken, user: { userId, ... } }
         const raw = res.user ?? {};
+        const rawPermissions = raw.permissions ?? raw.Permissions ?? [];
         const user: AuthUser = {
           userId: raw.userId ?? raw.id ?? raw.Id ?? 0,
           fullName: raw.fullName ?? raw.FullName ?? '',
@@ -73,7 +82,8 @@ export class AuthService {
           isIndividual: raw.isIndividual ?? raw.IsIndividual ?? true,
           accountStatus: (raw.accountStatus ?? raw.AccountStatus ?? 'active') as any,
           profileImage: raw.profileImage ?? raw.ProfileImage ?? null,
-          permissions: raw.permissions ?? raw.Permissions ?? [],
+          permissions: this.extractPermissionCodes(rawPermissions),
+          permissionGrants: this.extractPermissionGrants(raw.permissionGrants ?? raw.PermissionGrants ?? []),
         };
         return {
           accessToken: res.accessToken ?? res.token ?? res.Token ?? '',
@@ -86,6 +96,9 @@ export class AuthService {
           this.tokenStorage.saveToken(res.accessToken);
           this.tokenStorage.saveUser(res.user);
           this._currentUser$.next(res.user);
+          this.permissionsSyncedForUserId = null;
+          this.permissionsLoad$ = undefined;
+          this.ensurePermissionsLoaded(true).subscribe();
         }
       })
     );
@@ -117,38 +130,162 @@ export class AuthService {
     return this.role === 'superadmin';
   }
 
-  hasPermission(code: string): boolean {
-    return this.isSuperAdmin || (this.currentUser?.permissions?.includes(code) ?? false);
+  hasPermission(code: string, regionId?: number | null): boolean {
+    if (this.isSuperAdmin) {
+      return true;
+    }
+
+    const user = this.currentUser;
+    if (!user) {
+      return false;
+    }
+
+    if (user.permissionGrants?.length) {
+      return user.permissionGrants.some(grant =>
+        grant.code === code && this.permissionGrantMatchesRegion(grant, regionId));
+    }
+
+    return user.permissions?.includes(code) ?? false;
   }
 
   hasAnyPermission(...codes: string[]): boolean {
     return this.isSuperAdmin || codes.some(code => this.hasPermission(code));
   }
 
-  private syncStoredUserPermissions(): void {
-    const user = this._currentUser$.value;
-    if (!user || user.role !== 'admin') {
-      return;
+  hasAnyPermissionForRegion(codes: string[], regionId?: number | null): boolean {
+    return this.isSuperAdmin || codes.some(code => this.hasPermission(code, regionId));
+  }
+
+  hasGlobalPermission(code: string): boolean {
+    return this.hasPermission(code, null);
+  }
+
+  hasPermissionInAnyScope(code: string): boolean {
+    if (this.isSuperAdmin) {
+      return true;
     }
 
-    this.http.get<any>(`${environment.apiUrl}/admin-users/${user.userId}/permissions`).pipe(
-      map(res => (res.data ?? [])
-        .map((item: any) => item.permission?.code)
-        .filter((code: string | undefined): code is string => !!code)),
-      catchError(() => of<string[] | null>(null)),
+    const user = this.currentUser;
+    if (!user) {
+      return false;
+    }
+
+    if (user.permissionGrants?.length) {
+      return user.permissionGrants.some(grant => grant.code === code);
+    }
+
+    return user.permissions?.includes(code) ?? false;
+  }
+
+  ensurePermissionsLoaded(force = false): Observable<AuthUser | null> {
+    const user = this._currentUser$.value;
+    if (!user || user.role !== 'admin') {
+      return of(user);
+    }
+
+    if (!force && this.permissionsSyncedForUserId === user.userId) {
+      return of(user);
+    }
+
+    if (this.permissionsLoad$) {
+      return this.permissionsLoad$;
+    }
+
+    this.permissionsLoad$ = this.http.get<any>(`${environment.apiUrl}/admin-users/${user.userId}/permissions`).pipe(
+      map(res => {
+        const grants = this.extractPermissionGrants(res.data ?? res ?? []);
+        const permissionCodes = this.extractPermissionCodes(grants);
+        const current = this._currentUser$.value;
+
+        if (!current || current.userId !== user.userId) {
+          return current;
+        }
+
+        return {
+          ...current,
+          permissions: permissionCodes,
+          permissionGrants: grants,
+        };
+      }),
+      catchError(() => of<AuthUser | null>(null)),
+      tap(nextUser => {
+        if (!nextUser || nextUser.userId !== user.userId) {
+          return;
+        }
+
+        this.tokenStorage.saveUser(nextUser);
+        this._currentUser$.next(nextUser);
+        this.permissionsSyncedForUserId = user.userId;
+      }),
+      map(nextUser => nextUser ?? this._currentUser$.value),
       take(1),
-    ).subscribe(permissionCodes => {
-      if (!permissionCodes) {
-        return;
-      }
+      finalize(() => {
+        this.permissionsLoad$ = undefined;
+      }),
+      shareReplay(1),
+    );
 
-      const nextUser: AuthUser = {
-        ...user,
-        permissions: permissionCodes,
-      };
+    return this.permissionsLoad$;
+  }
 
-      this.tokenStorage.saveUser(nextUser);
-      this._currentUser$.next(nextUser);
-    });
+  private extractPermissionCodes(input: unknown): string[] {
+    const values = Array.isArray(input) ? input : [];
+    const codes = values
+      .map(item => {
+        if (typeof item === 'string') {
+          return item;
+        }
+
+        const grant = item as any;
+        return grant.code ?? grant.permissionCode ?? grant.permission?.code ?? grant.Permission?.Code;
+      })
+      .filter((code): code is string => typeof code === 'string' && code.trim().length > 0)
+      .map(code => code.trim());
+
+    return Array.from(new Set(codes));
+  }
+
+  private extractPermissionGrants(input: unknown): PermissionGrant[] {
+    const values = Array.isArray(input) ? input : [];
+
+    return values
+      .map(item => {
+        if (typeof item === 'string') {
+          return null;
+        }
+
+        const grant = item as any;
+        const code = grant.code ?? grant.permissionCode ?? grant.permission?.code ?? grant.Permission?.Code;
+        if (typeof code !== 'string' || !code.trim()) {
+          return null;
+        }
+
+        const rawRegionId = grant.regionId ?? grant.RegionId ?? null;
+        const regionId = rawRegionId === null || rawRegionId === undefined
+          ? null
+          : Number(rawRegionId);
+
+        return {
+          code: code.trim(),
+          regionId: typeof regionId === 'number' && Number.isFinite(regionId) ? regionId : null,
+        };
+      })
+      .filter((grant): grant is PermissionGrant => !!grant);
+  }
+
+  private permissionGrantMatchesRegion(grant: PermissionGrant, regionId?: number | null): boolean {
+    if (regionId === undefined) {
+      return true;
+    }
+
+    if (grant.regionId === null) {
+      return true;
+    }
+
+    if (regionId === null) {
+      return false;
+    }
+
+    return grant.regionId === Number(regionId);
   }
 }

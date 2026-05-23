@@ -46,11 +46,7 @@ namespace TouristGuide.Api.Services
                 .SendAsync("NewNotification", MapToDto(notif));
 
             // Pošalji ažurirani unread count
-            var unread = await _db.AdminNotifications
-                .CountAsync(n => n.AdminUserId == adminId && !n.IsRead);
-            await _hub.Clients
-                .Group($"admin_{adminId}")
-                .SendAsync("UnreadCountUpdated", unread);
+            await BroadcastUnreadCountAsync(adminId);
         }
 
         // ── Broadcast svim superadminima ─────────────────────────────────
@@ -91,15 +87,44 @@ namespace TouristGuide.Api.Services
             notif.SentAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
+            await _hub.Clients
+                .Group($"admin_{adminId}")
+                .SendAsync("NotificationRead", notificationId);
+            await BroadcastUnreadCountAsync(adminId);
+        }
+
+        public async Task BroadcastUnreadCountAsync(uint adminId)
+        {
             var unread = await _db.AdminNotifications
                 .CountAsync(n => n.AdminUserId == adminId && !n.IsRead);
 
             await _hub.Clients
                 .Group($"admin_{adminId}")
-                .SendAsync("NotificationRead", notificationId);
+                .SendAsync("UnreadCountUpdated", unread);
+        }
+
+        public async Task BroadcastAllReadAsync(uint adminId)
+        {
             await _hub.Clients
                 .Group($"admin_{adminId}")
-                .SendAsync("UnreadCountUpdated", unread);
+                .SendAsync("AllNotificationsRead");
+            await BroadcastUnreadCountAsync(adminId);
+        }
+
+        public async Task BroadcastNotificationDeletedAsync(uint adminId, uint notificationId)
+        {
+            await _hub.Clients
+                .Group($"admin_{adminId}")
+                .SendAsync("NotificationDeleted", notificationId);
+            await BroadcastUnreadCountAsync(adminId);
+        }
+
+        public async Task BroadcastNotificationsClearedAsync(uint adminId)
+        {
+            await _hub.Clients
+                .Group($"admin_{adminId}")
+                .SendAsync("NotificationsCleared");
+            await BroadcastUnreadCountAsync(adminId);
         }
 
         // ── Private helpers ──────────────────────────────────────────────

@@ -1,14 +1,17 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LocationService, Location, Review } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
-import { UserService } from '../services/user.service';
+import { UserService, PendingSchedule } from '../services/user.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { formatPostType } from '../utils/post-type.utils';
+
+import * as L from 'leaflet';
 
 @Component({
   selector: 'app-location-details',
@@ -17,7 +20,7 @@ import { formatPostType } from '../utils/post-type.utils';
   templateUrl: './location-details.html',
   styleUrls: ['./location-details.css']
 })
-export class LocationDetailsComponent implements OnInit {
+export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   location: Location | null = null;
   reviews: Review[] = [];
@@ -30,7 +33,7 @@ export class LocationDetailsComponent implements OnInit {
   showAllHours       = false;
   showReviewForm     = false;
   showFullDescription = false;
-  descriptionTruncateLength = 120; //koliko teksta prikazati na aboutu
+  descriptionTruncateLength = 120;
   distanceKm: number | null = null;
   newRating          = 5;
   newComment         = '';
@@ -38,9 +41,76 @@ export class LocationDetailsComponent implements OnInit {
   reviewSuccess      = '';
   isSubmittingReview = false;
 
+  // Sliding dot indicator
+  readonly DOT_WINDOW = 6;
+  get visibleDotWindow(): number[] {
+    const total = this.images.length;
+    const windowStart = Math.max(0, Math.min(this.currentImageIndex - 2, total - this.DOT_WINDOW));
+    const end = Math.min(windowStart + this.DOT_WINDOW, total);
+    return Array.from({ length: end - windowStart }, (_, i) => windowStart + i);
+  }
+
+  // Lightbox
+  lightboxOpen = false;
+  lightboxIndex = 0;
+
+  openLightbox(index: number): void {
+    if (!this.images.length) return;
+    this.lightboxIndex = index;
+    this.lightboxOpen = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeLightbox(): void {
+    this.lightboxOpen = false;
+    document.body.style.overflow = '';
+  }
+
+  lightboxPrev(e: Event): void {
+    e.stopPropagation();
+    this.lightboxIndex = (this.lightboxIndex - 1 + this.images.length) % this.images.length;
+  }
+
+  lightboxNext(e: Event): void {
+    e.stopPropagation();
+    this.lightboxIndex = (this.lightboxIndex + 1) % this.images.length;
+  }
+
+  // Mini mapa
+  private detailMap: L.Map | null = null;
+  locationLat: number | null = null;
+  locationLng: number | null = null;
+
+  private readonly svgIcons: Record<string, string> = {
+    beach:         '<path d="M13.127 14.56l1.43-1.43 6.44 6.443L19.57 21zm4.293-5.73l2.86-2.86c-3.95-3.95-10.35-3.96-14.3-.02 3.93-1.3 8.31-.25 11.44 2.88zM5.95 5.98c-3.94 3.95-3.93 10.35.02 14.3l2.86-2.86C5.7 14.29 4.65 9.91 5.95 5.98zm.02-.02l-.01.01c-.38 3.01 1.17 6.88 4.7 10.41l5.39-5.39c-3.53-3.53-7.4-5.09-10.08-5.03z"/>',
+    culture:       '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
+    monument:      '<path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>',
+    food:          '<path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>',
+    nightlife:     '<path d="M7 2h10l2 6-7 14L5 8l2-6zm1.44 6l3.56 7.13L15.56 8H8.44zM9 4l-.67 2h7.34L15 4H9z"/>',
+    activity:      '<path d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>',
+    events:        '<path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>',
+    accommodation: '<path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/>',
+    shop:          '<path d="M16 6V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H2v13c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6h-6zm-6-2h4v2h-4V4zM11 17H9v-6h2v6zm4 0h-2v-6h2v6z"/>',
+    default:       '<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>',
+  };
+
+  private readonly categoryColors: Record<string, { bg: string; icon: string }> = {
+    accommodation:   { bg: '#3b82f6', icon: 'accommodation' },
+    restaurant:      { bg: '#ef4444', icon: 'food' },
+    club:            { bg: '#8b5cf6', icon: 'nightlife' },
+    cultural_site:   { bg: '#f59e0b', icon: 'culture' },
+    monument:        { bg: '#d97706', icon: 'monument' },
+    sports_facility: { bg: '#22c55e', icon: 'activity' },
+    event:           { bg: '#ec4899', icon: 'events' },
+    attraction:      { bg: '#10b981', icon: 'beach' },
+    shop:            { bg: '#f97316', icon: 'shop' },
+    other:           { bg: '#6b7280', icon: 'default' },
+  };
+
   calendarMessage = '';
   showAuthModal = false;
   hasReviewed = false;
+  myReviewStatus: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -51,8 +121,60 @@ export class LocationDetailsComponent implements OnInit {
     private routePlanner: RoutePlannerService,
     private analytics: TouristAnalyticsService,
     private preferences: TouristPreferencesService,
+    private siteTranslate: SiteTranslateService,
     private cdr: ChangeDetectorRef
   ) { }
+
+  get currentLanguage(): string {
+    return this.siteTranslate.currentLanguage;
+  }
+
+  ngAfterViewInit(): void {
+    // Mapa se inicijalizuje tek kad se dobiju koordinate (via timeout u ngOnInit)
+  }
+
+  private initDetailMap(): void {
+    if (this.detailMap) {
+      this.detailMap.remove();
+      this.detailMap = null;
+    }
+    const el = document.getElementById('detail-map');
+    if (!el || !this.locationLat || !this.locationLng) return;
+
+    this.detailMap = L.map(el, {
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      attributionControl: true,
+    }).setView([this.locationLat, this.locationLng], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '\u00a9 OpenStreetMap'
+    }).addTo(this.detailMap);
+
+    // Isti tip pina kao na map-home
+    const category = (this.location?.postType || this.location?.category || 'default').toLowerCase().replace(/\s+/g, '_');
+    const catStyle = this.categoryColors[category] ?? this.categoryColors['other'];
+    const iconPath = this.svgIcons[catStyle.icon] ?? this.svgIcons['default'];
+    const pinHtml = `<div style="width:36px;height:36px;background:${catStyle.bg};border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,0.25);border:2px solid rgba(255,255,255,0.6);"><div style="transform:rotate(45deg);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="16" height="16" fill="white">${iconPath}</svg></div></div>`;
+
+    const icon = L.divIcon({ html: pinHtml, className: '', iconSize: [36, 36], iconAnchor: [18, 36] });
+    L.marker([this.locationLat, this.locationLng], { icon }).addTo(this.detailMap);
+
+    // Klik na mapu otvara map-home sa selektovanom objavom
+    el.addEventListener('click', () => this.openOnMap());
+    el.style.cursor = 'pointer';
+  }
+
+  openOnMap(): void {
+    if (!this.location) return;
+    this.router.navigate(['/map-home'], {
+      queryParams: { focusId: this.location.id }
+    });
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -95,6 +217,13 @@ export class LocationDetailsComponent implements OnInit {
         this.location = loc;
         this.images   = this.locationService.parseImages(loc.images);
         this.currentImageIndex = 0;
+
+        // Izvuci koordinate za mini mapu
+        this.locationLat = (loc as any).lat ?? (loc as any).latitude ?? null;
+        this.locationLng = (loc as any).lng ?? (loc as any).longitude ?? null;
+        if (this.locationLat && this.locationLng) {
+          setTimeout(() => this.initDetailMap(), 100);
+        }
 
         if (!this.authService.isLoggedIn) {
           this.location.isLiked = false;
@@ -139,11 +268,10 @@ export class LocationDetailsComponent implements OnInit {
         if (this.location && res.total !== undefined) {
           this.location.reviewCount = res.total;
         }
-        // Check if current tourist has already reviewed this location
-        const touristId = this.authService.touristId;
-        if (touristId) {
-          this.hasReviewed = this.reviews.some(r => r.touristId === touristId);
-        }
+        this.myReviewStatus = res.myReviewStatus ?? null;
+        this.hasReviewed = this.myReviewStatus === 'PENDING' ||
+          this.myReviewStatus === 'APPROVED' ||
+          (!!this.authService.touristId && this.reviews.some(r => r.touristId === this.authService.touristId));
         this.cdr.markForCheck();
       },
       error: (err) => console.error('getReviews error:', err)
@@ -324,6 +452,28 @@ export class LocationDetailsComponent implements OnInit {
     return (this.location?.postType || '').toLowerCase() === 'event';
   }
 
+  private touchStartX = 0;
+  private touchStartY = 0;
+
+  onTouchStart(e: TouchEvent): void {
+    const t = e.changedTouches[0];
+    this.touchStartX = t.clientX;
+    this.touchStartY = t.clientY;
+  }
+
+  onTouchEnd(e: TouchEvent): void {
+    if (this.images.length < 2) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - this.touchStartX;
+    const dy = t.clientY - this.touchStartY;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0) this.nextImage(); else this.prevImage();
+  }
+  get eventHasPassed(): boolean {
+    const eventRange = this.getEventRange();
+    return this.isEvent && !!eventRange?.end && eventRange.end < new Date();
+  }
+
   prevImage(): void {
     if (!this.images.length) return;
     this.currentImageIndex = (this.currentImageIndex - 1 + this.images.length) % this.images.length;
@@ -356,14 +506,20 @@ export class LocationDetailsComponent implements OnInit {
     this.isSubmittingReview = true;
     this.locationService.addReview(this.location.id, touristId, this.newRating, this.newComment).subscribe({
       next: (review) => {
-        this.reviews.unshift(review);
-        this.reviewSuccess  = 'Review submitted!';
+        const status = (review.status ?? '').toUpperCase();
+        if (status === 'APPROVED') {
+          this.reviews.unshift(review);
+        }
+        this.reviewSuccess  = status === 'APPROVED'
+          ? 'Review submitted!'
+          : 'Review submitted for moderation.';
         this.hasReviewed    = true;
+        this.myReviewStatus = status || 'PENDING';
         this.newRating      = 5;
         this.newComment     = '';
         this.isSubmittingReview = false;
         this.showReviewForm = false;
-        if (this.location) {
+        if (this.location && status === 'APPROVED') {
           this.location.reviewCount++;
           const total = this.reviews.reduce((sum, r) => sum + r.rating, 0);
           this.location.avgRating = Math.round((total / this.reviews.length) * 10) / 10;
@@ -390,6 +546,17 @@ export class LocationDetailsComponent implements OnInit {
   }
 
   goToLogin(): void { this.showAuthModal = true; }
+
+  get reviewStatusLabel(): string {
+    switch ((this.myReviewStatus ?? '').toUpperCase()) {
+      case 'PENDING':
+        return 'Review pending';
+      case 'APPROVED':
+        return 'Reviewed';
+      default:
+        return 'Reviewed';
+    }
+  }
 
   goBack(): void { window.history.back(); }
 
@@ -466,27 +633,78 @@ export class LocationDetailsComponent implements OnInit {
     }
   }
 
-  addToCalendar(): void {
+  /**
+   * Starts the calendar-scheduling flow: navigates to the Calendar page where
+   * the user picks the day/time. Events carry their date window so the calendar
+   * only allows days while the event is running.
+   */
+  openCalendarScheduler(): void {
     if (!this.location) return;
     if (!this.authService.isLoggedIn) {
       this.openAuthModal();
       return;
     }
+    if (this.eventHasPassed) {
+      this.calendarMessage = 'This event has already ended.';
+      setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);
+      return;
+    }
 
-    this.userService.addLocationToCalendar(this.location).subscribe({
-      next: (res) => {
-        this.calendarMessage = res.message
-          ? (res.localOnly ? '📅 ' + res.message : (res.alreadyAdded ? '📅 Already in your calendar' : '📅 Added to your calendar!'))
-          : '📅 Added to your calendar!';
-        setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3500);
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.calendarMessage = 'Could not add to calendar.';
-        setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);
-        this.cdr.markForCheck();
-      }
-    });
+    const eventRange = this.getEventRange();
+    const pending: PendingSchedule = {
+      kind: 'post',
+      postId: this.location.id,
+      title: this.location.title,
+      postType: this.location.postType,
+      isEvent: this.isEvent,
+      eventStart: this.isEvent ? (eventRange?.start?.toISOString() ?? null) : null,
+      eventEnd:   this.isEvent ? (eventRange?.end?.toISOString() ?? null) : null,
+      address:    this.location.address || this.location.regionName || '',
+      imageUrl:   this.location.imageUrl ?? null,
+    };
+
+    this.router.navigate(['/calendar'], { state: { pendingSchedule: pending } });
+  }
+
+  ngOnDestroy(): void {
+    this.setBodyScrollLock(false);
+    if (this.detailMap) {
+      this.detailMap.remove();
+      this.detailMap = null;
+    }
+    if (this.lightboxOpen) {
+      document.body.style.overflow = '';
+    }
+  }
+
+  private setBodyScrollLock(locked: boolean): void {
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('calendar-scheduler-open', locked);
+  }
+
+  addToCalendar(): void {
+    if (!this.location) return;
+
+    if (!this.authService.isLoggedIn) {
+      this.openAuthModal();
+      return;
+    }
+  }
+
+  private getEventRange(): { start: Date | null; end: Date | null } | null {
+    if (!this.location?.details) return null;
+
+    try {
+      const details = JSON.parse(this.location.details);
+      const start = details?.startAt ? new Date(details.startAt) : null;
+      const end = details?.endAt ? new Date(details.endAt) : null;
+      return {
+        start: start && !isNaN(start.getTime()) ? start : null,
+        end: end && !isNaN(end.getTime()) ? end : null,
+      };
+    } catch {
+      return null;
+    }
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

@@ -1,12 +1,15 @@
 <div class="notif-container">
-  <div class="header">
-    <button class="back-btn" (click)="goBack()">‹</button>
-    <h1>Notifications</h1>
-    <button class="mark-read" (click)="markAllRead()" *ngIf="authService.isLoggedIn">Mark all read</button>
-  </div>
+  <app-header title="Notifications">
+    <button class="notif-mark-read-btn"
+            (click)="markAllRead()"
+            [disabled]="unreadCount === 0"
+            *ngIf="authService.isLoggedIn">
+      Mark all read
+    </button>
+  </app-header>
 
   <div class="filter-bar">
-    <button *ngFor="let f of ['All', 'Alerts', 'Recommendations', 'Messages']"
+    <button *ngFor="let f of filters"
             class="filter-chip"
             [class.active]="activeFilter === f"
             (click)="activeFilter = f">
@@ -14,22 +17,27 @@
     </button>
   </div>
 
+  <div class="notif-meta" *ngIf="authService.isLoggedIn">
+    <span>{{ unreadCount }} unread</span>
+    <span [class.live]="connected">{{ connected ? 'Live' : 'Synced' }}</span>
+  </div>
+
   <!-- Loading -->
-  <div *ngIf="isLoading" style="padding: 40px; text-align: center; color: #94a3b8;">
+  <div *ngIf="isLoading" class="state-message">
     Loading...
   </div>
 
   <!-- Guest: no notifications -->
-  <div *ngIf="!authService.isLoggedIn && !isLoading" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
-    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
-    <p style="font-size: 15px; font-weight: 600;">Log in to see your notifications</p>
+  <div *ngIf="!authService.isLoggedIn && !isLoading" class="state-message">
+    <div class="state-icon">&#128276;</div>
+    <p>Log in to see your notifications</p>
   </div>
 
   <!-- Empty state for logged-in users -->
   <div *ngIf="authService.isLoggedIn && !isLoading && filteredNotifications.length === 0"
-       style="padding: 40px 20px; text-align: center; color: #94a3b8;">
-    <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
-    <p style="font-size: 15px; font-weight: 600;">No notifications yet</p>
+       class="state-message">
+    <div class="state-icon">&#128276;</div>
+    <p>No notifications yet</p>
   </div>
 
   <div class="scroll-area">
@@ -39,14 +47,14 @@
          (click)="openNotification(n)">
       <div class="card-header">
         <div class="icon-box" [ngClass]="getTypeClass(n.type)">
-          {{ getIcon(n.type) }}
+          {{ getNotificationIcon(n.type) }}
         </div>
         <div class="title-meta">
           <div class="title-row">
             <h3>{{n.title}}</h3>
             <span class="new-badge" *ngIf="!n.isRead">NEW</span>
           </div>
-          <span class="time">🕒 {{ formatTime(n.createdAt) }}</span>
+          <span class="time">&#128338; {{ formatTime(n.createdAt) }}</span>
         </div>
       </div>
 
@@ -54,14 +62,14 @@
 
       <div class="divider"></div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="card-actions">
         <button class="view-btn">
-          <span class="dot">●</span> View
+          <span class="dot">&#9679;</span> View
         </button>
         <button (click)="deleteNotification(n, $event)"
-                style="background: none; border: none; color: #ef4444; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 4px 8px; border-radius: 8px;"
+                class="delete-btn"
                 title="Delete">
-          ✕
+          &times;
         </button>
       </div>
     </div>

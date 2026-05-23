@@ -38,9 +38,16 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
+    <select class="filter-select" [value]="req.country ?? ''" (change)="onCountryChange($any($event.target).value)">
+      <option value="">Sve drzave</option>
+      @for (country of countries; track country) {
+      <option [value]="country">{{ country }}</option>
+      }
+    </select>
+
     <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Sve destinacije</option>
-      @for (d of destinations; track d.regionId) {
+      @for (d of filteredDestinations; track d.regionId) {
       <option [value]="d.regionId" [selected]="req.regionId === d.regionId">{{ d.name }}</option>
       }
     </select>
@@ -61,7 +68,14 @@
 
     @if (canCreateRoutes) {
     <div class="btn-group">
+      <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
+      <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
       <button class="btn btn-primary" (click)="goNew()">+ Nova ruta</button>
+    </div>
+    } @else {
+    <div class="btn-group">
+      <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
+      <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
     </div>
     }
   </div>
@@ -117,7 +131,7 @@
             </app-badge>
           </td>
           <td>
-            <div class="meta-primary">{{ r.destination?.name ?? '-' }}</div>
+            <div class="meta-primary">{{ r.destination?.name ?? r.proposedRegionName ?? '-' }}</div>
           </td>
           <td class="num">{{ (r.distanceKm ?? 0).toFixed(1) }} km</td>
           <td class="num">{{ formatDuration(r.durationMin ?? 0) }}</td>
@@ -128,7 +142,7 @@
           </td>
           <td (click)="$event.stopPropagation()">
             <span class="badge" [class]="statusBadgeClass(r.status)">{{ statusLabel(r.status) }}</span>
-            @if (r.status === 'draft' && canModerateRoutes) {
+            @if (r.status === 'draft' && canManageRoute(r)) {
             <div class="status-actions">
               <button class="btn-icon approve-btn" title="Odobri" (click)="confirmApprove(r)">&#9989;</button>
               <button class="btn-icon danger" title="Odbij" (click)="confirmReject(r)">&#10060;</button>
@@ -138,8 +152,10 @@
           <td (click)="$event.stopPropagation()">
             <div class="actions">
               <button class="btn-icon" title="Detalji" (click)="goDetails(r)">&#128065;&#65039;</button>
+              @if (canManageRoute(r)) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(r)">&#9998;&#65039;</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(r)">&#128465;&#65039;</button>
+              }
             </div>
           </td>
         </tr>

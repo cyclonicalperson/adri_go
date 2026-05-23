@@ -273,7 +273,9 @@
       <div class="panel widget">
         <div class="panel-header">
           <div><div class="panel-title">Top lokacije</div><div class="panel-sub">Po broju pregleda</div></div>
+          @if (canManageContent) {
           <a routerLink="/admin/lokacije" class="panel-link">Sve →</a>
+          }
         </div>
         <div class="panel-body">
           @for (obj of popularObjects.slice(0, 5); track obj.id; let idx = $index) {
@@ -295,7 +297,9 @@
       <div class="panel widget">
         <div class="panel-header">
           <div><div class="panel-title">Top događaji</div><div class="panel-sub">Po broju pregleda</div></div>
+          @if (canManageContent) {
           <a routerLink="/admin/events" class="panel-link">Svi →</a>
+          }
         </div>
         <div class="panel-body">
           @for (ev of popularEvents.slice(0, 5); track ev.id; let idx = $index) {

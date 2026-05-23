@@ -1,13 +1,14 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
 
 @Component({
   selector: 'app-side-menu',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NotificationBadgeComponent],
   templateUrl: './side-menu.component.html',
   styleUrls: ['./side-menu.component.css']
 })
@@ -56,8 +57,7 @@ export class SideMenuComponent {
     if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
     this.router.navigate(['/saved']);
   }
-  goToRoutes() { this.onClose.emit(); this.router.navigate(['/routes']); }
-  goToActivities() { this.onClose.emit(); this.router.navigate(['/activities']); }
+  goToChat()       { this.onClose.emit(); this.router.navigate(['/chat']); }
   goToCalendar() { this.onClose.emit(); this.router.navigate(['/calendar']); }
   goToNotifications() { this.onClose.emit(); this.router.navigate(['/notifications']); }
   goToSettings() { this.onClose.emit(); this.router.navigate(['/settings']); }

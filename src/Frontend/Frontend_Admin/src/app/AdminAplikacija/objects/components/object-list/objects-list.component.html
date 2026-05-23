@@ -79,9 +79,16 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
+    <select class="filter-select" [value]="req.country ?? ''" (change)="onCountryChange($any($event.target).value)">
+      <option value="">Sve drzave</option>
+      @for (country of countries; track country) {
+      <option [value]="country">{{ country }}</option>
+      }
+    </select>
+
     <select class="filter-select" [value]="req.regionId ?? ''" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Svi regioni</option>
-      @for (r of regions; track r.regionId) {
+      @for (r of filteredRegions; track r.regionId) {
       <option [value]="r.regionId">{{ r.name }}</option>
       }
     </select>
@@ -105,7 +112,7 @@
     <div class="btn-group">
       <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
       <button class="btn btn-outline" (click)="exportCsv()">📊 Izvezi CSV</button>
-      @if (canManageObjects) {
+      @if (canCreateObjects) {
       <button class="btn btn-primary" (click)="goNew()">➕ Dodaj lokaciju</button>
       }
     </div>
@@ -168,7 +175,7 @@
             </span>
           </td>
           <td>
-            <div style="font-weight:600;font-size:13px">{{ o.region?.name ?? o.destination?.name ?? '—' }}</div>
+            <div style="font-weight:600;font-size:13px">{{ o.region?.name ?? o.destination?.name ?? o.proposedRegionName ?? '—' }}</div>
             @if (o.latitude && o.longitude) {
             <div style="font-size:11px;color:#6b7280">
               {{ o.latitude.toFixed(4) }}° N, {{ o.longitude.toFixed(4) }}° E
@@ -195,7 +202,7 @@
             <span class="badge badge-green">✅ Aktivna</span>
             } @else if (objectStatus(o) === 'draft') {
             <span class="badge badge-amber">⏳ Na čekanju</span>
-            @if (canManageObjects) {
+            @if (canEditObject(o)) {
             <div style="margin-top:6px;display:flex;gap:6px">
               <button class="btn-icon approve-btn" title="Odobri" (click)="approve(o)">✅</button>
               <button class="btn-icon danger" title="Odbij" (click)="reject(o)">❌</button>
@@ -212,7 +219,7 @@
             <div class="actions">
               <button class="btn-icon map-btn" title="Prikaži na mapi" (click)="goMap(o)">🗺️</button>
               <button class="btn-icon" title="Detalji" (click)="goDetail(o)">👁️</button>
-              @if (canManageObjects) {
+              @if (canEditObject(o)) {
               <button class="btn-icon" title="Izmeni" (click)="goEdit(o)">✏️</button>
               <button class="btn-icon danger" title="Obriši" (click)="confirmDelete(o)">🗑️</button>
               }

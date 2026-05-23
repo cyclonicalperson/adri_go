@@ -161,7 +161,7 @@ export class DashboardComponent implements OnInit {
   }
 
   get canViewAnalytics(): boolean {
-    return this.auth.hasPermission('view_analytics');
+    return this.auth.hasGlobalPermission('view_analytics');
   }
 
   get canManageContent(): boolean {
@@ -169,11 +169,11 @@ export class DashboardComponent implements OnInit {
   }
 
   get canManageActivities(): boolean {
-    return this.auth.hasPermission('manage_tags');
+    return this.auth.hasGlobalPermission('manage_tags');
   }
 
   get canManageReviews(): boolean {
-    return this.auth.hasPermission('manage_reviews');
+    return this.auth.hasGlobalPermission('manage_reviews');
   }
 
   get pendingCount(): number {
@@ -711,9 +711,9 @@ export class DashboardComponent implements OnInit {
   heatColor(movement: TouristMovement): string {
     const max = Math.max(...this.movements.map(item => item.visitCount), 1);
     const ratio = movement.visitCount / max;
-    if (ratio > 0.7) return '#22c55e';
+    if (ratio > 0.7) return '#dc2626';
     if (ratio > 0.4) return '#f59e0b';
-    return '#3b82f6';
+    return '#2563eb';
   }
 
   get movementMaxVisits(): number {

@@ -3,11 +3,13 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractContro
 import { ActivatedRoute, Router } from '@angular/router';
 import { ObjectService } from '@core/services/object.service';
 import { RegionService } from '@core/services/region.service';
+import { AuthService } from '@core/auth/auth.service';
 import { Region } from '@core/models/region.model';
 import { ObjectCategory } from '@core/models/object.model';
 import { ObjectMapPickerComponent } from '../object-map-picker/object-map-picker.component';
 import { ActivitiesSelectorComponent } from '../activities-selector/activities-selector.component';
 import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 @Component({
   selector: 'app-object-form',
@@ -30,7 +32,10 @@ export class ObjectFormComponent implements OnInit {
   destinations: Region[] = [];
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
+  readonly countries = WORLD_COUNTRIES;
+  private originalCategory: ObjectCategory | null = null;
   resolvingAddress = false;
+  submitted = false;
 
   readonly categoryOptions: { value: ObjectCategory; label: string }[] = [
     { value: 'HOTEL', label: '🏔️ Hotel' },
@@ -50,13 +55,16 @@ export class ObjectFormComponent implements OnInit {
     private fb: FormBuilder,
     private service: ObjectService,
     private destService: RegionService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
 
   ngOnInit(): void {
     this.form = this.fb.group({
-      regionId: [null, Validators.required],
+      regionId: [null],
+      proposedRegionName: [''],
+      country: [DEFAULT_COUNTRY, [Validators.required, Validators.maxLength(100)]],
       name: ['', Validators.required],
       category: ['HOTEL', Validators.required],
       description: ['', Validators.required],
@@ -75,11 +83,27 @@ export class ObjectFormComponent implements OnInit {
     this.id = Number(this.route.snapshot.paramMap.get('id')) || null;
     this.isEdit = !!this.id;
 
+    if (!this.isEdit) {
+      const firstAllowed = this.categoryOptions.find(opt => this.canUseCategory(opt.value));
+      if (!firstAllowed) {
+        this.router.navigate(['/admin/dashboard']);
+        return;
+      }
+      this.form.patchValue({ category: firstAllowed.value });
+    }
+
     if (this.isEdit) {
       this.service.getById(this.id!).subscribe(res => {
         const o = res.data;
+        if (!this.canEditObject(o)) {
+          this.router.navigate(['/admin/dashboard']);
+          return;
+        }
+        this.originalCategory = o.category;
         this.form.patchValue({
           regionId: o.regionId,
+          proposedRegionName: (o as any).proposedRegionName ?? '',
+          country: o.country ?? o.region?.country ?? DEFAULT_COUNTRY,
           name: o.name,
           category: o.category,
           description: o.description,
@@ -105,12 +129,38 @@ export class ObjectFormComponent implements OnInit {
   get lng(): number { return this.form.get('longitude')?.value ?? 20.45; }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    this.submitted = true;
+    if (this.form.invalid || !this.hasRegionChoice()) {
+      this.form.markAllAsTouched();
+      if (!this.hasRegionChoice()) {
+        this.error = 'Izaberite region ili upisite predlog novog regiona.';
+      }
+      return;
+    }
+
+    const proposedRegionName = this.normalizeProposedRegionName(this.form.value.proposedRegionName);
+    if (this.form.value.regionId && proposedRegionName) {
+      this.error = 'Ne mozete istovremeno izabrati region i poslati predlog novog regiona.';
+      return;
+    }
+    const scopeRegionId = proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+    if (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
+        !this.canUseCategory(this.form.value.category, scopeRegionId)) {
+      this.error = 'Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.';
+      return;
+    }
+
     this.saving = true;
     this.error = null;
 
     const media = this.formImages.map((url, idx) => ({ mediaId: idx + 1, url, sortOrder: idx, caption: undefined }));
-    const payload = { ...this.form.value, activityIds: this.selectedActivityIds, media };
+    const payload = {
+      ...this.form.value,
+      regionId: proposedRegionName ? null : this.form.value.regionId,
+      proposedRegionName,
+      activityIds: this.selectedActivityIds,
+      media,
+    };
 
     const req$ = this.isEdit
       ? this.service.update(this.id!, payload)
@@ -124,6 +174,61 @@ export class ObjectFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
+
+  canUseCategory(category: ObjectCategory, regionId?: number | null): boolean {
+    if (this.auth.isSuperAdmin) {
+      return true;
+    }
+
+    if (this.isEdit && category === this.originalCategory) {
+      return true;
+    }
+
+    const permission = this.createPermissionForCategory(category);
+    return !permission || this.auth.hasPermission(permission, regionId);
+  }
+
+  get selectedRegionIdForPermission(): number | undefined {
+    const regionId = Number(this.form?.get('regionId')?.value);
+    return Number.isFinite(regionId) && regionId > 0 ? regionId : undefined;
+  }
+
+  private canEditObject(objectItem: { createdBy: number; regionId?: number; destinationId?: number; proposedRegionName?: string | null }): boolean {
+    const regionId = objectItem.proposedRegionName
+      ? undefined
+      : this.objectScopeRegionId(objectItem);
+
+    return this.auth.isSuperAdmin ||
+      (this.auth.hasPermission('manage_own_posts', regionId) && objectItem.createdBy === this.auth.currentUser?.userId);
+  }
+
+  get regionChoiceInvalid(): boolean {
+    return this.submitted && !this.hasRegionChoice();
+  }
+
+  get filteredDestinations(): Region[] {
+    const country = this.form?.get('country')?.value;
+    return country ? this.destinations.filter(region => region.country === country) : this.destinations;
+  }
+
+  onRegionSelected(): void {
+    if (this.form.get('regionId')?.value) {
+      this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onCountryChanged(): void {
+    const selectedRegionId = Number(this.form.get('regionId')?.value);
+    if (selectedRegionId && !this.filteredDestinations.some(region => region.regionId === selectedRegionId)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
+
+  onProposedRegionInput(): void {
+    if (this.normalizeProposedRegionName(this.form.get('proposedRegionName')?.value)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
 
   private async resolveAddress(lat: number, lng: number): Promise<void> {
     this.resolvingAddress = true;
@@ -150,7 +255,9 @@ export class ObjectFormComponent implements OnInit {
   }
 
   private tryAutoSelectRegion(lat: number, lng: number, geocoded: any): void {
-    if (this.form.get('regionId')?.value || this.destinations.length === 0) {
+    if (this.form.get('regionId')?.value ||
+        this.normalizeProposedRegionName(this.form.get('proposedRegionName')?.value) ||
+        this.destinations.length === 0) {
       return;
     }
 
@@ -201,5 +308,34 @@ export class ObjectFormComponent implements OnInit {
       * Math.cos(lat2 * Math.PI / 180)
       * Math.sin(dLng / 2) ** 2;
     return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  private hasRegionChoice(): boolean {
+    return !!this.form?.get('regionId')?.value ||
+      !!this.normalizeProposedRegionName(this.form?.get('proposedRegionName')?.value);
+  }
+
+  private normalizeProposedRegionName(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private createPermissionForCategory(category: ObjectCategory): string | null {
+    const map: Partial<Record<ObjectCategory, string>> = {
+      HOTEL: 'create_accommodation',
+      APARTMENT: 'create_accommodation',
+      RESTAURANT: 'create_restaurant',
+      CAFE: 'create_restaurant',
+      CLUB: 'create_club',
+      SHOP: 'create_shop',
+      CULTURAL: 'create_cultural_site',
+      MONUMENT: 'create_monument',
+      SPORT: 'create_sports',
+    };
+    return map[category] ?? null;
+  }
+
+  private objectScopeRegionId(objectItem: { regionId?: number; destinationId?: number }): number | undefined {
+    const regionId = objectItem.regionId ?? objectItem.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

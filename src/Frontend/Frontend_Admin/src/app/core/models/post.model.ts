@@ -37,6 +37,8 @@ export interface Post {
   adminRole?: string;
   adminOrganizationId?: number | null;
   regionId: number | null;
+  proposedRegionName?: string | null;
+  country: string;
   region?: PostRegion | null;
   title: string;
   postType: PostType;
@@ -63,6 +65,8 @@ export interface Post {
 export interface CreatePostRequest {
   adminId?: number;
   regionId?: number | null;
+  proposedRegionName?: string | null;
+  country?: string;
   title: string;
   postType: PostType;
   description?: string;

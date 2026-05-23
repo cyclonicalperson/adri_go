@@ -9,13 +9,15 @@ import { RouteDifficulty, RouteStatus, TouristRoute } from '@core/models/route.m
 import { AdminListStateService } from '@core/services/admin-list-state.service';
 import { RegionService } from '@core/services/region.service';
 import { RouteService } from '@core/services/route.service';
+import { CsvExportService } from '@core/services/csv-export.service';
 import { BadgeComponent, BadgeVariant } from '@shared/components/badge/badge.component';
 import { ConfirmDialogComponent } from '@shared/components/confirm-dialog/confirm-dialog.component';
+import { WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 type StatusFilter = '' | RouteStatus;
 
 interface RoutesListState {
-  req?: Partial<PageRequest & { regionId?: number; difficulty?: string; status?: StatusFilter }>;
+  req?: Partial<PageRequest & { country?: string; regionId?: number; difficulty?: string; status?: StatusFilter }>;
 }
 
 @Component({
@@ -32,11 +34,13 @@ interface RoutesListState {
 export class RoutesListComponent implements OnInit {
   routes: TouristRoute[] = [];
   destinations: Region[] = [];
+  readonly countries = WORLD_COUNTRIES;
   total = 0;
   totalPages = 1;
 
   req: PageRequest & {
     regionId?: number;
+    country?: string;
     difficulty?: string;
     status?: StatusFilter;
   } = { page: 1, pageSize: 12, sortBy: 'name', sortDir: 'asc' };
@@ -78,6 +82,7 @@ export class RoutesListComponent implements OnInit {
     private router: Router,
     private auth: AuthService,
     private listState: AdminListStateService,
+    private csv: CsvExportService,
   ) {}
 
   ngOnInit(): void {
@@ -134,6 +139,22 @@ export class RoutesListComponent implements OnInit {
     this.load();
   }
 
+  onCountryChange(country: string): void {
+    const nextCountry = country || undefined;
+    const selectedRegion = this.destinations.find(region => region.regionId === this.req.regionId);
+    this.req = {
+      ...this.req,
+      country: nextCountry,
+      regionId: selectedRegion && nextCountry && selectedRegion.country !== nextCountry ? undefined : this.req.regionId,
+      page: 1,
+    };
+    this.load();
+  }
+
+  get filteredDestinations(): Region[] {
+    return this.req.country ? this.destinations.filter(region => region.country === this.req.country) : this.destinations;
+  }
+
   onStatusChange(status: StatusFilter): void {
     this.req = { ...this.req, status: status || undefined, page: 1 };
     this.load();
@@ -151,11 +172,20 @@ export class RoutesListComponent implements OnInit {
   }
 
   get canCreateRoutes(): boolean {
-    return this.auth.hasPermission('create_route');
+    return this.auth.hasPermission('manage_own_posts') &&
+      this.auth.hasPermission('create_route');
   }
 
   get canModerateRoutes(): boolean {
     return this.auth.currentUser?.role === 'superadmin' || this.auth.hasPermission('manage_own_posts');
+  }
+
+  canManageRoute(route: TouristRoute): boolean {
+    return this.auth.isSuperAdmin ||
+      (
+        this.auth.hasPermission('manage_own_posts', this.routeScopeRegionId(route)) &&
+        route.createdBy === this.auth.currentUser?.userId
+      );
   }
 
   get activeSortValue(): string {
@@ -163,7 +193,29 @@ export class RoutesListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (!this.canCreateRoutes) return;
     void this.router.navigate(['/admin/routes-management/new']);
+  }
+
+  printReport(): void {
+    window.print();
+  }
+
+  exportCsv(): void {
+    const today = new Date().toISOString().slice(0, 10);
+    this.csv.download(
+      `rute_${today}.csv`,
+      ['Naziv', 'Tezina', 'Destinacija', 'Distanca', 'Trajanje', 'Uspon', 'Status'],
+      this.routes.map(route => [
+        route.name,
+        this.difficultyLabel(route.difficulty),
+        route.destination?.name ?? '',
+        route.distanceKm ?? '',
+        route.durationMin ?? '',
+        route.elevationGainM ?? '',
+        this.statusLabel(route.status),
+      ]),
+    );
   }
 
   goDetails(route: TouristRoute): void {
@@ -171,11 +223,12 @@ export class RoutesListComponent implements OnInit {
   }
 
   goEdit(route: TouristRoute): void {
+    if (!this.canManageRoute(route)) return;
     void this.router.navigate(['/admin/routes-management', route.routeId, 'edit']);
   }
 
   confirmApprove(route: TouristRoute): void {
-    if (route.status === 'draft') {
+    if (route.status === 'draft' && this.canManageRoute(route)) {
       this.approveTarget = route;
     }
   }
@@ -185,7 +238,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   doApprove(): void {
-    if (!this.approveTarget) return;
+    if (!this.approveTarget || !this.canManageRoute(this.approveTarget)) return;
 
     const route = this.approveTarget;
     this.approveTarget = null;
@@ -196,7 +249,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   confirmReject(route: TouristRoute): void {
-    if (route.status === 'draft') {
+    if (route.status === 'draft' && this.canManageRoute(route)) {
       this.rejectTarget = route;
     }
   }
@@ -206,7 +259,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   doReject(): void {
-    if (!this.rejectTarget) return;
+    if (!this.rejectTarget || !this.canManageRoute(this.rejectTarget)) return;
 
     const route = this.rejectTarget;
     this.rejectTarget = null;
@@ -217,6 +270,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   confirmDelete(route: TouristRoute): void {
+    if (!this.canManageRoute(route)) return;
     this.deleteTarget = route;
   }
 
@@ -225,7 +279,7 @@ export class RoutesListComponent implements OnInit {
   }
 
   doDelete(): void {
-    if (!this.deleteTarget) return;
+    if (!this.deleteTarget || !this.canManageRoute(this.deleteTarget)) return;
 
     const route = this.deleteTarget;
     this.deleteTarget = null;
@@ -323,6 +377,7 @@ export class RoutesListComponent implements OnInit {
       page: 1,
       pageSize: 1,
       search: this.req.search,
+      country: this.req.country,
       regionId: this.req.regionId,
       difficulty: this.req.difficulty,
       sortBy: 'name',
@@ -345,5 +400,14 @@ export class RoutesListComponent implements OnInit {
 
   private persistListState(): void {
     this.listState.save<RoutesListState>(this.stateKey, { req: this.req });
+  }
+
+  private routeScopeRegionId(route: TouristRoute): number | undefined {
+    if (route.proposedRegionName) {
+      return undefined;
+    }
+
+    const regionId = route.regionId ?? route.destinationId;
+    return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
   }
 }

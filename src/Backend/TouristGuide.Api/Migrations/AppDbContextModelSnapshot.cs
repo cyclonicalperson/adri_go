@@ -142,6 +142,11 @@ namespace TouristGuide.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("ActivityTags")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("activity_tags");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -254,6 +259,33 @@ namespace TouristGuide.Api.Migrations
                     b.HasIndex("ReviewedBy");
 
                     b.ToTable("admin_registration_request");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.AdminSecret", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("ProtectedValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_value");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long?>("UpdatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("UpdatedBy");
+
+                    b.ToTable("admin_secret");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.AdminUser", b =>
@@ -707,6 +739,10 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("time without time zone")
                         .HasColumnName("scheduled_time");
 
+                    b.Property<long?>("TouristRouteId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tourist_route_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PlannerId");
@@ -714,6 +750,8 @@ namespace TouristGuide.Api.Migrations
                     b.HasIndex("PostId");
 
                     b.HasIndex("RouteId");
+
+                    b.HasIndex("TouristRouteId");
 
                     b.ToTable("planner_item");
                 });
@@ -739,6 +777,12 @@ namespace TouristGuide.Api.Migrations
                     b.Property<decimal?>("AvgRating")
                         .HasColumnType("numeric")
                         .HasColumnName("avg_rating");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -786,6 +830,11 @@ namespace TouristGuide.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("post_type");
+
+                    b.Property<string>("ProposedRegionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("proposed_region_name");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1116,6 +1165,11 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("region_id");
 
+                    b.Property<string>("ProposedRegionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("proposed_region_name");
+
                     b.Property<long>("SaveCount")
                         .HasColumnType("bigint")
                         .HasColumnName("save_count");
@@ -1342,6 +1396,20 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("PendingEmail")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pending_email");
+
+                    b.Property<string>("PendingEmailVerificationToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pending_email_verification_token");
+
+                    b.Property<DateTime?>("PendingEmailVerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pending_email_verification_token_expires_at");
+
                     b.Property<string>("ProfileImage")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -1439,6 +1507,63 @@ namespace TouristGuide.Api.Migrations
                     b.HasIndex("RecordedAt", "RegionId");
 
                     b.ToTable("tourist_location_sample");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.TouristRoute", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal?>("DistanceKm")
+                        .HasColumnType("numeric")
+                        .HasColumnName("distance_km");
+
+                    b.Property<long?>("DurationMin")
+                        .HasColumnType("bigint")
+                        .HasColumnName("duration_min");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("image_url");
+
+                    b.Property<bool>("ScenicMode")
+                        .HasColumnType("boolean")
+                        .HasColumnName("scenic_mode");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<long>("TouristId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tourist_id");
+
+                    b.Property<string>("TravelMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("travel_mode");
+
+                    b.Property<string>("Waypoints")
+                        .HasColumnType("text")
+                        .HasColumnName("waypoints");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TouristId");
+
+                    b.ToTable("tourist_route");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.VerificationDocument", b =>
@@ -1572,6 +1697,16 @@ namespace TouristGuide.Api.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ReviewedByAdmin");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.AdminSecret", b =>
+                {
+                    b.HasOne("TouristGuide.Api.Models.AdminUser", "UpdatedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("UpdatedByAdmin");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.AdminUser", b =>
@@ -1717,11 +1852,18 @@ namespace TouristGuide.Api.Migrations
                         .HasForeignKey("RouteId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TouristGuide.Api.Models.TouristRoute", "TouristRoute")
+                        .WithMany("PlannerItems")
+                        .HasForeignKey("TouristRouteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Planner");
 
                     b.Navigation("Post");
 
                     b.Navigation("Route");
+
+                    b.Navigation("TouristRoute");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.Post", b =>
@@ -1929,6 +2071,17 @@ namespace TouristGuide.Api.Migrations
                     b.Navigation("Tourist");
                 });
 
+            modelBuilder.Entity("TouristGuide.Api.Models.TouristRoute", b =>
+                {
+                    b.HasOne("TouristGuide.Api.Models.Tourist", "Tourist")
+                        .WithMany()
+                        .HasForeignKey("TouristId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tourist");
+                });
+
             modelBuilder.Entity("TouristGuide.Api.Models.VerificationDocument", b =>
                 {
                     b.HasOne("TouristGuide.Api.Models.AdminRegistrationRequest", "RegistrationRequest")
@@ -2052,6 +2205,11 @@ namespace TouristGuide.Api.Migrations
                     b.Navigation("Shares");
 
                     b.Navigation("Views");
+                });
+
+            modelBuilder.Entity("TouristGuide.Api.Models.TouristRoute", b =>
+                {
+                    b.Navigation("PlannerItems");
                 });
 
             modelBuilder.Entity("TouristGuide.Api.Models.VisitPlanner", b =>

@@ -1,15 +1,10 @@
 <div class="settings-container">
 
-  <div class="header">
-    <button class="back-btn" (click)="goBack()">
-      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <h1>Settings</h1>
-  </div>
+  <app-header title="Settings" [showNotifications]="false"></app-header>
 
   <div class="scroll-content">
 
-    <div class="settings-group settings-group-account">
+    <div class="settings-group settings-group-account" *ngIf="authService.isLoggedIn">
       <p class="group-label">Account &amp; Security</p>
       <div class="group-items">
         <button class="setting-row" (click)="goToEditProfile()">
@@ -76,18 +71,26 @@
       <div class="group-items">
         <div class="setting-row no-hover">
           <span class="row-icon icon-push"><svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></span>
-          <div class="row-text"><span class="label">Push Notifications</span><span class="desc">Browser alerts for saved trips, calendar changes and account activity.</span></div>
+          <div class="row-text"><span class="label">Push Notifications</span><span class="desc">Browser alerts for calendar changes, review status, recommendations and important alerts.</span></div>
           <label class="switch"><input type="checkbox" [(ngModel)]="settings.pushNotifications" (change)="onPushNotificationsToggle()"><span class="slider round"></span></label>
         </div>
         <div class="setting-row no-hover">
           <span class="row-icon icon-email"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
-          <div class="row-text"><span class="label">Email Notifications</span><span class="desc">Account security messages and optional trip digest emails.</span></div>
+          <div class="row-text"><span class="label">Email Notifications</span><span class="desc">Security emails stay on; trip digest is saved as a future preference.</span></div>
           <label class="switch"><input type="checkbox" [(ngModel)]="settings.emailNotifications" (change)="onEmailNotificationsToggle()"><span class="slider round"></span></label>
         </div>
+        <button class="setting-row" (click)="openSheet('notifications')">
+          <span class="row-icon icon-recommend"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-2h4v2zm6-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></span>
+          <div class="row-text">
+            <span class="label">Notification Preferences</span>
+            <span class="value">{{ notificationPreferencesSummary }}</span>
+          </div>
+          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
       </div>
     </div>
 
-    <div class="settings-group settings-group-integrations">
+    <div class="settings-group settings-group-integrations" *ngIf="authService.isLoggedIn">
       <p class="group-label">Integrations &amp; Bookings</p>
       <div class="group-items">
         <button class="setting-row" (click)="openSheet('booking')">
@@ -98,7 +101,6 @@
           </div>
           <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
-
       </div>
     </div>
 
@@ -131,10 +133,6 @@
     <div class="footer-actions">
       <div *ngIf="savedMessage" class="saved-toast">{{ savedMessage }}</div>
       <button class="save-btn" (click)="saveChanges()">Save Changes</button>
-      <button class="logout-link" (click)="logout()">
-        <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
-        Logout
-      </button>
       <button class="delete-account-link" *ngIf="authService.isLoggedIn" (click)="openDeleteAccount()">
         <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
         Deactivate Account
@@ -175,10 +173,10 @@
     <div class="sheet-header">
       <div>
         <span class="sheet-kicker">
-          {{ activeSheet === 'accounts' ? 'Accounts' : activeSheet === 'content' ? 'Content' : activeSheet === 'booking' ? 'Booking' : activeSheet === 'language' ? 'Language' : 'Support' }}
+          {{ activeSheetKicker }}
         </span>
         <h2>
-          {{ activeSheet === 'accounts' ? 'Connected Accounts' : activeSheet === 'content' ? 'Content Preferences' : activeSheet === 'booking' ? 'Connected Booking Services' : activeSheet === 'language' ? 'App Language' : 'Help & Support Center' }}
+          {{ activeSheetTitle }}
         </h2>
       </div>
       <button class="sheet-close" (click)="closeSheet()">✕</button>
@@ -193,7 +191,7 @@
           <strong>Google</strong>
           <span>Your account is connected via Google sign-in.</span>
         </div>
-        <span class="sheet-pill active" style="pointer-events:none;">Enabled</span>
+        <span class="sheet-pill active" style="pointer-events:none;">Connected</span>
       </div>
 
       <!-- Google: if NOT logged in via Google, allow toggle -->
@@ -229,6 +227,37 @@
           {{ isBookingServiceEnabled(option.id) ? 'Enabled' : 'Hidden' }}
         </span>
       </button>
+    </div>
+
+    <div class="sheet-body" *ngIf="activeSheet === 'notifications'">
+      <div class="sheet-option" *ngFor="let pref of notificationPreferences">
+        <div>
+          <strong>{{ pref.label }}</strong>
+          <span>{{ notificationPreferenceStatus(pref) }}</span>
+        </div>
+        <div class="notification-pref-actions">
+          <button
+            class="sheet-pill"
+            [class.active]="pref.inAppEnabled"
+            [disabled]="!pref.canMute"
+            (click)="toggleNotificationPreference(pref, 'inAppEnabled')">
+            In-app
+          </button>
+          <button
+            class="sheet-pill"
+            [class.active]="pref.pushEnabled"
+            (click)="toggleNotificationPreference(pref, 'pushEnabled')">
+            Push
+          </button>
+          <button
+            class="sheet-pill"
+            *ngIf="pref.emailAvailable"
+            [class.active]="pref.emailEnabled"
+            (click)="toggleNotificationPreference(pref, 'emailEnabled')">
+            Email
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'support'">

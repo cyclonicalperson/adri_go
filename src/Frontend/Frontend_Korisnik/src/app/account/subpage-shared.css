@@ -626,11 +626,34 @@ textarea.field-input { resize: none; line-height: 1.5; }
 
 /* ── DESKTOP ─────────────────────────────────────────────────── */
 @media (min-width: 900px) {
+  /* subpage-shared: full-screen, ne plutajuća kartica */
   .subpage-container {
-    max-width: 600px;
-    margin: 0 auto;
-    box-shadow: 0 0 40px rgba(0,0,0,0.12);
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    background: #eef2f6 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
   }
-  .header-bar    { padding: 16px 28px; }
-  .scroll-content{ padding: 24px 28px; }
+  .header-bar {
+    padding: 18px max(48px, calc((100vw - 1080px) / 2)) !important;
+    background: #fff !important;
+    border-bottom: 1px solid #dbe3ea !important;
+  }
+  .header-bar h1 {
+    text-align: left;
+    font-size: 22px !important;
+  }
+  .scroll-content {
+    padding: 0 !important;
+  }
+  .scroll-content > * {
+    width: min(880px, calc(100vw - 80px));
+    margin-left: auto;
+    margin-right: auto;
+  }
 }

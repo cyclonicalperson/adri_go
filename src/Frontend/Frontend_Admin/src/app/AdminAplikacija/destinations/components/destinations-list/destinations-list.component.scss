@@ -1,3 +1,15 @@
 @use 'variables' as *;
 @use 'list-page' as *;
 // Destinations list uses the same shared list-page styles
+
+.btn-secondary {
+  background: $white;
+  color: $gray-700;
+  border-color: $gray-200;
+
+  &:hover {
+    background: $surface-green;
+    color: $primary-dark;
+    border-color: $primary;
+  }
+}

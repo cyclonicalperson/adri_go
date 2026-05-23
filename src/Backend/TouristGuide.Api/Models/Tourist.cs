@@ -18,6 +18,10 @@ namespace TouristGuide.Api.Models
         [MaxLength(255)]
         public string? Email { get; set; }
 
+        [Column("pending_email")]
+        [MaxLength(255)]
+        public string? PendingEmail { get; set; }
+
         /// <summary>NULL ako je guest korisnik bez naloga</summary>
         [Column("password_hash")]
         [MaxLength(255)]
@@ -65,6 +69,13 @@ namespace TouristGuide.Api.Models
         [Column("email_verification_token_expires_at")]
         public DateTime? EmailVerificationTokenExpiresAt { get; set; }
 
+        [Column("pending_email_verification_token")]
+        [MaxLength(100)]
+        public string? PendingEmailVerificationToken { get; set; }
+
+        [Column("pending_email_verification_token_expires_at")]
+        public DateTime? PendingEmailVerificationTokenExpiresAt { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -82,6 +93,7 @@ namespace TouristGuide.Api.Models
         public ICollection<ContentShare> Shares { get; set; } = new List<ContentShare>();
         public ICollection<VisitPlanner> Planners { get; set; } = new List<VisitPlanner>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<TouristNotificationPreference> NotificationPreferences { get; set; } = new List<TouristNotificationPreference>();
         public ICollection<MailingList> MailingListEntries { get; set; } = new List<MailingList>();
     }
 }
