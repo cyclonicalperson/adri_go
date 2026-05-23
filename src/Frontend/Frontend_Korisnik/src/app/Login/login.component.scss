@@ -364,6 +364,7 @@ input::placeholder { color: var(--gray-400); }
 }
 
 :host-context(html[data-theme='dark']) .divider span {
+  background: #1f2937;
   color: #94a3b8;
 }
 

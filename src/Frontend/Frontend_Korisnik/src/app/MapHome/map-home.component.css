@@ -91,7 +91,20 @@
   cursor: pointer;
 }
 .header-menu-btn:hover { background: var(--gray-200); }
-.header-menu-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }
+.header-menu-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--gray-600);
+  stroke: none;
+}
+
+.header-theme-btn svg {
+  fill: none;
+  stroke: var(--gray-600);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* ── MAP ─────────────────────────────────────────────────────── */
 .map-container {
@@ -1001,6 +1014,29 @@ app-location-details-card {
   background: #111827 !important;
   border-color: #334155 !important;
   box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .app-header,
+:host-context(html[data-theme='dark']) .sidebar {
+  background: #111827;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn:hover {
+  background: #273449;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn svg {
+  fill: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .header-theme-btn svg {
+  fill: none;
+  stroke: #facc15;
 }
 
 :host-context(html[data-theme='dark']) .search-input,
