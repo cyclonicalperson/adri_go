@@ -6,38 +6,24 @@ import { UserService, UserProfile } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-<<<<<<< HEAD
 import { ThemeService } from '../services/theme.service';
-import { AppHeaderComponent } from '../shared/app-header/app-header.component';
-=======
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 const FALLBACK_PROFILE_IMAGE = '/assets/default-profile.svg';
 type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' | 'generic' };
->>>>>>> e3bff70af2e8f0605f57d05fdb1a2fa2255f2cbd
 
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './account.html',
   styleUrls: ['./account.css']
 })
-<<<<<<< HEAD
 export class AccountComponent implements OnInit, OnDestroy {
-
-  userData: UserProfile | null = null;
-  loading: boolean = true;
-  isDarkMode: boolean = false;
-  isGuest: boolean = false;
-  showLoginPopup: boolean = false;
-  private themeSubscription?: Subscription;
-=======
-export class AccountComponent implements OnInit {
   userData: UserProfile | null = null;
   loading = true;
   isDarkMode = false;
->>>>>>> e3bff70af2e8f0605f57d05fdb1a2fa2255f2cbd
+  private themeSubscription?: Subscription;
 
   constructor(
     private router: Router,
@@ -53,30 +39,19 @@ export class AccountComponent implements OnInit {
       this.isDarkMode = theme === 'dark';
     });
 
-    this.isGuest = !this.authService.isLoggedIn;
-    if (this.isGuest) {
-      this.userData = {
-        fullName: 'Guest',
-        emailOrPhone: 'Not signed in',
-        language: 'en',
-        interests: [],
-        stats: { saved: 0, reviews: 0, upcoming: 0 }
-      };
-      this.loading = false;
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
       return;
     }
+
     this.loadUserData();
   }
 
-<<<<<<< HEAD
   ngOnDestroy(): void {
     this.themeSubscription?.unsubscribe();
   }
 
-  loadUserData() {
-=======
   loadUserData(): void {
->>>>>>> e3bff70af2e8f0605f57d05fdb1a2fa2255f2cbd
     this.loading = true;
 
     forkJoin({
@@ -132,19 +107,7 @@ export class AccountComponent implements OnInit {
       return { label: interest, icon: '✦', kind: 'generic' as const };
     });
   }
-<<<<<<< HEAD
-=======
 
-  private applyTheme(): void {
-    const html = document.documentElement;
-    if (this.isDarkMode) {
-      html.setAttribute('data-theme', 'dark');
-    } else {
-      html.removeAttribute('data-theme');
-    }
-  }
-
->>>>>>> e3bff70af2e8f0605f57d05fdb1a2fa2255f2cbd
   toggleDarkMode(): void {
     this.themeService.toggleTheme();
   }
@@ -156,30 +119,6 @@ export class AccountComponent implements OnInit {
     this.router.navigate(['/login']);
   }
 
-<<<<<<< HEAD
-  goToEditProfile() {
-    if (this.isGuest) return;
-    this.router.navigate(['/account/personal-info']);
-  }
-
-  // Navigacija ka podstranicama
-  goToPersonalInfo() {
-    if (this.isGuest) {
-      this.showLoginPopup = true;
-      return;
-    }
-    this.router.navigate(['/account/personal-info']);
-  }
-  goToHelp()         { this.router.navigate(['/account/help']); }
-  goToPrivacy()      { this.router.navigate(['/account/privacy']); }
-  goToSettings()     { this.router.navigate(['/settings']); }
-  goToSaved()        { this.router.navigate(['/saved']); }
-  goToMyReviews()    { this.router.navigate(['/account/reviews']); }
-  goToCalendar()     { this.router.navigate(['/calendar']); }
-  goToLogin()        { this.router.navigate(['/login']); }
-  closeLoginPopup()  { this.showLoginPopup = false; }
-  goToReviews()      { this.router.navigate(['/location-list']); }
-=======
   goToPersonalInfo(): void { this.router.navigate(['/account/personal-info']); }
   goToHelp(): void { this.router.navigate(['/account/help']); }
   goToPrivacy(): void { this.router.navigate(['/account/privacy']); }
@@ -187,5 +126,4 @@ export class AccountComponent implements OnInit {
   goToSaved(): void { this.router.navigate(['/saved']); }
   goToMyReviews(): void { this.router.navigate(['/account/reviews']); }
   goToCalendar(): void { this.router.navigate(['/calendar']); }
->>>>>>> e3bff70af2e8f0605f57d05fdb1a2fa2255f2cbd
 }

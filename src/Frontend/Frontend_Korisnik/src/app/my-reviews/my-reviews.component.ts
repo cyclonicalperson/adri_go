@@ -361,7 +361,11 @@ export class MyReviewsComponent implements OnInit {
   }
 
   formatStatus(status?: string | null): string {
-    return (status || 'UNKNOWN').toUpperCase();
+    const normalized = this.normalizeStatus(status);
+    if (normalized === 'approved') return 'Approved';
+    if (normalized === 'pending') return 'Pending';
+    if (normalized === 'rejected') return 'Rejected';
+    return 'Unknown';
   }
 
   formatStatusTone(status?: string | null): string {

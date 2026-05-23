@@ -46,4 +46,8 @@ export class ForgotPasswordComponent {
   goToLogin(): void {
     this.router.navigate(['/login']);
   }
+
+  goHome(): void {
+    this.router.navigate(['/map-home']);
+  }
 }
