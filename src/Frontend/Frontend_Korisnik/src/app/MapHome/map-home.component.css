@@ -1870,3 +1870,29 @@ app-location-details-card {
   background: rgba(59, 130, 246, 0.18) !important;
   color: #bfdbfe !important;
 }
+
+/* Desktop sidebar collapse: hide the whole left rail and let the map fill the viewport. */
+@media (min-width: 900px) {
+  .app-header,
+  .app-footer,
+  app-location-details-card {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .map-container {
+    transition:
+      left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .map-wrapper.sidebar-is-collapsed .app-header,
+  .map-wrapper.sidebar-is-collapsed .app-footer,
+  .map-wrapper.sidebar-is-collapsed app-location-details-card {
+    transform: translateX(-380px);
+  }
+
+  .map-wrapper.sidebar-is-collapsed .map-container {
+    left: 0 !important;
+    width: 100vw !important;
+  }
+}
