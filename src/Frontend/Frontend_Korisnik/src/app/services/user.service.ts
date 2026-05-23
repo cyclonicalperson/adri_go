@@ -16,6 +16,7 @@ export interface UserProfile {
   language: string;
   bio?: string;
   location?: string;
+  createdAt?: string;
   interests: string[];
   stats: {
     saved: number;
@@ -172,6 +173,7 @@ interface TouristProfileResponse {
   email: string;
   pendingEmail?: string | null;
   language: string;
+  createdAt?: string | null;
   bio?: string | null;
   location?: string | null;
   profileImage?: string | null;
@@ -373,6 +375,7 @@ export class UserService {
       pendingEmail: profile?.pendingEmail ?? null,
       profilePic: profile?.profileImage ?? undefined,
       language: profile?.language ?? 'en',
+      createdAt: profile?.createdAt ?? undefined,
       bio: profile?.bio ?? '',
       location: profile?.location ?? '',
       interests: Array.isArray(profile?.interests) ? profile.interests : [],

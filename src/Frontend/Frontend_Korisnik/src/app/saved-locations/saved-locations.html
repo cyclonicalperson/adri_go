@@ -5,8 +5,9 @@
   <div class="filter-scroll" *ngIf="!isLoading || savedItems.length > 0">
     <div class="chips-row">
       <button *ngFor="let f of filters"
-        class="chip" [class.active]="activeFilter === f.id" (click)="setFilter(f.id)">
-        {{f.label}}
+        class="chip" [class.active]="activeFilter === f.id" [style.--chip-accent]="f.color" (click)="setFilter(f.id)">
+        <span class="chip-icon" aria-hidden="true">{{ f.icon }}</span>
+        <span class="chip-label">{{ f.label }}</span>
       </button>
     </div>
   </div>
