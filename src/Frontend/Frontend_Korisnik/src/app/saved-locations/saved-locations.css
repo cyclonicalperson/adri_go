@@ -64,24 +64,56 @@
 .chips-row::-webkit-scrollbar { display: none; }
 
 .chip {
+  --chip-accent: var(--green-500);
   padding: 7px 16px;
   border-radius: var(--radius-pill);
-  border: 1.5px solid var(--gray-200);
+  border: 1.5px solid var(--chip-accent);
   background: #fff;
-  font-weight: 600;
-  color: var(--gray-600);
+  font-weight: 700;
+  color: var(--chip-accent);
   font-size: 13px;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.18s ease;
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
-.chip:hover { border-color: var(--green-300); color: var(--green-700); }
+.chip:hover {
+  background: #fff;
+  color: var(--chip-accent);
+}
 .chip.active {
-  background: var(--green-500);
+  background: var(--chip-accent);
   color: #fff;
-  border-color: var(--green-500);
-  box-shadow: 0 4px 12px rgba(34,197,94,0.22);
+  border-color: var(--chip-accent);
+}
+
+.chip-icon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.chip-label {
+  line-height: 1;
+}
+
+:host-context(html[data-theme='dark']) .chip {
+  border-color: var(--chip-accent);
+  background: transparent;
+  color: color-mix(in srgb, var(--chip-accent) 70%, #e5e7eb);
+}
+
+:host-context(html[data-theme='dark']) .chip:hover {
+  background: transparent;
+  color: color-mix(in srgb, var(--chip-accent) 80%, #f8fafc);
+}
+
+:host-context(html[data-theme='dark']) .chip.active {
+  background: var(--chip-accent);
+  color: #fff;
 }
 
 /* -- SCROLL CONTENT -- */
