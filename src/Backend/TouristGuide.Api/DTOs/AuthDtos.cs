@@ -112,6 +112,18 @@ namespace TouristGuide.Api.DTOs
     /// <summary>
     /// DTO koji frontend šalje pri ažuriranju profila turiste.
     /// </summary>
+    public class TouristReviewItemDto
+    {
+        public uint ReviewId { get; set; }
+        public uint? PostId { get; set; }
+        public uint? RouteId { get; set; }
+        public string EntityTitle { get; set; } = string.Empty;
+        public byte Rating { get; set; }
+        public string? Comment { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
     public class UpdateTouristProfileDto
     {
         [MaxLength(200)]

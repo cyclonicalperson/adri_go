@@ -228,15 +228,16 @@ section { margin-bottom: 24px; }
 }
 
 .filter-chip:hover {
-  border-color: var(--green-300);
-  background: var(--green-50);
-  color: var(--green-700);
+  border-color: var(--filter-color, var(--green-300));
+  background: color-mix(in srgb, var(--filter-color, var(--green-500)) 10%, #fff);
+  color: var(--filter-color, var(--green-700));
 }
 
 .filter-chip.active {
-  border-color: var(--green-500);
-  background: var(--green-500);
+  border-color: var(--filter-color, var(--green-500));
+  background: var(--filter-color, var(--green-500));
   color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, var(--green-500)) 34%, transparent);
 }
 
 .filter-dropdown {
@@ -268,7 +269,16 @@ section { margin-bottom: 24px; }
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.14);
 }
 
-.slider-box { padding: 0 4px; }
+.slider-box {
+  padding: 10px 12px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-lg);
+}
+.slider-box.active {
+  border-color: var(--filter-color, #0ea5e9);
+  background: color-mix(in srgb, var(--filter-color, #0ea5e9) 12%, #fff);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, #0ea5e9) 18%, transparent);
+}
 
 .slider-labels {
   display: flex;
@@ -321,10 +331,10 @@ section { margin-bottom: 24px; }
 }
 .rating-card:hover { border-color: var(--green-300); background: var(--green-50); color: var(--green-700); }
 .rating-card.active {
-  border-color: var(--green-500);
-  background: var(--green-50);
-  color: var(--green-700);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+  border-color: var(--filter-color, var(--green-500));
+  background: var(--filter-color, var(--green-500));
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, var(--green-500)) 34%, transparent);
 }
 
 /* ── TOGGLE CARD ─────────────────────────────────────────────── */
@@ -336,6 +346,14 @@ section { margin-bottom: 24px; }
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-lg);
   background: #fff;
+}
+.toggle-card.active {
+  border-color: var(--filter-color, var(--green-500));
+  background: color-mix(in srgb, var(--filter-color, var(--green-500)) 14%, #fff);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, var(--green-500)) 20%, transparent);
+}
+.toggle-card.active .toggle-text h3 {
+  color: var(--filter-color, var(--green-700));
 }
 .toggle-text h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--gray-800); }
 .toggle-text p  { margin: 2px 0 0; font-size: 12px; color: var(--gray-400); }
@@ -366,6 +384,11 @@ input:checked + .slider:before { transform: translateX(21px); }
   border-radius: var(--radius-md);
   text-align: center;
   background: #fff;
+}
+.date-input.active {
+  border-color: var(--filter-color, var(--green-500));
+  border-style: solid;
+  background: color-mix(in srgb, var(--filter-color, var(--green-500)) 12%, #fff);
 }
 .date-input:focus-within { border-color: var(--green-400); border-style: solid; }
 .date-input label { display: block; font-size: 10px; color: var(--gray-400); font-weight: 800; letter-spacing: 0.5px; margin-bottom: 3px; text-transform: uppercase; }
@@ -455,6 +478,39 @@ input:checked + .slider:before { transform: translateX(21px); }
 :host-context(html[data-theme='dark']) .content-type-tab:not(.active):hover {
   background: #1f2937 !important;
   color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .chip.active {
+  background: var(--cat-color, #22c55e) !important;
+  border-color: var(--cat-color, #22c55e);
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--cat-color, #22c55e) 34%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .filter-chip.active {
+  background: var(--filter-color, #22c55e) !important;
+  border-color: var(--filter-color, #22c55e);
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, #22c55e) 34%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .rating-card.active {
+  background: var(--filter-color, #22c55e) !important;
+  border-color: var(--filter-color, #22c55e);
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, #22c55e) 34%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .toggle-card.active,
+:host-context(html[data-theme='dark']) .date-input.active,
+:host-context(html[data-theme='dark']) .slider-box.active {
+  background: color-mix(in srgb, var(--filter-color, #22c55e) 22%, #111827) !important;
+  border-color: var(--filter-color, #22c55e);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, #22c55e) 24%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .toggle-card.active .toggle-text h3 {
+  color: #fff;
 }
 
 :host-context(html[data-theme='dark']) .content-type-tab.active {

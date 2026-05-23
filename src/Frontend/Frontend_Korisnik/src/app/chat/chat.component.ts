@@ -7,6 +7,9 @@ import { FormsModule }           from '@angular/forms';
 import { Router }                from '@angular/router';
 import { ChatService, ChatMessage } from '../services/chat.service';
 import { AuthService }           from '../services/auth.service';
+import { Location }              from '../services/location.service';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { formatPostType }        from '../utils/post-type.utils';
 
 @Component({
   selector:    'app-chat',
@@ -108,6 +111,33 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   isUserMessage(msg: ChatMessage): boolean    { return msg.role === 'user'; }
   isErrorMessage(msg: ChatMessage): boolean   { return msg.status === 'error'; }
   isThinkingMessage(msg: ChatMessage): boolean { return msg.status === 'sending'; }
+
+  openLocationDetails(location: Location): void {
+    if (!location.id) return;
+    this.router.navigate(['/location-details', location.id]);
+  }
+
+  getLocationImage(location: Location): string {
+    const image = this.firstImage(location);
+    return resolveBackendAssetUrl(image, 'assets/Budva.jpg');
+  }
+
+  getLocationCategory(location: Location): string {
+    return formatPostType(location.postType || location.category);
+  }
+
+  private firstImage(location: Location): string {
+    if (location.imageUrl) return location.imageUrl;
+    const images = location.images;
+    if (!images) return '';
+    if (Array.isArray(images)) return images[0] || '';
+    try {
+      const parsed = JSON.parse(images);
+      return Array.isArray(parsed) ? (parsed[0] || '') : images;
+    } catch {
+      return images;
+    }
+  }
 
   /**
    * Konvertuje Gemini Markdown odgovor u bezbedni HTML za prikaz.

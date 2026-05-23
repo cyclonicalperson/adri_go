@@ -19,7 +19,9 @@
     <div class="hero-section">
       <div class="hero-image-stage" aria-hidden="true"
         (touchstart)="onTouchStart($event)"
-        (touchend)="onTouchEnd($event)">
+        (touchend)="onTouchEnd($event)"
+        (click)="openLightbox(currentImageIndex)"
+        style="cursor:pointer;">
         <img
           *ngIf="!images.length"
           src="assets/Budva.jpg"
@@ -33,31 +35,54 @@
           [class.active]="i === currentImageIndex">
       </div>
       <div class="hero-gradient"></div>
-      <button *ngIf="images.length > 1" class="hero-nav-btn left" (click)="prevImage()" aria-label="Previous image">
+      <button *ngIf="images.length > 1" class="hero-nav-btn left" (click)="prevImage(); $event.stopPropagation()" aria-label="Previous image">
         <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
       </button>
-      <button *ngIf="images.length > 1" class="hero-nav-btn right" (click)="nextImage()" aria-label="Next image">
+      <button *ngIf="images.length > 1" class="hero-nav-btn right" (click)="nextImage(); $event.stopPropagation()" aria-label="Next image">
         <svg viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
       </button>
-      <div *ngIf="images.length > 1" class="hero-image-counter">
-        {{ currentImageIndex + 1 }} / {{ images.length }}
+      <button class="share-btn" (click)="shareLocation(); $event.stopPropagation()" aria-label="Share">
+        <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+      </button>
+      <!-- Sliding dash indicator -->
+      <div *ngIf="images.length > 1" class="hero-dot-indicator">
+        <span
+          *ngFor="let dot of visibleDotWindow; let i = index"
+          class="hero-dot"
+          [class.hero-dot-active]="dot === currentImageIndex">
+        </span>
       </div>
-      <!-- Thumbnail strip — vidljiv samo na desktopu via CSS -->
-      <div *ngIf="images.length > 1" class="hero-thumbnails">
-        <img
-          *ngFor="let img of images; let i = index"
-          [src]="img"
-          [class.active]="i === currentImageIndex"
-          class="hero-thumb"
-          (click)="currentImageIndex = i"
-          [alt]="'Image ' + (i + 1)">
-      </div>
+      <!-- Back i Share su OVDJE unutar hero, ali na desktopu ih CSS pomjera u hero-ui-layer -->
       <button class="back-btn" (click)="goBack()">
         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
       </button>
-      <button class="share-btn" (click)="shareLocation()">
+    </div>
+
+    <!-- Desktop overlay: back + share + dots pozicionirani iznad hero, unutar grid kolone 1 -->
+    <div class="hero-ui-layer">
+      <button class="back-btn-ui" (click)="goBack()">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <button class="share-btn-ui" (click)="shareLocation()">
         <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
       </button>
+    </div>
+
+    <!-- Lightbox overlay -->
+    <div *ngIf="lightboxOpen" class="lightbox-overlay" (click)="closeLightbox()">
+      <button class="lightbox-close" (click)="closeLightbox()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <button class="lightbox-nav left" (click)="lightboxPrev($event)" aria-label="Previous">
+        <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </button>
+      <div class="lightbox-img-wrap" (click)="$event.stopPropagation()">
+        <img [src]="images[lightboxIndex]" class="lightbox-img" alt="">
+      </div>
+      <button class="lightbox-nav right" (click)="lightboxNext($event)" aria-label="Next">
+        <svg viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </button>
+      <div class="lightbox-counter">{{ lightboxIndex + 1 }} / {{ images.length }}</div>
     </div>
 
     <div class="content-card">
@@ -208,6 +233,15 @@
 
       <div class="section-divider"></div>
 
+      <!-- Mini mapa -->
+      <section class="detail-map-section" *ngIf="locationLat && locationLng">
+        <h3>Location</h3>
+        <div id="detail-map" class="detail-map-container"></div>
+        <a class="detail-map-link" (click)="openOnMap()">View on map →</a>
+      </section>
+
+      <div class="section-divider" *ngIf="locationLat && locationLng"></div>
+
       <!-- Reviews -->
       <section>
         <div class="section-header">
@@ -285,41 +319,6 @@
       <div class="auth-modal-actions">
         <button class="auth-modal-cancel" (click)="closeAuthModal()">Not now</button>
         <button class="auth-modal-login" (click)="goToLoginFromModal()">Log in / Sign up</button>
-      </div>
-    </div>
-  </div>
-
-  <div *ngIf="showCalendarScheduler" class="auth-modal-overlay" (click)="closeCalendarScheduler()">
-    <div class="calendar-scheduler-card" (click)="$event.stopPropagation()">
-      <div class="calendar-scheduler-icon">
-        <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-      </div>
-      <h3 class="auth-modal-title">Schedule on calendar</h3>
-      <p class="auth-modal-body">
-        {{ isEvent ? 'Choose a time while this event is active.' : 'Choose when you want this post to appear in your calendar.' }}
-      </p>
-      <label class="calendar-scheduler-label" for="calendarDateTime">Date and time</label>
-      <div class="calendar-scheduler-input-wrap">
-        <input
-          #calendarDateTimeInput
-          id="calendarDateTime"
-          class="calendar-scheduler-input"
-          type="datetime-local"
-          [attr.lang]="currentLanguage"
-          [(ngModel)]="selectedCalendarDateTime"
-          [min]="calendarMinDateTime"
-          [max]="calendarMaxDateTime || null">
-        <button
-          type="button"
-          class="calendar-scheduler-picker-btn"
-          aria-label="Open date picker"
-          tabindex="-1"
-          (click)="openDateTimePicker(calendarDateTimeInput)"></button>
-      </div>
-      <div *ngIf="calendarScheduleError" class="calendar-scheduler-error">{{ calendarScheduleError }}</div>
-      <div class="auth-modal-actions">
-        <button class="auth-modal-cancel" (click)="closeCalendarScheduler()">Cancel</button>
-        <button class="auth-modal-login" (click)="addToCalendar()">Add</button>
       </div>
     </div>
   </div>

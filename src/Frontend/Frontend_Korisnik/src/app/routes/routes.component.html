@@ -1,0 +1,43 @@
+<div class="routes-page">
+  <app-header title="Routes"></app-header>
+
+  <section class="controls">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/></svg>
+      <input [(ngModel)]="searchQuery" placeholder="Search routes">
+    </div>
+    <select [(ngModel)]="sortOption">
+      <option value="created-desc">Newest</option>
+      <option value="distance-asc">Shortest</option>
+      <option value="distance-desc">Longest</option>
+      <option value="duration-asc">Quickest</option>
+      <option value="name-asc">Name A-Z</option>
+    </select>
+  </section>
+
+  <div class="state" *ngIf="isLoading">Loading routes...</div>
+  <div class="state error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <main class="route-grid" *ngIf="!isLoading && !errorMessage">
+    <article class="route-card" *ngFor="let route of visibleRoutes">
+      <div class="route-head">
+        <div>
+          <h2>{{ route.name }}</h2>
+          <p *ngIf="route.regionName">{{ route.regionName }}</p>
+        </div>
+        <span class="difficulty">{{ route.difficulty || 'Route' }}</span>
+      </div>
+      <p class="description">{{ route.description || 'No description available.' }}</p>
+      <div class="metrics">
+        <span>{{ route.distanceKm | number:'1.0-1' }} km</span>
+        <span>{{ route.durationMin }} min</span>
+        <span *ngIf="route.elevationGainM">{{ route.elevationGainM }} m up</span>
+      </div>
+      <button class="primary-btn" (click)="openOnMap(route)" [disabled]="route.waypoints.length === 0">
+        Open on map
+      </button>
+    </article>
+
+    <div class="state" *ngIf="visibleRoutes.length === 0">No routes found.</div>
+  </main>
+</div>
