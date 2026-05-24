@@ -421,6 +421,13 @@
   font-size: 13px;
   font-weight: 600;
   color: #15803d;
+  transition: all 0.2s;
+
+  &.save-msg-error {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+  }
 }
 
 // ── Region select ──────────────────────────────────────────────────────────
