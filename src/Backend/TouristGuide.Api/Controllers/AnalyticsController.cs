@@ -440,7 +440,11 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RecordTouristLocation([FromBody] TouristLocationRequest body)
         {
-            if (body is null || string.IsNullOrWhiteSpace(body.SessionId) || body.SessionId.Length > 64)
+            if (body is null)
+                return BadRequest(new { message = "Neispravan zahtjev.", success = false });
+
+            var sessionId = NormalizeAnalyticsSessionId(body.SessionId);
+            if (sessionId is null)
                 return BadRequest(new { message = "Neispravan sessionId.", success = false });
 
             if (body.Lat < -90 || body.Lat > 90 || body.Lng < -180 || body.Lng > 180)
@@ -450,7 +454,7 @@ namespace TouristGuide.Api.Controllers
             var touristId = GetAuthorizedTouristId();
 
             var recentExists = await _db.TouristLocationSamples.AnyAsync(s =>
-                s.SessionId == body.SessionId &&
+                s.SessionId == sessionId &&
                 s.RecordedAt >= now.AddMinutes(-15));
 
             if (recentExists)
@@ -473,7 +477,7 @@ namespace TouristGuide.Api.Controllers
             _db.TouristLocationSamples.Add(new TouristLocationSample
             {
                 TouristId = touristId,
-                SessionId = body.SessionId.Trim(),
+                SessionId = sessionId,
                 RegionId = nearest?.Id,
                 Lat = body.Lat,
                 Lng = body.Lng,
@@ -494,7 +498,8 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RecordAppVisit([FromBody] AppVisitRequest body)
         {
-            if (string.IsNullOrWhiteSpace(body?.SessionId) || body.SessionId.Length > 64)
+            var sessionId = NormalizeAnalyticsSessionId(body?.SessionId);
+            if (sessionId is null)
                 return BadRequest(new { message = "Neispravan sessionId." });
 
             try
@@ -504,13 +509,13 @@ namespace TouristGuide.Api.Controllers
 
                 // Ignore duplicate (ista sesija, isti dan)
                 var exists = await _db.AppVisits.AnyAsync(v =>
-                    v.SessionId == body.SessionId && v.VisitDate == visitDate);
+                    v.SessionId == sessionId && v.VisitDate == visitDate);
 
                 if (!exists)
                 {
                     _db.AppVisits.Add(new AppVisit
                     {
-                        SessionId = body.SessionId,
+                        SessionId = sessionId,
                         VisitDate = visitDate,
                         CreatedAt = DateTime.UtcNow,
                     });
@@ -590,6 +595,17 @@ namespace TouristGuide.Api.Controllers
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
+        }
+
+        private static string? NormalizeAnalyticsSessionId(string? value)
+        {
+            var sessionId = value?.Trim().ToLowerInvariant();
+            if (sessionId?.Length != 32)
+                return null;
+
+            return sessionId.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f')
+                ? sessionId
+                : null;
         }
 
         private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)

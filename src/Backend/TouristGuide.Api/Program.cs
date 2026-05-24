@@ -16,6 +16,9 @@ using TouristGuide.Api.Services.Ai;
 
 var builder = WebApplication.CreateBuilder(args);
 var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "DataProtectionKeys");
+var configuredCorsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
 
 Directory.CreateDirectory(dataProtectionPath);
 
@@ -35,14 +38,21 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
     {
-            policy.WithOrigins(
-                "http://softeng.pmf.kg.ac.rs:10181",    // Admin HTTP
-                "http://softeng.pmf.kg.ac.rs:10183",    // Turista HTTP
-                "https://softeng.pmf.kg.ac.rs:10188",   // Admin HTTPS
-                "https://softeng.pmf.kg.ac.rs:10187",    // Turista HTTPS
-                "http://localhost:4200",                // Admin Angular app (lokalni razvoj)
-                "http://localhost:4201"                 // Turista Angular app (lokalni razvoj)
-            )
+            var origins = configuredCorsOrigins.Length > 0
+                ? configuredCorsOrigins
+                : builder.Environment.IsDevelopment()
+                    ? ["http://localhost:4200", "http://localhost:4201"]
+                    : throw new InvalidOperationException("Cors:AllowedOrigins must be configured outside Development.");
+
+            if (builder.Environment.IsDevelopment())
+            {
+                origins = origins
+                    .Concat(["http://localhost:4200", "http://localhost:4201"])
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+
+            policy.WithOrigins(origins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -52,8 +62,9 @@ builder.Services.AddCors(options =>
 // ────────────────────────────────────────────────────────────
 // 2. JWT AUTENTIFIKACIJA
 // ────────────────────────────────────────────────────────────
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException("Jwt:Secret nije postavljen u appsettings.json");
+var jwtSecret = GetRequiredSecret(builder.Configuration, "Jwt:Secret", minimumLength: 32);
+var jwtIssuer = GetRequiredSetting(builder.Configuration, "Jwt:Issuer");
+var jwtAudience = GetRequiredSetting(builder.Configuration, "Jwt:Audience");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -65,9 +76,9 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidIssuer = jwtIssuer,
         ValidateAudience = true,
-        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidAudience = jwtAudience,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
@@ -120,6 +131,12 @@ builder.Services.AddHttpClient("RouteValidation", client =>
 });
 
 // ── SignalR ────────────────────────────────────────────────────────────
+builder.Services.AddHttpClient("GoogleTokenInfo", client =>
+{
+    client.BaseAddress = new Uri("https://oauth2.googleapis.com/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 builder.Services.AddSignalR();
 builder.Services.AddScoped<NotificationService>();
 
@@ -161,7 +178,7 @@ builder.Services.AddSwaggerGen(options =>
 // ────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection")
+        GetRequiredSetting(builder.Configuration, "ConnectionStrings:DefaultConnection")
     ));
 
 var app = builder.Build();
@@ -187,12 +204,28 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.TryAdd("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.TryAdd("X-Frame-Options", "DENY");
+    context.Response.Headers.TryAdd("Referrer-Policy", "no-referrer");
+    context.Response.Headers.TryAdd("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+    await next();
+});
+
 app.UseWhen(
     context => !IsLoopbackRequest(context),
     branch => branch.UseHttpsRedirection());
 
 var imagesPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "images");
 Directory.CreateDirectory(imagesPhysicalPath);
+app.MapWhen(
+    context => context.Request.Path.StartsWithSegments("/images/verification-documents"),
+    branch => branch.Run(context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return Task.CompletedTask;
+    }));
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(imagesPhysicalPath),
@@ -219,4 +252,26 @@ static bool IsLoopbackRequest(HttpContext context)
 {
     var remoteIp = context.Connection.RemoteIpAddress;
     return remoteIp is not null && IPAddress.IsLoopback(remoteIp);
+}
+
+static string GetRequiredSecret(IConfiguration configuration, string key, int minimumLength)
+{
+    var value = configuration[key];
+    if (string.IsNullOrWhiteSpace(value) || value.Length < minimumLength)
+    {
+        throw new InvalidOperationException($"{key} must be provided through environment variables or a local secret store and be at least {minimumLength} characters long.");
+    }
+
+    return value;
+}
+
+static string GetRequiredSetting(IConfiguration configuration, string key)
+{
+    var value = configuration[key];
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException($"{key} must be configured.");
+    }
+
+    return value;
 }

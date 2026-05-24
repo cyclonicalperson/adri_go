@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ namespace TouristGuide.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly UniversalAdminPasswordService _universalAdminPasswordService;
+        private static readonly HashSet<string> AllowedRoles = ["admin", "superadmin"];
+        private static readonly HashSet<string> AllowedAccountStatuses = ["active", "suspended", "pending"];
 
         public AdminUsersController(AppDbContext db, UniversalAdminPasswordService universalAdminPasswordService)
         {
@@ -113,15 +116,23 @@ namespace TouristGuide.Api.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (await _db.AdminUsers.AnyAsync(u => u.Email == dto.Email.ToLowerInvariant()))
+            if (PasswordPolicy.GetValidationError(dto.Password) is { } passwordError)
+                return BadRequest(new { message = passwordError });
+
+            var role = NormalizeRole(dto.Role);
+            if (role is null)
+                return BadRequest(new { message = "Rola mora biti admin ili superadmin." });
+
+            var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+            if (await _db.AdminUsers.AnyAsync(u => u.Email == normalizedEmail))
                 return Conflict(new { message = "Email adresa je već zauzeta." });
 
             var user = new AdminUser
             {
                 FullName = dto.FullName.Trim(),
-                Email = dto.Email.Trim().ToLowerInvariant(),
+                Email = normalizedEmail,
                 PasswordHash = PasswordHelper.Hash(dto.Password),
-                Role = dto.Role ?? "admin",
+                Role = role,
                 IsIndividual = dto.IsIndividual,
                 OrganizationId = dto.OrganizationId,
                 AccountStatus = "active",
@@ -160,10 +171,22 @@ namespace TouristGuide.Api.Controllers
                     return Conflict(new { message = "Email adresa je već zauzeta." });
                 user.Email = normalized;
             }
-            if (dto.Role is not null) user.Role = dto.Role;
+            if (dto.Role is not null)
+            {
+                var role = NormalizeRole(dto.Role);
+                if (role is null)
+                    return BadRequest(new { message = "Rola mora biti admin ili superadmin." });
+                user.Role = role;
+            }
             if (dto.OrganizationId.HasValue) user.OrganizationId = dto.OrganizationId.Value == 0 ? null : dto.OrganizationId;
             if (dto.IsIndividual.HasValue) user.IsIndividual = dto.IsIndividual.Value;
-            if (dto.AccountStatus is not null) user.AccountStatus = dto.AccountStatus;
+            if (dto.AccountStatus is not null)
+            {
+                var accountStatus = NormalizeAccountStatus(dto.AccountStatus);
+                if (accountStatus is null)
+                    return BadRequest(new { message = "Status naloga mora biti active, suspended ili pending." });
+                user.AccountStatus = accountStatus;
+            }
             if (dto.ProfileImage is not null)
                 user.ProfileImage = string.IsNullOrWhiteSpace(dto.ProfileImage) ? null : dto.ProfileImage.Trim();
 
@@ -391,8 +414,8 @@ namespace TouristGuide.Api.Controllers
             if (string.IsNullOrWhiteSpace(dto.CurrentPassword) || string.IsNullOrWhiteSpace(dto.NewPassword))
                 return BadRequest(new { message = "Trenutna lozinka i nova univerzalna lozinka su obavezne." });
 
-            if (dto.NewPassword.Length < 8)
-                return BadRequest(new { message = "Univerzalna lozinka mora imati najmanje 8 karaktera." });
+            if (PasswordPolicy.GetValidationError(dto.NewPassword, "Univerzalna lozinka") is { } passwordError)
+                return BadRequest(new { message = passwordError });
 
             var adminId = GetCurrentAdminId();
             if (adminId is null) return Unauthorized();
@@ -419,6 +442,8 @@ namespace TouristGuide.Api.Controllers
         [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> UpdateSelf([FromBody] UpdateSelfDto dto)
         {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
             var adminId = GetCurrentAdminId();
             if (adminId is null) return Unauthorized();
 
@@ -453,8 +478,8 @@ namespace TouristGuide.Api.Controllers
             if (string.IsNullOrWhiteSpace(dto.CurrentPassword) || string.IsNullOrWhiteSpace(dto.NewPassword))
                 return BadRequest(new { message = "Trenutna i nova lozinka su obavezne." });
 
-            if (dto.NewPassword.Length < 8)
-                return BadRequest(new { message = "Nova lozinka mora imati najmanje 8 karaktera." });
+            if (PasswordPolicy.GetValidationError(dto.NewPassword, "Nova lozinka") is { } passwordError)
+                return BadRequest(new { message = passwordError });
 
             var adminId = GetCurrentAdminId();
             if (adminId is null) return Unauthorized();
@@ -481,6 +506,23 @@ namespace TouristGuide.Api.Controllers
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
+        }
+
+        private static string? NormalizeRole(string? role)
+        {
+            var normalized = string.IsNullOrWhiteSpace(role)
+                ? "admin"
+                : role.Trim().ToLowerInvariant();
+
+            return AllowedRoles.Contains(normalized) ? normalized : null;
+        }
+
+        private static string? NormalizeAccountStatus(string? status)
+        {
+            var normalized = status?.Trim().ToLowerInvariant();
+            return !string.IsNullOrWhiteSpace(normalized) && AllowedAccountStatuses.Contains(normalized)
+                ? normalized
+                : null;
         }
 
         private static object MapToDto(AdminUser u) => new
@@ -512,22 +554,45 @@ namespace TouristGuide.Api.Controllers
     // ── DTOs ─────────────────────────────────────────────────────────────────
     public class CreateAdminUserDto
     {
+        [Required]
+        [MaxLength(200)]
         public string FullName { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(PasswordPolicy.MinimumLength)]
         public string Password { get; set; } = string.Empty;
+
+        [MaxLength(50)]
         public string? Role { get; set; }
+
         public bool IsIndividual { get; set; } = true;
         public uint? OrganizationId { get; set; }
     }
 
     public class UpdateAdminUserDto
     {
+        [MaxLength(200)]
         public string? FullName { get; set; }
+
+        [EmailAddress]
+        [MaxLength(255)]
         public string? Email { get; set; }
+
+        [MaxLength(50)]
         public string? Role { get; set; }
+
         public uint? OrganizationId { get; set; }
         public bool? IsIndividual { get; set; }
+
+        [MaxLength(50)]
         public string? AccountStatus { get; set; }
+
+        [MaxLength(500)]
         public string? ProfileImage { get; set; }
     }
 
@@ -539,20 +604,34 @@ namespace TouristGuide.Api.Controllers
 
     public class UpdateSelfDto
     {
+        [MaxLength(200)]
         public string? FullName { get; set; }
+
+        [EmailAddress]
+        [MaxLength(255)]
         public string? Email { get; set; }
+
+        [MaxLength(500)]
         public string? ProfileImage { get; set; }
     }
 
     public class ChangePasswordDto
     {
+        [Required]
         public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(PasswordPolicy.MinimumLength)]
         public string NewPassword { get; set; } = string.Empty;
     }
 
     public class UpdateUniversalPasswordDto
     {
+        [Required]
         public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(PasswordPolicy.MinimumLength)]
         public string NewPassword { get; set; } = string.Empty;
     }
 }

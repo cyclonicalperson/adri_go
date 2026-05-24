@@ -17,17 +17,20 @@ namespace TouristGuide.Api.Controllers
         private readonly AdminIdentityService _adminIdentityService;
         private readonly EmailService _emailService;
         private readonly ILogger<AdminRegistrationController> _logger;
+        private readonly IWebHostEnvironment _environment;
 
         public AdminRegistrationController(
             AppDbContext dbContext,
             AdminIdentityService adminIdentityService,
             EmailService emailService,
-            ILogger<AdminRegistrationController> logger)
+            ILogger<AdminRegistrationController> logger,
+            IWebHostEnvironment environment)
         {
             _dbContext = dbContext;
             _adminIdentityService = adminIdentityService;
             _emailService = emailService;
             _logger = logger;
+            _environment = environment;
         }
 
         [HttpGet]
@@ -100,7 +103,7 @@ namespace TouristGuide.Api.Controllers
                 SubmittedAt = x.SubmittedAt,
                 ReviewedAt = x.ReviewedAt,
                 ReviewedBy = x.ReviewedBy,
-                DocumentUrl = ToDocumentUrl(x.DocumentPath)
+                DocumentUrl = ToDocumentUrl(x.Id, x.DocumentPath)
             }).ToList();
 
             return Ok(new
@@ -139,6 +142,47 @@ namespace TouristGuide.Api.Controllers
                 .ToListAsync();
 
             return Ok(pendingRequests);
+        }
+
+        [HttpGet("{id:int}/document")]
+        public async Task<IActionResult> GetVerificationDocument(int id)
+        {
+            var document = await _dbContext.VerificationDocuments
+                .AsNoTracking()
+                .Where(x => x.RegistrationRequestId == id)
+                .OrderByDescending(x => x.UploadedAt)
+                .FirstOrDefaultAsync();
+
+            if (document is null)
+                return NotFound(new { message = "Verifikacioni dokument nije pronadjen." });
+
+            if (Uri.TryCreate(document.FilePath, UriKind.Absolute, out var uri))
+            {
+                return Redirect(uri.ToString());
+            }
+
+            var documentsFolder = Path.GetFullPath(Path.Combine(_environment.ContentRootPath, "images", "verification-documents"));
+            var relativePath = document.FilePath
+                .TrimStart('/', '\\')
+                .Replace("\\", Path.DirectorySeparatorChar.ToString())
+                .Replace("/", Path.DirectorySeparatorChar.ToString());
+            var absolutePath = Path.GetFullPath(Path.Combine(_environment.ContentRootPath, "images", relativePath));
+
+            if (!absolutePath.StartsWith(documentsFolder, StringComparison.OrdinalIgnoreCase) ||
+                !System.IO.File.Exists(absolutePath))
+            {
+                return NotFound(new { message = "Verifikacioni dokument nije dostupan." });
+            }
+
+            var contentType = document.FileType switch
+            {
+                "pdf" => "application/pdf",
+                "png" => "image/png",
+                "jpg" or "jpeg" => "image/jpeg",
+                _ => "application/octet-stream"
+            };
+
+            return PhysicalFile(absolutePath, contentType, document.FileName);
         }
 
         // ============================================================
@@ -335,7 +379,7 @@ namespace TouristGuide.Api.Controllers
             };
         }
 
-        private static string? ToDocumentUrl(string? documentPath)
+        private static string? ToDocumentUrl(uint requestId, string? documentPath)
         {
             if (string.IsNullOrWhiteSpace(documentPath))
                 return null;
@@ -343,7 +387,7 @@ namespace TouristGuide.Api.Controllers
             if (Uri.TryCreate(documentPath, UriKind.Absolute, out _))
                 return documentPath;
 
-            return $"/images/{documentPath.TrimStart('/').TrimStart('\\').Replace("\\", "/")}";
+            return $"/api/admin-registration/{requestId}/document";
         }
     }
 }

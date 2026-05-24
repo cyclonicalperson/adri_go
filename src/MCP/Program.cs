@@ -3,7 +3,7 @@ using Mcp.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMcpServer(builder.Configuration);
+builder.Services.AddMcpServer(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 

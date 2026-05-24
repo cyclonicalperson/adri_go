@@ -53,9 +53,8 @@ export class AppVisitService {
   }
 
   private generateId(): string {
-    // Kratki UUID-like niz, 32 hex znaka
-    return Array.from({ length: 32 }, () =>
-      Math.floor(Math.random() * 16).toString(16),
-    ).join('');
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   }
 }
