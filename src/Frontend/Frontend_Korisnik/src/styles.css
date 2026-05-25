@@ -48,7 +48,6 @@
   --shadow-md:    0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
   --shadow-lg:    0 10px 32px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06);
   --shadow-green: 0 6px 20px rgba(34,197,94,0.30);
-
   --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Manrope', var(--font-sans);
 }
@@ -56,6 +55,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
+  height: 100dvh;
   font-family: var(--font-sans);
   background: var(--gray-100);
   color: var(--gray-900);
@@ -192,6 +192,8 @@ img { display: block; }
 }
 .rp-load:hover { opacity: 0.92; }
 .rp-load:active { opacity: 0.85; transform: scale(0.98); }
+
+/* ── Dark Mode RP Card overrides ────────────────────────────── */
 html[data-theme='dark'] .rp-card {
   background: #1f2937;
   border: 1px solid #334155;
@@ -218,6 +220,7 @@ html[data-theme='dark'] .rp-info-item { color: #cbd5e1; }
 html[data-theme='dark'] .rp-info-item svg { fill: #94a3b8; }
 html[data-theme='dark'] .rp-body p { color: #94a3b8; }
 html[data-theme='dark'] .rp-load { box-shadow: 0 8px 22px rgba(34,197,94,0.22); }
+
 @media (min-width: 900px) {
   .rp-overlay { left: calc(360px + (100vw - 360px) / 2); bottom: 32px; width: 380px; }
   .rp-card { border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 10px rgba(0,0,0,0.08); }
@@ -228,10 +231,29 @@ html[data-theme='dark'] .rp-load { box-shadow: 0 8px 22px rgba(34,197,94,0.22); 
 @media (min-width: 900px) {
   body {
     background: var(--gray-100);
-    min-height: 100vh;
+    min-height: 100dvh;
   }
 }
 
+/* ── Osnovni raspored za Footer i glavne kontejnere ── */
+.list-container,
+.app-container {
+  min-height: 100dvh;
+  position: relative;
+  padding-bottom: 75px; 
+}
+
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+  margin: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Dark Mode Root ─────────────────────────────────────────── */
 html[data-theme='dark'] {
   color-scheme: dark;
 
@@ -241,7 +263,6 @@ html[data-theme='dark'] {
   --green-500: #22c55e;
   --green-600: #4ade80;
   --green-700: #86efac;
-
   --gray-50:  #111827;
   --gray-100: #1f2937;
   --gray-200: #334155;
