@@ -62,7 +62,11 @@ builder.Services.AddCors(options =>
 // ────────────────────────────────────────────────────────────
 // 2. JWT AUTENTIFIKACIJA
 // ────────────────────────────────────────────────────────────
-var jwtSecret = GetRequiredSecret(builder.Configuration, "Jwt:Secret", minimumLength: 32);
+var jwtSecret = GetRequiredSecret(
+    builder.Configuration,
+    "Jwt:Secret",
+    minimumLength: 32,
+    allowDevelopmentFallback: builder.Environment.IsDevelopment());
 var jwtIssuer = GetRequiredSetting(builder.Configuration, "Jwt:Issuer");
 var jwtAudience = GetRequiredSetting(builder.Configuration, "Jwt:Audience");
 
@@ -254,11 +258,18 @@ static bool IsLoopbackRequest(HttpContext context)
     return remoteIp is not null && IPAddress.IsLoopback(remoteIp);
 }
 
-static string GetRequiredSecret(IConfiguration configuration, string key, int minimumLength)
+static string GetRequiredSecret(
+    IConfiguration configuration,
+    string key,
+    int minimumLength,
+    bool allowDevelopmentFallback = false)
 {
     var value = configuration[key];
     if (string.IsNullOrWhiteSpace(value) || value.Length < minimumLength)
     {
+        if (allowDevelopmentFallback)
+            return "DevelopmentOnlyJwtSecretForLocalRuns-ChangeBeforeProduction-2026";
+
         throw new InvalidOperationException($"{key} must be provided through environment variables or a local secret store and be at least {minimumLength} characters long.");
     }
 

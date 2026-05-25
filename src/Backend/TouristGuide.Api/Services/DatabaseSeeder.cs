@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
+using System.Text.Json;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Models;
 using BCrypt.Net;
@@ -11,6 +12,22 @@ namespace TouristGuide.Api.Services
         private readonly AppDbContext _db;
         private readonly ILogger<DatabaseSeeder> _logger;
         private readonly IWebHostEnvironment _env;
+
+        private const int LoadTestTouristCount = 600;
+        private const int LoadTestPostCount = 360;
+        private const int LoadTestRouteCount = 90;
+        private const int LoadTestLikeCount = 5200;
+        private const int LoadTestSaveCount = 3600;
+        private const int LoadTestPostViewCount = 18000;
+        private const int LoadTestPostReviewCount = 1700;
+        private const int LoadTestRouteReviewCount = 420;
+        private const int LoadTestNotificationCount = 1400;
+        private const int LoadTestLocationSampleCount = 7200;
+        private const int LoadTestPlannerCount = 180;
+        private const string LoadTestEmailDomain = "@loadtest.touristguide.test";
+        private const string LoadTestPostTitlePrefix = "[LT]";
+        private const string LoadTestPlannerTitlePrefix = "[LT] Plan";
+        private static readonly JsonSerializerOptions SeedJsonOptions = new(JsonSerializerDefaults.Web);
 
         public DatabaseSeeder(AppDbContext db, ILogger<DatabaseSeeder> logger, IWebHostEnvironment env)
         {
@@ -44,6 +61,7 @@ namespace TouristGuide.Api.Services
             await SeedTouristFavoritesAsync();
             await SeedVisitPlannersAsync();
             await SeedMailingListAsync();
+            await SeedLoadTestDataAsync();
 
             _logger.LogInformation("[Seed] Seed završen.");
         }
@@ -1454,5 +1472,623 @@ namespace TouristGuide.Api.Services
 
             await _db.SaveChangesAsync();
         }
+
+        private async Task SeedLoadTestDataAsync()
+        {
+            if (await _db.Tourists.AnyAsync(t => t.Email != null && t.Email.EndsWith(LoadTestEmailDomain)))
+                return;
+
+            _logger.LogInformation(
+                "[Seed] Load-test podaci: {Tourists} turista, {Posts} objava, {Routes} ruta, {Views} pregleda...",
+                LoadTestTouristCount,
+                LoadTestPostCount,
+                LoadTestRouteCount,
+                LoadTestPostViewCount);
+
+            var previousAutoDetectChanges = _db.ChangeTracker.AutoDetectChangesEnabled;
+            _db.ChangeTracker.AutoDetectChangesEnabled = false;
+
+            try
+            {
+                var random = new Random(20260524);
+                var now = DateTime.UtcNow;
+                var touristHash = BCrypt.Net.BCrypt.HashPassword("Tourist123!", workFactor: 10);
+
+                var adminIds = await _db.AdminUsers
+                    .AsNoTracking()
+                    .Where(a => a.AccountStatus == "active")
+                    .OrderBy(a => a.Id)
+                    .Select(a => a.Id)
+                    .ToListAsync();
+
+                var regions = await _db.Regions
+                    .AsNoTracking()
+                    .Where(r => r.IsActive && r.Lat != null && r.Lng != null)
+                    .OrderBy(r => r.Id)
+                    .Select(r => new SeedRegion(r.Id, r.Name, r.Country, r.Lat!.Value, r.Lng!.Value))
+                    .ToListAsync();
+
+                var tagIds = await _db.Tags
+                    .AsNoTracking()
+                    .OrderBy(t => t.Id)
+                    .Select(t => t.Id)
+                    .ToListAsync();
+
+                if (adminIds.Count == 0 || regions.Count == 0 || tagIds.Count == 0)
+                {
+                    _logger.LogWarning("[Seed] Load-test seed preskocen jer fale admini, regije ili tagovi.");
+                    return;
+                }
+
+                await AddInBatchesAsync(BuildLoadTestTourists(touristHash, now).ToList(), 250);
+
+                var touristIds = await _db.Tourists
+                    .AsNoTracking()
+                    .Where(t => t.Email != null && t.Email.EndsWith(LoadTestEmailDomain))
+                    .OrderBy(t => t.Id)
+                    .Select(t => t.Id)
+                    .ToListAsync();
+
+                await AddInBatchesAsync(BuildLoadTestPosts(adminIds, regions, random, now).ToList(), 200);
+
+                var generatedPostIds = await _db.Posts
+                    .AsNoTracking()
+                    .Where(p => p.Title.StartsWith(LoadTestPostTitlePrefix))
+                    .OrderBy(p => p.Id)
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                await SeedLoadTestPostTagsAsync(generatedPostIds, tagIds, random);
+                await AddInBatchesAsync(BuildLoadTestRoutes(adminIds, regions, random, now).ToList(), 100);
+
+                var allPublishedPostIds = await _db.Posts
+                    .AsNoTracking()
+                    .Where(p => p.Status == "published")
+                    .OrderBy(p => p.Id)
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                var allPublishedRouteIds = await _db.Routes
+                    .AsNoTracking()
+                    .Where(r => r.Status == "published")
+                    .OrderBy(r => r.Id)
+                    .Select(r => r.Id)
+                    .ToListAsync();
+
+                await SeedLoadTestInteractionsAsync(touristIds, allPublishedPostIds, random, now);
+                await SeedLoadTestPostViewsAsync(touristIds, allPublishedPostIds, random, now);
+                await SeedLoadTestReviewsAsync(touristIds, allPublishedPostIds, allPublishedRouteIds, random, now);
+                await SeedLoadTestNotificationsAsync(touristIds, random, now);
+                await SeedLoadTestLocationSamplesAsync(touristIds, regions, random, now);
+                await SeedLoadTestFavoritesAsync(touristIds, allPublishedPostIds, allPublishedRouteIds, random, now);
+                await SeedLoadTestVisitPlannersAsync(touristIds, allPublishedPostIds, allPublishedRouteIds, random, now);
+                await SeedLoadTestMailingListAsync(touristIds, random, now);
+                await RefreshSeededAggregateCountersAsync(allPublishedPostIds, allPublishedRouteIds);
+            }
+            finally
+            {
+                _db.ChangeTracker.AutoDetectChangesEnabled = previousAutoDetectChanges;
+            }
+        }
+
+        private IEnumerable<Tourist> BuildLoadTestTourists(string passwordHash, DateTime now)
+        {
+            var firstNames = new[] { "Mila", "Luka", "Noah", "Sara", "David", "Elena", "Marko", "Nina", "Leo", "Iva", "Amir", "Hana" };
+            var lastNames = new[] { "Petrovic", "Kovacevic", "Wilson", "Rossi", "Garcia", "Novak", "Muller", "Smith", "Popescu", "Tanaka" };
+            var locations = new[] { "Berlin", "London", "Belgrade", "Rome", "Paris", "Madrid", "Vienna", "Amsterdam", "Stockholm", "Podgorica" };
+            var languages = new[] { "en", "sr", "de", "fr", "es", "it", "nl" };
+            var interestSets = new[]
+            {
+                """["hiking","nature","photography","culture"]""",
+                """["food","nightlife","beach","music"]""",
+                """["skiing","adventure","sport","outdoor"]""",
+                """["culture","history","sightseeing","family"]""",
+                """["wellness","spa","romantic","food"]""",
+                """["shopping","beach","restaurant","events"]"""
+            };
+
+            for (var i = 1; i <= LoadTestTouristCount; i++)
+            {
+                yield return new Tourist
+                {
+                    Name = $"{firstNames[i % firstNames.Length]} {lastNames[(i * 7) % lastNames.Length]} {i:000}",
+                    Email = $"loadtest.tourist{i:0000}{LoadTestEmailDomain}",
+                    PasswordHash = passwordHash,
+                    Language = languages[i % languages.Length],
+                    Interests = interestSets[i % interestSets.Length],
+                    Bio = "Load-test profil za provjeru pretrage, preporuka, analitike i notifikacija.",
+                    Location = locations[i % locations.Length],
+                    IsEmailVerified = i % 9 != 0,
+                    CreatedAt = now.AddDays(-(i % 365)),
+                    UpdatedAt = now.AddDays(-(i % 90))
+                };
+            }
+        }
+
+        private IEnumerable<Post> BuildLoadTestPosts(IReadOnlyList<uint> adminIds, IReadOnlyList<SeedRegion> regions, Random random, DateTime now)
+        {
+            var postTypes = new[] { "accommodation", "restaurant", "club", "cultural_site", "monument", "sports_facility", "event", "attraction", "shop", "other" };
+            var adjectives = new[] { "Central", "Panorama", "Old Town", "Blue Bay", "Mountain", "Heritage", "Vista", "Garden", "Sunset", "Family" };
+
+            for (var i = 1; i <= LoadTestPostCount; i++)
+            {
+                var region = regions[(i * 5) % regions.Count];
+                var postType = postTypes[i % postTypes.Length];
+                var status = i % 17 == 0 ? "draft" : i % 29 == 0 ? "archived" : "published";
+                var createdAt = now.AddDays(-random.Next(1, 540)).AddHours(-random.Next(0, 24));
+
+                yield return new Post
+                {
+                    AdminId = adminIds[i % adminIds.Count],
+                    RegionId = region.Id,
+                    Country = region.Country,
+                    Title = $"{LoadTestPostTitlePrefix} {adjectives[i % adjectives.Length]} {PostTypeLabel(postType)} {region.Name} #{i:000}",
+                    PostType = postType,
+                    Description = $"Generisana {PostTypeLabel(postType).ToLowerInvariant()} lokacija u regiji {region.Name}. Koristi se za testiranje velikih listi, filtera, mapa i preporuka.",
+                    Lat = DecimalRound(region.Lat + NextOffset(random, 0.08m)),
+                    Lng = DecimalRound(region.Lng + NextOffset(random, 0.08m)),
+                    Address = $"{region.Name} test zona {i % 40 + 1}",
+                    ExternalUrl = i % 3 == 0 ? $"https://example.test/tourism/{i:000}" : null,
+                    ExternalUrlLabel = i % 3 == 0 ? "Vise informacija" : null,
+                    Images = JsonSerializer.Serialize(new[] { LoadTestImageFor(postType, i) }, SeedJsonOptions),
+                    OpeningHours = """{"mon":"09:00-21:00","tue":"09:00-21:00","wed":"09:00-21:00","thu":"09:00-21:00","fri":"09:00-23:00","sat":"09:00-23:00","sun":"10:00-20:00"}""",
+                    Details = BuildLoadTestPostDetails(postType, i, random),
+                    Status = status,
+                    ViewCount = (uint)random.Next(35, 1800),
+                    LikeCount = (uint)random.Next(3, 260),
+                    SaveCount = (uint)random.Next(2, 180),
+                    ReviewCount = (uint)random.Next(0, 70),
+                    AvgRating = DecimalRound(3.2m + NextOffset(random, 1.7m)),
+                    PublishedAt = status == "published" ? createdAt.AddHours(4) : null,
+                    CreatedAt = createdAt,
+                    UpdatedAt = createdAt.AddDays(random.Next(0, 120))
+                };
+            }
+        }
+
+        private IEnumerable<Models.Route> BuildLoadTestRoutes(IReadOnlyList<uint> adminIds, IReadOnlyList<SeedRegion> regions, Random random, DateTime now)
+        {
+            var difficulties = new[] { "easy", "moderate", "hard", "expert" };
+
+            for (var i = 1; i <= LoadTestRouteCount; i++)
+            {
+                var region = regions[(i * 3) % regions.Count];
+                var lat1 = DecimalRound(region.Lat + NextOffset(random, 0.06m));
+                var lng1 = DecimalRound(region.Lng + NextOffset(random, 0.06m));
+                var lat2 = DecimalRound(lat1 + NextOffset(random, 0.04m));
+                var lng2 = DecimalRound(lng1 + NextOffset(random, 0.04m));
+                var distance = DecimalRound(2.5m + (i % 22) + NextOffset(random, 1.4m));
+                var status = i % 19 == 0 ? "draft" : "published";
+
+                yield return new Models.Route
+                {
+                    AdminId = adminIds[(i * 2) % adminIds.Count],
+                    RegionId = region.Id,
+                    Name = $"{LoadTestPostTitlePrefix} {region.Name} scenic ruta #{i:000}",
+                    Difficulty = difficulties[i % difficulties.Length],
+                    DistanceKm = distance,
+                    DurationMin = (uint)(45 + (int)(distance * 18)),
+                    ElevationGain = (uint)random.Next(20, 1250),
+                    Description = $"Generisana ruta za load test kroz regiju {region.Name}.",
+                    Waypoints = JsonSerializer.Serialize(new[]
+                    {
+                        new { lat = lat1, lng = lng1, name = "Start" },
+                        new { lat = lat2, lng = lng2, name = "Vidikovac" }
+                    }, SeedJsonOptions),
+                    Images = JsonSerializer.Serialize(new[] { LoadTestImageFor("route", i) }, SeedJsonOptions),
+                    Status = status,
+                    ViewCount = (uint)random.Next(30, 1300),
+                    SaveCount = (uint)random.Next(4, 220),
+                    CreatedAt = now.AddDays(-random.Next(1, 480)),
+                    UpdatedAt = now.AddDays(-random.Next(0, 90))
+                };
+            }
+        }
+
+        private async Task SeedLoadTestPostTagsAsync(IReadOnlyList<uint> postIds, IReadOnlyList<uint> tagIds, Random random)
+        {
+            var postTags = new List<PostTag>(postIds.Count * 4);
+            foreach (var postId in postIds)
+            {
+                var used = new HashSet<uint>();
+                var tagCount = 2 + random.Next(0, 4);
+                for (var i = 0; i < tagCount; i++)
+                {
+                    var tagId = tagIds[(int)((postId + (uint)random.Next(tagIds.Count) + (uint)i) % (uint)tagIds.Count)];
+                    if (used.Add(tagId))
+                        postTags.Add(new PostTag { PostId = postId, TagId = tagId });
+                }
+            }
+
+            await AddInBatchesAsync(postTags, 1000);
+        }
+
+        private async Task SeedLoadTestInteractionsAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, Random random, DateTime now)
+        {
+            var existingLikes = (await _db.PostLikes.AsNoTracking().Select(x => new { x.TouristId, x.PostId }).ToListAsync())
+                .Select(x => (x.TouristId, x.PostId))
+                .ToHashSet();
+            var existingSaves = (await _db.SavedPosts.AsNoTracking().Select(x => new { x.TouristId, x.PostId }).ToListAsync())
+                .Select(x => (x.TouristId, x.PostId))
+                .ToHashSet();
+
+            var likes = new List<PostLike>(LoadTestLikeCount);
+            var attempts = 0;
+            while (likes.Count < LoadTestLikeCount && attempts++ < LoadTestLikeCount * 8)
+            {
+                var touristId = touristIds[random.Next(touristIds.Count)];
+                var postId = postIds[random.Next(postIds.Count)];
+                if (!existingLikes.Add((touristId, postId))) continue;
+                likes.Add(new PostLike { TouristId = touristId, PostId = postId, CreatedAt = now.AddDays(-random.Next(0, 180)) });
+            }
+
+            var saves = new List<SavedPost>(LoadTestSaveCount);
+            attempts = 0;
+            while (saves.Count < LoadTestSaveCount && attempts++ < LoadTestSaveCount * 8)
+            {
+                var touristId = touristIds[random.Next(touristIds.Count)];
+                var postId = postIds[random.Next(postIds.Count)];
+                if (!existingSaves.Add((touristId, postId))) continue;
+                saves.Add(new SavedPost { TouristId = touristId, PostId = postId, CreatedAt = now.AddDays(-random.Next(0, 180)) });
+            }
+
+            await AddInBatchesAsync(likes, 1000);
+            await AddInBatchesAsync(saves, 1000);
+        }
+
+        private Task SeedLoadTestPostViewsAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, Random random, DateTime now)
+        {
+            var views = new List<PostView>(LoadTestPostViewCount);
+            for (var i = 0; i < LoadTestPostViewCount; i++)
+            {
+                views.Add(new PostView
+                {
+                    TouristId = random.Next(100) < 84 ? touristIds[random.Next(touristIds.Count)] : null,
+                    PostId = postIds[random.Next(postIds.Count)],
+                    CreatedAt = now.AddDays(-random.Next(0, 210)).AddMinutes(-random.Next(0, 1440)),
+                    DurationSec = (uint)random.Next(15, 720)
+                });
+            }
+
+            return AddInBatchesAsync(views, 1500);
+        }
+
+        private async Task SeedLoadTestReviewsAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, IReadOnlyList<uint> routeIds, Random random, DateTime now)
+        {
+            var comments = new[]
+            {
+                "Odlicno iskustvo, sve je bilo lako pronaci i preporuka je tacna.",
+                "Vrlo dobro za porodicni obilazak, posebno van glavne sezone.",
+                "Lijepa lokacija, ali treba bolja signalizacija i vise informacija.",
+                "Vrijedi posjete, fotografije i opis odgovaraju stvarnom stanju.",
+                "Solidno mjesto za kratku pauzu tokom obilaska regije."
+            };
+
+            var reviews = new List<Review>(LoadTestPostReviewCount + LoadTestRouteReviewCount);
+            var usedPostPairs = new HashSet<(uint TouristId, uint PostId)>();
+            var attempts = 0;
+            while (reviews.Count < LoadTestPostReviewCount && attempts++ < LoadTestPostReviewCount * 8)
+            {
+                var touristId = touristIds[random.Next(touristIds.Count)];
+                var postId = postIds[random.Next(postIds.Count)];
+                if (!usedPostPairs.Add((touristId, postId))) continue;
+                var status = ReviewStatusFor(random);
+                reviews.Add(new Review
+                {
+                    TouristId = touristId,
+                    PostId = postId,
+                    Rating = (byte)random.Next(3, 6),
+                    Comment = comments[random.Next(comments.Length)],
+                    Status = status,
+                    IsApproved = status == "APPROVED",
+                    CreatedAt = now.AddDays(-random.Next(0, 240))
+                });
+            }
+
+            for (var i = 0; i < LoadTestRouteReviewCount; i++)
+            {
+                var status = ReviewStatusFor(random);
+                reviews.Add(new Review
+                {
+                    TouristId = touristIds[random.Next(touristIds.Count)],
+                    RouteId = routeIds[random.Next(routeIds.Count)],
+                    Rating = (byte)random.Next(3, 6),
+                    Comment = comments[random.Next(comments.Length)],
+                    Status = status,
+                    IsApproved = status == "APPROVED",
+                    CreatedAt = now.AddDays(-random.Next(0, 240))
+                });
+            }
+
+            await AddInBatchesAsync(reviews, 1000);
+        }
+
+        private Task SeedLoadTestNotificationsAsync(IReadOnlyList<uint> touristIds, Random random, DateTime now)
+        {
+            var types = new[] { "new_event", "reminder", "promo", "system" };
+            var notifications = new List<Notification>(LoadTestNotificationCount);
+
+            for (var i = 0; i < LoadTestNotificationCount; i++)
+            {
+                var type = types[i % types.Length];
+                notifications.Add(new Notification
+                {
+                    TouristId = touristIds[random.Next(touristIds.Count)],
+                    Type = type,
+                    Title = LoadTestNotificationTitle(type),
+                    Body = "Generisana notifikacija za testiranje liste, badge broja i real-time stanja.",
+                    Payload = """{"source":"load-test"}""",
+                    IsRead = random.Next(100) < 62,
+                    CreatedAt = now.AddDays(-random.Next(0, 90)),
+                    SentAt = now.AddDays(-random.Next(0, 90))
+                });
+            }
+
+            return AddInBatchesAsync(notifications, 1000);
+        }
+
+        private Task SeedLoadTestLocationSamplesAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<SeedRegion> regions, Random random, DateTime now)
+        {
+            var samples = new List<TouristLocationSample>(LoadTestLocationSampleCount);
+            for (var i = 0; i < LoadTestLocationSampleCount; i++)
+            {
+                var region = regions[random.Next(regions.Count)];
+                samples.Add(new TouristLocationSample
+                {
+                    TouristId = random.Next(100) < 78 ? touristIds[random.Next(touristIds.Count)] : null,
+                    SessionId = $"lt-{i:000000}-{random.Next(1000):000}",
+                    RegionId = region.Id,
+                    Lat = DecimalRound(region.Lat + NextOffset(random, 0.12m)),
+                    Lng = DecimalRound(region.Lng + NextOffset(random, 0.12m)),
+                    RecordedAt = now.AddDays(-random.Next(0, 120)).AddMinutes(-random.Next(0, 1440))
+                });
+            }
+
+            return AddInBatchesAsync(samples, 1500);
+        }
+
+        private Task SeedLoadTestFavoritesAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, IReadOnlyList<uint> routeIds, Random random, DateTime now)
+        {
+            var favorites = new List<TouristFavorite>(1800);
+            for (var i = 0; i < 1200; i++)
+            {
+                favorites.Add(new TouristFavorite
+                {
+                    TouristId = touristIds[random.Next(touristIds.Count)],
+                    PostId = postIds[random.Next(postIds.Count)],
+                    SavedAt = now.AddDays(-random.Next(0, 180))
+                });
+            }
+
+            for (var i = 0; i < 600; i++)
+            {
+                favorites.Add(new TouristFavorite
+                {
+                    TouristId = touristIds[random.Next(touristIds.Count)],
+                    RouteId = routeIds[random.Next(routeIds.Count)],
+                    SavedAt = now.AddDays(-random.Next(0, 180))
+                });
+            }
+
+            return AddInBatchesAsync(favorites, 1000);
+        }
+
+        private async Task SeedLoadTestVisitPlannersAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, IReadOnlyList<uint> routeIds, Random random, DateTime now)
+        {
+            var planners = new List<VisitPlanner>(LoadTestPlannerCount);
+            for (var i = 1; i <= LoadTestPlannerCount; i++)
+            {
+                var start = new DateOnly(2026, 6, 1).AddDays(i % 120);
+                planners.Add(new VisitPlanner
+                {
+                    TouristId = touristIds[random.Next(touristIds.Count)],
+                    Title = $"{LoadTestPlannerTitlePrefix} #{i:000}",
+                    StartDate = start,
+                    EndDate = start.AddDays(2 + i % 8),
+                    Notes = "Generisani plan putovanja za opterecenje planera.",
+                    IsPublic = i % 4 == 0,
+                    CreatedAt = now.AddDays(-random.Next(0, 120)),
+                    UpdatedAt = now.AddDays(-random.Next(0, 60))
+                });
+            }
+
+            await AddInBatchesAsync(planners, 200);
+
+            var plannerIds = await _db.VisitPlanners
+                .AsNoTracking()
+                .Where(p => p.Title.StartsWith(LoadTestPlannerTitlePrefix))
+                .OrderBy(p => p.Id)
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            var items = new List<PlannerItem>(plannerIds.Count * 4);
+            foreach (var plannerId in plannerIds)
+            {
+                var itemCount = 3 + random.Next(0, 4);
+                for (byte order = 1; order <= itemCount; order++)
+                {
+                    var useRoute = order % 3 == 0;
+                    items.Add(new PlannerItem
+                    {
+                        PlannerId = plannerId,
+                        PostId = useRoute ? null : postIds[random.Next(postIds.Count)],
+                        RouteId = useRoute ? routeIds[random.Next(routeIds.Count)] : null,
+                        DayNumber = (byte)(1 + random.Next(0, 5)),
+                        OrderInDay = order,
+                        Notes = "Automatski dodata stavka plana.",
+                        ScheduledTime = new TimeOnly(8 + random.Next(0, 12), random.Next(0, 4) * 15)
+                    });
+                }
+            }
+
+            await AddInBatchesAsync(items, 1000);
+        }
+
+        private async Task SeedLoadTestMailingListAsync(IReadOnlyList<uint> touristIds, Random random, DateTime now)
+        {
+            var touristEmails = await _db.Tourists
+                .AsNoTracking()
+                .Where(t => touristIds.Contains(t.Id) && t.Email != null)
+                .Select(t => new { t.Id, t.Email })
+                .ToListAsync();
+
+            var entries = touristEmails
+                .Where((_, index) => index % 2 == 0)
+                .Select(t => new MailingList
+                {
+                    TouristId = t.Id,
+                    Email = t.Email!,
+                    Preferences = random.Next(2) == 0
+                        ? """{"events":true,"offers":true,"news":false}"""
+                        : """{"events":true,"offers":false,"news":true}""",
+                    IsSubscribed = random.Next(100) > 8,
+                    SubscribedAt = now.AddDays(-random.Next(0, 180))
+                })
+                .ToList();
+
+            await AddInBatchesAsync(entries, 1000);
+        }
+
+        private async Task RefreshSeededAggregateCountersAsync(IReadOnlyList<uint> postIds, IReadOnlyList<uint> routeIds)
+        {
+            var likeCounts = await _db.PostLikes
+                .AsNoTracking()
+                .Where(x => postIds.Contains(x.PostId))
+                .GroupBy(x => x.PostId)
+                .Select(g => new { Id = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count);
+
+            var saveCounts = await _db.SavedPosts
+                .AsNoTracking()
+                .Where(x => postIds.Contains(x.PostId))
+                .GroupBy(x => x.PostId)
+                .Select(g => new { Id = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count);
+
+            var viewCounts = await _db.PostViews
+                .AsNoTracking()
+                .Where(x => postIds.Contains(x.PostId))
+                .GroupBy(x => x.PostId)
+                .Select(g => new { Id = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count);
+
+            var reviewStats = await _db.Reviews
+                .AsNoTracking()
+                .Where(x => x.PostId != null && postIds.Contains(x.PostId.Value) && x.Status == "APPROVED")
+                .GroupBy(x => x.PostId!.Value)
+                .Select(g => new { Id = g.Key, Count = (uint)g.Count(), Avg = g.Average(x => (decimal?)x.Rating) })
+                .ToDictionaryAsync(x => x.Id, x => x);
+
+            var posts = await _db.Posts.Where(p => postIds.Contains(p.Id)).ToListAsync();
+            foreach (var post in posts)
+            {
+                post.LikeCount = likeCounts.GetValueOrDefault(post.Id);
+                post.SaveCount = saveCounts.GetValueOrDefault(post.Id);
+                post.ViewCount = viewCounts.GetValueOrDefault(post.Id);
+                post.ReviewCount = reviewStats.TryGetValue(post.Id, out var stats) ? stats.Count : 0;
+                post.AvgRating = reviewStats.TryGetValue(post.Id, out var ratingStats) ? ratingStats.Avg : null;
+            }
+            _db.Posts.UpdateRange(posts);
+
+            var routeFavoriteCounts = await _db.TouristFavorites
+                .AsNoTracking()
+                .Where(x => x.RouteId != null && routeIds.Contains(x.RouteId.Value))
+                .GroupBy(x => x.RouteId!.Value)
+                .Select(g => new { Id = g.Key, Count = (uint)g.Count() })
+                .ToDictionaryAsync(x => x.Id, x => x.Count);
+
+            var routes = await _db.Routes.Where(r => routeIds.Contains(r.Id)).ToListAsync();
+            foreach (var route in routes)
+                route.SaveCount = routeFavoriteCounts.GetValueOrDefault(route.Id);
+            _db.Routes.UpdateRange(routes);
+
+            await _db.SaveChangesAsync();
+            _db.ChangeTracker.Clear();
+        }
+
+        private async Task AddInBatchesAsync<T>(IReadOnlyCollection<T> entities, int batchSize)
+            where T : class
+        {
+            if (entities.Count == 0) return;
+
+            var batch = new List<T>(batchSize);
+            foreach (var entity in entities)
+            {
+                batch.Add(entity);
+                if (batch.Count < batchSize) continue;
+
+                _db.Set<T>().AddRange(batch);
+                await _db.SaveChangesAsync();
+                _db.ChangeTracker.Clear();
+                batch.Clear();
+            }
+
+            if (batch.Count == 0) return;
+
+            _db.Set<T>().AddRange(batch);
+            await _db.SaveChangesAsync();
+            _db.ChangeTracker.Clear();
+        }
+
+        private static string BuildLoadTestPostDetails(string postType, int index, Random random) => postType switch
+        {
+            "accommodation" => $$"""{"stars":{{3 + index % 3}},"rooms":{{12 + index % 160}},"price_from":{{35 + index % 220}},"currency":"EUR"}""",
+            "restaurant" => $$"""{"cuisine":"local","price_range":"{{(index % 2 == 0 ? "EUR" : "EUR EUR")}}","capacity":{{25 + index % 140}}}""",
+            "club" => $$"""{"capacity":{{120 + index % 1800}},"entry_fee":{{5 + index % 25}},"currency":"EUR"}""",
+            "event" => $$"""{"category":"FESTIVAL","startAt":"2026-07-{{(index % 25) + 1:00}}T20:00:00","price":{{index % 40}},"capacity":{{80 + index % 2500}}}""",
+            "sports_facility" => $$"""{"price_from":{{10 + index % 90}},"duration_h":{{1 + index % 7}},"difficulty":"{{(index % 3 == 0 ? "HARD" : "MEDIUM")}}"}""",
+            _ => $$"""{"entrance_fee":{{index % 12}},"currency":"EUR","recommended_minutes":{{30 + random.Next(0, 180)}}}"""
+        };
+
+        private static string LoadTestImageFor(string postType, int index)
+        {
+            var images = new[]
+            {
+                "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817714/kotor_bmjcuy.jpg",
+                "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817750/budva_wc7qn8.jpg",
+                "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817710/durmitor_gmcxfb.webp",
+                "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776794182/crnojezero1_zzmhcv.jpg",
+                "https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817712/skadar_znw1cm.jpg"
+            };
+
+            return images[(postType.Length + index) % images.Length];
+        }
+
+        private static string PostTypeLabel(string postType) => postType switch
+        {
+            "accommodation" => "Smjestaj",
+            "restaurant" => "Restoran",
+            "club" => "Klub",
+            "cultural_site" => "Kulturna lokacija",
+            "monument" => "Spomenik",
+            "sports_facility" => "Sportski centar",
+            "event" => "Dogadjaj",
+            "attraction" => "Atrakcija",
+            "shop" => "Prodavnica",
+            _ => "Turisticka tacka"
+        };
+
+        private static string LoadTestNotificationTitle(string type) => type switch
+        {
+            "new_event" => "Novi dogadjaj u blizini",
+            "reminder" => "Podsjetnik za plan putovanja",
+            "promo" => "Posebna ponuda za destinaciju",
+            _ => "Obavjestenje sistema"
+        };
+
+        private static string ReviewStatusFor(Random random)
+        {
+            var roll = random.Next(100);
+            if (roll < 78) return "APPROVED";
+            if (roll < 93) return "PENDING";
+            return "REJECTED";
+        }
+
+        private static decimal NextOffset(Random random, decimal spread) =>
+            (decimal)((random.NextDouble() * 2d - 1d) * (double)spread);
+
+        private static decimal DecimalRound(decimal value) => Math.Round(value, 6);
+
+        private readonly record struct SeedRegion(uint Id, string Name, string Country, decimal Lat, decimal Lng);
     }
 }
