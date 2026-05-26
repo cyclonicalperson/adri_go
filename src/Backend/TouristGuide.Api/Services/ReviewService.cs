@@ -15,10 +15,17 @@ namespace TouristGuide.Api.Services
         private const string RejectedReviewStatus = "REJECTED";
 
         private readonly AppDbContext _context;
+        private readonly IReviewModerationService _moderation;
+        private readonly TouristNotificationService _notifications;
 
-        public ReviewService(AppDbContext context)
+        public ReviewService(
+            AppDbContext context,
+            IReviewModerationService moderation,
+            TouristNotificationService notifications)
         {
-            _context = context;
+            _context       = context;
+            _moderation    = moderation;
+            _notifications = notifications;
         }
 
         public async Task<IReadOnlyList<AdminReviewListItemDto>> GetAllReviews(string role, uint currentAdminId)
@@ -107,14 +114,27 @@ namespace TouristGuide.Api.Services
             var submittedAt = DateTime.UtcNow;
             var normalizedComment = string.IsNullOrWhiteSpace(dto.Comment) ? null : dto.Comment.Trim();
 
+            // AI moderacija — određuje početni status recenzije
+            var moderation = await _moderation.ModerateAsync(normalizedComment);
+            var initialStatus = moderation.IsSafe ? ApprovedReviewStatus : PendingReviewStatus;
+            var isApproved = moderation.IsSafe;
+
             if (existingReview is not null)
             {
                 existingReview.Rating = (byte)dto.Rating;
                 existingReview.Comment = normalizedComment;
-                existingReview.Status = PendingReviewStatus;
-                existingReview.IsApproved = false;
+                existingReview.Status = initialStatus;
+                existingReview.IsApproved = isApproved;
                 existingReview.CreatedAt = submittedAt;
                 await _context.SaveChangesAsync();
+
+                if (isApproved)
+                {
+                    await RefreshReviewStats(post);
+                    var notification = await _notifications.QueueReviewStatusUpdateAsync(existingReview, PendingReviewStatus, null);
+                    await _context.SaveChangesAsync();
+                    await _notifications.DispatchAsync(notification);
+                }
 
                 return CreateReviewResult.Success(MapToReviewDto(existingReview, tourist.Name));
             }
@@ -125,13 +145,21 @@ namespace TouristGuide.Api.Services
                 TouristId = touristId,
                 Rating = (byte)dto.Rating,
                 Comment = normalizedComment,
-                Status = PendingReviewStatus,
-                IsApproved = false,
+                Status = initialStatus,
+                IsApproved = isApproved,
                 CreatedAt = submittedAt
             };
 
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync();
+
+            if (isApproved)
+            {
+                await RefreshReviewStats(post);
+                var notification = await _notifications.QueueReviewStatusUpdateAsync(review, PendingReviewStatus, null);
+                await _context.SaveChangesAsync();
+                await _notifications.DispatchAsync(notification);
+            }
 
             return CreateReviewResult.Success(MapToReviewDto(review, tourist.Name));
         }
