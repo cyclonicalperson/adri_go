@@ -48,6 +48,7 @@ namespace TouristGuide.Api.Services
             await SeedPostsAsync();
             await SeedPostTagsAsync();
             await SeedRoutesAsync();
+            await EnsureCoreSeedRouteWaypointConsistencyAsync();
             await SeedInteractionsAsync();
             await SeedPostViewsAsync();
             await SeedTouristLocationSamplesAsync();
@@ -62,6 +63,8 @@ namespace TouristGuide.Api.Services
             await SeedVisitPlannersAsync();
             await SeedMailingListAsync();
             await SeedLoadTestDataAsync();
+            await EnsureLoadTestRouteWaypointConsistencyAsync();
+            await EnsureReviewAggregateConsistencyAsync();
 
             _logger.LogInformation("[Seed] Seed završen.");
         }
@@ -974,6 +977,54 @@ namespace TouristGuide.Api.Services
             await _db.SaveChangesAsync();
         }
 
+        private async Task EnsureCoreSeedRouteWaypointConsistencyAsync()
+        {
+            var routeWaypoints = new Dictionary<string, string>
+            {
+                ["Staza oko Crnog jezera"] = BuildWaypointJson(
+                    (43.1378m, 19.0644m, "Ulaz - parking"),
+                    (43.1386m, 19.0649m, "Setaliste"),
+                    (43.1394m, 19.0656m, "Obala jezera")),
+                ["Vrh Bobotov Kuk"] = BuildWaypointJson(
+                    (43.1556m, 19.1225m, "Zabljak centar"),
+                    (43.1564m, 19.1230m, "Planinarski info punkt"),
+                    (43.1572m, 19.1236m, "Prilaz stazi")),
+                ["Kanjon Tare — pješačka staza"] = BuildWaypointJson(
+                    (43.2000m, 19.2500m, "Polaziste"),
+                    (43.2008m, 19.2508m, "Sumarska staza"),
+                    (43.2016m, 19.2516m, "Vidikovac")),
+                ["Zidine Kotora"] = BuildWaypointJson(
+                    (42.4236m, 18.7711m, "Ulaz u stari grad"),
+                    (42.4244m, 18.7714m, "Stepeniste"),
+                    (42.4252m, 18.7717m, "Vidikovac")),
+                ["Budva — Sveti Stefan biciklistička tura"] = BuildWaypointJson(
+                    (42.2864m, 18.8400m, "Budva centar"),
+                    (42.2852m, 18.8407m, "Obalski put"),
+                    (42.2840m, 18.8414m, "Setaliste"))
+            };
+
+            var routeNames = routeWaypoints.Keys.ToArray();
+            var routes = await _db.Routes
+                .Where(route => routeNames.Contains(route.Name))
+                .ToListAsync();
+
+            var changed = false;
+            foreach (var route in routes)
+            {
+                var nextWaypoints = routeWaypoints[route.Name];
+                if (route.Waypoints == nextWaypoints)
+                    continue;
+
+                route.Waypoints = nextWaypoints;
+                changed = true;
+            }
+
+            if (changed)
+                await _db.SaveChangesAsync();
+
+            _db.ChangeTracker.Clear();
+        }
+
         // ────────────────────────────────────────────────────────────────────
         //  INTERAKCIJE (lajkovi, saveovi, pregledi)
         // ────────────────────────────────────────────────────────────────────
@@ -1615,6 +1666,7 @@ namespace TouristGuide.Api.Services
                 var region = regions[(i * 5) % regions.Count];
                 var postType = postTypes[i % postTypes.Length];
                 var status = i % 17 == 0 ? "draft" : i % 29 == 0 ? "archived" : "published";
+                var isPublished = status == "published";
                 var createdAt = now.AddDays(-random.Next(1, 540)).AddHours(-random.Next(0, 24));
 
                 yield return new Post
@@ -1634,11 +1686,11 @@ namespace TouristGuide.Api.Services
                     OpeningHours = """{"mon":"09:00-21:00","tue":"09:00-21:00","wed":"09:00-21:00","thu":"09:00-21:00","fri":"09:00-23:00","sat":"09:00-23:00","sun":"10:00-20:00"}""",
                     Details = BuildLoadTestPostDetails(postType, i, random),
                     Status = status,
-                    ViewCount = (uint)random.Next(35, 1800),
-                    LikeCount = (uint)random.Next(3, 260),
-                    SaveCount = (uint)random.Next(2, 180),
-                    ReviewCount = (uint)random.Next(0, 70),
-                    AvgRating = DecimalRound(3.2m + NextOffset(random, 1.7m)),
+                    ViewCount = isPublished ? (uint)random.Next(35, 1800) : 0,
+                    LikeCount = isPublished ? (uint)random.Next(3, 260) : 0,
+                    SaveCount = isPublished ? (uint)random.Next(2, 180) : 0,
+                    ReviewCount = 0,
+                    AvgRating = null,
                     PublishedAt = status == "published" ? createdAt.AddHours(4) : null,
                     CreatedAt = createdAt,
                     UpdatedAt = createdAt.AddDays(random.Next(0, 120))
@@ -1653,10 +1705,10 @@ namespace TouristGuide.Api.Services
             for (var i = 1; i <= LoadTestRouteCount; i++)
             {
                 var region = regions[(i * 3) % regions.Count];
-                var lat1 = DecimalRound(region.Lat + NextOffset(random, 0.06m));
-                var lng1 = DecimalRound(region.Lng + NextOffset(random, 0.06m));
-                var lat2 = DecimalRound(lat1 + NextOffset(random, 0.04m));
-                var lng2 = DecimalRound(lng1 + NextOffset(random, 0.04m));
+                var lat1 = DecimalRound(region.Lat + NextSmallRouteOffset(i, 3));
+                var lng1 = DecimalRound(region.Lng + NextSmallRouteOffset(i, 5));
+                var lat2 = DecimalRound(lat1 + 0.0015m);
+                var lng2 = DecimalRound(lng1 + 0.0015m);
                 var distance = DecimalRound(2.5m + (i % 22) + NextOffset(random, 1.4m));
                 var status = i % 19 == 0 ? "draft" : "published";
 
@@ -1683,6 +1735,45 @@ namespace TouristGuide.Api.Services
                     UpdatedAt = now.AddDays(-random.Next(0, 90))
                 };
             }
+        }
+
+        private async Task EnsureLoadTestRouteWaypointConsistencyAsync()
+        {
+            var routes = await _db.Routes
+                .Include(r => r.Region)
+                .Where(r =>
+                    r.Name.StartsWith(LoadTestPostTitlePrefix) &&
+                    r.Region != null &&
+                    r.Region.Lat != null &&
+                    r.Region.Lng != null)
+                .ToListAsync();
+
+            var changed = false;
+            for (var index = 0; index < routes.Count; index++)
+            {
+                var route = routes[index];
+                var region = route.Region!;
+                var lat1 = DecimalRound(region.Lat!.Value + NextSmallRouteOffset(index + 1, 3));
+                var lng1 = DecimalRound(region.Lng!.Value + NextSmallRouteOffset(index + 1, 5));
+                var lat2 = DecimalRound(lat1 + 0.0015m);
+                var lng2 = DecimalRound(lng1 + 0.0015m);
+                var nextWaypoints = JsonSerializer.Serialize(new[]
+                {
+                    new { lat = lat1, lng = lng1, name = "Start" },
+                    new { lat = lat2, lng = lng2, name = "Vidikovac" }
+                }, SeedJsonOptions);
+
+                if (route.Waypoints == nextWaypoints)
+                    continue;
+
+                route.Waypoints = nextWaypoints;
+                changed = true;
+            }
+
+            if (changed)
+                await _db.SaveChangesAsync();
+
+            _db.ChangeTracker.Clear();
         }
 
         private async Task SeedLoadTestPostTagsAsync(IReadOnlyList<uint> postIds, IReadOnlyList<uint> tagIds, Random random)
@@ -2006,6 +2097,41 @@ namespace TouristGuide.Api.Services
             _db.ChangeTracker.Clear();
         }
 
+        private async Task EnsureReviewAggregateConsistencyAsync()
+        {
+            var reviewStats = await _db.Reviews
+                .AsNoTracking()
+                .Where(r => r.PostId != null && r.Status == "APPROVED")
+                .GroupBy(r => r.PostId!.Value)
+                .Select(g => new { PostId = g.Key, Count = (uint)g.Count(), Avg = g.Average(r => (decimal?)r.Rating) })
+                .ToDictionaryAsync(x => x.PostId);
+
+            var posts = await _db.Posts.ToListAsync();
+            var changed = false;
+            foreach (var post in posts)
+            {
+                var isPublished = string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase);
+                var nextReviewCount = isPublished && reviewStats.TryGetValue(post.Id, out var stats)
+                    ? stats.Count
+                    : 0u;
+                var nextAvgRating = isPublished && reviewStats.TryGetValue(post.Id, out var ratingStats)
+                    ? ratingStats.Avg
+                    : null;
+
+                if (post.ReviewCount == nextReviewCount && post.AvgRating == nextAvgRating)
+                    continue;
+
+                post.ReviewCount = nextReviewCount;
+                post.AvgRating = nextAvgRating;
+                changed = true;
+            }
+
+            if (changed)
+                await _db.SaveChangesAsync();
+
+            _db.ChangeTracker.Clear();
+        }
+
         private async Task AddInBatchesAsync<T>(IReadOnlyCollection<T> entities, int batchSize)
             where T : class
         {
@@ -2086,6 +2212,14 @@ namespace TouristGuide.Api.Services
 
         private static decimal NextOffset(Random random, decimal spread) =>
             (decimal)((random.NextDouble() * 2d - 1d) * (double)spread);
+
+        private static decimal NextSmallRouteOffset(int seed, int multiplier) =>
+            ((seed * multiplier) % 5 - 2) * 0.0008m;
+
+        private static string BuildWaypointJson(params (decimal Lat, decimal Lng, string Name)[] points) =>
+            JsonSerializer.Serialize(
+                points.Select(point => new { lat = point.Lat, lng = point.Lng, name = point.Name }),
+                SeedJsonOptions);
 
         private static decimal DecimalRound(decimal value) => Math.Round(value, 6);
 

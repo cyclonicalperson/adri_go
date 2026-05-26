@@ -68,10 +68,10 @@ namespace TouristGuide.Api.Data
                 .HasIndex(x => x.Email)
                 .IsUnique();
 
-            // AdminUserPermission — kompozitni unique (user_id, permission_id)
+            // AdminUserPermission — pretraga po korisniku, permisiji i opcionom region scope-u.
+            // Tacnu jedinstvenost za NULL region cuva migracioni expression index.
             modelBuilder.Entity<AdminUserPermission>()
-                .HasIndex(x => new { x.AdminUserId, x.PermissionId })
-                .IsUnique();
+                .HasIndex(x => new { x.AdminUserId, x.PermissionId, x.RegionId });
 
             // Tourist — jedinstven email
             modelBuilder.Entity<Tourist>()

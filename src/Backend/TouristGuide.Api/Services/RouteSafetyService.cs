@@ -35,31 +35,23 @@ namespace TouristGuide.Api.Services
                 return RouteSafetyResult.Valid();
 
             var client = _httpClientFactory.CreateClient("RouteValidation");
-            for (var index = 0; index < waypoints.Count - 1; index++)
-            {
-                var start = waypoints[index];
-                var end = waypoints[index + 1];
-                if (await HasRoutableLegAsync(client, start, end, ct))
-                    continue;
-
+            if (!await HasRoutableRouteAsync(client, waypoints, ct))
                 return RouteSafetyResult.Invalid(
-                    $"Deonica rute izmedju tacke {index + 1} i {index + 2} nije routabilna. Pomerite tacke na kopno/put i izbegnite vodene povrsine.");
-            }
+                    "Ruta nije routabilna. Pomerite tacke na kopno/put i izbegnite vodene povrsine.");
 
             return RouteSafetyResult.Valid();
         }
 
-        private async Task<bool> HasRoutableLegAsync(
+        private async Task<bool> HasRoutableRouteAsync(
             HttpClient client,
-            RoutePoint start,
-            RoutePoint end,
+            IReadOnlyList<RoutePoint> points,
             CancellationToken ct)
         {
             foreach (var profile in Profiles)
             {
                 try
                 {
-                    using var response = await client.GetAsync(BuildOsrmUrl(start, end, profile), ct);
+                    using var response = await client.GetAsync(BuildOsrmUrl(points, profile), ct);
                     if (!response.IsSuccessStatusCode)
                         continue;
 
@@ -76,6 +68,9 @@ namespace TouristGuide.Api.Services
                         && routes.ValueKind == JsonValueKind.Array
                         && routes.GetArrayLength() > 0)
                     {
+                        if (ContainsFerrySegment(routes[0]) || HasSuspiciousGeometryJump(routes[0]))
+                            continue;
+
                         return true;
                     }
                 }
@@ -88,15 +83,109 @@ namespace TouristGuide.Api.Services
             return false;
         }
 
-        private static string BuildOsrmUrl(RoutePoint start, RoutePoint end, string profile)
+        private static string BuildOsrmUrl(IReadOnlyList<RoutePoint> points, string profile)
         {
             var baseUrl = profile == "foot"
                 ? "https://routing.openstreetmap.de/routed-foot/route/v1/foot"
                 : "https://routing.openstreetmap.de/routed-car/route/v1/driving";
+            var coordinates = string.Join(';', points.Select(point =>
+                string.Create(CultureInfo.InvariantCulture, $"{point.Lng},{point.Lat}")));
 
             return string.Create(CultureInfo.InvariantCulture,
-                $"{baseUrl}/{start.Lng},{start.Lat};{end.Lng},{end.Lat}?overview=false&alternatives=false&continue_straight=false&radiuses=500;500");
+                $"{baseUrl}/{coordinates}?overview=full&geometries=geojson&steps=true&alternatives=false&continue_straight=false");
         }
+
+        private static bool ContainsFerrySegment(JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.String:
+                    var value = element.GetString();
+                    return !string.IsNullOrWhiteSpace(value)
+                        && (value.Contains("ferry", StringComparison.OrdinalIgnoreCase)
+                            || value.Contains("trajekt", StringComparison.OrdinalIgnoreCase)
+                            || value.Contains("boat", StringComparison.OrdinalIgnoreCase)
+                            || value.Contains("ship", StringComparison.OrdinalIgnoreCase));
+
+                case JsonValueKind.Array:
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        if (ContainsFerrySegment(item))
+                            return true;
+                    }
+                    return false;
+
+                case JsonValueKind.Object:
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        if (ContainsFerrySegment(property.Value))
+                            return true;
+                    }
+                    return false;
+
+                default:
+                    return false;
+            }
+        }
+
+        private static bool HasSuspiciousGeometryJump(JsonElement route)
+        {
+            if (!route.TryGetProperty("geometry", out var geometry)
+                || !geometry.TryGetProperty("coordinates", out var coordinates)
+                || coordinates.ValueKind != JsonValueKind.Array
+                || coordinates.GetArrayLength() < 2)
+            {
+                return false;
+            }
+
+            JsonElement? previous = null;
+            foreach (var current in coordinates.EnumerateArray())
+            {
+                if (previous is { } previousValue
+                    && TryReadCoordinate(previousValue, out var previousPoint)
+                    && TryReadCoordinate(current, out var currentPoint)
+                    && HaversineKm(previousPoint, currentPoint) > 8d)
+                {
+                    return true;
+                }
+
+                previous = current;
+            }
+
+            return false;
+        }
+
+        private static bool TryReadCoordinate(JsonElement coordinate, out RoutePoint point)
+        {
+            point = new RoutePoint(0, 0);
+            if (coordinate.ValueKind != JsonValueKind.Array || coordinate.GetArrayLength() < 2)
+                return false;
+
+            var lngElement = coordinate[0];
+            var latElement = coordinate[1];
+            if (!lngElement.TryGetDouble(out var lng) || !latElement.TryGetDouble(out var lat))
+                return false;
+
+            if (!double.IsFinite(lat) || !double.IsFinite(lng))
+                return false;
+
+            point = new RoutePoint(lat, lng);
+            return true;
+        }
+
+        private static double HaversineKm(RoutePoint start, RoutePoint end)
+        {
+            const double earthRadiusKm = 6371d;
+            var dLat = ToRadians(end.Lat - start.Lat);
+            var dLng = ToRadians(end.Lng - start.Lng);
+            var startLat = ToRadians(start.Lat);
+            var endLat = ToRadians(end.Lat);
+            var a = Math.Pow(Math.Sin(dLat / 2d), 2d)
+                + Math.Cos(startLat) * Math.Cos(endLat) * Math.Pow(Math.Sin(dLng / 2d), 2d);
+            return 2d * earthRadiusKm * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1d - a));
+        }
+
+        private static double ToRadians(double value) => value * Math.PI / 180d;
 
         private static ParseResult TryParseWaypoints(string? waypointsJson)
         {

@@ -293,8 +293,14 @@ namespace TouristGuide.Api.Controllers
             if (!await _db.AdminPermissions.AnyAsync(p => p.Id == dto.PermissionId))
                 return NotFound(new { message = $"Permisija sa ID={dto.PermissionId} nije pronađena." });
 
+            if (dto.RegionId.HasValue && !await _db.Regions.AnyAsync(r => r.Id == dto.RegionId.Value))
+                return NotFound(new { message = $"Regija sa ID={dto.RegionId} nije pronađena." });
+
             var exists = await _db.AdminUserPermissions
-                .AnyAsync(p => p.AdminUserId == id && p.PermissionId == dto.PermissionId);
+                .AnyAsync(p =>
+                    p.AdminUserId == id &&
+                    p.PermissionId == dto.PermissionId &&
+                    p.RegionId == dto.RegionId);
             if (exists)
                 return Conflict(new { message = "Korisnik već ima ovu permisiju." });
 
@@ -334,10 +340,20 @@ namespace TouristGuide.Api.Controllers
         // ── DELETE /api/admin-users/{userId}/permissions/{permissionId} ───────
         [HttpDelete("{id}/permissions/{permissionId}")]
         [Authorize(Roles = "superadmin")]
-        public async Task<IActionResult> RevokePermission(uint id, uint permissionId)
+        public async Task<IActionResult> RevokePermission(uint id, uint permissionId, [FromQuery] uint? regionId)
         {
-            var perm = await _db.AdminUserPermissions
-                .FirstOrDefaultAsync(p => p.AdminUserId == id && p.PermissionId == permissionId);
+            var query = _db.AdminUserPermissions
+                .Where(p => p.AdminUserId == id && p.PermissionId == permissionId);
+
+            if (regionId.HasValue)
+                query = query.Where(p => p.RegionId == regionId.Value);
+
+            var matches = await query.ToListAsync();
+
+            if (!regionId.HasValue && matches.Count > 1)
+                return BadRequest(new { message = "Postoji više scope-ova za ovu permisiju. Prosledite regionId za uklanjanje konkretne permisije." });
+
+            var perm = matches.SingleOrDefault();
 
             if (perm is null)
                 return NotFound(new { message = "Permisija nije pronađena." });

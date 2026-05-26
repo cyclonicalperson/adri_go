@@ -2114,7 +2114,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private locationPassesActivityContent(loc: MapLocation): boolean {
-    const linkedActivities = this.activitiesList.filter(activity => activity.postId === loc.id);
+    const linkedActivities = this.activitiesList.filter(activity =>
+      activity.postId === loc.id || (activity.postIds ?? []).includes(loc.id));
     if (linkedActivities.length === 0) {
       return false;
     }
