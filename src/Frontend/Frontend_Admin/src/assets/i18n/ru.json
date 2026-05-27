@@ -1,7 +1,6 @@
 {
   "__label": "Русский",
   "__shortLabel": "RU",
-
   "Dashboard": "Панель управления",
   "Destinacije": "Направления",
   "Rute": "Маршруты",
@@ -18,7 +17,6 @@
   "Super Administrator": "Суперадминистратор",
   "Administrator": "Администратор",
   "Admin": "Админ",
-
   "Pregled platforme": "Обзор платформы",
   "Upravljanje destinacijama": "Управление направлениями",
   "Upravljanje rutama": "Управление маршрутами",
@@ -34,7 +32,6 @@
   "Otvori ili zatvori meni": "Открыть или закрыть меню",
   "Promeni jezik": "Изменить язык",
   "Interface language": "Язык интерфейса",
-
   "Obavestenja": "Уведомления",
   "Oznaci sve kao procitano": "Отметить всё как прочитанное",
   "Nema novih obavestenja.": "Нет новых уведомлений.",
@@ -51,7 +48,6 @@
   "Prije": "Назад",
   "min": "мин",
   "dana": "дн.",
-
   "Dobrodosli,": "Добро пожаловать,",
   "Dobrodošli,": "Добро пожаловать,",
   "Dashboard je prazan": "Панель пуста",
@@ -101,7 +97,6 @@
   "Nema zahteva.": "Нет запросов.",
   "Pogledaj detalje": "Просмотр деталей",
   "Legenda": "Легенда",
-
   "Lokacije": "Локации",
   "Ukupno lokacija": "Всего локаций",
   "Ukupno ruta": "Всего маршрутов",
@@ -129,7 +124,6 @@
   "rezultata": "результатов",
   "stranica": "страница",
   "od": "из",
-
   "Pretrazi rute...": "Поиск маршрутов...",
   "Pretraži rute po nazivu ili opisu...": "Поиск маршрутов по названию или описанию...",
   "Pretrazi lokacije po nazivu, opisu ili adresi...": "Поиск локаций по названию, описанию или адресу...",
@@ -142,7 +136,6 @@
   "Trajanje opadajuce": "Продолжительность убывающая",
   "Trajanje rastuce": "Продолжительность возрастающая",
   "Najnovije prvo": "Сначала новые",
-
   "Nova ruta": "Новый маршрут",
   "Izmeni rutu": "Редактировать маршрут",
   "Kreiraj rutu": "Создать маршрут",
@@ -161,7 +154,6 @@
   "Stampaj": "Печать",
   "Štampaj": "Печать",
   "Izvezi CSV": "Экспорт CSV",
-
   "Osnovni podaci": "Основная информация",
   "Naziv rute": "Название маршрута",
   "Destinacija / region": "Направление / регион",
@@ -189,7 +181,6 @@
   "Pocetak": "Начало",
   "Kraj": "Конец",
   "Tacka": "Точка",
-
   "Aktivna": "Активен",
   "Aktivne": "Активные",
   "Neaktivna": "Неактивен",
@@ -201,7 +192,6 @@
   "Nepoznato": "Неизвестно",
   "Sacuvano": "Сохранено",
   "Sačuvano": "Сохранено",
-
   "Naziv": "Название",
   "Tip": "Тип",
   "Kategorija": "Категория",
@@ -230,19 +220,16 @@
   "Biciklizam": "Велоспорт",
   "Setnja": "Прогулка",
   "Automobilom": "На автомобиле",
-
   "Ucitavanje mape...": "Загрузка карты...",
   "Destinacije:": "Направления:",
   "Dogadjaji:": "События:",
   "Rute:": "Маршруты:",
   "poseta": "посещений",
-
   "Obrisi rutu": "Удалить маршрут",
   "Da li ste sigurni da zelite da obrisete rutu": "Вы уверены, что хотите удалить маршрут",
   "Da li ste sigurni da zelite da obrisete destinaciju": "Вы уверены, что хотите удалить направление",
   "Da li ste sigurni da zelite da obrisete lokaciju": "Вы уверены, что хотите удалить локацию",
   "Da li ste sigurni da zelite da obrisete": "Вы уверены, что хотите удалить",
-
   "Ukupno aktivnosti": "Всего активностей",
   "Sportske": "Спортивные",
   "Priroda / Ture": "Природа / Туры",
@@ -266,7 +253,6 @@
   "Ova aktivnost nema definisanu lokaciju.": "У этой активности нет определённой локации.",
   "Obrisi aktivnost": "Удалить активность",
   "Obriši aktivnost": "Удалить активность",
-
   "Ukupno dogadjaja": "Всего событий",
   "Ukupno događaja": "Всего событий",
   "Objavljeni": "Опубликованные",
@@ -278,9 +264,7 @@
   "Novi događaj": "Новое событие",
   "Svi dogadjaji": "Все события",
   "Svi događaji": "Все события",
-  "Dogadjaj": "Событие",
   "Događaj": "Событие",
-  "Pocetak": "Начало",
   "Početak": "Начало",
   "Karte dostupne": "Билеты доступны",
   "Tabela": "Таблица",
@@ -306,7 +290,6 @@
   "Biće vidljiv turistima.": "Будет виден туристам.",
   "Bice arhiviran.": "Будет архивировано.",
   "Biće arhiviran.": "Будет архивировано.",
-
   "Ukupno recenzija": "Всего отзывов",
   "Odobrene": "Одобренные",
   "Odbijene": "Отклонённые",
@@ -330,10 +313,6 @@
   "Obriši recenziju": "Удалить отзыв",
   "Ova akcija se ne moze ponistiti.": "Это действие нельзя отменить.",
   "Ova akcija se ne može poništiti.": "Это действие нельзя отменить.",
-
-  "Ukupno lokacija": "Всего локаций",
-  "Aktivne": "Активные",
-  "Neaktivne": "Неактивные",
   "Trazi pregled": "Требует проверки",
   "Traži pregled": "Требует проверки",
   "Restorani": "Рестораны",
@@ -345,7 +324,6 @@
   "Odbij lokaciju": "Отклонить локацию",
   "Bice vidljiva turistima.": "Будет видна туристам.",
   "Biće vidljiva turistima.": "Будет видна туристам.",
-
   "Pretrazi destinacije...": "Поиск направлений...",
   "Pretraži destinacije…": "Поиск направлений...",
   "Nova destinacija": "Новое направление",
@@ -362,7 +340,6 @@
   "Statistika": "Статистика",
   "Ruta": "Маршрут",
   "ruta": "маршрутов",
-
   "Svi admini": "Все администраторы",
   "Aktivni": "Активные",
   "Suspendovani": "Приостановленные",
@@ -385,7 +362,6 @@
   "Aktiviraj nalog": "Активировать аккаунт",
   "Admin vise nece moci da se prijavi.": "Администратор больше не сможет войти.",
   "Admin više neće moći da se prijavi.": "Администратор больше не сможет войти.",
-
   "Ukupno zahteva": "Всего запросов",
   "Cekaju pregled": "Ожидают проверки",
   "Čekaju pregled": "Ожидают проверки",
@@ -422,7 +398,6 @@
   "Obradio": "Обработал",
   "Pregledaj": "Просмотреть",
   "Otvori dokument": "Открыть документ",
-
   "Odaberite korisnika i podesite dozvole": "Выберите пользователя и настройте разрешения",
   "Korisnik": "Пользователь",
   "Pretrazi admina...": "Поиск администратора...",
@@ -447,7 +422,6 @@
   "Sadržaj": "Контент",
   "Analitika": "Аналитика",
   "Korisnici": "Пользователи",
-
   "Informacije o vasem nalogu": "Информация о вашем аккаунте",
   "Informacije o vašem nalogu": "Информация о вашем аккаунте",
   "Izmeni podatke": "Редактировать профиль",
@@ -474,7 +448,6 @@
   "Nova lozinka je obavezna.": "Новый пароль обязателен.",
   "Lozinka mora imati najmanje 8 karaktera.": "Пароль должен содержать не менее 8 символов.",
   "Lozinke se ne podudaraju.": "Пароли не совпадают.",
-
   "Administracija": "Администрация",
   "Sačuvaj dozvole": "Сохранить разрешения",
   "Čeka pregled": "Ожидает проверки",
@@ -489,16 +462,13 @@
   "Admina": "Администраторов",
   "Turista": "Туристов",
   "Regiona": "Регионов",
-
   "Turisti": "Туристы",
   "Pregled korisnickih naloga turista": "Обзор аккаунтов туристов",
   "Nema neprocitanih obavestenja.": "Нет непрочитанных уведомлений.",
   "Oznaci kao procitano": "Отметить как прочитанное",
-
   "sesija": "сеансов",
   "Sesije": "Сеансы",
   "svaka sesija se broji jednom dnevno": "каждый сеанс считается один раз в день",
-
   "Svi turisti": "Все туристы",
   "Nepotvrđen email": "Email не подтверждён",
   "Čekaju verifikaciju": "Ожидают верификации",
@@ -513,7 +483,6 @@
   "Turist se neće moći prijaviti.": "Турист не сможет войти в систему.",
   "Aktivirati nalog turiste": "Активировать аккаунт туриста",
   "Odbijeno": "Отклонено",
-
   "Turist nije pronađen.": "Турист не найден.",
   "Ime i prezime": "Имя и фамилия",
   "Email adresa": "Email адрес",
@@ -544,9 +513,7 @@
   "Nema recenzija": "Нет отзывов",
   "Učitavanje aktivnosti...": "Загрузка активностей...",
   "Favoriti": "Избранное",
-
   "Zahtev ne može biti odobren dok korisnik ne potvrdi email adresu iz verifikacionog mejla.": "Заявка не может быть одобрена, пока пользователь не подтвердит адрес электронной почты из письма верификации.",
-
   "Novi objekat": "Новый объект",
   "Izmeni objekat": "Редактировать объект",
   "Naziv je obavezan.": "Название обязательно.",
@@ -568,8 +535,6 @@
   "Geografska širina": "Широта",
   "Geografska dužina": "Долгота",
   "Prva slika biće naslovna. Možeš učitati sa računara ili dodati link sa interneta.": "Первое изображение будет обложкой. Вы можете загрузить с компьютера или добавить ссылку из интернета.",
-
-  "Novi dogadjaj": "Новое событие",
   "Izmeni dogadjaj": "Редактировать событие",
   "Link za karte": "Ссылка на билеты",
   "Tačna lokacija (opciono)": "Точное местоположение (опционально)",
@@ -579,13 +544,20 @@
   "Kratak opis dogadjaja...": "Краткое описание события...",
   "Kreiraj dogadjaj": "Создать событие",
   "Kliknite na mapu da postavite tačku dogadjaja.": "Нажмите на карту, чтобы разместить точку события.",
-
   "Nova aktivnost": "Новая активность",
   "Izmeni aktivnost": "Редактировать активность",
   "Kratak opis aktivnosti...": "Краткое описание активности...",
   "Težina / Nivo": "Сложность / Уровень",
   "Maks. kapacitet": "Макс. вместимость",
   "Tagovi (razdvoji zarezom)": "Теги (разделять запятой)",
+  "Vezivanje za destinacije": "Привязка к направлениям",
+  "Ocisti izbor": "Очистить выбор",
+  "Aktivnost moze biti samostalna ili vezana za jednu ili vise destinacija.": "Активность может быть самостоятельной или привязанной к одному или нескольким направлениям.",
+  "Destinacije (opcionalno)": "Направления (необязательно)",
+  "Nema dostupnih destinacija.": "Нет доступных направлений.",
+  "Nema destinacija za zadatu pretragu.": "По этому запросу направлений нет.",
+  "Standalone (bez vezane destinacije)": "Самостоятельная (без привязанного направления)",
+  "izabrano": "выбрано",
   "Aktivnost može biti samostalna (standalone) ili vezana za konkretnu lokaciju.": "Активность может быть самостоятельной или привязанной к конкретной локации.",
   "Lokacija (opcionalno)": "Локация (опционально)",
   "— Standalone (bez vezane lokacije) —": "— Самостоятельная (без привязанной локации) —",
@@ -596,21 +568,17 @@
   "❌ Neaktivno": "❌ Неактивно",
   "Kreiraj aktivnost": "Создать активность",
   "— Nije primenjivo —": "— Не применимо —",
-
   "Izmeni destinaciju": "Редактировать направление",
   "Kratak opis destinacije...": "Краткое описание направления...",
   "Kliknite na mapu da postavite koordinate.": "Нажмите на карту, чтобы задать координаты.",
   "Kreiraj destinaciju": "Создать направление",
-
   "Učitavanje analitike...": "Загрузка аналитики...",
   "Prosečna ocena": "Средняя оценка",
   "Najpopularnije lokacije": "Самые популярные локации",
   "Najpopularniji dogadjaji": "Самые популярные события",
   "Po kategoriji": "По категории",
   "Geografska distribucija poseta": "Географическое распределение посещений",
-
   "Pregled": "Обзор",
-
   "na čekanju": "в ожидании",
   "Recenzija": "Отзывы",
   "Waypoint-i": "Точки маршрута",
@@ -619,7 +587,6 @@
   "Ruta je sacuvana kao nacrt i vidljiva je samo adminima.": "Маршрут сохранён как черновик и виден только администраторам.",
   "Ruta je arhivirana i vise nije javno prikazana.": "Маршрут архивирован и больше не отображается публично.",
   "Status rute nije dostupan.": "Статус маршрута недоступен.",
-  "Lozinka": "Пароль",
   "Lozinka *": "Пароль *",
   "Ponovi lozinku": "Повторите пароль",
   "Potvrdi lozinku *": "Подтвердите пароль *",
@@ -634,12 +601,8 @@
   "Prikaži": "Показать",
   "Sakrij": "Скрыть",
   "Trenutna lozinka *": "Текущий пароль *",
-  "Unesite trenutnu lozinku": "Введите текущий пароль",
   "Nova lozinka *": "Новый пароль *",
-  "Nova lozinka": "Новый пароль",
   "Potvrdi novu lozinku *": "Подтвердите новый пароль *",
-  "Ponovi novu lozinku": "Повторите новый пароль",
-  "Promeni lozinku": "Изменить пароль",
   "Nova lozinka (ostavite prazno za istu)": "Новый пароль (оставьте пустым, чтобы сохранить текущий)",
   "Lozinka je uspešno promenjena.": "Пароль успешно изменён.",
   "Trenutna lozinka nije ispravna.": "Текущий пароль неверный.",
@@ -651,5 +614,47 @@
   "Nemate dozvolu za kreiranje ili promenu ove kategorije.": "У вас нет разрешения создавать или изменять эту категорию.",
   "Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.": "У вас нет разрешения создавать или изменять эту категорию в выбранном регионе.",
   "Nemate dozvolu za kreiranje dogadjaja u izabranom regionu.": "У вас нет разрешения создавать события в выбранном регионе.",
-  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "У вас нет разрешения создавать маршруты в выбранном регионе."
+  "Nemate dozvolu za kreiranje rute u izabranom regionu.": "У вас нет разрешения создавать маршруты в выбранном регионе.",
+  "Pretrazi funkcionalnosti...": "Искать функции...",
+  "Drzava *": "Страна *",
+  "Predloži aktivnost": "Предложить активность",
+  "Superadmin ili admin sa dozvolom moze odmah odobriti aktivnost.": "Суперадмин или админ с разрешением может сразу одобрить эту активность.",
+  "Aktivnost ce biti poslata superadminu na odobrenje.": "Активность будет отправлена суперадмину на одобрение.",
+  "Preset dozvola": "Шаблон разрешений",
+  "Izaberite najcesci tip admina": "Выберите типичный тип админа",
+  "Sadrzajni admin": "Админ контента",
+  "Objave, izmene svojih lokacija i recenzije.": "Публикации, изменения своих мест и отзывы.",
+  "Turisticki operater": "Туристический оператор",
+  "Rute, ture, sport i dogadjaji.": "Маршруты, туры, спорт и события.",
+  "Kultura i znamenitosti": "Культура и достопримечательности",
+  "Kulturna mesta, spomenici, rute i prevodi.": "Культурные места, памятники, маршруты и переводы.",
+  "Analitika i moderacija": "Аналитика и модерация",
+  "Pregled analitike, turista i moderacija recenzija.": "Аналитика, туристы и модерация отзывов.",
+  "Sve drzave": "All countries",
+  "Ne mozete istovremeno izabrati region i poslati predlog novog regiona.": "You cannot select an existing region and submit a new region proposal at the same time.",
+  "Osnovni unos sopstvenih objava, dogadjaja i moderacija recenzija.": "Basic entry of own posts, events, and review moderation.",
+  "Smestajni admin": "Accommodation admin",
+  "Hoteli, apartmani, restorani i recenzije vezane za ugostiteljstvo.": "Hotels, apartments, restaurants, and hospitality reviews.",
+  "Gastro i nocni zivot": "Food and nightlife",
+  "Restorani, kafici, klubovi, barovi i recenzije gostiju.": "Restaurants, cafes, clubs, bars, and guest reviews.",
+  "Event admin": "Event admin",
+  "Koncerti, festivali, ture i lokalni dogadjaji bez pristupa ostalim modulima.": "Concerts, festivals, tours, and local events without access to other modules.",
+  "Outdoor i rute": "Outdoor and routes",
+  "Planinarske/biciklisticke rute, sportski objekti i teren.": "Hiking/cycling routes, sports facilities, and field content.",
+  "Shop admin": "Shop admin",
+  "Prodavnice, trzni centri i osnovno uredjivanje sopstvenih objava.": "Shops, malls, and basic editing of own posts.",
+  "Regionalni urednik": "Regional editor",
+  "Siri urednicki paket za admina koji pokriva vecinu sadrzaja u jednom regionu.": "A broader editorial package for admins covering most content in one region.",
+  "Tagovi i prevodi": "Tags and translations",
+  "Odobravanje aktivnosti/tagova, prevodi i uredjivanje taksonomije aplikacije.": "Approving activities/tags, translations, and app taxonomy editing.",
+  "Podrska korisnicima": "User support",
+  "Pregled turista, tiketa i recenzija bez kreiranja novog turistickog sadrzaja.": "Tourist, ticket, and review oversight without creating tourism content.",
+  "Svi jezici": "All languages",
+  "Najnoviji prvo": "Newest first",
+  "Najstariji prvo": "Oldest first",
+  "Ime A-Z": "Name A-Z",
+  "Ime Z-A": "Name Z-A",
+  "Email A-Z": "Email A-Z",
+  "Email Z-A": "Email Z-A",
+  "CSV": "CSV"
 }

@@ -275,7 +275,9 @@ namespace TouristGuide.Api.Controllers
         // ── GET /api/analytics/movements ─────────────────────────────────────
         /// <summary>Posjete po regijama za turistička kretanja na mapi.</summary>
         [HttpGet("movements")]
-        public async Task<IActionResult> GetTouristMovements([FromQuery] string? range)
+        public async Task<IActionResult> GetTouristMovements(
+            [FromQuery] string? range,
+            [FromQuery] string? fromDate)
         {
             if (!await _permissionService.CanViewAnalyticsAsync())
                 return Forbid();
@@ -285,10 +287,10 @@ namespace TouristGuide.Api.Controllers
             if (!isSuperAdmin && adminId is null)
                 return Unauthorized();
 
-            DateTime? fromDate = null;
+            DateTime? fromDateValue = null;
             if (!string.IsNullOrWhiteSpace(range))
             {
-                fromDate = range.Trim().ToLowerInvariant() switch
+                fromDateValue = range.Trim().ToLowerInvariant() switch
                 {
                     "24h" => DateTime.UtcNow.AddHours(-24),
                     "7d"  => DateTime.UtcNow.AddDays(-7),
@@ -296,7 +298,7 @@ namespace TouristGuide.Api.Controllers
                     _ => null
                 };
 
-                if (fromDate is null)
+                if (fromDateValue is null)
                 {
                     return BadRequest(new
                     {
@@ -305,23 +307,61 @@ namespace TouristGuide.Api.Controllers
                     });
                 }
             }
-
-            var locationQuery = _db.TouristLocationSamples
-                .Where(s => s.RegionId != null && s.Region != null)
-                .AsQueryable();
-
-            if (fromDate.HasValue)
+            else if (!string.IsNullOrWhiteSpace(fromDate))
             {
-                locationQuery = locationQuery.Where(v => v.RecordedAt >= fromDate.Value);
+                if (!DateTime.TryParse(fromDate, out var parsedFromDate))
+                {
+                    return BadRequest(new
+                    {
+                        message = "Invalid fromDate. Expected a valid date, for example 2026-05-25.",
+                        success = false
+                    });
+                }
+
+                fromDateValue = DateTime.SpecifyKind(parsedFromDate.Date, DateTimeKind.Utc);
+            }
+
+            var allowedRegionIds = new HashSet<uint>();
+            if (!isSuperAdmin && adminId.HasValue)
+            {
+                var ownedPostRegionIds = await _db.Posts
+                    .Where(p => p.AdminId == adminId.Value && p.RegionId != null)
+                    .Select(p => p.RegionId!.Value)
+                    .Distinct()
+                    .ToListAsync();
+
+                var ownedRouteRegionIds = await _db.Routes
+                    .Where(r => r.AdminId == adminId.Value && r.RegionId != null)
+                    .Select(r => r.RegionId!.Value)
+                    .Distinct()
+                    .ToListAsync();
+
+                allowedRegionIds.UnionWith(ownedPostRegionIds);
+                allowedRegionIds.UnionWith(ownedRouteRegionIds);
+                allowedRegionIds.UnionWith(await _permissionService.GetScopedRegionIdsAsync("view_analytics"));
+            }
+
+            var locationQuery = _db.TouristLocationSamples.AsQueryable();
+
+            if (fromDateValue.HasValue)
+            {
+                locationQuery = locationQuery.Where(v => v.RecordedAt >= fromDateValue.Value);
+            }
+
+            if (!isSuperAdmin)
+            {
+                locationQuery = locationQuery.Where(s =>
+                    (s.RegionId != null && allowedRegionIds.Contains(s.RegionId.Value)) ||
+                    (s.RegionId == null && s.SessionId.StartsWith("post-proposal-")));
             }
 
             var locationRaw = await locationQuery
                 .Select(s => new
                 {
                     RegionId = s.RegionId,
-                    RegionName = s.Region!.Name,
-                    Lat = s.Region!.Lat,
-                    Lng = s.Region!.Lng,
+                    RegionName = s.Region != null ? s.Region.Name : null,
+                    Lat = s.Region != null && s.Region.Lat != null ? s.Region.Lat : s.Lat,
+                    Lng = s.Region != null && s.Region.Lng != null ? s.Region.Lng : s.Lng,
                     SessionId = s.SessionId
                 })
                 .ToListAsync();
@@ -329,17 +369,77 @@ namespace TouristGuide.Api.Controllers
             if (locationRaw.Count > 0)
             {
                 var heatmap = locationRaw
+                    .Where(v => v.RegionId != null && !string.IsNullOrWhiteSpace(v.RegionName))
                     .GroupBy(v => new { v.RegionId, v.RegionName, v.Lat, v.Lng })
                     .Select(g => new
                     {
-                        regionId = g.Key.RegionId,
+                        regionId = (long)g.Key.RegionId!.Value,
                         regionName = g.Key.RegionName,
                         latitude = g.Key.Lat,
                         longitude = g.Key.Lng,
                         visitCount = g.Select(x => x.SessionId).Distinct().Count()
                     })
                     .OrderByDescending(m => m.visitCount)
+                    .Cast<object>()
                     .ToList();
+
+                var proposalIds = locationRaw
+                    .Where(v => v.RegionId == null && v.SessionId.StartsWith("post-proposal-", StringComparison.OrdinalIgnoreCase))
+                    .Select(v => v.SessionId["post-proposal-".Length..])
+                    .Select(value => uint.TryParse(value, out var id) ? id : 0)
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToList();
+
+                if (proposalIds.Count > 0)
+                {
+                    var proposalPostQuery = _db.Posts
+                        .Where(p => proposalIds.Contains(p.Id) && p.Lat != null && p.Lng != null);
+
+                    if (!isSuperAdmin && adminId.HasValue)
+                        proposalPostQuery = proposalPostQuery.Where(p => p.AdminId == adminId.Value);
+
+                    var proposalPosts = await proposalPostQuery
+                        .Select(p => new
+                        {
+                            p.Id,
+                            p.Title,
+                            p.ProposedRegionName,
+                            p.Country,
+                            p.Lat,
+                            p.Lng
+                        })
+                        .ToDictionaryAsync(p => p.Id);
+
+                    var proposalMovements = locationRaw
+                        .Where(v => v.RegionId == null && v.SessionId.StartsWith("post-proposal-", StringComparison.OrdinalIgnoreCase))
+                        .Select(v => new
+                        {
+                            Sample = v,
+                            PostId = uint.TryParse(v.SessionId["post-proposal-".Length..], out var id) ? id : 0
+                        })
+                        .Where(x => x.PostId > 0 && proposalPosts.ContainsKey(x.PostId))
+                        .GroupBy(x => x.PostId)
+                        .Select(g =>
+                        {
+                            var post = proposalPosts[g.Key];
+                            return new
+                            {
+                                regionId = -(long)post.Id,
+                                regionName = string.IsNullOrWhiteSpace(post.ProposedRegionName)
+                                    ? $"Predlog lokacije: {post.Title}"
+                                    : $"Predlog lokacije: {post.Title} ({post.ProposedRegionName})",
+                                latitude = post.Lat,
+                                longitude = post.Lng,
+                                visitCount = g.Select(x => x.Sample.SessionId).Distinct().Count(),
+                                country = post.Country,
+                                proposalPostId = post.Id
+                            };
+                        })
+                        .Cast<object>();
+
+                    heatmap.AddRange(proposalMovements);
+                }
 
                 return Ok(new { data = heatmap, success = true, source = "tourist_location_sample" });
             }
@@ -348,8 +448,8 @@ namespace TouristGuide.Api.Controllers
                 .Where(v => v.Post != null && v.Post.Region != null)
                 .AsQueryable();
 
-            if (fromDate.HasValue)
-                query = query.Where(v => v.CreatedAt >= fromDate.Value);
+            if (fromDateValue.HasValue)
+                query = query.Where(v => v.CreatedAt >= fromDateValue.Value);
 
             if (adminId.HasValue)
                 query = query.Where(v => v.Post != null && v.Post.AdminId == adminId.Value);
@@ -387,7 +487,11 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RecordTouristLocation([FromBody] TouristLocationRequest body)
         {
-            if (body is null || string.IsNullOrWhiteSpace(body.SessionId) || body.SessionId.Length > 64)
+            if (body is null)
+                return BadRequest(new { message = "Neispravan zahtjev.", success = false });
+
+            var sessionId = NormalizeAnalyticsSessionId(body.SessionId);
+            if (sessionId is null)
                 return BadRequest(new { message = "Neispravan sessionId.", success = false });
 
             if (body.Lat < -90 || body.Lat > 90 || body.Lng < -180 || body.Lng > 180)
@@ -397,7 +501,7 @@ namespace TouristGuide.Api.Controllers
             var touristId = GetAuthorizedTouristId();
 
             var recentExists = await _db.TouristLocationSamples.AnyAsync(s =>
-                s.SessionId == body.SessionId &&
+                s.SessionId == sessionId &&
                 s.RecordedAt >= now.AddMinutes(-15));
 
             if (recentExists)
@@ -420,7 +524,7 @@ namespace TouristGuide.Api.Controllers
             _db.TouristLocationSamples.Add(new TouristLocationSample
             {
                 TouristId = touristId,
-                SessionId = body.SessionId.Trim(),
+                SessionId = sessionId,
                 RegionId = nearest?.Id,
                 Lat = body.Lat,
                 Lng = body.Lng,
@@ -441,7 +545,8 @@ namespace TouristGuide.Api.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RecordAppVisit([FromBody] AppVisitRequest body)
         {
-            if (string.IsNullOrWhiteSpace(body?.SessionId) || body.SessionId.Length > 64)
+            var sessionId = NormalizeAnalyticsSessionId(body?.SessionId);
+            if (sessionId is null)
                 return BadRequest(new { message = "Neispravan sessionId." });
 
             try
@@ -451,13 +556,13 @@ namespace TouristGuide.Api.Controllers
 
                 // Ignore duplicate (ista sesija, isti dan)
                 var exists = await _db.AppVisits.AnyAsync(v =>
-                    v.SessionId == body.SessionId && v.VisitDate == visitDate);
+                    v.SessionId == sessionId && v.VisitDate == visitDate);
 
                 if (!exists)
                 {
                     _db.AppVisits.Add(new AppVisit
                     {
-                        SessionId = body.SessionId,
+                        SessionId = sessionId,
                         VisitDate = visitDate,
                         CreatedAt = DateTime.UtcNow,
                     });
@@ -537,6 +642,17 @@ namespace TouristGuide.Api.Controllers
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             return uint.TryParse(val, out var id) ? id : null;
+        }
+
+        private static string? NormalizeAnalyticsSessionId(string? value)
+        {
+            var sessionId = value?.Trim().ToLowerInvariant();
+            if (sessionId?.Length != 32)
+                return null;
+
+            return sessionId.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f')
+                ? sessionId
+                : null;
         }
 
         private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)

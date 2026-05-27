@@ -9,20 +9,23 @@ namespace TouristGuide.Api.Services
     // kada mu daš podatke o korisniku
     public class JwtService
     {
+        private const string DevelopmentJwtSecret = "DevelopmentOnlyJwtSecretForLocalRuns-ChangeBeforeProduction-2026";
+
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _environment;
 
         // IConfiguration je .NET servis koji čita iz appsettings.json
         // Ubrizgavamo ga kroz konstruktor (Dependency Injection)
-        public JwtService(IConfiguration configuration)
+        public JwtService(IConfiguration configuration, IWebHostEnvironment environment)
         {
             _configuration = configuration;
+            _environment = environment;
         }
 
         public string GenerateToken(uint userId, string email, string role, uint? organizationId)
         {
             // Čitamo vrednosti iz appsettings.json
-            var secret = _configuration["Jwt:Secret"]
-                ?? throw new InvalidOperationException("JWT Secret nije konfigurisan.");
+            var secret = GetJwtSecret();
             var issuer = _configuration["Jwt:Issuer"] ?? "TouristGuideApi";
             var audience = _configuration["Jwt:Audience"] ?? "TouristGuideClients";
             var expiresInHours = int.Parse(_configuration["Jwt:ExpiresInHours"] ?? "8");
@@ -60,6 +63,18 @@ namespace TouristGuide.Api.Services
 
             // Pretvaramo token objekat u string koji šaljemo frontendu
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private string GetJwtSecret()
+        {
+            var secret = _configuration["Jwt:Secret"];
+            if (!string.IsNullOrWhiteSpace(secret) && secret.Length >= 32)
+                return secret;
+
+            if (_environment.IsDevelopment())
+                return DevelopmentJwtSecret;
+
+            throw new InvalidOperationException("JWT Secret nije konfigurisan.");
         }
     }
 }

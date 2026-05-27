@@ -98,7 +98,8 @@
           class="message-bubble"
           [class.user-bubble]="isUserMessage(msg)"
           [class.assistant-bubble]="!isUserMessage(msg)"
-          [class.error-bubble]="isErrorMessage(msg)">
+          [class.error-bubble]="isErrorMessage(msg)"
+          [class.has-location-cards]="!isUserMessage(msg) && (msg.locationCards?.length || 0) > 0">
 
           @if (isThinkingMessage(msg)) {
             <!-- ── Thinking / Loading state ── -->
@@ -116,6 +117,40 @@
               [innerHTML]="formatContent(msg.content)"
               [attr.aria-label]="isUserMessage(msg) ? 'Vi: ' + msg.content : 'Asistent: ' + msg.content">
             </div>
+
+            @if (!isUserMessage(msg) && msg.locationCards?.length) {
+              <div class="chat-location-cards" aria-label="Predložene objave">
+                @for (card of msg.locationCards; track card.id) {
+                  <button class="chat-location-card" type="button" (click)="openLocationDetails(card)">
+                    <img
+                      class="chat-location-image"
+                      [src]="getLocationImage(card)"
+                      [alt]="card.title || 'Objava'">
+                    <span class="chat-location-info">
+                      <span class="chat-location-category">
+                        <span class="chat-location-dot" aria-hidden="true"></span>
+                        {{ getLocationCategory(card) }}
+                      </span>
+                      <span class="chat-location-title">{{ card.title }}</span>
+                      <span class="chat-location-meta">
+                        @if (card.regionName) {
+                          <span>{{ card.regionName }}</span>
+                        }
+                        @if (card.avgRating || card.rating) {
+                          <span>★ {{ (card.avgRating || card.rating) | number:'1.1-1' }}</span>
+                        }
+                        @if (card.reviewCount || card.reviews) {
+                          <span>{{ card.reviewCount || card.reviews }} reviews</span>
+                        }
+                      </span>
+                    </span>
+                    <span class="chat-location-arrow" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
           }
         </div>
 

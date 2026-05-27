@@ -142,6 +142,11 @@ namespace TouristGuide.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("ActivityTags")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("activity_tags");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -396,8 +401,7 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasIndex("RegionId");
 
-                    b.HasIndex("AdminUserId", "PermissionId")
-                        .IsUnique();
+                    b.HasIndex("AdminUserId", "PermissionId", "RegionId");
 
                     b.ToTable("admin_user_permission");
                 });
@@ -772,6 +776,12 @@ namespace TouristGuide.Api.Migrations
                     b.Property<decimal?>("AvgRating")
                         .HasColumnType("numeric")
                         .HasColumnName("avg_rating");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1384,6 +1394,20 @@ namespace TouristGuide.Api.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PendingEmail")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("pending_email");
+
+                    b.Property<string>("PendingEmailVerificationToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("pending_email_verification_token");
+
+                    b.Property<DateTime?>("PendingEmailVerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pending_email_verification_token_expires_at");
 
                     b.Property<string>("ProfileImage")
                         .HasMaxLength(500)

@@ -16,6 +16,8 @@ export class SideMenuComponent {
   @Output() onClose = new EventEmitter<void>();
 
   langMenuOpen = false;
+  showAuthPopup = false;
+  authPopupMessage = 'Please log in to view your account.';
 
   constructor(
     private router: Router,
@@ -48,19 +50,37 @@ export class SideMenuComponent {
   }
 
   goToAccount() {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your account.');
+      return;
+    }
     this.onClose.emit();
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
     this.router.navigate(['/account']);
   }
   goToSaved() {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view and manage saved locations.');
+      return;
+    }
     this.onClose.emit();
-    if (!this.authService.isLoggedIn) { this.router.navigate(['/login']); return; }
     this.router.navigate(['/saved']);
   }
-  goToRoutes() { this.onClose.emit(); this.router.navigate(['/routes']); }
-  goToActivities() { this.onClose.emit(); this.router.navigate(['/activities']); }
   goToChat()       { this.onClose.emit(); this.router.navigate(['/chat']); }
   goToCalendar() { this.onClose.emit(); this.router.navigate(['/calendar']); }
   goToNotifications() { this.onClose.emit(); this.router.navigate(['/notifications']); }
   goToSettings() { this.onClose.emit(); this.router.navigate(['/settings']); }
+
+  openAuthPopup(message: string): void {
+    this.authPopupMessage = message;
+    this.showAuthPopup = true;
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+  }
+
+  loginFromPopup(): void {
+    this.showAuthPopup = false;
+    this.goToLogin();
+  }
 }

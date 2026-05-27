@@ -684,7 +684,14 @@
   }
 
   .admin-command-search {
-    width: min(220px, 42vw);
+    width: min(170px, 34vw);
+    height: 34px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .admin-search-input {
+    font-size: 12px;
   }
 
 

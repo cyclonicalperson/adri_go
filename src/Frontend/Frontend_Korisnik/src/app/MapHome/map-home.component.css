@@ -30,6 +30,20 @@
 
 .header-left { display: flex; align-items: center; gap: 8px; }
 
+.logo-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.logo-button:focus-visible {
+  outline: 2px solid var(--green-400);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
 .logo-icon { display: flex; align-items: center; }
 .logo-icon .logo-img { width: 72px; height: auto; display: block; }
 
@@ -74,9 +88,23 @@
   justify-content: center;
   transition: background 0.15s;
   overflow: visible;
+  cursor: pointer;
 }
 .header-menu-btn:hover { background: var(--gray-200); }
-.header-menu-btn svg { width: 18px; height: 18px; fill: var(--gray-600); }
+.header-menu-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--gray-600);
+  stroke: none;
+}
+
+.header-theme-btn svg {
+  fill: none;
+  stroke: var(--gray-600);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* ── MAP ─────────────────────────────────────────────────────── */
 .map-container {
@@ -151,7 +179,7 @@
   right: 0;
   max-height: 60px;
   overflow: hidden;
-  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   scrollbar-width: none;
   background: #fff;
   border-radius: 20px 20px 0 0;
@@ -166,6 +194,95 @@
   overflow-y: auto;
 }
 .top-ui-layer::-webkit-scrollbar { display: none; }
+
+/* ── SIDEBAR COLLAPSE BUTTON ──────────────────────────────── */
+.sidebar-collapse-btn {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 48px;
+  background: #fff;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--gray-400);
+  box-shadow: 3px 0 10px rgba(0,0,0,0.08);
+  z-index: 16;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+.sidebar-collapse-btn:hover {
+  background: var(--gray-50, #f9fafb);
+  color: var(--gray-600);
+}
+
+/* Desktop standalone collapse button — always visible, outside the sidebar */
+.sidebar-collapse-btn-desktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  /* Hide the in-panel mobile button on desktop */
+  .top-ui-layer .sidebar-collapse-btn {
+    display: none;
+  }
+
+  /* Show the standalone desktop button */
+  .sidebar-collapse-btn-desktop {
+    display: flex;
+    position: fixed;
+    left: 380px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 56px;
+    background: #fff;
+    border: none;
+    border-radius: 0 12px 12px 0;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--gray-500);
+    box-shadow: 3px 0 14px rgba(0,0,0,0.12);
+    z-index: 25;
+    padding: 0;
+    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s, color 0.15s;
+  }
+  .sidebar-collapse-btn-desktop:hover {
+    background: var(--gray-50, #f9fafb);
+    color: var(--gray-700);
+  }
+  .map-wrapper.sidebar-is-collapsed .sidebar-collapse-btn-desktop {
+    left: 0;
+  }
+}
+
+/* Dark mode for collapse buttons */
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn,
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn-desktop {
+  background: #1e293b;
+  color: #94a3b8;
+  box-shadow: 3px 0 14px rgba(0,0,0,0.35);
+}
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn:hover,
+:host-context(html[data-theme='dark']) .sidebar-collapse-btn-desktop:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.top-ui-layer.sidebar-collapsed {
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+.top-ui-layer.sidebar-collapsed .sidebar-collapse-btn {
+  pointer-events: auto;
+  right: -20px;
+}
 
 .sheet-header {
   display: flex;
@@ -310,12 +427,16 @@
   .map-wrapper.navigating .top-ui-layer {
     display: none;
   }
+
+  .search-results-dropdown {
+    max-height: min(34dvh, calc(100dvh - 250px));
+  }
 }
-.search-filter-btn:hover { color: var(--green-500); }
+.search-filter-btn:hover { color: var(--gray-700); }
 .search-filter-btn svg {
   width: 17px;
   height: 17px;
-  fill: var(--green-500);
+  fill: var(--gray-500);
 }
 
 .search-suggestions {
@@ -368,7 +489,9 @@
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.14);
-  overflow: hidden;
+  max-height: min(48dvh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 100;
 }
 
@@ -580,7 +703,7 @@
   border-radius: 50%;
   border: 2px solid #fff;
 }
-.search-filter-btn.filter-active { color: var(--green-600); }
+.search-filter-btn.filter-active { color: var(--gray-700); }
 /* Hide the "Filters" label on mobile */
 .search-filter-btn span:not(.filter-badge) { display: none; }
 
@@ -748,11 +871,8 @@
 }
 
 /* ── LOCATION CARD POPUP ─────────────────────────────────────── */
+/* Kartica je fixed i pozicionirana u location-details-card.css */
 app-location-details-card {
-  position: absolute !important;
-  bottom: 80px;
-  left: 12px;
-  right: 12px;
   z-index: 9999 !important;
   display: block;
 }
@@ -828,11 +948,25 @@ app-location-details-card {
     z-index: 20;
     background: #fff;
     border-right: 1px solid var(--gray-100);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.sidebar-collapsed {
+    transform: translateX(-380px);
+  }
+
+  .map-container {
+    position: fixed;
+    top: 0;
+    left: 380px;
+    width: calc(100vw - 380px);
+    height: 100vh;
+    z-index: 1;
   }
 
   .top-search-strip {
     position: static;
-    padding: 12px 16px 4px;
+    padding: 12px 16px 14px;
     flex-shrink: 0;
     pointer-events: auto;
   }
@@ -863,7 +997,7 @@ app-location-details-card {
 
   .top-ui-layer > .saved-routes-toggle-row { padding: 0 !important; }
   .top-ui-layer > app-trip-planner-panel {
-    margin-top: 0;
+    margin-top: 14px;
   }
 
   /* ── Map fills right side ──────────────────────────────── */
@@ -977,8 +1111,32 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .sheet-header,
 :host-context(html[data-theme='dark']) .search-results-dropdown,
 :host-context(html[data-theme='dark']) .search-no-results {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .app-header,
+:host-context(html[data-theme='dark']) .sidebar {
+  background: #111827;
   border-color: #334155;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn:hover {
+  background: #273449;
+}
+
+:host-context(html[data-theme='dark']) .header-menu-btn svg {
+  fill: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .header-theme-btn svg {
+  fill: none;
+  stroke: #facc15;
 }
 
 :host-context(html[data-theme='dark']) .search-input,
@@ -986,6 +1144,17 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .search-result-rating,
 :host-context(html[data-theme='dark']) .sheet-title {
   color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .search-container:focus-within {
+  border-color: #475569 !important;
+  box-shadow: none !important;
+}
+
+:host-context(html[data-theme='dark']) .search-input {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 :host-context(html[data-theme='dark']) .search-input::placeholder,
@@ -998,9 +1167,16 @@ app-location-details-card {
 
 :host-context(html[data-theme='dark']) .search-icon svg,
 :host-context(html[data-theme='dark']) .search-clear-btn svg,
+:host-context(html[data-theme='dark']) .search-filter-btn svg,
 :host-context(html[data-theme='dark']) .sheet-chevron,
 :host-context(html[data-theme='dark']) .search-no-results svg {
-  fill: #334155;
+  fill: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .search-filter-btn,
+:host-context(html[data-theme='dark']) .search-filter-btn.filter-active,
+:host-context(html[data-theme='dark']) .search-filter-btn:hover {
+  color: #cbd5e1;
 }
 
 :host-context(html[data-theme='dark']) .search-divider,
@@ -1013,7 +1189,7 @@ app-location-details-card {
   background: rgba(15, 23, 42, 0.92) !important;
   color: #e2e8f0;
   border-color: var(--cat-color, #475569);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 :host-context(html[data-theme='dark']) .search-suggestion-chip {
@@ -1029,8 +1205,33 @@ app-location-details-card {
 }
 
 :host-context(html[data-theme='dark']) .cat-chip.active {
+  background: var(--cat-color, #22c55e) !important;
+  border-color: var(--cat-color, #22c55e);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--cat-color, #22c55e) 34%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .route-pill {
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+}
+
+:host-context(html[data-theme='dark']) .route-pill-icon {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+:host-context(html[data-theme='dark']) .route-pill-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .route-pill-meta {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .route-pill-clear {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
 }
 
 /* ============================================================
@@ -1180,6 +1381,12 @@ app-location-details-card {
 }
 .saved-routes-close:hover { background: #e2e8f0; }
 .saved-routes-close svg { fill: currentColor; }
+
+.saved-routes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .saved-routes-body {
   overflow-y: auto;
@@ -1479,6 +1686,12 @@ app-location-details-card {
   .chat-fab-hint {
     width: 300px;
   }
+
+  .map-wrapper.navigating .chat-fab-wrap.chat-fab-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
+  }
 }
 
 /* ============================================================
@@ -1577,6 +1790,12 @@ app-location-details-card {
     pointer-events: auto;
     transform: none;
   }
+
+  .map-wrapper.navigating .locate-btn.locate-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
+  }
 }
 
 /* ── DESKTOP: filteri se otvaraju kao panel levo od sidebar-a ──
@@ -1592,4 +1811,88 @@ app-location-details-card {
   .map-wrapper.filters-open .map-container { /* no change */ }
   .map-wrapper.filters-open .top-search-strip { /* no change */ }
   .map-wrapper.filters-open .top-ui-layer { /* no change */ }
+}
+
+/* Saved routes dark mode: keep sheet text readable against dark surfaces. */
+:host-context(html[data-theme='dark']) .saved-routes-overlay.overlay-open {
+  background: rgba(2, 6, 23, 0.68);
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-sheet {
+  background: #111827 !important;
+  border: 1px solid #334155;
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-sheet-header {
+  border-bottom-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-title,
+:host-context(html[data-theme='dark']) .saved-route-card-title {
+  color: #f8fafc !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card {
+  background: #1f2937 !important;
+  border-color: #334155 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card:hover {
+  background: #263244 !important;
+  border-color: #475569 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card-meta,
+:host-context(html[data-theme='dark']) .saved-routes-empty,
+:host-context(html[data-theme='dark']) .saved-routes-empty span {
+  color: #cbd5e1 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-empty p {
+  color: #f8fafc !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-close {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card-icon {
+  background: rgba(34, 197, 94, 0.16) !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-route-card-delete {
+  color: #cbd5e1 !important;
+}
+
+:host-context(html[data-theme='dark']) .route-mode-badge {
+  background: rgba(59, 130, 246, 0.18) !important;
+  color: #bfdbfe !important;
+}
+
+/* Desktop sidebar collapse: hide the whole left rail and let the map fill the viewport. */
+@media (min-width: 900px) {
+  .app-header,
+  .app-footer,
+  app-location-details-card {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .map-container {
+    transition:
+      left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+      width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .map-wrapper.sidebar-is-collapsed .app-header,
+  .map-wrapper.sidebar-is-collapsed .app-footer,
+  .map-wrapper.sidebar-is-collapsed app-location-details-card {
+    transform: translateX(-380px);
+  }
+
+  .map-wrapper.sidebar-is-collapsed .map-container {
+    left: 0 !important;
+    width: 100vw !important;
+  }
 }

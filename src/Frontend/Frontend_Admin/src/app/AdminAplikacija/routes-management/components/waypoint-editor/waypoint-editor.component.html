@@ -22,6 +22,14 @@
     </div>
   </div>
 
+  @if (routeValidationStatus === 'checking') {
+  <div class="route-status checking">{{ routeValidationMessage || 'Proveravam da li je ruta routabilna...' }}</div>
+  } @else if (routeValidationStatus === 'valid') {
+  <div class="route-status valid">{{ routeValidationMessage || 'Ruta je routabilna.' }}</div>
+  } @else if (routeValidationStatus === 'error') {
+  <div class="route-status error">{{ routeValidationMessage }}</div>
+  }
+
   <app-map [markers]="markers"
            [paths]="paths"
            [centerLat]="centerLat"

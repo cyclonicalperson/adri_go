@@ -9,12 +9,19 @@
   transform: translateX(-50%);
   width: min(420px, calc(100vw - 32px));
   z-index: 60;
-  animation: slideUp 0.28s cubic-bezier(0.34,1.15,0.64,1);
+  /* Animacija iskljucivo vertikalna, bez horizontalnog pomeranja */
+  animation: slideUpCard 0.28s cubic-bezier(0.34, 1.15, 0.64, 1) both;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+@keyframes slideUpCard {
+  from {
+    transform: translateX(-50%) translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }
 
 .location-details-card {
@@ -259,7 +266,7 @@
 .btn-details:active { opacity: 0.85; transform: scale(0.98); }
 .btn-details svg { width: 16px; height: 16px; fill: #fff; flex-shrink: 0; }
 
-/* ── DESKTOP: kartica centrirana na dnu mape, pomerena desno od sidebara ─── */
+/* ── DESKTOP: kartica ostaje centrirana na dnu, sidebar ne pomera poziciju ─── */
 :host-context(html[data-theme='dark']) .location-details-card {
   background: #1f2937;
   border: 1px solid #334155;
@@ -369,10 +376,11 @@
 
 @media (min-width: 900px) {
   .bottom-sheet-overlay {
-    /* Sidebar je 360px sirok; centriramo karticu u preostalom prostoru mape */
-    left: calc(360px + (100vw - 360px) / 2);
+    /* Desktop: center in the map area (right of the 380px sidebar) */
     bottom: 32px;
-    width: 380px;
+    left: calc(380px + (100vw - 380px) / 2);
+    width: min(380px, calc(100vw - 380px - 32px));
+    /* Keep translateX(-50%) so the card stays centered in the map area */
   }
 
   .location-details-card {
@@ -523,4 +531,35 @@
 .card-scheduler-add {
   background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-card,
+:host-context(html[data-theme='dark']) .auth-modal {
+  background: #111827;
+  color: #e2e8f0;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-title,
+:host-context(html[data-theme='dark']) .auth-modal h3 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-body,
+:host-context(html[data-theme='dark']) .card-scheduler-label,
+:host-context(html[data-theme='dark']) .auth-modal p {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+  color-scheme: dark;
+}
+
+:host-context(html[data-theme='dark']) .card-scheduler-cancel,
+:host-context(html[data-theme='dark']) .btn-cancel {
+  background: #1f2937;
+  color: #cbd5e1;
 }

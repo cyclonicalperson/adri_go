@@ -58,6 +58,10 @@ export class SavedRoutesService {
     localStorage.setItem(this.storageKey, JSON.stringify(updated));
   }
 
+  clearAll(): void {
+    localStorage.removeItem(this.storageKey);
+  }
+
   getById(id: string): SavedRoute | null {
     return this.getAll().find(r => r.id === id) ?? null;
   }

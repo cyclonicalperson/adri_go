@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
@@ -6,12 +6,17 @@ import { Region } from '@core/models/region.model';
 import { RouteDifficulty, RouteStatus, Waypoint } from '@core/models/route.model';
 import { RegionService } from '@core/services/region.service';
 import { RouteService } from '@core/services/route.service';
-import { WaypointEditorComponent } from '../waypoint-editor/waypoint-editor.component';
+import { RouteSafetyService, RouteValidationResult } from '@core/services/route-safety.service';
+import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
+import { RouteMetrics, WaypointEditorComponent } from '../waypoint-editor/waypoint-editor.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
+
+type RouteValidationStatus = 'idle' | 'checking' | 'valid' | 'error';
 
 @Component({
   selector: 'app-route-form',
   standalone: true,
-  imports: [ReactiveFormsModule, WaypointEditorComponent],
+  imports: [ReactiveFormsModule, WaypointEditorComponent, PostImagePickerComponent],
   templateUrl: './route-form.component.html',
   styleUrl: './route-form.component.scss',
 })
@@ -21,10 +26,15 @@ export class RouteFormComponent implements OnInit {
   id: number | null = null;
   saving = false;
   error: string | null = null;
+  routeValidationStatus: RouteValidationStatus = 'idle';
+  routeValidationMessage: string | null = null;
 
   destinations: Region[] = [];
   waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[] = [];
   submitted = false;
+  readonly countries = WORLD_COUNTRIES;
+  private routeValidationRunId = 0;
+  private readonly routeValidationTimeoutMs = 12000;
 
   readonly difficultyOptions: { value: RouteDifficulty; label: string }[] = [
     { value: 'EASY', label: 'Lako' },
@@ -42,16 +52,20 @@ export class RouteFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: RouteService,
+    private routeSafety: RouteSafetyService,
     private destService: RegionService,
     private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
     this.form = this.fb.group({
       regionId: [null],
       proposedRegionName: [''],
+      country: [DEFAULT_COUNTRY, [Validators.required, Validators.maxLength(100)]],
       name: ['', Validators.required],
       difficulty: ['MODERATE', Validators.required],
       distanceKm: [null, [Validators.required, Validators.min(0.1)]],
@@ -59,7 +73,11 @@ export class RouteFormComponent implements OnInit {
       elevationGainM: [null],
       status: ['draft', Validators.required],
       description: ['', Validators.required],
+      images: [[] as string[]],
     });
+
+    this.syncProposedRegionControl();
+    this.f('regionId').valueChanges.subscribe(() => this.syncProposedRegionControl());
 
     this.destService.getAll({ page: 1, pageSize: 100 }).subscribe((res: { data: Region[] }) => {
       this.destinations = res.data;
@@ -79,12 +97,14 @@ export class RouteFormComponent implements OnInit {
         this.form.patchValue({
           regionId: r.destinationId ?? r.regionId,
           proposedRegionName: r.proposedRegionName ?? '',
+          country: r.country ?? r.destination?.country ?? DEFAULT_COUNTRY,
           name: r.name,
           difficulty: r.difficulty,
           durationMin: r.durationMin,
           elevationGainM: r.elevationGainM,
           status: r.status ?? (r.isActive ? 'published' : 'draft'),
           description: r.description,
+          images: r.images ?? [],
         });
 
         const mappedWaypoints = r.waypoints?.map((w: { latitude: number; longitude: number; sequenceOrder: number }) => ({
@@ -122,15 +142,36 @@ export class RouteFormComponent implements OnInit {
     return this.difficultyOptions.find(option => option.value === this.f('difficulty').value)?.label ?? '-';
   }
 
+  get formImages(): string[] {
+    return this.form?.get('images')?.value ?? [];
+  }
+
   f(name: string) {
     return this.form.get(name)!;
   }
 
   onWaypointsChange(next: Omit<Waypoint, 'waypointId' | 'routeId'>[]): void {
     this.setWaypoints(next);
+    this.error = null;
+    this.validateCurrentWaypoints();
   }
 
-  submit(): void {
+  onImagesChange(urls: string[]): void {
+    this.form.patchValue({ images: urls });
+  }
+
+  onRouteMetricsChange(metrics: RouteMetrics | null): void {
+    if (!metrics) {
+      return;
+    }
+
+    this.form.patchValue({
+      distanceKm: metrics.distanceKm,
+      durationMin: metrics.durationMin,
+    }, { emitEvent: false });
+  }
+
+  async submit(): Promise<void> {
     this.submitted = true;
     if (this.form.invalid || !this.hasRegionChoice()) {
       this.form.markAllAsTouched();
@@ -142,6 +183,12 @@ export class RouteFormComponent implements OnInit {
 
     if (this.waypoints.length < 2) {
       this.error = 'Ruta mora imati najmanje 2 tacke (pocetak i kraj).';
+      this.setRouteValidationState('error', this.error);
+      return;
+    }
+
+    if (this.routeValidationStatus === 'error') {
+      this.error = null;
       return;
     }
 
@@ -149,6 +196,12 @@ export class RouteFormComponent implements OnInit {
     this.error = null;
 
     const scopeRegionId = this.proposedRegionName ? undefined : this.selectedRegionIdForPermission;
+    if (this.form.value.regionId && this.proposedRegionName) {
+      this.error = 'Ne mozete istovremeno izabrati region i poslati predlog novog regiona.';
+      this.saving = false;
+      return;
+    }
+
     if (!this.isEdit &&
         (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
          !this.auth.hasPermission('create_route', scopeRegionId))) {
@@ -170,6 +223,7 @@ export class RouteFormComponent implements OnInit {
       endLatitude: last.latitude,
       endLongitude: last.longitude,
       waypoints: this.waypoints,
+      images: (this.form.value.images as string[]) ?? [],
     };
 
     const req$ = this.isEdit
@@ -179,7 +233,13 @@ export class RouteFormComponent implements OnInit {
     req$.subscribe({
       next: () => void this.router.navigate(['/admin/routes-management']),
       error: err => {
-        this.error = err?.error?.message ?? err?.message ?? 'Doslo je do greske pri cuvanju rute.';
+        const message = err?.error?.message ?? err?.message ?? 'Doslo je do greske pri cuvanju rute.';
+        if (this.isRouteValidationMessage(message)) {
+          this.error = null;
+          this.setRouteValidationState('error', message);
+        } else {
+          this.error = message;
+        }
         this.saving = false;
       },
     });
@@ -201,12 +261,39 @@ export class RouteFormComponent implements OnInit {
     if (this.form.get('regionId')?.value) {
       this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
     }
+    this.syncProposedRegionControl();
+  }
+
+  onCountryChanged(): void {
+    const selectedRegionId = Number(this.form.get('regionId')?.value);
+    if (selectedRegionId && !this.filteredDestinations.some(region => region.regionId === selectedRegionId)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
+    }
+  }
+
+  get filteredDestinations(): Region[] {
+    const country = this.form?.get('country')?.value;
+    return country ? this.destinations.filter(region => region.country === country) : this.destinations;
   }
 
   onProposedRegionInput(): void {
     if (this.proposedRegionName) {
       this.form.patchValue({ regionId: null }, { emitEvent: false });
+      this.syncProposedRegionControl();
     }
+  }
+
+  private syncProposedRegionControl(): void {
+    const control = this.f('proposedRegionName');
+    const hasRegion = !!this.form.get('regionId')?.value;
+
+    if (hasRegion) {
+      control.patchValue('', { emitEvent: false });
+      control.disable({ emitEvent: false });
+      return;
+    }
+
+    control.enable({ emitEvent: false });
   }
 
   private setWaypoints(
@@ -219,11 +306,116 @@ export class RouteFormComponent implements OnInit {
       sequenceOrder: index + 1,
     }));
 
-    const distanceKm = this.waypoints.length >= 2
+    const distanceKm = fallbackDistanceKm ?? (this.waypoints.length >= 2
       ? this.calculateDistanceKm(this.waypoints)
-      : fallbackDistanceKm;
+      : null);
 
     this.f('distanceKm').patchValue(distanceKm, { emitEvent: false });
+  }
+
+  private validateCurrentWaypoints(): void {
+    const validationRunId = ++this.routeValidationRunId;
+    const waypointsForValidation = this.cloneWaypoints();
+
+    this.setRouteValidationState('idle', null);
+
+    if (waypointsForValidation.length < 2) {
+      return;
+    }
+
+    this.setRouteValidationState('checking', 'Proveravam da li je ruta routabilna...');
+    void this.validateWaypointsWithTimeout(waypointsForValidation)
+      .then(validation => {
+        if (validationRunId !== this.routeValidationRunId) {
+          return;
+        }
+
+        this.ngZone.run(() => {
+          if (validation.valid) {
+            this.setRouteValidationState('valid', 'Ruta je routabilna.');
+            return;
+          }
+
+          this.setRouteValidationState(
+            'error',
+            validation.message ?? 'Ruta nije routabilna. Pomerite tacke na kopno/put.',
+          );
+        });
+      })
+      .catch(() => {
+        if (validationRunId !== this.routeValidationRunId) {
+          return;
+        }
+
+        this.ngZone.run(() => {
+          this.setRouteValidationState('error', this.routeValidationUnavailableMessage());
+        });
+      });
+  }
+
+  private setRouteValidationState(status: RouteValidationStatus, message: string | null): void {
+    this.routeValidationStatus = status;
+    this.routeValidationMessage = message;
+    if (status === 'valid' && this.isRouteValidationMessage(this.error)) {
+      this.error = null;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private validateWaypointsWithTimeout(
+    waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[],
+  ): Promise<RouteValidationResult> {
+    return new Promise(resolve => {
+      let settled = false;
+      let timeoutId: number | undefined;
+      const finish = (result: RouteValidationResult) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+        }
+        resolve(result);
+      };
+
+      timeoutId = window.setTimeout(() => {
+        finish({
+          valid: false,
+          message: this.routeValidationUnavailableMessage(),
+        });
+      }, this.routeValidationTimeoutMs);
+
+      void this.routeSafety.validateWaypoints(waypoints)
+        .then(finish)
+        .catch(() => finish({
+          valid: false,
+          message: this.routeValidationUnavailableMessage(),
+        }));
+    });
+  }
+
+  private routeValidationUnavailableMessage(): string {
+    return 'Servis za proveru ruta trenutno ne odgovara. Proverite internet konekciju ili pokusajte ponovo za par trenutaka.';
+  }
+
+  private isRouteValidationMessage(message: string | null): boolean {
+    if (!message) {
+      return false;
+    }
+
+    return message.includes('nije routabilna')
+      || message.includes('Servis za proveru ruta')
+      || message.includes('Ruta mora imati najmanje 2 tacke');
+  }
+
+  private cloneWaypoints(): Omit<Waypoint, 'waypointId' | 'routeId'>[] {
+    return this.waypoints.map(waypoint => ({
+      latitude: waypoint.latitude,
+      longitude: waypoint.longitude,
+      sequenceOrder: waypoint.sequenceOrder,
+    }));
   }
 
   private calculateDistanceKm(waypoints: Omit<Waypoint, 'waypointId' | 'routeId'>[]): number {

@@ -31,7 +31,11 @@
         </div>
         <div class="field">
           <label class="label">Država *</label>
-          <input class="input" formControlName="country" placeholder="npr. Montenegro" />
+          <select class="input" formControlName="country">
+            @for (country of countries; track country) {
+            <option [value]="country">{{ country }}</option>
+            }
+          </select>
         </div>
       </div>
 

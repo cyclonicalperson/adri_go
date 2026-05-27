@@ -63,7 +63,7 @@ namespace TouristGuide.Api.DTOs
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [MinLength(6)]
+        [MinLength(8)]
         public string Password { get; set; } = string.Empty;
 
         [MaxLength(5)]
@@ -96,6 +96,7 @@ namespace TouristGuide.Api.DTOs
         public uint Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? PendingEmail { get; set; }
         public string Language { get; set; } = string.Empty;
         public string? Bio { get; set; }
         public string? Location { get; set; }
@@ -111,10 +112,26 @@ namespace TouristGuide.Api.DTOs
     /// <summary>
     /// DTO koji frontend šalje pri ažuriranju profila turiste.
     /// </summary>
+    public class TouristReviewItemDto
+    {
+        public uint ReviewId { get; set; }
+        public uint? PostId { get; set; }
+        public uint? RouteId { get; set; }
+        public string EntityTitle { get; set; } = string.Empty;
+        public byte Rating { get; set; }
+        public string? Comment { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+
     public class UpdateTouristProfileDto
     {
         [MaxLength(200)]
         public string? Name { get; set; }
+
+        [EmailAddress]
+        [MaxLength(255)]
+        public string? Email { get; set; }
 
         [MaxLength(5)]
         public string? Language { get; set; }
@@ -199,7 +216,7 @@ public class EmailVerificationResultDto
         public string Token { get; set; } = string.Empty;
 
         [Required]
-        [MinLength(6)]
+        [MinLength(8)]
         public string NewPassword { get; set; } = string.Empty;
     }
 

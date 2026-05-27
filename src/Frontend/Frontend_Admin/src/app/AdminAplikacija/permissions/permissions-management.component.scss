@@ -372,6 +372,43 @@
   border-bottom: 1px solid #f3f4f6;
 }
 
+.preset-box {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.preset-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1d4ed8;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.preset-select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  font-family: $font-sans;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.preset-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #1e40af;
+}
+
 .btn-outline-sm {
   display: inline-flex;
   align-items: center;

@@ -80,19 +80,53 @@
         </div>
       </div>
 
-      <!-- Link to object (optional) -->
+      <!-- Link to objects (optional) -->
       <div class="card">
-        <h3 class="card-title">Vezivanje za lokaciju</h3>
-        <p class="hint">Aktivnost može biti samostalna (standalone) ili vezana za konkretnu lokaciju.</p>
+        <div class="card-title-row">
+          <h3 class="card-title">Vezivanje za destinacije</h3>
+          @if (selectedObjectCount > 0) {
+          <button type="button" class="link-clear" (click)="clearObjectSelection()">Ocisti izbor</button>
+          }
+        </div>
+        <p class="hint">Aktivnost moze biti samostalna ili vezana za jednu ili vise destinacija.</p>
 
         <div class="field">
-          <label class="label">Lokacija (opcionalno)</label>
-          <select class="input" formControlName="objectId">
-            <option [ngValue]="null">— Standalone (bez vezane lokacije) —</option>
-            @for (o of objects; track o.objectId) {
-            <option [ngValue]="o.objectId">{{ o.name }}</option>
+          <label class="label">Destinacije (opcionalno)</label>
+          <input
+            class="input destination-search"
+            formControlName="objectSearch"
+            placeholder="Pretrazi destinacije..."
+            autocomplete="off" />
+          <div class="multi-select-panel">
+            @for (o of filteredObjects; track o.objectId) {
+            <label class="destination-option" [class.selected]="isObjectSelected(o.objectId)">
+              <input
+                type="checkbox"
+                [checked]="isObjectSelected(o.objectId)"
+                (change)="toggleObject(o.objectId)" />
+              <span>{{ o.name }}</span>
+            </label>
             }
-          </select>
+            @if (objects.length === 0) {
+            <div class="empty-selection">Nema dostupnih destinacija.</div>
+            }
+            @if (objects.length > 0 && filteredObjects.length === 0) {
+            <div class="empty-selection">Nema destinacija za zadatu pretragu.</div>
+            }
+          </div>
+        </div>
+
+        <div class="selected-summary">
+          @if (selectedObjectCount === 0) {
+          <span>Standalone (bez vezane destinacije)</span>
+          } @else {
+          <span>{{ selectedObjectCount }} izabrano</span>
+          <div class="selected-chips">
+            @for (o of selectedObjects; track o.objectId) {
+            <span class="selected-chip">{{ o.name }}</span>
+            }
+          </div>
+          }
         </div>
       </div>
 
@@ -132,12 +166,14 @@
       <!-- Status -->
       <div class="card">
         <h3 class="card-title">Status</h3>
+        <p class="hint">{{ statusHint }}</p>
         <div class="field">
           <label class="label">Status aktivnosti</label>
           <select class="input" formControlName="status">
             <option value="pending">⏳ Na čekanju (čeka odobrenje)</option>
+            @if (canApproveActivities) {
             <option value="approved">✅ Odobreno</option>
-            <option value="INACTIVE">❌ Neaktivno</option>
+            }
           </select>
         </div>
       </div>
@@ -145,7 +181,7 @@
       <div class="form-actions">
         <button type="button" class="btn-cancel" (click)="cancel()">Otkaži</button>
         <button type="submit" class="btn-save" [disabled]="saving">
-          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : 'Kreiraj aktivnost') }}
+          {{ saving ? 'Čuvanje...' : (isEdit ? 'Sačuvaj izmene' : (canApproveActivities ? 'Kreiraj aktivnost' : 'Predloži aktivnost')) }}
         </button>
       </div>
 

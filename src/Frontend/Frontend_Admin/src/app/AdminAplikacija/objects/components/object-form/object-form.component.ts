@@ -9,6 +9,7 @@ import { ObjectCategory } from '@core/models/object.model';
 import { ObjectMapPickerComponent } from '../object-map-picker/object-map-picker.component';
 import { ActivitiesSelectorComponent } from '../activities-selector/activities-selector.component';
 import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
+import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
 @Component({
   selector: 'app-object-form',
@@ -31,6 +32,7 @@ export class ObjectFormComponent implements OnInit {
   destinations: Region[] = [];
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
+  readonly countries = WORLD_COUNTRIES;
   private originalCategory: ObjectCategory | null = null;
   resolvingAddress = false;
   submitted = false;
@@ -62,6 +64,7 @@ export class ObjectFormComponent implements OnInit {
     this.form = this.fb.group({
       regionId: [null],
       proposedRegionName: [''],
+      country: [DEFAULT_COUNTRY, [Validators.required, Validators.maxLength(100)]],
       name: ['', Validators.required],
       category: ['HOTEL', Validators.required],
       description: ['', Validators.required],
@@ -100,6 +103,7 @@ export class ObjectFormComponent implements OnInit {
         this.form.patchValue({
           regionId: o.regionId,
           proposedRegionName: (o as any).proposedRegionName ?? '',
+          country: o.country ?? o.region?.country ?? DEFAULT_COUNTRY,
           name: o.name,
           category: o.category,
           description: o.description,
@@ -135,6 +139,10 @@ export class ObjectFormComponent implements OnInit {
     }
 
     const proposedRegionName = this.normalizeProposedRegionName(this.form.value.proposedRegionName);
+    if (this.form.value.regionId && proposedRegionName) {
+      this.error = 'Ne mozete istovremeno izabrati region i poslati predlog novog regiona.';
+      return;
+    }
     const scopeRegionId = proposedRegionName ? undefined : this.selectedRegionIdForPermission;
     if (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
         !this.canUseCategory(this.form.value.category, scopeRegionId)) {
@@ -198,9 +206,21 @@ export class ObjectFormComponent implements OnInit {
     return this.submitted && !this.hasRegionChoice();
   }
 
+  get filteredDestinations(): Region[] {
+    const country = this.form?.get('country')?.value;
+    return country ? this.destinations.filter(region => region.country === country) : this.destinations;
+  }
+
   onRegionSelected(): void {
     if (this.form.get('regionId')?.value) {
       this.form.patchValue({ proposedRegionName: '' }, { emitEvent: false });
+    }
+  }
+
+  onCountryChanged(): void {
+    const selectedRegionId = Number(this.form.get('regionId')?.value);
+    if (selectedRegionId && !this.filteredDestinations.some(region => region.regionId === selectedRegionId)) {
+      this.form.patchValue({ regionId: null }, { emitEvent: false });
     }
   }
 

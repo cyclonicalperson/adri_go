@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { TouristNotification, TouristNotificationService } from '../services/tourist-notification.service';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AppHeaderComponent],
   templateUrl: './notifications.html',
   styleUrls: ['./notifications.css']
 })
@@ -182,7 +183,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
     const routeId = this.readPayloadNumber(payload, 'routeId', 'route_id');
     if (routeId) {
-      return '/routes';
+      return '/location-list?type=routes';
     }
 
     return url && url.startsWith('/') ? url : null;

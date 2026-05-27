@@ -137,6 +137,29 @@
 }
 .item-icon svg { width: 18px; height: 18px; fill: var(--gray-500); transition: fill 0.15s; }
 
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-arrow {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.menu-item-arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--gray-400);
+}
+
+.menu-item:hover .menu-item-arrow svg {
+  fill: currentColor;
+}
+
 /* Color-coded icon highlights on hover */
 .menu-item:hover .item-icon.icon-account   { background: #dbeafe; }
 .menu-item:hover .item-icon.icon-account svg { fill: #2563eb; }
@@ -287,3 +310,64 @@
 .logout-btn:hover svg { fill: #ef4444; }
 .logout-btn:active { background: #fee2e2; }
 .logout-btn svg { width: 17px; height: 17px; fill: var(--gray-400); transition: fill 0.15s; }
+
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.auth-modal {
+  width: min(380px, 100%);
+  padding: 24px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.2);
+  text-align: center;
+}
+
+.auth-modal h3 {
+  margin: 0 0 8px;
+  color: var(--gray-900);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.auth-modal p {
+  margin: 0 0 20px;
+  color: var(--gray-500);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.auth-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-cancel,
+.btn-login {
+  flex: 1;
+  padding: 13px;
+  border: 0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-cancel {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.btn-login {
+  background: var(--green-500);
+  color: #fff;
+}

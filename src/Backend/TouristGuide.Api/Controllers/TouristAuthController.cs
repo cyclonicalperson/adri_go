@@ -18,23 +18,29 @@ namespace TouristGuide.Api.Controllers
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
         private readonly TouristNotificationService _touristNotificationService;
+        private readonly RouteSafetyService _routeSafetyService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<TouristAuthController> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         public TouristAuthController(
             AppDbContext db,
             JwtService jwtService,
             EmailService emailService,
             TouristNotificationService touristNotificationService,
+            RouteSafetyService routeSafetyService,
             IConfiguration configuration,
-            ILogger<TouristAuthController> logger)
+            ILogger<TouristAuthController> logger,
+            IHttpClientFactory httpClientFactory)
         {
             _db = db;
             _jwtService = jwtService;
             _emailService = emailService;
             _touristNotificationService = touristNotificationService;
+            _routeSafetyService = routeSafetyService;
             _configuration = configuration;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
         // POST /api/tourist-auth/register
@@ -43,6 +49,9 @@ namespace TouristGuide.Api.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            if (PasswordPolicy.GetValidationError(request.Password) is { } passwordError)
+                return BadRequest(new { message = passwordError });
 
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
@@ -54,7 +63,7 @@ namespace TouristGuide.Api.Controllers
 
             // When SMTP is not configured (dev / local environment), auto-verify the email
             // so users can log in immediately without waiting for a verification link.
-            var smtpConfigured = !string.IsNullOrWhiteSpace(_configuration["Email:SmtpHost"]);
+            var smtpConfigured = _emailService.IsConfigured;
 
             var verificationToken = smtpConfigured ? Guid.NewGuid().ToString("N") : null;
             var now = DateTime.UtcNow;
@@ -124,6 +133,43 @@ namespace TouristGuide.Api.Controllers
         {
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token nije prosleden." });
+
+            var emailChangeTourist = await _db.Tourists
+                .FirstOrDefaultAsync(t => t.PendingEmailVerificationToken == token);
+
+            if (emailChangeTourist is not null)
+            {
+                if (emailChangeTourist.PendingEmailVerificationTokenExpiresAt is null ||
+                    emailChangeTourist.PendingEmailVerificationTokenExpiresAt < DateTime.UtcNow)
+                    return BadRequest(new
+                    {
+                        message = "Token za promenu emaila je istekao. Pokrenite promenu ponovo.",
+                        expired = true
+                    });
+
+                if (string.IsNullOrWhiteSpace(emailChangeTourist.PendingEmail))
+                    return BadRequest(new { message = "Novi email nije pronadjen za ovaj token." });
+
+                var pendingEmail = emailChangeTourist.PendingEmail.Trim().ToLowerInvariant();
+                if (await _db.Tourists.AnyAsync(t => t.Id != emailChangeTourist.Id && t.Email != null && t.Email.ToLower() == pendingEmail))
+                    return Conflict(new { message = "Email adresa je vec zauzeta." });
+
+                emailChangeTourist.Email = pendingEmail;
+                emailChangeTourist.PendingEmail = null;
+                emailChangeTourist.PendingEmailVerificationToken = null;
+                emailChangeTourist.PendingEmailVerificationTokenExpiresAt = null;
+                emailChangeTourist.IsEmailVerified = true;
+                emailChangeTourist.UpdatedAt = DateTime.UtcNow;
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new EmailVerificationResultDto
+                {
+                    Message = "Nova email adresa je uspesno potvrdjena.",
+                    AlreadyVerified = false,
+                    VerifiedAt = emailChangeTourist.UpdatedAt
+                });
+            }
 
             var tourist = await _db.Tourists
                 .FirstOrDefaultAsync(t => t.EmailVerificationToken == token);
@@ -220,6 +266,11 @@ namespace TouristGuide.Api.Controllers
                     emailNotVerified = true
                 });
 
+            if (PasswordHelper.NeedsRehash(tourist.PasswordHash))
+            {
+                tourist.PasswordHash = PasswordHelper.Hash(request.Password);
+            }
+
             tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
@@ -239,6 +290,46 @@ namespace TouristGuide.Api.Controllers
             var reviewCount = await _db.Reviews.CountAsync(r => r.TouristId == tourist.Id);
 
             return Ok(MapToMeDto(tourist, savedCount, reviewCount));
+        }
+
+        // GET /api/tourist-auth/my-reviews
+        [Authorize(Roles = "tourist")]
+        [HttpGet("my-reviews")]
+        public async Task<IActionResult> GetMyReviews()
+        {
+            var tourist = await GetCurrentTouristAsync();
+            if (tourist is null)
+                return Unauthorized(new { message = "Turista nije autentifikovan." });
+
+            var reviews = await _db.Reviews
+                .AsNoTracking()
+                .Where(r => r.TouristId == tourist.Id)
+                .Include(r => r.Post)
+                .Include(r => r.Route)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new TouristReviewItemDto
+                {
+                    ReviewId = r.Id,
+                    PostId = r.PostId,
+                    RouteId = r.RouteId,
+                    EntityTitle = r.Post != null
+                        ? r.Post.Title
+                        : r.Route != null
+                            ? r.Route.Name
+                            : "(deleted)",
+                    Rating = r.Rating,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt,
+                    Status = r.Status,
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                total = reviews.Count,
+                data = reviews,
+            });
         }
 
         // DELETE /api/tourist-auth/account
@@ -268,6 +359,36 @@ namespace TouristGuide.Api.Controllers
 
             if (dto.Name is not null)
                 tourist.Name = dto.Name.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Email))
+            {
+                var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+                var currentEmail = tourist.Email?.Trim().ToLowerInvariant();
+
+                if (!string.Equals(normalizedEmail, currentEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (await _db.Tourists.AnyAsync(t => t.Id != tourist.Id && t.Email != null && t.Email.ToLower() == normalizedEmail))
+                        return Conflict(new { message = "Email adresa je vec zauzeta." });
+
+                    var token = Guid.NewGuid().ToString("N");
+                    tourist.PendingEmail = normalizedEmail;
+                    tourist.PendingEmailVerificationToken = token;
+                    tourist.PendingEmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
+
+                    try
+                    {
+                        await _emailService.SendEmailChangeVerificationEmailAsync(
+                            normalizedEmail,
+                            tourist.Name ?? "Korisnik",
+                            token,
+                            tourist.Language);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send email change verification to {Email}", normalizedEmail);
+                    }
+                }
+            }
 
             if (dto.Language is not null)
                 tourist.Language = dto.Language.Trim().ToLowerInvariant();
@@ -563,6 +684,10 @@ namespace TouristGuide.Api.Controllers
             {
                 if (string.IsNullOrWhiteSpace(request.Title))
                     return BadRequest(new { message = "Route title is required." });
+
+                var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(request.Waypoints, HttpContext.RequestAborted);
+                if (!routeValidation.IsValid)
+                    return BadRequest(new { message = routeValidation.Message });
 
                 route = new TouristRoute
                 {
@@ -959,6 +1084,9 @@ namespace TouristGuide.Api.Controllers
             if (!PasswordHelper.Verify(dto.CurrentPassword, tourist.PasswordHash))
                 return BadRequest(new { message = "Current password is incorrect." });
 
+            if (PasswordPolicy.GetValidationError(dto.NewPassword, "Nova lozinka") is { } passwordError)
+                return BadRequest(new { message = passwordError });
+
             tourist.PasswordHash = PasswordHelper.Hash(dto.NewPassword);
             tourist.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
@@ -1013,6 +1141,9 @@ namespace TouristGuide.Api.Controllers
 
             if (string.IsNullOrWhiteSpace(dto.Token))
                 return BadRequest(new { message = "Token is required." });
+
+            if (PasswordPolicy.GetValidationError(dto.NewPassword, "Nova lozinka") is { } passwordError)
+                return BadRequest(new { message = passwordError });
 
             var resetToken = "RESET_" + dto.Token;
             var tourist = await _db.Tourists
@@ -1071,6 +1202,7 @@ namespace TouristGuide.Api.Controllers
                 Id = tourist.Id,
                 Name = tourist.Name ?? string.Empty,
                 Email = tourist.Email ?? string.Empty,
+                PendingEmail = tourist.PendingEmail,
                 Language = tourist.Language,
                 Bio = tourist.Bio,
                 Location = tourist.Location,
@@ -1104,9 +1236,13 @@ namespace TouristGuide.Api.Controllers
             {
                 if (dto.Provider == "google")
                 {
-                    using var http = new HttpClient();
+                    var configuredClientId = _configuration["SocialAuth:GoogleClientId"];
+                    if (string.IsNullOrWhiteSpace(configuredClientId))
+                        return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Google sign-in is not configured." });
+
+                    var http = _httpClientFactory.CreateClient("GoogleTokenInfo");
                     var res = await http.GetAsync(
-                        $"https://oauth2.googleapis.com/tokeninfo?id_token={dto.Credential}");
+                        $"tokeninfo?id_token={Uri.EscapeDataString(dto.Credential)}");
                     if (!res.IsSuccessStatusCode)
                         return Unauthorized(new { message = "Invalid Google token." });
 
@@ -1118,17 +1254,22 @@ namespace TouristGuide.Api.Controllers
                     email      = payload.TryGetValue("email", out var e)      ? e?.ToString() : null;
                     name       = payload.TryGetValue("name", out var n)        ? n?.ToString() : null;
                     providerId = payload.TryGetValue("sub", out var sub)       ? sub?.ToString() : null;
+                    var audience = payload.TryGetValue("aud", out var aud) ? aud?.ToString() : null;
+                    var emailVerified = payload.TryGetValue("email_verified", out var ev) ? ev?.ToString() : null;
+
+                    if (!string.Equals(audience, configuredClientId, StringComparison.Ordinal))
+                    {
+                        return Unauthorized(new { message = "Google token audience is not trusted." });
+                    }
+
+                    if (!string.Equals(emailVerified, "true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return Unauthorized(new { message = "Google email is not verified." });
+                    }
                 }
                 else if (dto.Provider == "apple")
                 {
-                    // Apple sends a JWT — decode without full verification here;
-                    // full JWKS verification can be added via Microsoft.IdentityModel.Tokens.
-                    var handler  = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                    var jwtToken = handler.ReadJwtToken(dto.Credential);
-
-                    email      = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-                    name       = dto.DisplayName; // Apple only sends name on first sign-in; frontend must pass it
-                    providerId = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+                    return BadRequest(new { message = "Apple sign-in is disabled until server-side JWKS validation is configured." });
                 }
                 else
                 {

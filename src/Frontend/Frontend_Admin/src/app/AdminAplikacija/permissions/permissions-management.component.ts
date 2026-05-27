@@ -372,7 +372,7 @@ export class PermissionsManagementComponent implements OnInit {
       preset.codes.filter(code => allowedCodes.has(code as PermissionCode)) as PermissionCode[],
     );
     this.refreshPermCount(this.selectedUser.userId, null);
-    this.showToast(`Preset "${preset.label}" je primenjen i sačuvan.`, 'success');
+    this.saveMsg = `Preset "${preset.label}" je primenjen. Sacuvajte da bi promene otisle na server.`;
   }
 
   private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {

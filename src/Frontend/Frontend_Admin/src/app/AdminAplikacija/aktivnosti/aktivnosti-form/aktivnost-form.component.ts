@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { ActivityService } from '@core/services/activity.service';
 import { PostService } from '@core/services/post.service';
+import { AuthService } from '@core/auth/auth.service';
 import { MapComponent, MapClickEvent } from '@shared/components/map/map.component';
 
 interface SimpleObject { objectId: number; name: string; }
@@ -39,9 +40,20 @@ export class AktivnostFormComponent implements OnInit {
     private fb: FormBuilder,
     private activityService: ActivityService,
     private postService: PostService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
   ) { }
+
+  get canApproveActivities(): boolean {
+    return this.auth.hasGlobalPermission('manage_tags');
+  }
+
+  get statusHint(): string {
+    return this.canApproveActivities
+      ? 'Superadmin ili admin sa dozvolom moze odmah odobriti aktivnost.'
+      : 'Aktivnost ce biti poslata superadminu na odobrenje.';
+  }
 
   ngOnInit(): void {
     this.form = this.fb.group({
@@ -52,13 +64,14 @@ export class AktivnostFormComponent implements OnInit {
       difficulty: [''],
       maxCapacity: [null],
       tags: [''],
-      objectId: [null],
+      objectIds: [[]],
+      objectSearch: [''],
       latitude: [null],
       longitude: [null],
-      status: ['pending'],
+      status: [this.canApproveActivities ? 'approved' : 'pending'],
     });
 
-    this.postService.getAll({ page: 1, pageSize: 100, excludeType: 'event' })
+    this.postService.getAll({ page: 1, pageSize: 500, excludeType: 'event', sortBy: 'title', sortDir: 'asc' })
       .subscribe(res => {
         this.objects = (res.data ?? []).map(post => ({
           objectId: post.postId,
@@ -80,7 +93,7 @@ export class AktivnostFormComponent implements OnInit {
           difficulty: activity.difficulty ?? '',
           maxCapacity: activity.maxCapacity ?? null,
           tags: activity.tags ?? '',
-          objectId: activity.postId ?? null,
+          objectIds: activity.postIds?.length ? activity.postIds : (activity.postId ? [activity.postId] : []),
           latitude: activity.lat ?? null,
           longitude: activity.lng ?? null,
           status: (activity.status ?? 'pending').toLowerCase(),
@@ -88,6 +101,11 @@ export class AktivnostFormComponent implements OnInit {
 
         if (activity.lat && activity.lng) {
           setTimeout(() => this.mapComp?.setPickedLocation(activity.lat!, activity.lng!), 300);
+        }
+
+        if (!this.canApproveActivities) {
+          this.form.patchValue({ status: 'pending' });
+          this.form.get('status')?.disable({ emitEvent: false });
         }
       });
     }
@@ -103,12 +121,12 @@ export class AktivnostFormComponent implements OnInit {
     this.error = null;
 
     const raw = this.form.value;
-    const objectId = raw.objectId;
+    const objectIds = this.normalizeObjectIds(raw.objectIds);
 
     const payload = {
       name: raw.name,
       category: raw.category,
-      status: (raw.status ?? 'pending').toLowerCase(),
+      status: this.canApproveActivities ? (raw.status ?? 'pending').toLowerCase() : 'pending',
       description: raw.description ?? '',
       duration: raw.duration ?? '',
       difficulty: raw.difficulty ?? '',
@@ -116,8 +134,9 @@ export class AktivnostFormComponent implements OnInit {
       tags: raw.tags ?? '',
       latitude: raw.latitude,
       longitude: raw.longitude,
-      postId: objectId ?? null,
-      clearPost: objectId === null || objectId === undefined,
+      postId: objectIds[0] ?? null,
+      postIds: objectIds,
+      clearPost: objectIds.length === 0,
     };
 
     const request$ = this.isEdit
@@ -139,5 +158,45 @@ export class AktivnostFormComponent implements OnInit {
   onMapClick(ev: MapClickEvent): void {
     this.form.patchValue({ latitude: +ev.lat.toFixed(4), longitude: +ev.lng.toFixed(4) });
     this.mapComp?.setPickedLocation(ev.lat, ev.lng);
+  }
+
+  isObjectSelected(objectId: number): boolean {
+    return this.normalizeObjectIds(this.form.value.objectIds).includes(objectId);
+  }
+
+  toggleObject(objectId: number): void {
+    const selected = this.normalizeObjectIds(this.form.value.objectIds);
+    const next = selected.includes(objectId)
+      ? selected.filter(id => id !== objectId)
+      : [...selected, objectId];
+    this.form.patchValue({ objectIds: next });
+  }
+
+  clearObjectSelection(): void {
+    this.form.patchValue({ objectIds: [] });
+  }
+
+  get selectedObjectCount(): number {
+    return this.normalizeObjectIds(this.form.value.objectIds).length;
+  }
+
+  get selectedObjects(): SimpleObject[] {
+    const ids = this.normalizeObjectIds(this.form.value.objectIds);
+    return this.objects.filter(object => ids.includes(object.objectId));
+  }
+
+  get filteredObjects(): SimpleObject[] {
+    const term = String(this.form?.value?.objectSearch ?? '').trim().toLowerCase();
+    if (!term) {
+      return this.objects;
+    }
+
+    return this.objects.filter(object => object.name.toLowerCase().includes(term));
+  }
+
+  private normalizeObjectIds(value: unknown): number[] {
+    return Array.isArray(value)
+      ? value.map(id => Number(id)).filter(id => Number.isFinite(id) && id > 0)
+      : [];
   }
 }

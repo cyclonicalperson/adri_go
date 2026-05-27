@@ -1,15 +1,10 @@
 <div class="settings-container">
 
-  <div class="header">
-    <button class="back-btn" (click)="goBack()">
-      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <h1>Settings</h1>
-  </div>
+  <app-header title="Settings" [showNotifications]="false"></app-header>
 
   <div class="scroll-content">
 
-    <div class="settings-group settings-group-account">
+    <div class="settings-group settings-group-account" *ngIf="authService.isLoggedIn">
       <p class="group-label">Account &amp; Security</p>
       <div class="group-items">
         <button class="setting-row" (click)="goToEditProfile()">
@@ -95,7 +90,7 @@
       </div>
     </div>
 
-    <div class="settings-group settings-group-integrations">
+    <div class="settings-group settings-group-integrations" *ngIf="authService.isLoggedIn">
       <p class="group-label">Integrations &amp; Bookings</p>
       <div class="group-items">
         <button class="setting-row" (click)="openSheet('booking')">

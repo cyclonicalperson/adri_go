@@ -1,0 +1,304 @@
+<div class="reviews-page">
+  <app-header title="My Reviews" (backClick)="goBack()">
+    <!-- Notifications se prikazuju automatski u app-header -->
+  </app-header>
+
+  <div class="page-shell">
+    <div class="content-column">
+      <div class="page-heading">
+        <h2>My Reviews</h2>
+        <p>Track what you rated, revisit places you reviewed, and browse your review history.</p>
+      </div>
+
+      <div class="mobile-controls">
+        <div class="search-input-wrapper">
+          <span class="search-icon">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          </span>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search your reviews..."
+            [(ngModel)]="searchQuery">
+          <button
+            class="search-filter-btn"
+            type="button"
+            [class.active]="hasActiveReviewFilters"
+            (click)="openReviewFilters($event)"
+            aria-label="Filter reviews">
+            <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+            <span class="filter-active-dot" *ngIf="hasActiveReviewFilters" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="sort-dropdown">
+          <button class="sort-btn" type="button" [class.open]="sortMenuOpen" (click)="toggleSortMenu($event)">
+            <span>{{ getSelectedSortLabel() }}</span>
+            <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+
+          <div class="floating-menu sort-menu" *ngIf="sortMenuOpen" (click)="$event.stopPropagation()">
+            <button
+              *ngFor="let option of sortOptions"
+              type="button"
+              class="menu-option"
+              [class.active]="sortOption === option.value"
+              (click)="setSortOption(option.value, $event)">
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="desktop-search-row">
+        <div class="search-input-wrapper">
+          <span class="search-icon">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          </span>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search your reviews..."
+            [(ngModel)]="searchQuery">
+          <div class="search-divider"></div>
+          <button
+            class="search-filter-btn"
+            type="button"
+            [class.active]="hasActiveReviewFilters"
+            (click)="openReviewFilters($event)"
+            aria-label="Filter reviews">
+            <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+            <span class="filter-active-dot" *ngIf="hasActiveReviewFilters" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="sort-dropdown desktop-sort">
+          <button class="sort-btn" type="button" [class.open]="sortMenuOpen" (click)="toggleSortMenu($event)">
+            <span>{{ getSelectedSortLabel() }}</span>
+            <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+
+          <div class="floating-menu sort-menu" *ngIf="sortMenuOpen" (click)="$event.stopPropagation()">
+            <button
+              *ngFor="let option of sortOptions"
+              type="button"
+              class="menu-option"
+              [class.active]="sortOption === option.value"
+              (click)="setSortOption(option.value, $event)">
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="desktop-tabs-row">
+        <div class="tabs-strip">
+          <button
+            *ngFor="let tab of tabs"
+            type="button"
+            class="tab-btn"
+            [class.active]="activeTab === tab.value"
+            (click)="setTab(tab.value)">
+            {{ tab.label }} ({{ tabCounts[tab.value] }})
+          </button>
+        </div>
+      </div>
+
+      <div class="mobile-tabs-row">
+        <button
+          *ngFor="let tab of tabs"
+          type="button"
+          class="tab-btn"
+          [class.active]="activeTab === tab.value"
+          (click)="setTab(tab.value)">
+          {{ tab.label }} ({{ tabCounts[tab.value] }})
+        </button>
+      </div>
+
+      <div class="loader-state" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>Loading your reviews...</p>
+      </div>
+
+      <div class="empty-state" *ngIf="!isLoading && visibleReviews.length === 0">
+        <svg class="empty-icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16l4-3 4 3 4-3 4 3V8l-6-6zm1 7V3.5L19.5 9H15z"/></svg>
+        <h3>No reviews found</h3>
+        <p *ngIf="reviews.length === 0">Your submitted reviews will appear here once you start rating places and routes.</p>
+        <p *ngIf="reviews.length > 0">Try changing your search, tabs, rating filters, or comment filters.</p>
+      </div>
+
+      <div class="reviews-list" *ngIf="!isLoading && visibleReviews.length > 0">
+        <article
+          *ngFor="let review of visibleReviews"
+          class="review-card"
+          [class.clickable]="canOpenReview(review)"
+          (click)="openReviewTarget(review)">
+          <div class="review-thumb-wrap">
+            <img
+              [src]="review.thumbnailUrl"
+              [alt]="review.entityTitle"
+              class="review-thumb"
+              (error)="onThumbnailError($event, review.category)">
+          </div>
+
+          <div class="review-main">
+            <div class="review-main-top">
+              <div class="title-group">
+                <div class="title-line">
+                  <span class="type-icon" [attr.data-kind]="getCategoryIcon(review)">
+                    <svg *ngIf="getCategoryIcon(review) === 'place'" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    <svg *ngIf="getCategoryIcon(review) === 'route'" viewBox="0 0 24 24"><path d="M14 6.5A2.5 2.5 0 1 0 9.05 7H6a3 3 0 0 0 0 6h6.95a2.5 2.5 0 1 1 0 4H10v-2l-4 3 4 3v-2h2.95a3 3 0 0 0 0-6H6a2.5 2.5 0 0 1 0-5h3.05A2.5 2.5 0 0 0 14 6.5z"/></svg>
+                    <svg *ngIf="getCategoryIcon(review) === 'activity'" viewBox="0 0 24 24"><path d="M13.5 5.5A2.5 2.5 0 1 0 11 3a2.5 2.5 0 0 0 2.5 2.5zm-3.64 15.3 1.23-5.13 2.35 2.23V22h2v-5.27l-2.27-2.18.63-3.06a5.94 5.94 0 0 0 4.7 2.28v-2a3.97 3.97 0 0 1-3.37-1.87l-1-1.58a2 2 0 0 0-2.47-.78L7 9.5V14h2v-3.14l1.54-.56-1.48 6.17L4.8 15.6l-.4 1.96 5.46 1.24z"/></svg>
+                  </span>
+                  <h3>{{ review.entityTitle }}</h3>
+                </div>
+
+                <div class="meta-badges">
+                  <span class="type-badge" [attr.data-kind]="review.category">{{ review.typeLabel }}</span>
+                  <span class="status-badge" [attr.data-status]="formatStatusTone(review.status)">
+                    {{ formatStatus(review.status) }}
+                  </span>
+                </div>
+              </div>
+
+              <span class="review-more" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+              </span>
+            </div>
+
+            <div class="review-info-row">
+              <span class="rating-chip">
+                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                {{ review.rating | number:'1.1-1' }}
+              </span>
+              <span class="dot-separator">•</span>
+              <span>{{ review.createdAt | date:'MMM d, y' }}</span>
+            </div>
+
+            <p class="review-comment" *ngIf="review.comment">{{ review.summaryText }}</p>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <aside class="summary-column" *ngIf="!isLoading">
+      <section class="summary-card">
+        <h3>Your rating summary</h3>
+        <div class="rating-summary-head">
+          <div class="average-rating">{{ averageRating | number:'1.1-1' }}</div>
+          <div class="average-meta">
+            <div class="summary-stars">
+              <svg *ngFor="let star of [1,2,3,4,5]" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            </div>
+            <span>Average rating</span>
+          </div>
+        </div>
+
+        <div class="breakdown-list">
+          <div class="breakdown-row" *ngFor="let item of ratingBreakdown">
+            <span class="breakdown-label">{{ item.stars }}</span>
+            <svg class="breakdown-star" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <div class="breakdown-track">
+              <span class="breakdown-fill" [style.width.%]="item.widthPercent"></span>
+            </div>
+            <span class="breakdown-count">{{ item.count }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="summary-card">
+        <h3>Your reviews over time</h3>
+        <p class="summary-subtitle">Number of reviews you&apos;ve written each month.</p>
+
+        <div class="chart-wrap" *ngIf="monthlyReviewPoints.length > 0">
+          <svg viewBox="0 0 320 150" class="review-chart" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="reviewsChartFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(34, 197, 94, 0.22)"></stop>
+                <stop offset="100%" stop-color="rgba(34, 197, 94, 0.02)"></stop>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="150" x2="320" y2="150" class="chart-axis"></line>
+            <polygon [attr.points]="chartAreaPoints" class="chart-area"></polygon>
+            <polyline [attr.points]="chartPolylinePoints" class="chart-line"></polyline>
+            <circle *ngFor="let point of monthlyReviewPoints" [attr.cx]="point.x" [attr.cy]="point.y" r="4.5" class="chart-point"></circle>
+          </svg>
+
+          <div class="chart-labels">
+            <span *ngFor="let point of monthlyReviewPoints">{{ point.label }}</span>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="reviews-filter-backdrop" *ngIf="reviewFiltersOpen" (click)="closeReviewFilters()"></div>
+  <div class="reviews-filter-panel" *ngIf="reviewFiltersOpen" (click)="$event.stopPropagation()">
+    <div class="filters-header">
+      <button class="filters-close-btn" type="button" (click)="closeReviewFilters()" aria-label="Close filters">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2>Filters</h2>
+      <button class="filters-clear-btn" type="button" (click)="clearReviewFilters()">Clear All</button>
+    </div>
+
+    <div class="filters-scroll-content">
+      <section class="filters-section">
+        <div class="filters-section-header">
+          <h3>Categories</h3>
+        </div>
+        <div class="filters-category-chips">
+          <button
+            *ngFor="let category of reviewFilterCategories"
+            type="button"
+            class="filters-chip"
+            [class.active]="isDraftCategorySelected(category.id)"
+            [style.--cat-color]="category.color"
+            (click)="toggleReviewCategory(category.id)">
+            <span class="filters-chip-icon" aria-hidden="true">{{ category.icon }}</span>
+            {{ category.label }}
+          </button>
+        </div>
+      </section>
+
+      <section class="filters-section">
+        <div class="filters-section-header">
+          <h3>Minimum Rating</h3>
+        </div>
+        <div class="filters-rating-grid">
+          <button
+            *ngFor="let rating of [1,2,3,4,5]"
+            type="button"
+            class="filters-rating-card"
+            [class.active]="draftFilters.minRating === rating"
+            (click)="setDraftMinRating(rating)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            {{ rating }}+
+          </button>
+        </div>
+      </section>
+
+      <section class="filters-section">
+        <div class="filters-section-header">
+          <h3>Comment</h3>
+        </div>
+        <div class="filters-comment-grid">
+          <button
+            *ngFor="let option of commentOptions"
+            type="button"
+            class="filters-comment-card"
+            [class.active]="draftFilters.commentMode === option.value"
+            (click)="setDraftCommentMode(option.value)">
+            {{ option.label }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div class="filters-footer">
+      <button class="filters-apply-btn" type="button" (click)="applyReviewFilters()">Apply filters</button>
+    </div>
+  </div>
+
+  <app-mobile-tourist-nav active="account"></app-mobile-tourist-nav>
+</div>

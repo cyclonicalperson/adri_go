@@ -24,8 +24,10 @@
 .content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background: $gray-50;
   min-height: 0;
+  scroll-padding-top: 16px;
 }
 
 // ── Mobile backdrop ────────────────────────────────────────────────────────
@@ -76,6 +78,7 @@
 
   .content {
     padding-top: 56px;    // offset for the fixed topbar (56px height on mobile)
-    padding-bottom: 16px;
+    padding-bottom: 20px;
+    overscroll-behavior: contain;
   }
 }

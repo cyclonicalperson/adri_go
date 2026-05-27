@@ -19,6 +19,12 @@ namespace TouristGuide.Api.Services
             _logger = logger;
         }
 
+        public bool IsConfigured =>
+            !string.IsNullOrWhiteSpace(_configuration["Email:SmtpHost"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Email:SmtpUser"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Email:SmtpPass"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Email:From"]);
+
         // ─── Lokalizovani stringovi ───────────────────────────────────────────
 
         private static readonly Dictionary<string, (string Subject, string Title, string Intro, string Body, string Button, string Footer)>
@@ -170,6 +176,25 @@ namespace TouristGuide.Api.Services
             await SendEmailAsync(toEmail, subject, body);
         }
 
+        public async Task SendEmailChangeVerificationEmailAsync(string toEmail, string toName, string verificationToken, string? language = null)
+        {
+            var lang = NormalizeLanguage(language, VerificationStrings);
+            var verificationLink = BuildFrontendUrl(
+                configKey: "Email:TouristBaseUrl",
+                fallbackBaseUrl: "http://localhost:4201",
+                pathAndQuery: $"/verify-email?token={Uri.EscapeDataString(verificationToken)}&lang={Uri.EscapeDataString(lang)}");
+
+            var body = BuildEmailTemplate(
+                title: $"Potvrdite novu email adresu, {HtmlEncode(toName)}",
+                intro: "Primili smo zahtev za promenu email adrese na AdriGo nalogu.",
+                bodyHtml: "<p>Kliknite na dugme ispod da potvrdite novu email adresu. Promena ce biti prihvacena tek nakon potvrde.</p>",
+                actionLabel: "Potvrdi novu email adresu",
+                actionUrl: verificationLink,
+                footerNote: "Link je vazeci 24 sata. Ako niste trazili promenu emaila, ignorisite ovu poruku.");
+
+            await SendEmailAsync(toEmail, "Potvrdite novu email adresu - AdriGo", body);
+        }
+
         /// <summary>
         /// Šalje email za resetovanje lozinke turisti u njegovom jeziku.
         /// </summary>
@@ -278,7 +303,7 @@ namespace TouristGuide.Api.Services
             var fromEmail = _configuration["Email:From"] ?? "noreply@adrigo.com";
             var fromName = _configuration["Email:FromName"] ?? "AdriGo";
 
-            if (string.IsNullOrWhiteSpace(smtpHost) || string.IsNullOrWhiteSpace(smtpUser))
+            if (!IsConfigured)
             {
                 _logger.LogWarning(
                     "[EMAIL - DEV MODE] Nije konfigurisan SMTP. Email koji bi bio poslat na {To}: {Subject}\n{Body}",

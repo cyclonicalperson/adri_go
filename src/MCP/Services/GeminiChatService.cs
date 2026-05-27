@@ -1,4 +1,5 @@
 using TouristGuide.Ai.Contracts;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -14,11 +15,21 @@ public sealed record ChatMessage(
 
 public sealed record ChatRequest(
     [property: JsonPropertyName("message")] string Message,
-    [property: JsonPropertyName("history")] IReadOnlyList<ChatMessage>? History = null);
+    [property: JsonPropertyName("history")] IReadOnlyList<ChatMessage>? History = null,
+    [property: JsonPropertyName("language")] string? Language = null);
 
 public sealed record ChatResponse(
     [property: JsonPropertyName("reply")]     string Reply,
-    [property: JsonPropertyName("toolsUsed")] IReadOnlyList<string> ToolsUsed);
+    [property: JsonPropertyName("toolsUsed")] IReadOnlyList<string> ToolsUsed,
+    [property: JsonPropertyName("referencedPosts")] IReadOnlyList<ChatPostReference> ReferencedPosts);
+
+public sealed record ChatPostReference(
+    [property: JsonPropertyName("id")] uint Id,
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("postType")] string? PostType = null,
+    [property: JsonPropertyName("rating")] double? Rating = null,
+    [property: JsonPropertyName("reviewCount")] uint? ReviewCount = null,
+    [property: JsonPropertyName("regionName")] string? RegionName = null);
 
 // ── Gemini API DTO-vi ─────────────────────────────────────────────────────────
 
@@ -134,12 +145,6 @@ internal sealed class GeminiChatService : IGeminiChatService
     private static readonly Lazy<List<GeminiTool>> CachedTools =
         new(BuildTourismTools, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    // FIX #3: System prompt je konstanta — ne treba ga graditi svaki request.
-    private static readonly GeminiSystemInstruction CachedSystemInstruction = new()
-    {
-        Parts = [new GeminiPart { Text = BuildSystemPrompt() }]
-    };
-
     // Maksimalan broj agentic petlji radi zaštite od beskonačnih petlji
     private const int MaxToolRounds = 8;
     // Maksimalan broj poruka istorije koje se šalju modelu (context truncation)
@@ -163,11 +168,11 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     public async Task<ChatResponse> ChatAsync(ChatRequest request, CancellationToken ct)
     {
-        var apiKey = _configuration["Gemini:ApiKey"]
-            ?? throw new InvalidOperationException("Gemini:ApiKey nije postavljen u appsettings.json");
+        var apiKey = _configuration["Gemini:ApiKey"];
 
         // FIX #5: Validacija da ključ nije placeholder vrednost
-        if (apiKey.Equals("YOUR_GEMINI_API_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(apiKey) ||
+            apiKey.Equals("YOUR_GEMINI_API_KEY_HERE", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
                 "Gemini:ApiKey nije podešen. Unesite pravi API ključ u appsettings.json ili environment varijablu.");
 
@@ -239,6 +244,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         var maxHistory = _configuration.GetValue<int>("Gemini:MaxHistoryMessages", DefaultMaxHistoryMessages);
         var contents   = BuildContents(request, maxHistory);
         var toolsUsed  = new List<string>();
+        var referencedPosts = new List<ChatPostReference>();
 
         // Agentic petlja: Gemini može pozvati više alata pre finalnog odgovora
         for (int round = 0; round < MaxToolRounds; round++)
@@ -247,7 +253,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             {
                 Contents          = contents,
                 Tools             = CachedTools.Value,
-                SystemInstruction = CachedSystemInstruction,
+                SystemInstruction = BuildSystemInstruction(request.Language),
                 GenerationConfig  = new GeminiGenerationConfig
                 {
                     MaxOutputTokens = maxTokens,
@@ -334,7 +340,10 @@ internal sealed class GeminiChatService : IGeminiChatService
                     "Gemini chat završen u {Rounds} rundi, korišćeni alati: [{Tools}]",
                     round + 1, string.Join(", ", toolsUsed));
 
-                return new ChatResponse(replyText, toolsUsed.AsReadOnly());
+                return new ChatResponse(
+                    replyText,
+                    toolsUsed.AsReadOnly(),
+                    FilterReferencedPostsForReply(replyText, referencedPosts));
             }
 
             // FIX #6: Svi function response-ovi za jednu rundu idu zajedno
@@ -349,7 +358,7 @@ internal sealed class GeminiChatService : IGeminiChatService
                     "Runda {Round}: Gemini poziva alat [{Tool}] (canonical: {CanonicalTool}) sa args: {Args}",
                     round + 1, call.Name, canonicalToolName, call.Args?.ToJsonString() ?? "{}");
 
-                var result = await ExecuteToolAsync(call.Name, call.Args, ct);
+                var result = await ExecuteToolAsync(call.Name, call.Args, referencedPosts, ct);
 
                 functionResponseParts.Add(new GeminiPart
                 {
@@ -372,12 +381,17 @@ internal sealed class GeminiChatService : IGeminiChatService
         _logger.LogWarning("Dostignut maksimalan broj rundi ({Max}) za Gemini chat", MaxToolRounds);
         return new ChatResponse(
             "Izvinite, zahtev je previše složen za obradu. Molim vas pokušajte sa specifičnijim pitanjem.",
-            toolsUsed.AsReadOnly());
+            toolsUsed.AsReadOnly(),
+            []);
     }
 
     // ── Dispatcher: ime alata → servis ───────────────────────────────────────
 
-    private async Task<JsonObject> ExecuteToolAsync(string toolName, JsonObject? args, CancellationToken ct)
+    private async Task<JsonObject> ExecuteToolAsync(
+        string toolName,
+        JsonObject? args,
+        List<ChatPostReference> referencedPosts,
+        CancellationToken ct)
     {
         var canonicalToolName = NormalizeToolName(toolName);
 
@@ -407,6 +421,7 @@ internal sealed class GeminiChatService : IGeminiChatService
                 _ => (object)new { error = $"Nepoznat alat: {toolName}" }
             };
 
+            AddReferencedPosts(result, referencedPosts);
             return ToToolResponseObject(result);
         }
         catch (Exception ex)
@@ -459,6 +474,94 @@ internal sealed class GeminiChatService : IGeminiChatService
             JsonValue value  => new JsonObject { ["result"] = value },
             _                => new JsonObject { ["result"] = node }
         };
+    }
+
+    private static void AddReferencedPosts(object? result, List<ChatPostReference> posts)
+    {
+        switch (result)
+        {
+            case null:
+                return;
+            case PagedResult<PostSummary> pagedPosts:
+                foreach (var post in pagedPosts.Items) AddPostReference(posts, FromPostSummary(post));
+                return;
+            case PostSummary post:
+                AddPostReference(posts, FromPostSummary(post));
+                return;
+            case PostDetail detail:
+                AddPostReference(posts, new ChatPostReference(
+                    detail.Id, detail.Title, detail.PostType, detail.Rating, detail.ReviewCount, detail.RegionName));
+                return;
+            case IReadOnlyList<PostSummary> postList:
+                foreach (var post in postList) AddPostReference(posts, FromPostSummary(post));
+                return;
+            case PagedResult<EventSummary> pagedEvents:
+                foreach (var item in pagedEvents.Items)
+                    AddPostReference(posts, new ChatPostReference(
+                        item.Id, item.Title, "event", item.AvgRating, null, null));
+                return;
+            case EventSummary item:
+                AddPostReference(posts, new ChatPostReference(
+                    item.Id, item.Title, "event", item.AvgRating, null, null));
+                return;
+            case IReadOnlyList<RecommendationItem> recommendations:
+                foreach (var rec in recommendations.Where(x => IsPostEntity(x.EntityType)))
+                    AddPostReference(posts, new ChatPostReference(
+                        rec.EntityId, rec.Title, rec.PostType, null, null, rec.RegionName));
+                return;
+            case IReadOnlyList<NewContentItem> newContent:
+                foreach (var item in newContent.Where(x => IsPostEntity(x.EntityType)))
+                    AddPostReference(posts, new ChatPostReference(
+                        item.EntityId, item.Title, item.PostType, item.Rating, null, item.RegionName));
+                return;
+            case IReadOnlyList<TopContentItem> topContent:
+                foreach (var item in topContent.Where(x => IsPostEntity(x.EntityType)))
+                    AddPostReference(posts, new ChatPostReference(
+                        item.EntityId, item.Title, item.PostType, item.AvgRating, (uint?)item.ReviewCount, null));
+                return;
+        }
+    }
+
+    private static ChatPostReference FromPostSummary(PostSummary post) =>
+        new(post.Id, post.Title, post.PostType, post.Rating, post.ReviewCount, null);
+
+    private static bool IsPostEntity(string? entityType) =>
+        string.Equals(entityType, "post", StringComparison.OrdinalIgnoreCase);
+
+    private static void AddPostReference(List<ChatPostReference> posts, ChatPostReference post)
+    {
+        if (post.Id == 0 || string.IsNullOrWhiteSpace(post.Title)) return;
+        if (posts.Any(existing => existing.Id == post.Id)) return;
+        posts.Add(post);
+    }
+
+    private static IReadOnlyList<ChatPostReference> FilterReferencedPostsForReply(
+        string reply,
+        IReadOnlyList<ChatPostReference> posts)
+    {
+        if (posts.Count == 0 || string.IsNullOrWhiteSpace(reply)) return [];
+
+        var normalizedReply = NormalizeReferenceText(reply);
+        var mentioned = posts
+            .Where(post => normalizedReply.Contains(NormalizeReferenceText(post.Title), StringComparison.Ordinal))
+            .Take(4)
+            .ToList();
+
+        return mentioned.Count > 0 ? mentioned : posts.Take(3).ToList();
+    }
+
+    private static string NormalizeReferenceText(string value)
+    {
+        var normalized = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                builder.Append(char.IsLetterOrDigit(ch) ? ch : ' ');
+        }
+
+        return string.Join(' ', builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private Task<PagedResult<RegionSummary>> ExecuteSearchRegionsAsync(JsonObject? args, CancellationToken ct) =>
@@ -1306,6 +1409,18 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     // ── System prompt ─────────────────────────────────────────────────────────
 
+    private static GeminiSystemInstruction BuildSystemInstruction(string? preferredLanguage)
+    {
+        var languageInstruction = string.IsNullOrWhiteSpace(preferredLanguage)
+            ? ""
+            : $"\n\nUSER INTERFACE LANGUAGE: {preferredLanguage.Trim().ToLowerInvariant()}. Prefer this language for the reply unless the user explicitly asks for another language. If the logged-in profile tool returns a different Language field, the profile language wins.";
+
+        return new GeminiSystemInstruction
+        {
+            Parts = [new GeminiPart { Text = BuildSystemPrompt() + languageInstruction }]
+        };
+    }
+
     private static string BuildSystemPrompt() => """
         You are a friendly and knowledgeable tourism assistant for the Globecode regional tourist guide application.
         You have access to a comprehensive database of tourist regions, locations (accommodation, restaurants,
@@ -1316,7 +1431,9 @@ internal sealed class GeminiChatService : IGeminiChatService
         - ALWAYS use the provided tools to fetch real data — NEVER invent facts, names, ratings, or descriptions.
         - Call tools first, then formulate your answer based on what the tools return.
         - If a tool returns no results, honestly say so and suggest broadening the search.
-        - Respond in the SAME LANGUAGE the user writes in (auto-detect language).
+        - Prefer the logged-in tourist profile language when available.
+        - If no profile language is available, use the USER INTERFACE LANGUAGE appended to this instruction.
+        - If neither is available, respond in the same language the user writes in.
         - Support pagination: if HasMore is true, offer to show more results.
         - Be concise but informative — highlight the most important details.
         - When listing multiple results, use a structured format (numbered list or table).

@@ -36,6 +36,7 @@ import { AuthCallbackComponent } from './auth-callback/auth-callback.component';
 import { ExploreSectionComponent } from './explore-section/explore-section.component';
 import { RoutesComponent } from './routes/routes.component';
 import { ActivitiesComponent } from './activities/activities.component';
+import { MyReviewsComponent } from './my-reviews/my-reviews.component';
 import { ChatComponent } from './chat/chat.component';
 
 export const routes: Routes = [
@@ -54,8 +55,6 @@ export const routes: Routes = [
   { path: 'map-home', component: MapHomeComponent },
   { path: 'location-list', component: LocationListComponent },
   { path: 'explore-section', component: ExploreSectionComponent },
-  { path: 'routes', component: RoutesComponent },
-  { path: 'activities', component: ActivitiesComponent },
   { path: 'chat', component: ChatComponent },
   { path: 'filters', component: FiltersComponent },
 
@@ -71,6 +70,7 @@ export const routes: Routes = [
 
   // ACCOUNT PODSTRANICE
   { path: 'account/personal-info', component: PersonalInfoComponent },
+  { path: 'account/reviews', component: MyReviewsComponent },
   { path: 'account/help', component: HelpComponent },
   { path: 'account/privacy', component: PrivacyComponent },
 

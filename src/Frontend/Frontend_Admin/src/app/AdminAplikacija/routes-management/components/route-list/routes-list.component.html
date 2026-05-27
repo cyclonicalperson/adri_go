@@ -38,9 +38,16 @@
              (input)="onSearch($any($event.target).value)" />
     </div>
 
+    <select class="filter-select" [value]="req.country ?? ''" (change)="onCountryChange($any($event.target).value)">
+      <option value="">Sve drzave</option>
+      @for (country of countries; track country) {
+      <option [value]="country">{{ country }}</option>
+      }
+    </select>
+
     <select class="filter-select" (change)="onDestinationChange($any($event.target).value)">
       <option value="">Sve destinacije</option>
-      @for (d of destinations; track d.regionId) {
+      @for (d of filteredDestinations; track d.regionId) {
       <option [value]="d.regionId" [selected]="req.regionId === d.regionId">{{ d.name }}</option>
       }
     </select>
@@ -61,7 +68,14 @@
 
     @if (canCreateRoutes) {
     <div class="btn-group">
+      <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
+      <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
       <button class="btn btn-primary" (click)="goNew()">+ Nova ruta</button>
+    </div>
+    } @else {
+    <div class="btn-group">
+      <button class="btn btn-outline" (click)="printReport()">🖨️ Štampaj</button>
+      <button class="btn btn-outline" (click)="exportCsv()">📊 CSV</button>
     </div>
     }
   </div>

@@ -16,6 +16,7 @@ export interface TouristActivityItem {
   lat?: number | null;
   lng?: number | null;
   postId?: number | null;
+  postIds?: number[];
   viewCount?: number;
   linkedPosts?: number;
 }
@@ -51,6 +52,9 @@ export class TouristActivitiesService {
         lat: this.normalizeCoordinate(item.lat),
         lng: this.normalizeCoordinate(item.lng),
         postId: item.postId ?? null,
+        postIds: Array.isArray(item.postIds)
+          ? item.postIds.map((id: unknown) => Number(id)).filter((id: number) => Number.isFinite(id))
+          : [],
         viewCount: item.viewCount ?? 0,
         linkedPosts: item.linkedPosts ?? 0,
       }))),

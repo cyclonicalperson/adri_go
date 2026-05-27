@@ -8,17 +8,17 @@ import { Location, LocationService } from '../services/location.service';
 import { RecommendationService } from '../services/recommendation.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
   selector: 'app-explore-section',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppHeaderComponent],
   templateUrl: './explore-section.component.html',
   styleUrls: ['./explore-section.component.css']
 })
 export class ExploreSectionComponent implements OnInit {
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
   section: 'near-you' | 'recommended' | 'top-rated' = 'near-you';
   locations: Location[] = [];
   sortValue: 'distance:asc' | 'createdAt:desc' | 'title:asc' | 'rating:desc' | 'reviews:desc' = 'distance:asc';
@@ -178,6 +178,28 @@ export class ExploreSectionComponent implements OnInit {
   goBack(): void { this.router.navigate(['/location-list']); }
   viewDetails(id: number): void { this.router.navigate(['/location-details', id]); }
   goToLogin(): void { this.router.navigate(['/login']); }
+  goToMap(): void { this.router.navigate(['/map-home']); }
+  goToSaved(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view and manage saved locations.');
+      return;
+    }
+    this.router.navigate(['/saved']);
+  }
+  goToCalendar(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your calendar.');
+      return;
+    }
+    this.router.navigate(['/calendar']);
+  }
+  goToAccount(): void {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Please log in to view your account.');
+      return;
+    }
+    this.router.navigate(['/account']);
+  }
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
   formatPostType(type?: string | null): string { return formatPostType(type); }
 
@@ -200,8 +222,7 @@ export class ExploreSectionComponent implements OnInit {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
     if (!firstImg) return 'assets/placeholder.jpg';
-    if (!firstImg.startsWith('http')) { const c = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg; return `${this.IMAGE_BASE_URL}${c}`; }
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, 'assets/placeholder.jpg');
   }
 
   getCategoryColor(postType?: string | null): string {

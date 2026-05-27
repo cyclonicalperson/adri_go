@@ -27,6 +27,15 @@
                  placeholder="npr. Staza do Crnog jezera" />
         </div>
 
+        <div class="field">
+          <label class="label">Drzava *</label>
+          <select class="input" formControlName="country" (change)="onCountryChanged()">
+            @for (country of countries; track country) {
+            <option [value]="country">{{ country }}</option>
+            }
+          </select>
+        </div>
+
         <div class="row-2">
           <div class="field">
             <label class="label">Destinacija / region *</label>
@@ -35,7 +44,7 @@
                     formControlName="regionId"
                     (change)="onRegionSelected()">
               <option [ngValue]="null">Izaberite destinaciju</option>
-              @for (r of destinations; track r.regionId) {
+              @for (r of filteredDestinations; track r.regionId) {
               <option [value]="r.regionId">{{ r.name }}</option>
               }
             </select>
@@ -129,12 +138,22 @@
     </div>
 
     <div class="right-col">
-      <div class="card">
+      <div class="card route-points-card">
         <h3 class="card-title">Tacke rute</h3>
         <app-waypoint-editor [waypoints]="waypoints"
                              [centerLat]="centerLat"
                              [centerLng]="centerLng"
-                             (waypointsChange)="onWaypointsChange($event)" />
+                             [routeValidationStatus]="routeValidationStatus"
+                             [routeValidationMessage]="routeValidationMessage"
+                             (waypointsChange)="onWaypointsChange($event)"
+                             (routeMetricsChange)="onRouteMetricsChange($event)" />
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Slike rute</h3>
+        <app-post-image-picker
+          [images]="formImages"
+          (imagesChange)="onImagesChange($event)" />
       </div>
 
       <div class="card summary-card">
