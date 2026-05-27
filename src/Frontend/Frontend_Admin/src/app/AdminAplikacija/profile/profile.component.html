@@ -139,7 +139,7 @@
         <div class="perm-empty">Učitavanje lozinke...</div>
         } @else {
         <div class="secret-panel">
-          @if (universalStatus?.isConfigured && universalStatus?.canReveal) {
+          @if (universalStatus?.isConfigured && universalStatus?.canReveal && universalPasswordValue) {
           <div class="secret-current">
             <label class="label">Trenutna univerzalna lozinka</label>
             <div class="secret-input-row">

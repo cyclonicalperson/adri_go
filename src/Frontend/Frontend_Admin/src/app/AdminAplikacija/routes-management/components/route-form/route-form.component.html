@@ -67,7 +67,6 @@
                  [class.invalid]="regionChoiceInvalid"
                  formControlName="proposedRegionName"
                  (input)="onProposedRegionInput()"
-                 [disabled]="!!f('regionId').value"
                  placeholder="Ako destinacija/region ne postoji, upisite naziv" />
           @if (regionChoiceInvalid) {
           <div class="field-error">Izaberite region ili upisite predlog novog regiona.</div>
@@ -139,12 +138,15 @@
     </div>
 
     <div class="right-col">
-      <div class="card">
+      <div class="card route-points-card">
         <h3 class="card-title">Tacke rute</h3>
         <app-waypoint-editor [waypoints]="waypoints"
                              [centerLat]="centerLat"
                              [centerLng]="centerLng"
-                             (waypointsChange)="onWaypointsChange($event)" />
+                             [routeValidationStatus]="routeValidationStatus"
+                             [routeValidationMessage]="routeValidationMessage"
+                             (waypointsChange)="onWaypointsChange($event)"
+                             (routeMetricsChange)="onRouteMetricsChange($event)" />
       </div>
 
       <div class="card">

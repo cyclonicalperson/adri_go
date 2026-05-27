@@ -22,7 +22,7 @@ namespace TouristGuide.Api.Services
 
         public bool IsSuperAdmin() => _adminIdentityService.IsSuperAdmin();
 
-        public Task<bool> CanViewAnalyticsAsync() => HasPermissionAsync("view_analytics");
+        public Task<bool> CanViewAnalyticsAsync() => HasPermissionInAnyScopeAsync("view_analytics");
 
         public Task<bool> CanManageReviewsAsync() => HasPermissionAsync("manage_reviews");
 
@@ -109,6 +109,47 @@ namespace TouristGuide.Api.Services
                 .AnyAsync(up =>
                     up.AdminUserId == adminId.Value &&
                     up.Permission.Code.ToLower() == normalizedCode);
+        }
+
+        public async Task<bool> HasGlobalPermissionAsync(string code)
+        {
+            if (IsSuperAdmin())
+                return true;
+
+            var adminId = GetAdminId();
+            if (adminId is null || string.IsNullOrWhiteSpace(code))
+                return false;
+
+            var normalizedCode = code.Trim().ToLowerInvariant();
+
+            return await _dbContext.AdminUserPermissions
+                .AsNoTracking()
+                .AnyAsync(up =>
+                    up.AdminUserId == adminId.Value &&
+                    up.RegionId == null &&
+                    up.Permission.Code.ToLower() == normalizedCode);
+        }
+
+        public async Task<IReadOnlyCollection<uint>> GetScopedRegionIdsAsync(string code)
+        {
+            if (IsSuperAdmin())
+                return Array.Empty<uint>();
+
+            var adminId = GetAdminId();
+            if (adminId is null || string.IsNullOrWhiteSpace(code))
+                return Array.Empty<uint>();
+
+            var normalizedCode = code.Trim().ToLowerInvariant();
+
+            return await _dbContext.AdminUserPermissions
+                .AsNoTracking()
+                .Where(up =>
+                    up.AdminUserId == adminId.Value &&
+                    up.RegionId != null &&
+                    up.Permission.Code.ToLower() == normalizedCode)
+                .Select(up => up.RegionId!.Value)
+                .Distinct()
+                .ToListAsync();
         }
 
         private static IQueryable<Models.AdminUserPermission> ApplyRegionScope(

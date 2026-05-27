@@ -30,6 +30,7 @@ import { ThemeService } from '../services/theme.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
 
@@ -79,8 +80,6 @@ type SearchResult = MapLocation & {
   styleUrls: ['./map-home.component.css']
 })
 export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
   selectedLocation: MapLocation | null = null;
   selectedPublicRoute: TouristRouteItem | null = null;
   isMenuOpen = false;
@@ -635,12 +634,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getFirstImage(loc: any): string {
     if (loc.imageUrl) {
-      const url: string = loc.imageUrl;
-      if (!url.startsWith('http')) {
-        const clean = url.startsWith('/') ? url.substring(1) : url;
-        return `${this.IMAGE_BASE_URL}${clean}`;
-      }
-      return url;
+      return resolveBackendAssetUrl(loc.imageUrl, 'assets/Budva.jpg');
     }
 
     const imagesValue = loc.images;
@@ -659,11 +653,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!firstImg) return 'assets/Budva.jpg';
-    if (!firstImg.startsWith('http')) {
-      const clean = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg;
-      return `${this.IMAGE_BASE_URL}${clean}`;
-    }
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, 'assets/Budva.jpg');
   }
 
   /**
@@ -2126,7 +2116,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private locationPassesActivityContent(loc: MapLocation): boolean {
-    const linkedActivities = this.activitiesList.filter(activity => activity.postId === loc.id);
+    const linkedActivities = this.activitiesList.filter(activity =>
+      activity.postId === loc.id || (activity.postIds ?? []).includes(loc.id));
     if (linkedActivities.length === 0) {
       return false;
     }

@@ -52,6 +52,9 @@ namespace TouristGuide.Api.Controllers
 
             try
             {
+                if (PasswordPolicy.GetValidationError(request.Password) is { } passwordError)
+                    return BadRequest(new { message = passwordError });
+
                 if (request.Document.Length == 0)
                     return BadRequest(new { message = "Verifikacioni dokument je obavezan." });
 
@@ -60,6 +63,10 @@ namespace TouristGuide.Api.Controllers
 
                 if (!TryGetDocumentMetadata(request.Document.FileName, out var extension, out var fileType))
                     return BadRequest(new { message = "Dozvoljeni formati dokumenta su PDF, JPG i PNG." });
+
+                if (!IsAllowedDocumentContentType(request.Document.ContentType, fileType) ||
+                    !await HasAllowedDocumentSignatureAsync(request.Document, fileType))
+                    return BadRequest(new { message = "Sadrzaj dokumenta ne odgovara dozvoljenom formatu." });
 
                 var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
@@ -73,14 +80,16 @@ namespace TouristGuide.Api.Controllers
                     return Conflict(new { message = "Vec postoji aktivan zahtev za ovaj email." });
 
                 var now = DateTime.UtcNow;
-                var verificationToken = Guid.NewGuid().ToString("N");
+                var smtpConfigured = _emailService.IsConfigured;
+                var verificationToken = smtpConfigured ? Guid.NewGuid().ToString("N") : null;
                 var registrationRequest = new AdminRegistrationRequest
                 {
                     FullName = request.FullName.Trim(),
                     Email = normalizedEmail,
                     PasswordHash = PasswordHelper.Hash(request.Password),
                     EmailVerificationToken = verificationToken,
-                    EmailVerificationTokenExpiresAt = now.AddHours(24),
+                    EmailVerificationTokenExpiresAt = verificationToken is not null ? now.AddHours(24) : null,
+                    EmailVerifiedAt = smtpConfigured ? null : now,
                     IsOrganization = !string.IsNullOrWhiteSpace(request.OrganizationName),
                     IsIndividual = string.IsNullOrWhiteSpace(request.OrganizationName),
                     OrganizationName = request.OrganizationName?.Trim(),
@@ -101,16 +110,19 @@ namespace TouristGuide.Api.Controllers
                 _dbContext.VerificationDocuments.Add(verificationDocument);
                 await _dbContext.SaveChangesAsync();
 
-                try
+                if (smtpConfigured)
                 {
-                    await _emailService.SendAdminRegistrationVerificationEmailAsync(
-                        registrationRequest.Email,
-                        registrationRequest.FullName,
-                        verificationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to send admin registration verification email to {Email}.", registrationRequest.Email);
+                    try
+                    {
+                        await _emailService.SendAdminRegistrationVerificationEmailAsync(
+                            registrationRequest.Email,
+                            registrationRequest.FullName,
+                            verificationToken!);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send admin registration verification email to {Email}.", registrationRequest.Email);
+                    }
                 }
 
                 await _notifService.BroadcastToSuperAdminsAsync(
@@ -124,8 +136,10 @@ namespace TouristGuide.Api.Controllers
                     RequestId = registrationRequest.Id,
                     Email = registrationRequest.Email,
                     Status = registrationRequest.Status,
-                    RequiresEmailVerification = true,
-                    Message = "Zahtev za admin nalog je poslat. Proverite email i potvrdite adresu da bi superadmin mogao da obradi registraciju."
+                    RequiresEmailVerification = smtpConfigured,
+                    Message = smtpConfigured
+                        ? "Zahtev za admin nalog je poslat. Proverite email i potvrdite adresu da bi superadmin mogao da obradi registraciju."
+                        : "Zahtev za admin nalog je poslat. Email je automatski verifikovan jer SMTP nije konfigurisan."
                 });
             }
             catch (Exception ex)
@@ -239,6 +253,10 @@ namespace TouristGuide.Api.Controllers
                         adminUser.Id,
                         adminUser.Email);
                 }
+                else if (passwordMatches && PasswordHelper.NeedsRehash(adminUser.PasswordHash))
+                {
+                    adminUser.PasswordHash = PasswordHelper.Hash(request.Password);
+                }
 
                 adminUser.LastLoginAt = DateTime.UtcNow;
                 adminUser.UpdatedAt = DateTime.UtcNow;
@@ -334,6 +352,37 @@ namespace TouristGuide.Api.Controllers
             };
 
             return !string.IsNullOrWhiteSpace(fileType);
+        }
+
+        private static bool IsAllowedDocumentContentType(string? contentType, string fileType)
+        {
+            var normalized = contentType?.Trim().ToLowerInvariant();
+            return fileType switch
+            {
+                "pdf" => normalized == "application/pdf",
+                "jpg" => normalized is "image/jpeg" or "image/jpg",
+                "png" => normalized == "image/png",
+                _ => false
+            };
+        }
+
+        private static async Task<bool> HasAllowedDocumentSignatureAsync(IFormFile document, string fileType)
+        {
+            var header = new byte[8];
+            await using var stream = document.OpenReadStream();
+            var read = await stream.ReadAsync(header);
+
+            return fileType switch
+            {
+                "pdf" => read >= 4 &&
+                    header[0] == 0x25 && header[1] == 0x50 && header[2] == 0x44 && header[3] == 0x46,
+                "jpg" => read >= 3 &&
+                    header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF,
+                "png" => read >= 8 &&
+                    header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+                    header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A,
+                _ => false
+            };
         }
     }
 }

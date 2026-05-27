@@ -183,7 +183,7 @@ namespace TouristGuide.Api.Controllers
 
             var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
             if (!routeValidation.IsValid)
-                return BadRequest(new { message = routeValidation.Message });
+                await NotifyRouteValidationFailedAsync(adminId.Value, dto.Name, routeValidation.Message);
 
             var now = DateTime.UtcNow;
             var resolvedRegionId = statusValue == "published" && hasRegionProposal
@@ -282,7 +282,7 @@ namespace TouristGuide.Api.Controllers
             {
                 var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
                 if (!routeValidation.IsValid)
-                    return BadRequest(new { message = routeValidation.Message });
+                    await NotifyRouteValidationFailedAsync(route.AdminId, route.Name, routeValidation.Message);
 
                 route.Waypoints = dto.Waypoints;
             }
@@ -488,6 +488,22 @@ namespace TouristGuide.Api.Controllers
                     regionName = proposedRegionName,
                     country,
                     url = $"/admin/routes-management/{route.Id}"
+                });
+        }
+
+        private async Task NotifyRouteValidationFailedAsync(uint adminId, string? routeName, string? message)
+        {
+            var name = string.IsNullOrWhiteSpace(routeName) ? "Nova ruta" : routeName.Trim();
+            await _notifService.SendToAdminAsync(
+                adminId,
+                "route_not_routable",
+                "Ruta nije routabilna",
+                $"{name} nije sacuvana jer jedna ili vise deonica nisu routabilne.",
+                new
+                {
+                    routeName = name,
+                    reason = message,
+                    url = "/admin/routes-management/new"
                 });
         }
 

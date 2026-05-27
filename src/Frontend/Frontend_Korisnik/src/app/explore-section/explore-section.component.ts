@@ -8,6 +8,7 @@ import { Location, LocationService } from '../services/location.service';
 import { RecommendationService } from '../services/recommendation.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 @Component({
@@ -18,8 +19,6 @@ import { AppHeaderComponent } from '../shared/app-header/app-header.component';
   styleUrls: ['./explore-section.component.css']
 })
 export class ExploreSectionComponent implements OnInit {
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
   section: 'near-you' | 'recommended' | 'top-rated' = 'near-you';
   locations: Location[] = [];
   sortValue: 'distance:asc' | 'createdAt:desc' | 'title:asc' | 'rating:desc' | 'reviews:desc' = 'distance:asc';
@@ -223,8 +222,7 @@ export class ExploreSectionComponent implements OnInit {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
     if (!firstImg) return 'assets/placeholder.jpg';
-    if (!firstImg.startsWith('http')) { const c = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg; return `${this.IMAGE_BASE_URL}${c}`; }
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, 'assets/placeholder.jpg');
   }
 
   getCategoryColor(postType?: string | null): string {

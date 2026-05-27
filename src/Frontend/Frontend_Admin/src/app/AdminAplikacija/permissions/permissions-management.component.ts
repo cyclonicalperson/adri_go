@@ -259,8 +259,12 @@ export class PermissionsManagementComponent implements OnInit {
           this.userPermissions = this.userPermissions.filter(up => up.permission.code !== permCode);
           this.addLog('revoke', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, -1);
+          this.showToast(`Dozvola "${permCode}" uklonjena.`, 'success');
         },
-        error: () => { this.activePermCodes.add(permCode); },
+        error: () => {
+          this.activePermCodes.add(permCode);
+          this.showToast(`Greška: nije moguće ukloniti dozvolu.`, 'error');
+        },
       });
     } else {
       // Grant
@@ -281,11 +285,25 @@ export class PermissionsManagementComponent implements OnInit {
           }];
           this.addLog('grant', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, +1);
+          this.showToast(`Dozvola "${permCode}" dodeljena.`, 'success');
         },
-        error: () => { this.activePermCodes.delete(permCode); },
+        error: () => {
+          this.activePermCodes.delete(permCode);
+          this.showToast(`Greška: nije moguće dodeliti dozvolu.`, 'error');
+        },
       });
     }
   }
+
+  private showToast(message: string, type: 'success' | 'error' = 'success'): void {
+    this.saveMsg = message;
+    this.toastType = type;
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => { this.saveMsg = null; }, 3000);
+  }
+
+  toastType: 'success' | 'error' = 'success';
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ── Skupno čuvanje ────────────────────────────────────────────────────
   savePermissions(): void {
