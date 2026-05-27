@@ -89,12 +89,8 @@
         }
 
         @if (saveMsg) {
-        <div class="save-msg">{{ saveMsg }}</div>
+        <div class="save-msg" [class.save-msg-error]="toastType === 'error'">{{ saveMsg }}</div>
         }
-
-        <button class="save-btn" (click)="savePermissions()" [disabled]="saving">
-          {{ saving ? 'Čuvanje...' : 'Sačuvaj dozvole' }}
-        </button>
 
         }
       </div>

@@ -22,18 +22,13 @@
           <circle cx="12" cy="12" r="4"></circle>
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
         </svg>
+        <app-notification-badge />
       </button>
       <button *ngIf="!authService.isLoggedIn" class="header-login-btn" (click)="goToLogin()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
         </svg>
         Login
-      </button>
-      <button *ngIf="!isNavigating" class="header-menu-btn" (click)="goToNotifications()">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-        </svg>
-        <app-notification-badge />
       </button>
     </div>
   </div>
@@ -256,7 +251,7 @@
 
   <!-- ── CHAT FAB ── -->
   <div class="chat-fab-wrap"
-       [class.chat-fab-hidden]="isNavigating || sheetExpanded || isFiltersOpen">
+       [class.chat-fab-hidden]="isNavigating || sheetExpanded || isFiltersOpen || isChatOpen">
     <div class="chat-fab-hint" *ngIf="showChatHint">
       <button type="button"
               class="chat-hint-close"
