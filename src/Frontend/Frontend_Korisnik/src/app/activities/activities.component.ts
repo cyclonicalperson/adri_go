@@ -4,13 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
+import { AuthService } from '../services/auth.service';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
 
 @Component({
   selector: 'app-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent],
   templateUrl: './activities.component.html',
   styleUrls: ['./activities.component.css'],
 })
@@ -21,14 +23,21 @@ export class ActivitiesComponent implements OnInit {
   searchQuery = '';
   sortOption: ActivitySort = 'name-asc';
   isMenuOpen = false;
+  showAuthPopup = false;
 
   constructor(
     private activitiesService: TouristActivitiesService,
+    private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
+
     this.loadActivities();
   }
 
@@ -92,6 +101,15 @@ export class ActivitiesComponent implements OnInit {
 
   goToMap(): void {
     this.router.navigate(['/map-home']);
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+  }
+
+  goToLogin(): void {
+    this.showAuthPopup = false;
+    this.router.navigate(['/login']);
   }
 
   getActivityIcon(activity: TouristActivityItem): string {

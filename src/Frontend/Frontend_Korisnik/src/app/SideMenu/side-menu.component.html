@@ -108,14 +108,10 @@
 
   </div>
 
-  <div class="auth-modal-overlay" *ngIf="showAuthPopup" (click)="closeAuthPopup()">
-    <div class="auth-modal" (click)="$event.stopPropagation()">
-      <h3>Login Required</h3>
-      <p>{{ authPopupMessage }}</p>
-      <div class="auth-modal-actions">
-        <button class="btn-cancel" type="button" (click)="closeAuthPopup()">Cancel</button>
-        <button class="btn-login" type="button" (click)="loginFromPopup()">Login</button>
-      </div>
-    </div>
-  </div>
+  <app-auth-required-modal
+    *ngIf="showAuthPopup"
+    [message]="authPopupMessage"
+    (closed)="closeAuthPopup()"
+    (login)="loginFromPopup()">
+  </app-auth-required-modal>
 </div>

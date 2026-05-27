@@ -18,6 +18,7 @@ import { TouristPreferencesService } from '../services/tourist-preferences.servi
 import { formatPostType } from '../utils/post-type.utils';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
@@ -70,7 +71,7 @@ interface PopularDestination {
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective],
+  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective, AuthRequiredModalComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
@@ -819,10 +820,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   goToAccount(): void {
-    if (!this.authService.isLoggedIn) {
-      this.openAuthPopup('Please log in to view your account.');
-      return;
-    }
     this.router.navigate(['/account']);
   }
 

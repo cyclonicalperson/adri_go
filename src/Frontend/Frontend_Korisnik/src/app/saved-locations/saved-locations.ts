@@ -8,11 +8,12 @@ import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 @Component({
   selector: 'app-saved-locations',
   standalone: true,
-  imports: [CommonModule, AppHeaderComponent],
+  imports: [CommonModule, AppHeaderComponent, AuthRequiredModalComponent],
   templateUrl: './saved-locations.html',
   styleUrls: ['./saved-locations.css']
 })
@@ -21,6 +22,7 @@ export class SavedLocationsComponent implements OnInit {
   defaultImage: string = 'assets/plaza.jpg';
   isLoading: boolean = true;
   isGuest: boolean = false;
+  showAuthPopup = false;
 
   filters = [
     { id: 'All',             label: 'All',         icon: '📍', color: '#22c55e' },
@@ -58,7 +60,8 @@ export class SavedLocationsComponent implements OnInit {
     } else {
       this.isGuest = true;
       this.isLoading = false;
-      this.router.navigate(['/login']);
+      this.showAuthPopup = true;
+      this.cdr.detectChanges();
     }
   }
 
@@ -198,6 +201,11 @@ export class SavedLocationsComponent implements OnInit {
   viewDetails(id: number) { this.router.navigate(['/location-details', id]); }
 
   showOnMap() {
+    if (this.isGuest) {
+      this.showAuthPopup = true;
+      return;
+    }
+
     // Save current saved IDs to filter state so map can show only these
     const ids = this.savedItems.map(item => item.id as number);
     const currentState = this.filterStateService.get();
@@ -215,7 +223,7 @@ export class SavedLocationsComponent implements OnInit {
     this.savedItems = this.savedItems.filter(item => item.id !== id);
 
     if (this.isGuest) {
-      this.router.navigate(['/login']);
+      this.showAuthPopup = true;
       this.cdr.detectChanges();
       return;
     }
@@ -233,7 +241,7 @@ export class SavedLocationsComponent implements OnInit {
     event.stopPropagation();
 
     if (this.isGuest) {
-      this.router.navigate(['/login']);
+      this.showAuthPopup = true;
       this.cdr.detectChanges();
       return;
     }
@@ -257,5 +265,14 @@ export class SavedLocationsComponent implements OnInit {
         error: (err: any) => console.error('Like error:', err)
       });
     }
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup = false;
+  }
+
+  goToLogin(): void {
+    this.showAuthPopup = false;
+    this.router.navigate(['/login']);
   }
 }

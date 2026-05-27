@@ -69,4 +69,11 @@
 
     <div class="state" *ngIf="visibleActivities.length === 0">No activities found.</div>
   </main>
+
+  <app-auth-required-modal
+    *ngIf="showAuthPopup"
+    message="Create a free account or log in to explore personalized activities."
+    (closed)="closeAuthPopup()"
+    (login)="goToLogin()">
+  </app-auth-required-modal>
 </div>

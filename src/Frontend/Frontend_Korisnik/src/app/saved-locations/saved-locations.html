@@ -111,4 +111,11 @@
     </button>
   </div>
 
+  <app-auth-required-modal
+    *ngIf="showAuthPopup"
+    message="Create a free account or log in to save and manage your favorite places."
+    (closed)="closeAuthPopup()"
+    (login)="goToLogin()">
+  </app-auth-required-modal>
+
 </div>

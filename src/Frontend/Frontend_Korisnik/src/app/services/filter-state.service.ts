@@ -6,10 +6,10 @@ export interface FilterState {
   minRating: number;
   openNow: boolean;
   radius: number;
-  activeCategories: string[]; // DB keys; empty = all active
+  activeCategories: string[];
   destinationCountries?: string[];
   destinationRegions?: string[];
-  showOnlySaved?: boolean;    // show only saved post IDs
+  showOnlySaved?: boolean;
   activityCategories?: string[];
   activityDifficulties?: string[];
   activityLinkedOnly?: boolean;
@@ -17,7 +17,8 @@ export interface FilterState {
   routeRegions?: string[];
   routeDistanceBand?: string;
   routeDurationBand?: string;
-  savedPostIds?: number[];    // IDs of saved posts (populated by Saved → Show on Map)
+  savedPostIds?: number[];
+  activeContentType?: FilterContentType;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -42,6 +43,7 @@ export class FilterStateService {
       routeRegions: [],
       routeDistanceBand: '',
       routeDurationBand: '',
+      activeContentType: 'destinations',
     };
   }
 

@@ -241,31 +241,27 @@ namespace TouristGuide.Api.Services
 
         private static string BuildModerationPrompt(string comment)
         {
-            // Eksplicitno tražimo JSON bez markdowna
-            return $"""
-                You are a content moderator for a tourist review platform.
-                Analyze the following review comment and determine if it is safe to publish.
+            var escapedComment = comment.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
-                Flag the comment (safe: false) if it contains ANY of the following:
-                - Offensive language, insults, or hate speech in ANY language
-                  (Serbian, English, German, Albanian, Hungarian, Turkish, or any other)
-                - Spam, promotional content, or links
-                - Threats or calls to violence
-                - Discriminatory content based on race, religion, nationality, or gender
-                - Subtle insults, sarcasm used to demean, or disguised offensive content
-                - Content completely unrelated to a tourist location or experience
-
-                A comment is SAFE if it is a genuine review of a tourist location,
-                even if it expresses dissatisfaction or criticism in a constructive way.
-
-                Respond ONLY with a valid JSON object, no markdown, no explanation:
-                {{"safe": true, "reason": null}}
-                or
-                {{"safe": false, "reason": "SHORT_REASON_IN_CAPS"}}
-
-                Comment to analyze:
-                "{comment.Replace("\"", "\\\"")}"
-                """;
+            return
+                "You are a content moderator for a tourist review platform.\n" +
+                "Analyze the following review comment and determine if it is safe to publish.\n\n" +
+                "Flag the comment (safe: false) if it contains ANY of the following:\n" +
+                "- Offensive language, insults, or hate speech in ANY language\n" +
+                "  (Serbian, English, German, Albanian, Hungarian, Turkish, or any other)\n" +
+                "- Spam, promotional content, or links\n" +
+                "- Threats or calls to violence\n" +
+                "- Discriminatory content based on race, religion, nationality, or gender\n" +
+                "- Subtle insults, sarcasm used to demean, or disguised offensive content\n" +
+                "- Content completely unrelated to a tourist location or experience\n\n" +
+                "A comment is SAFE if it is a genuine review of a tourist location,\n" +
+                "even if it expresses dissatisfaction or criticism in a constructive way.\n\n" +
+                "Respond ONLY with a valid JSON object, no markdown, no explanation:\n" +
+                "{\"safe\": true, \"reason\": null}\n" +
+                "or\n" +
+                "{\"safe\": false, \"reason\": \"SHORT_REASON_IN_CAPS\"}\n\n" +
+                "Comment to analyze:\n" +
+                $"\"{ escapedComment}\"";
         }
 
         private ModerationResult ParseGeminiResponse(string responseJson)

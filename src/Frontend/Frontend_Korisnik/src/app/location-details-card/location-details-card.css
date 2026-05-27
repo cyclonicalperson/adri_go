@@ -4,10 +4,10 @@
 
 .bottom-sheet-overlay {
   position: fixed;
-  bottom: 72px; /* iznad footer navigation bara */
+  bottom: 76px; /* iznad footer navigation bara */
   left: 50%;
   transform: translateX(-50%);
-  width: min(420px, calc(100vw - 32px));
+  width: min(400px, calc(100vw - 24px));
   z-index: 60;
   /* Animacija iskljucivo vertikalna, bez horizontalnog pomeranja */
   animation: slideUpCard 0.28s cubic-bezier(0.34, 1.15, 0.64, 1) both;
@@ -36,7 +36,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px 0;
+  padding: 10px 14px 0;
 }
 
 .category-label {
@@ -78,10 +78,10 @@
 
 /* ── IMAGE ───────────────────────────────────────────────────── */
 .image-container {
-  margin: 12px 16px;
+  margin: 8px 12px;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  height: 160px;
+  height: 110px;
 }
 
 .main-image {
@@ -93,7 +93,7 @@
 .location-details-card:hover .main-image { transform: scale(1.03); }
 
 /* ── CARD BODY ───────────────────────────────────────────────── */
-.card-body { padding: 4px 16px 16px; }
+.card-body { padding: 2px 12px 10px; }
 
 .title-row {
   display: flex;
@@ -105,7 +105,7 @@
 
 .location-title {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: var(--gray-900);
   line-height: 1.25;
@@ -379,7 +379,7 @@
     /* Desktop: center in the map area (right of the 380px sidebar) */
     bottom: 32px;
     left: calc(380px + (100vw - 380px) / 2);
-    width: min(380px, calc(100vw - 380px - 32px));
+    width: min(360px, calc(100vw - 380px - 32px));
     /* Keep translateX(-50%) so the card stays centered in the map area */
   }
 
@@ -388,7 +388,7 @@
     box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 2px 10px rgba(0,0,0,0.08);
   }
 
-  .image-container { height: 150px; }
+  .image-container { height: 120px; }
 }
 
 /* ── MALI MOBILNI EKRANI ─── */

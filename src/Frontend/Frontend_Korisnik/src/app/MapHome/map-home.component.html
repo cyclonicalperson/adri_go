@@ -9,20 +9,20 @@
     </button>
     <div class="header-right">
       <button
+        *ngIf="authService.isLoggedIn"
         type="button"
-        class="header-menu-btn header-theme-btn"
-        (click)="toggleTheme()"
-        [attr.aria-label]="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
-        [attr.aria-pressed]="isDarkMode"
-        [attr.title]="isDarkMode ? 'Light mode' : 'Dark mode'">
-        <svg *ngIf="!isDarkMode" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-        <svg *ngIf="isDarkMode" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <circle cx="12" cy="12" r="4"></circle>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        class="header-menu-btn header-notif-btn"
+        (click)="goToNotifications()"
+        aria-label="Notifications">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
         </svg>
         <app-notification-badge />
+      </button>
+      <button *ngIf="!authService.isLoggedIn" class="header-menu-btn header-notif-btn" (click)="goToNotifications()" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+        </svg>
       </button>
       <button *ngIf="!authService.isLoggedIn" class="header-login-btn" (click)="goToLogin()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -190,7 +190,7 @@
             (mouseleave)="onSidebarMouseLeave()"
             (mouseup)="onSidebarMouseUp()"
             (mousemove)="onSidebarMouseMove($event)"
-            appDragScroll axis="y">
+            appDragScroll axis="y-window">
       <button class="sidebar-collapse-btn" (click)="toggleSidebar()" [attr.aria-label]="sidebarCollapsed ? 'Proširi panel' : 'Skupi panel'">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
           <path *ngIf="!sidebarCollapsed" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/>
@@ -525,16 +525,11 @@
     (applied)="onFiltersChanged($event)">
   </app-filters>
 
-  <div class="auth-modal-overlay" *ngIf="showAuthPopup">
-    <div class="auth-modal">
-      <h3>Login Required</h3>
-      <p>Please log in to save items, use your calendar, and access your account.</p>
-      <div class="auth-modal-actions">
-        <button class="btn-cancel" (click)="showAuthPopup = false">Cancel</button>
-        <button class="btn-login" (click)="goToLogin()">Login</button>
-      </div>
-    </div>
-  </div>
+  <app-auth-required-modal
+    *ngIf="showAuthPopup"
+    (closed)="showAuthPopup = false"
+    (login)="goToLogin()">
+  </app-auth-required-modal>
 
   <!-- ── CHAT POPUP ── -->
   <app-chat-popup

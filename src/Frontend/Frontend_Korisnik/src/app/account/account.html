@@ -2,13 +2,13 @@
   <p>Loading profile...</p>
 </div>
 
-<div class="account-container" *ngIf="!loading && userData">
+<div class="account-container" *ngIf="!loading && (userData || isGuest)">
 
-  <app-header title="Account" [showNotifications]="false" (backClick)="goBack()"></app-header>
+  <app-header title="Account" (backClick)="goBack()"></app-header>
 
   <div class="scroll-content">
     <div class="account-shell">
-      <section class="profile-hero">
+      <section class="profile-hero" *ngIf="userData">
         <div class="profile-hero-art" aria-hidden="true"></div>
         <div class="profile-hero-content">
           <button class="hero-edit-btn" type="button" (click)="isGuest ? showGuestPopup() : goToPersonalInfo()">
@@ -45,7 +45,7 @@
         </div>
       </section>
 
-      <section class="profile-stats profile-stats-mobile">
+      <section class="profile-stats profile-stats-mobile" *ngIf="userData">
         <button class="profile-stat-card saved-stat" type="button" (click)="goToSaved()">
           <span class="profile-stat-top">
             <span class="profile-stat-icon green-tone">
@@ -86,7 +86,7 @@
         </button>
       </section>
 
-      <section class="profile-stats profile-stats-desktop">
+      <section class="profile-stats profile-stats-desktop" *ngIf="userData">
         <button class="profile-stat-card desktop-stat-card saved-stat" type="button" (click)="goToSaved()">
           <span class="profile-stat-icon green-tone">
             <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
@@ -233,34 +233,131 @@
         </div>
       </section>
 
-      <!-- Guest: login banner -->
-      <section class="guest-login-banner" *ngIf="isGuest">
-        <div class="guest-banner-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <section class="account-section account-section-logout" *ngIf="isGuest">
+        <div class="section-heading">
+          <h3 class="section-title">Account</h3>
         </div>
-        <div class="guest-banner-copy">
-          <span class="guest-banner-title">Sign in to your account</span>
-          <span class="guest-banner-sub">Save places, write reviews and plan trips.</span>
+
+        <div class="account-list logout-list">
+          <button class="account-link-card logout-row" type="button" (click)="goToLogin()">
+            <span class="account-link-icon logout-tone">
+              <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
+            </span>
+            <span class="account-link-copy">
+              <span class="account-link-title">Log in / Register</span>
+              <span class="account-link-subtitle">Access your AdriGo account or create a new one.</span>
+            </span>
+            <span class="account-link-arrow">
+              <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </span>
+          </button>
         </div>
-        <button class="guest-banner-btn" type="button" (click)="goToLogin()">
-          <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
-          Log in
+      </section>
+
+      <!-- Guest: hero banner (styled like logged-in profile hero) -->
+      <section class="guest-hero" *ngIf="isGuest">
+        <div class="guest-hero-art" aria-hidden="true"></div>
+        <div class="guest-hero-content">
+          <div class="guest-avatar-wrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <div class="guest-hero-info">
+            <div class="profile-heading">
+              <h2>Guest User</h2>
+            </div>
+            <p class="profile-email">Not signed in</p>
+            <div class="profile-tags">
+              <span class="hero-tag"><span class="hero-tag-icon">&#128205;</span><span class="hero-tag-label">Save places</span></span>
+              <span class="hero-tag"><span class="hero-tag-icon">&#11088;</span><span class="hero-tag-label">Write reviews</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Guest: locked stats (same layout as logged-in) -->
+      <section class="profile-stats profile-stats-mobile" *ngIf="isGuest">
+        <button class="profile-stat-card saved-stat guest-stat" type="button" (click)="showGuestPopup()">
+          <span class="profile-stat-top">
+            <span class="profile-stat-icon green-tone">
+              <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+            </span>
+            <span class="profile-stat-value guest-lock-icon">&#128274;</span>
+          </span>
+          <span class="profile-stat-copy">
+            <span class="profile-stat-label">Saved Places</span>
+            <span class="profile-stat-subtitle">Your favorite spots</span>
+          </span>
+        </button>
+        <button class="profile-stat-card reviews-stat guest-stat" type="button" (click)="showGuestPopup()">
+          <span class="profile-stat-top">
+            <span class="profile-stat-icon amber-tone">
+              <svg viewBox="0 0 24 24"><path d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            </span>
+            <span class="profile-stat-value guest-lock-icon">&#128274;</span>
+          </span>
+          <span class="profile-stat-copy">
+            <span class="profile-stat-label">Reviews</span>
+            <span class="profile-stat-subtitle">Places you reviewed</span>
+          </span>
+        </button>
+        <button class="profile-stat-card trips-stat guest-stat" type="button" (click)="showGuestPopup()">
+          <span class="profile-stat-top">
+            <span class="profile-stat-icon violet-tone">
+              <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+            </span>
+            <span class="profile-stat-value guest-lock-icon">&#128274;</span>
+          </span>
+          <span class="profile-stat-copy">
+            <span class="profile-stat-label">Trips Planned</span>
+            <span class="profile-stat-subtitle">Upcoming adventures</span>
+          </span>
+        </button>
+      </section>
+
+      <!-- Guest: locked stats desktop -->
+      <section class="profile-stats profile-stats-desktop" *ngIf="isGuest">
+        <button class="profile-stat-card desktop-stat-card saved-stat guest-stat" type="button" (click)="showGuestPopup()">
+          <span class="profile-stat-icon green-tone">
+            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+          </span>
+          <span class="profile-stat-copy">
+            <span class="profile-stat-value guest-lock-icon">&#128274;</span>
+            <span class="profile-stat-label">Saved Places</span>
+            <span class="profile-stat-subtitle">Sign in to view</span>
+          </span>
+          <span class="account-link-arrow stat-arrow"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+        <button class="profile-stat-card desktop-stat-card reviews-stat guest-stat" type="button" (click)="showGuestPopup()">
+          <span class="profile-stat-icon amber-tone">
+            <svg viewBox="0 0 24 24"><path d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </span>
+          <span class="profile-stat-copy">
+            <span class="profile-stat-value guest-lock-icon">&#128274;</span>
+            <span class="profile-stat-label">Reviews</span>
+            <span class="profile-stat-subtitle">Sign in to view</span>
+          </span>
+          <span class="account-link-arrow stat-arrow"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
+        </button>
+        <button class="profile-stat-card desktop-stat-card trips-stat guest-stat" type="button" (click)="showGuestPopup()">
+          <span class="profile-stat-icon violet-tone">
+            <svg viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+          </span>
+          <span class="profile-stat-copy">
+            <span class="profile-stat-value guest-lock-icon">&#128274;</span>
+            <span class="profile-stat-label">Trips Planned</span>
+            <span class="profile-stat-subtitle">Sign in to view</span>
+          </span>
+          <span class="account-link-arrow stat-arrow"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
         </button>
       </section>
 
     </div>
   </div>
 
-  <!-- Login Required Popup -->
-  <div class="auth-modal-overlay" *ngIf="showLoginPopup" (click)="closeLoginPopup()">
-    <div class="auth-modal" (click)="$event.stopPropagation()">
-      <h3>Login Required</h3>
-      <p>Please log in to save items, use your calendar, and access your account.</p>
-      <div class="auth-modal-actions">
-        <button class="btn-cancel" (click)="closeLoginPopup()">Cancel</button>
-        <button class="btn-login" (click)="goToLogin()">Login</button>
-      </div>
-    </div>
-  </div>
+  <app-auth-required-modal
+    *ngIf="showLoginPopup"
+    (closed)="closeLoginPopup()"
+    (login)="goToLogin()">
+  </app-auth-required-modal>
 
 </div>

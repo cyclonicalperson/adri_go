@@ -20,17 +20,6 @@
     </button>
   </div>
 
-  <div class="content-type-tabs" role="tablist" aria-label="Explore content type">
-    <button
-      *ngFor="let tab of contentTypeTabs"
-      type="button"
-      class="content-type-tab"
-      [class.active]="activeContentType === tab.value"
-      (click)="setActiveContentType(tab.value)">
-      {{ tab.label }}
-    </button>
-  </div>
-
   <div class="search-section">
     <div class="explore-intro" *ngIf="!activeSectionView">
       <span class="explore-kicker">Explore the unknown</span>
@@ -127,7 +116,19 @@
       </div>
     </div>
 
-  </div></div><div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
+  </div></div>
+
+  <!-- Tabovi ispod search bara -->
+  <div class="content-type-tabs-bar" role="tablist" aria-label="Explore content type">
+    <button
+      *ngFor="let tab of contentTypeTabs"
+      type="button"
+      class="content-type-tab-bar"
+      [class.active]="activeContentType === tab.value"
+      (click)="setActiveContentType(tab.value)">
+      {{ tab.label }}
+    </button>
+  </div><div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
   <div class="loading-state" *ngIf="isLoading">
     <div class="loading-icon"></div>
@@ -654,15 +655,11 @@
     </button>
   </div>
 
-  <div class="auth-modal-overlay" *ngIf="showAuthPopup" (click)="closeAuthPopup()">
-    <div class="auth-modal" (click)="$event.stopPropagation()">
-      <h3>Login Required</h3>
-      <p>{{ authPopupMessage }}</p>
-      <div class="auth-modal-actions">
-        <button class="btn-cancel" (click)="closeAuthPopup()">Cancel</button>
-        <button class="btn-login" (click)="goToLogin()">Login</button>
-      </div>
-    </div>
-  </div>
+  <app-auth-required-modal
+    *ngIf="showAuthPopup"
+    [message]="authPopupMessage"
+    (closed)="closeAuthPopup()"
+    (login)="goToLogin()">
+  </app-auth-required-modal>
 
 </div>

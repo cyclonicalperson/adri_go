@@ -89,6 +89,10 @@ export class LoginComponent implements OnInit, OnDestroy {
       if (registeredEmail) {
         this.loginForm.patchValue({ emailOrPhone: registeredEmail });
       }
+
+      if (params['reason'] === 'session_expired') {
+        this.errorMessage = 'Your session has expired. Please log in again.';
+      }
     });
 
     // Language switcher setup

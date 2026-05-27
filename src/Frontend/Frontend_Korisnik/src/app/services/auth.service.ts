@@ -97,7 +97,7 @@ export class AuthService {
             },
           };
         }),
-        tap(res => this.saveAuthSession(res)),
+        tap(res => this.saveAuthSession(res, provider)),
       );
   }
 

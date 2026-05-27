@@ -1181,6 +1181,7 @@ html[data-theme='dark'] .link-text {
   }
 
   .profile-hero,
+  .guest-hero,
   .profile-stats-desktop {
     grid-column: 1 / -1;
   }
@@ -1201,7 +1202,8 @@ html[data-theme='dark'] .link-text {
     gap: 20px 18px;
   }
 
-  .profile-hero {
+  .profile-hero,
+  .guest-hero {
     border-radius: 30px;
   }
 
@@ -1337,81 +1339,232 @@ html[data-theme='dark'] .link-text {
   }
 }
 
-/* -- Guest login banner -- */
-.guest-login-banner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(22,163,74,0.04) 100%);
-  border: 1.5px solid rgba(34,197,94,0.22);
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
-  margin-top: 6px;
+/* -- Guest hero banner (matches logged-in profile hero style) -- */
+.guest-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(22, 163, 74, 0.96) 0%, rgba(34, 197, 94, 0.78) 38%, rgba(15, 118, 110, 0.74) 100%);
+  box-shadow: var(--account-shadow-hero);
+  order: -3;
 }
 
-.guest-banner-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: rgba(34,197,94,0.12);
-  color: var(--green-600);
+.guest-hero + .profile-stats-mobile,
+.guest-hero + .profile-stats-mobile + .profile-stats-desktop {
+  order: -2;
+}
+
+.guest-hero-art {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.05) 44%, rgba(255, 255, 255, 0.05)),
+    url('/assets/Durmitor.jpg') center/cover no-repeat;
+  opacity: 0.92;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+/* Reuse .profile-hero-content layout for guest */
+.guest-hero-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 20px 18px 14px;
+}
+
+.guest-avatar-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2.5px solid rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  backdrop-filter: blur(8px);
 }
 
-.guest-banner-icon svg {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
+.guest-avatar-wrap svg {
+  width: 34px;
+  height: 34px;
+  fill: rgba(255, 255, 255, 0.9);
 }
 
-.guest-banner-copy {
-  flex: 1;
+/* guest-hero-info uses same children classes as profile-main */
+.guest-hero-info {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.guest-banner-title {
-  font-size: 14px;
-  font-weight: 700;
+/* Override profile-heading/email/tags colors inside guest hero */
+.guest-hero .profile-heading h2,
+.guest-hero .profile-heading h2 .verified-badge {
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.guest-hero .profile-email {
+  color: rgba(255,255,255,0.75);
+}
+
+.guest-hero .hero-tag {
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.3);
+  color: #fff;
+}
+
+/* Sign In button positioned like Edit Profile */
+.guest-signin-btn {
+  /* hero-edit-btn is already positioned; just tweak label */
+  background: rgba(255,255,255,0.2) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.45) !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.guest-signin-btn:hover {
+  background: rgba(255,255,255,0.32) !important;
+}
+
+.guest-signin-btn svg {
+  fill: #fff !important;
+}
+
+/* Lock icon on stat cards */
+.guest-lock-icon {
+  font-size: 18px;
+  opacity: 0.55;
+}
+
+.guest-stat {
+  opacity: 0.72;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.guest-stat:hover {
+  opacity: 0.9;
+}
+
+/* -- Auth Modal improved -- */
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.auth-modal {
+  background: var(--account-surface, #fff);
+  padding: 28px 24px 22px;
+  border-radius: 22px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(15,23,42,0.22), 0 4px 16px rgba(15,23,42,0.10);
+  animation: modalPop 0.22s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.88); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.auth-modal-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, rgba(22,163,74,0.12), rgba(34,197,94,0.08));
+  border: 1.5px solid rgba(34,197,94,0.22);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+.auth-modal-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: var(--green-600);
+}
+
+.auth-modal h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
   color: var(--gray-900);
 }
 
-.guest-banner-sub {
-  font-size: 12px;
+.auth-modal p {
   color: var(--gray-500);
-  line-height: 1.3;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 22px;
 }
 
-.guest-banner-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
+.auth-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 11px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  border: none;
+  border-radius: 12px;
+  font: 600 14px var(--font-sans);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-cancel:hover { background: var(--gray-200); }
+
+.btn-login {
+  flex: 1;
+  padding: 11px;
   background: var(--green-500);
   color: #fff;
   border: none;
-  border-radius: 999px;
-  font: 700 13px var(--font-sans);
+  border-radius: 12px;
+  font: 700 14px var(--font-sans);
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(34,197,94,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 4px 14px rgba(34,197,94,0.28);
+}
+.btn-login:hover  { background: var(--green-600); }
+.btn-login:active { transform: scale(0.97); }
+
+:host-context(html[data-theme='dark']) .guest-hero {
+  box-shadow: 0 18px 38px rgba(0,0,0,0.4);
 }
 
-.guest-banner-btn:hover  { background: var(--green-600); transform: translateY(-1px); }
-.guest-banner-btn:active { transform: scale(0.97); }
-
-.guest-banner-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
+:host-context(html[data-theme='dark']) .auth-modal {
+  background: #1f2937;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
 }
+
+:host-context(html[data-theme='dark']) .auth-modal h3 { color: #f8fafc; }
+:host-context(html[data-theme='dark']) .auth-modal p  { color: #94a3b8; }
+:host-context(html[data-theme='dark']) .btn-cancel { background: #374151; color: #cbd5e1; }
+:host-context(html[data-theme='dark']) .auth-modal-icon { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.2); }
 
 /* -- Dark mode: complete overrides -- */
 :host-context(html[data-theme='dark']) .account-container {

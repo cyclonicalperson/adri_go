@@ -198,14 +198,14 @@
 /* ── SIDEBAR COLLAPSE BUTTON ──────────────────────────────── */
 .sidebar-collapse-btn {
   position: absolute;
-  right: -20px;
+  right: -24px;
   top: 50%;
   transform: translateY(-50%);
-  width: 20px;
-  height: 48px;
+  width: 24px;
+  height: 52px;
   background: #fff;
   border: none;
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 26px 26px 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,11 +239,11 @@
     left: 380px;
     top: 50%;
     transform: translateY(-50%);
-    width: 20px;
+    width: 24px;
     height: 56px;
     background: #fff;
     border: none;
-    border-radius: 0 12px 12px 0;
+    border-radius: 0 28px 28px 0;
     align-items: center;
     justify-content: center;
     cursor: pointer;

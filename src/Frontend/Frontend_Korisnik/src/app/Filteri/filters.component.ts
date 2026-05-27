@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -23,7 +23,7 @@ interface DestinationRegionOption {
   templateUrl: './filters.component.html',
   styleUrls: ['./filters.component.css']
 })
-export class FiltersComponent implements OnInit {
+export class FiltersComponent implements OnInit, OnChanges {
 
   /**
    * 'map'     → sidebar panel s leve strane (desktop), fullscreen (mobile)
@@ -125,6 +125,7 @@ export class FiltersComponent implements OnInit {
   private availableSavedPostIdsInternal: number[] = [];
   private static destinationRegionCache: DestinationRegionOption[] | null = null;
   private static destinationRegionRequest$: Observable<DestinationRegionOption[]> | null = null;
+  private contentFilterOptionsRequested = false;
 
   constructor(
     private router: Router,
@@ -176,7 +177,24 @@ export class FiltersComponent implements OnInit {
     }
     this.loadDestinationFilterOptions();
     if (this.showContentFilters) {
-      this.loadContentFilterOptions();
+      // Vrati zapamćeni content type
+      const savedType = state.activeContentType;
+      if (savedType && savedType !== this.activeContentType) {
+        this.activeContentType = savedType;
+        // Emitujemo da roditelj zna koji tab je aktivan
+        Promise.resolve().then(() => this.activeContentTypeChange.emit(savedType));
+      }
+      this.ensureContentFilterOptions();
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['activeContentType'] && !changes['activeContentType'].firstChange) {
+      this.activeContentType = changes['activeContentType'].currentValue;
+    }
+
+    if (this.showContentFilters) {
+      this.ensureContentFilterOptions();
     }
   }
 
@@ -251,6 +269,7 @@ export class FiltersComponent implements OnInit {
     if (this.activeContentType === type) return;
 
     this.activeContentType = type;
+    this.ensureContentFilterOptions();
     this.activeContentTypeChange.emit(type);
   }
 
@@ -398,6 +417,7 @@ export class FiltersComponent implements OnInit {
     const defaultState = {
       ...this.filterState.getDefault(),
       savedPostIds: this.savedPostIds,
+      activeContentType: this.activeContentType,
     };
     this.filterState.set(defaultState);
     this.applied.emit(defaultState);
@@ -426,10 +446,17 @@ export class FiltersComponent implements OnInit {
       routeRegions: this.routeFilters.regions,
       routeDistanceBand: this.routeFilters.distanceBand,
       routeDurationBand: this.routeFilters.durationBand,
+      activeContentType: this.activeContentType,
     };
   }
 
   /** applyFilters kept for backward compat — now just saves and navigates */
+  private ensureContentFilterOptions(): void {
+    if (this.contentFilterOptionsRequested) return;
+    this.contentFilterOptionsRequested = true;
+    this.loadContentFilterOptions();
+  }
+
   private loadContentFilterOptions(): void {
     this.activitiesService.getActivities().subscribe({
       next: activities => {

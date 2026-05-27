@@ -9,6 +9,7 @@ import { catchError } from 'rxjs/operators';
 import { ThemeService } from '../services/theme.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 const FALLBACK_PROFILE_IMAGE = '/assets/default-profile.svg';
 type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' | 'generic' };
@@ -16,7 +17,7 @@ type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' 
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent],
   templateUrl: './account.html',
   styleUrls: ['./account.css']
 })
@@ -43,8 +44,10 @@ export class AccountComponent implements OnInit, OnDestroy {
       this.isDarkMode = theme === 'dark';
     });
 
-    if (!this.authService.isLoggedIn) {
-      this.router.navigate(['/login']);
+    this.isGuest = !this.authService.isLoggedIn;
+
+    if (this.isGuest) {
+      this.loading = false;
       return;
     }
 

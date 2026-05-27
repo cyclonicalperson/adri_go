@@ -33,6 +33,7 @@ import { formatPostType } from '../utils/post-type.utils';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -75,6 +76,7 @@ type SearchResult = MapLocation & {
     NotificationBadgeComponent,
     ChatPopupComponent,
     DragScrollDirective,
+    AuthRequiredModalComponent,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -669,7 +671,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const coordinates = this.getLocationCoordinates(loc);
     if (this.map && coordinates) {
       this.dismissSearchMenu();
-      this.map.flyTo([coordinates.lat, coordinates.lng], 16, { animate: true, duration: 1 });
+      this.flyToVisibleMapCenter([coordinates.lat, coordinates.lng], 16);
       this.selectedPublicRoute = null;
       this.selectedLocation = loc;
       this.analytics.track('location_opened', {
@@ -679,6 +681,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.cdr.detectChanges();
     }
+  }
+
+  private flyToVisibleMapCenter(latLng: L.LatLngExpression, zoom: number): void {
+    if (!this.map) return;
+
+    this.map.flyTo(latLng, zoom, { animate: true, duration: 0.55 });
   }
 
   focusOnPlannerStop(stop: PlannerStop): void {
@@ -2015,7 +2023,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterRouteRegions = state.routeRegions ?? [];
     this.filterRouteDistanceBand = state.routeDistanceBand ?? '';
     this.filterRouteDurationBand = state.routeDurationBand ?? '';
-    // activeCategories prazan niz = nijedan chip selektovan = sve vidljivo
+    // Vrati zapamćeni content type ako postoji
+    if (state.activeContentType) {
+      this.mapFilterContentType = state.activeContentType;
+    }
     this.categories.forEach(c => {
       c.active = state.activeCategories.includes(c.key);
     });
@@ -2520,9 +2531,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           // U planner mode: samo dodaj stajaliste, ne otvara karticu
           this.addLocationToPlanner(loc, true);
         } else {
-          // Van planner mode: otvori karticu objave
+          // Van planner mode: otvori karticu objave i centriraj pin
           this.selectedPublicRoute = null;
-          this.selectedLocation = loc;
+          this.focusOnLocation(loc);
         }
         this.cdr.detectChanges();
       });
@@ -2557,10 +2568,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.dismissSearchMenu();
         this.selectedLocation = null;
         this.selectedPublicRoute = route;
-        this.map?.flyTo([waypoint.lat, waypoint.lng], Math.max(this.map?.getZoom() ?? 13, 13), {
-          animate: true,
-          duration: 0.45,
-        });
+        this.flyToVisibleMapCenter([waypoint.lat, waypoint.lng], Math.max(this.map?.getZoom() ?? 13, 13));
         this.cdr.detectChanges();
       });
 
@@ -2989,6 +2997,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openFilters(): void {
     this.syncAvailableSavedFilterIds();
+    // Sinhronizuj aktuelni content type iz stanja pre otvaranja filtera
+    const state = this.filterStateService.get();
+    if (state.activeContentType) {
+      this.mapFilterContentType = state.activeContentType;
+    }
+    this.applyFilterState();
+    this.applyMarkerFilter();
     this.isFiltersOpen = true;
     this.cdr.detectChanges();
   }
@@ -3018,6 +3033,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onMapFilterContentTypeChanged(type: FilterContentType): void {
     this.mapFilterContentType = type;
+    // Sačuvaj u FilterStateService da se ne izgubi pri ponovnom otvaranju filtera
+    const state = this.filterStateService.get();
+    this.filterStateService.set({ ...state, activeContentType: type });
     this.selectedLocation = null;
     this.selectedPublicRoute = null;
     this.applyMarkerFilter();
@@ -3048,6 +3066,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToNotifications(): void {
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      return;
+    }
     this.router.navigate(['/notifications']);
   }
 
@@ -3077,10 +3099,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   goToAccount(): void {
-    if (!this.authService.isLoggedIn) {
-      this.showAuthPopup = true;
-      return;
-    }
     this.activeTab = 'account';
     this.router.navigate(['/account']);
   }

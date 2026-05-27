@@ -8,6 +8,7 @@ import { AuthService } from '../services/auth.service';
 import { SiteTranslateService } from '../services/site-translate.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 interface DisplayEvent {
   id: number;       // PlannerItem id — used for removal
@@ -32,7 +33,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent],
   templateUrl: './calendar.html',
   styleUrls: ['./calendar.css']
 })
@@ -40,6 +41,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   isLoading       = true;
   isGuest         = false;
+  showAuthPopup   = false;
   addedEventTitle = '';
   currentDate     = new Date();
   weeks: CalendarDay[][] = [];
@@ -74,7 +76,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     if (!this.authService.isLoggedIn) {
       this.isGuest   = true;
       this.isLoading = false;
-      this.router.navigate(['/login']);
+      this.showAuthPopup = true;
       this.cdr.detectChanges();
       return;
     }
@@ -723,4 +725,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   goBack(): void  { window.history.back(); }
   goToMap(): void { this.router.navigate(['/map-home']); }
+  closeAuthPopup(): void { this.showAuthPopup = false; }
+  goToLogin(): void {
+    this.showAuthPopup = false;
+    this.router.navigate(['/login']);
+  }
 }

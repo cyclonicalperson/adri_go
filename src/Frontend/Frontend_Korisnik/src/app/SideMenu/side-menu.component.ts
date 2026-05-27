@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService, SiteLanguageCode } from '../services/site-translate.service';
+import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 
 @Component({
   selector: 'app-side-menu',
   standalone: true,
-  imports: [CommonModule, NotificationBadgeComponent],
+  imports: [CommonModule, NotificationBadgeComponent, AuthRequiredModalComponent],
   templateUrl: './side-menu.component.html',
   styleUrls: ['./side-menu.component.css']
 })
@@ -66,8 +67,22 @@ export class SideMenuComponent {
     this.router.navigate(['/saved']);
   }
   goToChat()       { this.onClose.emit(); this.router.navigate(['/chat']); }
-  goToCalendar() { this.onClose.emit(); this.router.navigate(['/calendar']); }
-  goToNotifications() { this.onClose.emit(); this.router.navigate(['/notifications']); }
+  goToCalendar() {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Create a free account or log in to plan trips and manage your calendar.');
+      return;
+    }
+    this.onClose.emit();
+    this.router.navigate(['/calendar']);
+  }
+  goToNotifications() {
+    if (!this.authService.isLoggedIn) {
+      this.openAuthPopup('Create a free account or log in to view your notifications.');
+      return;
+    }
+    this.onClose.emit();
+    this.router.navigate(['/notifications']);
+  }
   goToSettings() { this.onClose.emit(); this.router.navigate(['/settings']); }
 
   openAuthPopup(message: string): void {
