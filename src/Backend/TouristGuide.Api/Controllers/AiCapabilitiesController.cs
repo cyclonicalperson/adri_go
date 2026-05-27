@@ -79,7 +79,7 @@ public sealed class AiCapabilitiesController : ControllerBase
         _tourism.SearchActivitiesAsync(request, ct);
 
     [HttpPost("get-nearby")]
-    public Task<IReadOnlyList<PostSummary>> GetNearby(
+    public Task<PagedResult<PostSummary>> GetNearby(
         [FromBody] GetNearbyRequest request,
         CancellationToken ct) =>
         _tourism.GetNearbyAsync(request, ct);
@@ -97,7 +97,7 @@ public sealed class AiCapabilitiesController : ControllerBase
         _tourism.SearchEventsAsync(request, ct);
 
     [HttpPost("get-recommendations")]
-    public Task<IReadOnlyList<RecommendationItem>> GetRecommendations(
+    public Task<PagedResult<RecommendationItem>> GetRecommendations(
         [FromBody] GetRecommendationsRequest request,
         CancellationToken ct)
     {
@@ -106,13 +106,13 @@ public sealed class AiCapabilitiesController : ControllerBase
     }
 
     [HttpPost("get-top-content")]
-    public Task<IReadOnlyList<TopContentItem>> GetTopContent(
+    public Task<PagedResult<TopContentItem>> GetTopContent(
         [FromBody] GetTopContentUnifiedRequest request,
         CancellationToken ct) =>
         _tourism.GetTopContentUnifiedAsync(request, ct);
 
     [HttpPost("get-new-content")]
-    public Task<IReadOnlyList<NewContentItem>> GetNewContent(
+    public Task<PagedResult<NewContentItem>> GetNewContent(
         [FromBody] GetNewContentRequest request,
         CancellationToken ct) =>
         _tourism.GetNewContentAsync(request, ct);

@@ -111,6 +111,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<AdminIdentityService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IReviewModerationService, ReviewModerationService>();
 builder.Services.AddScoped<AdminPermissionService>();
 builder.Services.AddScoped<UniversalAdminPasswordService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
@@ -125,6 +126,13 @@ builder.Services.AddScoped<RouteSafetyService>();
 builder.Services.AddHttpClient("AnthropicApi", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Accept.Add(
+        new MediaTypeWithQualityHeaderValue("application/json"));
+});
+
+builder.Services.AddHttpClient("Gemini", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
     client.DefaultRequestHeaders.Accept.Add(
         new MediaTypeWithQualityHeaderValue("application/json"));
 });

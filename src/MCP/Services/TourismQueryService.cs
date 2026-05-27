@@ -58,8 +58,8 @@ internal sealed class TourismQueryService : ITourismQueryService
 
 
 
-    public Task<IReadOnlyList<PostSummary>> GetNearbyAsync(GetNearbyRequest request, CancellationToken cancellationToken) =>
-        PostAsync<IReadOnlyList<PostSummary>>("api/ai/get-nearby", request, cancellationToken);
+    public Task<PagedResult<PostSummary>> GetNearbyAsync(GetNearbyRequest request, CancellationToken cancellationToken) =>
+        PostAsync<PagedResult<PostSummary>>("api/ai/get-nearby", request, cancellationToken);
 
     public Task<IReadOnlyList<PostSummary>> GetSimilarPostsAsync(GetSimilarPostsRequest request, CancellationToken cancellationToken) =>
         PostAsync<IReadOnlyList<PostSummary>>("api/ai/get-similar-posts", request, cancellationToken);
@@ -67,15 +67,15 @@ internal sealed class TourismQueryService : ITourismQueryService
     public Task<PagedResult<EventSummary>> SearchEventsAsync(SearchEventsRequest request, CancellationToken cancellationToken) =>
         PostAsync<PagedResult<EventSummary>>("api/ai/search-events", request, cancellationToken);
 
-    public Task<IReadOnlyList<RecommendationItem>> GetRecommendationsAsync(GetRecommendationsRequest request, CancellationToken cancellationToken)
+    public Task<PagedResult<RecommendationItem>> GetRecommendationsAsync(GetRecommendationsRequest request, CancellationToken cancellationToken)
     {
         var securedRequest = request with { TouristId = null };
-        return PostAsync<IReadOnlyList<RecommendationItem>>("api/ai/get-recommendations", securedRequest, cancellationToken);
+        return PostAsync<PagedResult<RecommendationItem>>("api/ai/get-recommendations", securedRequest, cancellationToken);
     }
 
 
-    public Task<IReadOnlyList<NewContentItem>> GetNewContentAsync(GetNewContentRequest request, CancellationToken cancellationToken) =>
-        PostAsync<IReadOnlyList<NewContentItem>>("api/ai/get-new-content", request, cancellationToken);
+    public Task<PagedResult<NewContentItem>> GetNewContentAsync(GetNewContentRequest request, CancellationToken cancellationToken) =>
+        PostAsync<PagedResult<NewContentItem>>("api/ai/get-new-content", request, cancellationToken);
 
     public Task<IReadOnlyList<VisitTrendPoint>> GetVisitTrendsAsync(GetVisitTrendsRequest request, CancellationToken cancellationToken) =>
         PostAsync<IReadOnlyList<VisitTrendPoint>>("api/ai/get-visit-trends", request, cancellationToken);
@@ -113,8 +113,8 @@ internal sealed class TourismQueryService : ITourismQueryService
     public Task<IReadOnlyList<DirectionRequestSummary>> GetDirectionStatsAsync(GetDirectionStatsRequest request, CancellationToken cancellationToken) =>
         PostAsync<IReadOnlyList<DirectionRequestSummary>>("api/ai/get-direction-stats", request, cancellationToken);
 
-    public Task<IReadOnlyList<TopContentItem>> GetTopContentUnifiedAsync(GetTopContentUnifiedRequest request, CancellationToken cancellationToken) =>
-        PostAsync<IReadOnlyList<TopContentItem>>("api/ai/get-top-content", request, cancellationToken);
+    public Task<PagedResult<TopContentItem>> GetTopContentUnifiedAsync(GetTopContentUnifiedRequest request, CancellationToken cancellationToken) =>
+        PostAsync<PagedResult<TopContentItem>>("api/ai/get-top-content", request, cancellationToken);
 
     public async Task<uint?> ResolveRegionIdAsync(string regionName, CancellationToken cancellationToken)
     {

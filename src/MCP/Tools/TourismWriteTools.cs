@@ -12,7 +12,7 @@ internal static class TourismWriteTools
     // RECENZIJE
     // ════════════════════════════════════════════════════════════════════════
 
-    [McpServerTool(Name = "tourism_submit_review", Title = "Submit Review", ReadOnly = false, Idempotent = false)]
+    [McpServerTool(Name = "tourism_submit_review", Title = "Submit Review", ReadOnly = false, Idempotent = false, Destructive = false)]
     [Description(
         "Submit a review for a location. Rating must be 1–5. Comment is optional. " +
         "Requires the tourist to be logged in. The review will be pending moderation before it becomes visible. " +
@@ -36,7 +36,7 @@ internal static class TourismWriteTools
     // SAČUVANE LOKACIJE
     // ════════════════════════════════════════════════════════════════════════
 
-    [McpServerTool(Name = "tourism_save_location", Title = "Save Location", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "tourism_save_location", Title = "Save Location", ReadOnly = false, Idempotent = true, Destructive = false)]
     [Description(
         "Save a location to the tourist's personal saved list. Requires the tourist to be logged in. " +
         "Provide the location name (e.g. 'Hotel Durmitor') and the ID is resolved automatically.")]
@@ -53,7 +53,7 @@ internal static class TourismWriteTools
         return await writeService.SavePostAsync(resolvedId.Value, cancellationToken);
     }
 
-    [McpServerTool(Name = "tourism_unsave_location", Title = "Unsave Location", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "tourism_unsave_location", Title = "Unsave Location", ReadOnly = false, Idempotent = true, Destructive = false)]
     [Description(
         "Remove a location from the tourist's saved list. Requires the tourist to be logged in. " +
         "Provide the location name and the ID is resolved automatically.")]
@@ -74,7 +74,7 @@ internal static class TourismWriteTools
     // LAJKOVI
     // ════════════════════════════════════════════════════════════════════════
 
-    [McpServerTool(Name = "tourism_like_location", Title = "Like Location", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "tourism_like_location", Title = "Like Location", ReadOnly = false, Idempotent = true, Destructive = false)]
     [Description(
         "Like a location on behalf of the logged-in tourist. Requires the tourist to be logged in. " +
         "Provide the location name and the ID is resolved automatically.")]
@@ -91,7 +91,7 @@ internal static class TourismWriteTools
         return await writeService.LikePostAsync(resolvedId.Value, cancellationToken);
     }
 
-    [McpServerTool(Name = "tourism_unlike_location", Title = "Unlike Location", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "tourism_unlike_location", Title = "Unlike Location", ReadOnly = false, Idempotent = true, Destructive = false)]
     [Description(
         "Remove a like from a location on behalf of the logged-in tourist. Requires the tourist to be logged in. " +
         "Provide the location name and the ID is resolved automatically.")]
@@ -112,7 +112,7 @@ internal static class TourismWriteTools
     // PLANER PUTOVANJA
     // ════════════════════════════════════════════════════════════════════════
 
-    [McpServerTool(Name = "tourism_add_to_planner", Title = "Add to Travel Planner", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "tourism_add_to_planner", Title = "Add to Travel Planner", ReadOnly = false, Idempotent = true, Destructive = false)]
     [Description(
         "Add a location to the tourist's travel calendar/planner. Requires the tourist to be logged in. " +
         "If the location is already in the planner, it will not be duplicated. " +
@@ -130,7 +130,7 @@ internal static class TourismWriteTools
         return await writeService.AddToCalendarAsync(resolvedId.Value, cancellationToken);
     }
 
-    [McpServerTool(Name = "tourism_remove_from_planner", Title = "Remove from Travel Planner", ReadOnly = false, Idempotent = true)]
+    [McpServerTool(Name = "tourism_remove_from_planner", Title = "Remove from Travel Planner", ReadOnly = false, Idempotent = true, Destructive = false)]
     [Description(
         "Remove a location from the tourist's travel calendar/planner. Requires the tourist to be logged in. " +
         "Provide the location name and the ID is resolved automatically.")]

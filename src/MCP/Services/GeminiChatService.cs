@@ -21,7 +21,8 @@ public sealed record ChatRequest(
 public sealed record ChatResponse(
     [property: JsonPropertyName("reply")]     string Reply,
     [property: JsonPropertyName("toolsUsed")] IReadOnlyList<string> ToolsUsed,
-    [property: JsonPropertyName("referencedPosts")] IReadOnlyList<ChatPostReference> ReferencedPosts);
+    [property: JsonPropertyName("referencedPosts")] IReadOnlyList<ChatPostReference> ReferencedPosts,
+    [property: JsonPropertyName("cards")] IReadOnlyList<ChatCard> Cards);
 
 public sealed record ChatPostReference(
     [property: JsonPropertyName("id")] uint Id,
@@ -30,6 +31,21 @@ public sealed record ChatPostReference(
     [property: JsonPropertyName("rating")] double? Rating = null,
     [property: JsonPropertyName("reviewCount")] uint? ReviewCount = null,
     [property: JsonPropertyName("regionName")] string? RegionName = null);
+
+public sealed record ChatCard(
+    [property: JsonPropertyName("id")] uint Id,
+    [property: JsonPropertyName("type")] string Type,            // "post" | "route" | "activity"
+    [property: JsonPropertyName("title")] string Title,
+    [property: JsonPropertyName("postType")] string? PostType,
+    [property: JsonPropertyName("regionName")] string? RegionName,
+    [property: JsonPropertyName("rating")] double? Rating,
+    [property: JsonPropertyName("reviewCount")] uint? ReviewCount,
+    [property: JsonPropertyName("imageUrl")] string? ImageUrl,
+    [property: JsonPropertyName("detailUrl")] string? DetailUrl,   // URL za detalje objave
+    [property: JsonPropertyName("mapUrl")] string? MapUrl,         // URL za prikaz rute na mapi (samo rute)
+    [property: JsonPropertyName("distanceKm")] decimal? DistanceKm,
+    [property: JsonPropertyName("durationMinutes")] int? DurationMinutes,
+    [property: JsonPropertyName("difficulty")] string? Difficulty);
 
 // ── Gemini API DTO-vi ─────────────────────────────────────────────────────────
 
@@ -128,8 +144,10 @@ internal sealed class GeminiChatService : IGeminiChatService
 {
     private readonly IHttpClientFactory      _httpClientFactory;
     private readonly ITourismQueryService    _tourismQueryService;
+    private readonly ITourismWriteService    _tourismWriteService;
     private readonly IConfiguration          _configuration;
     private readonly ILogger<GeminiChatService> _logger;
+    private readonly string _frontendBaseUrl;
 
     // FIX #1: JsonOpts nema PropertyNamingPolicy — svi property-ji imaju eksplicitne
     // [JsonPropertyName] atribute, pa automatska politika imenovanja nije potrebna
@@ -155,13 +173,16 @@ internal sealed class GeminiChatService : IGeminiChatService
     public GeminiChatService(
         IHttpClientFactory      httpClientFactory,
         ITourismQueryService    tourismQueryService,
+        ITourismWriteService    tourismWriteService,
         IConfiguration          configuration,
         ILogger<GeminiChatService> logger)
     {
         _httpClientFactory   = httpClientFactory;
         _tourismQueryService = tourismQueryService;
+        _tourismWriteService = tourismWriteService;
         _configuration       = configuration;
         _logger              = logger;
+        _frontendBaseUrl     = configuration["Frontend:BaseUrl"]?.TrimEnd('/') ?? "";
         // FIX #4: ICurrentTouristContext uklonjen iz konstruktora — nije korišćen
         // u Gemini orkestratoru (JWT personalizacija ide kroz query service, ne ovde).
     }
@@ -245,6 +266,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         var contents   = BuildContents(request, maxHistory);
         var toolsUsed  = new List<string>();
         var referencedPosts = new List<ChatPostReference>();
+        var cards = new List<ChatCard>();
 
         // Agentic petlja: Gemini može pozvati više alata pre finalnog odgovora
         for (int round = 0; round < MaxToolRounds; round++)
@@ -343,7 +365,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                 return new ChatResponse(
                     replyText,
                     toolsUsed.AsReadOnly(),
-                    FilterReferencedPostsForReply(replyText, referencedPosts));
+                    FilterReferencedPostsForReply(replyText, referencedPosts),
+                    BuildCardsForReply(replyText, cards));
             }
 
             // FIX #6: Svi function response-ovi za jednu rundu idu zajedno
@@ -358,7 +381,7 @@ internal sealed class GeminiChatService : IGeminiChatService
                     "Runda {Round}: Gemini poziva alat [{Tool}] (canonical: {CanonicalTool}) sa args: {Args}",
                     round + 1, call.Name, canonicalToolName, call.Args?.ToJsonString() ?? "{}");
 
-                var result = await ExecuteToolAsync(call.Name, call.Args, referencedPosts, ct);
+                var result = await ExecuteToolAsync(call.Name, call.Args, referencedPosts, cards, ct);
 
                 functionResponseParts.Add(new GeminiPart
                 {
@@ -382,6 +405,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         return new ChatResponse(
             "Izvinite, zahtev je previše složen za obradu. Molim vas pokušajte sa specifičnijim pitanjem.",
             toolsUsed.AsReadOnly(),
+            [],
             []);
     }
 
@@ -391,6 +415,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         string toolName,
         JsonObject? args,
         List<ChatPostReference> referencedPosts,
+        List<ChatCard> cards,
         CancellationToken ct)
     {
         var canonicalToolName = NormalizeToolName(toolName);
@@ -415,13 +440,19 @@ internal sealed class GeminiChatService : IGeminiChatService
                 "tourism_get_recommendations"     => await ExecuteGetRecommendationsAsync(args, ct),
                 "tourism_get_new_content"         => await ExecuteGetNewContentAsync(args, ct),
                 "tourism_search_activities"       => await ExecuteSearchActivitiesAsync(args, ct),
-                "tourism_get_visit_trends"        => await ExecuteGetVisitTrendsAsync(args, ct),
-                "tourism_get_external_click_stats"=> await ExecuteGetExternalClickStatsAsync(args, ct),
-                "tourism_get_direction_stats"     => await ExecuteGetDirectionStatsAsync(args, ct),
+                // Write alati
+                "tourism_submit_review"           => await ExecuteSubmitReviewAsync(args, ct),
+                "tourism_save_location"           => await ExecuteSaveLocationAsync(args, ct),
+                "tourism_unsave_location"         => await ExecuteUnsaveLocationAsync(args, ct),
+                "tourism_like_location"           => await ExecuteLikeLocationAsync(args, ct),
+                "tourism_unlike_location"         => await ExecuteUnlikeLocationAsync(args, ct),
+                "tourism_add_to_planner"          => await ExecuteAddToPlannerAsync(args, ct),
+                "tourism_remove_from_planner"     => await ExecuteRemoveFromPlannerAsync(args, ct),
                 _ => (object)new { error = $"Nepoznat alat: {toolName}" }
             };
 
             AddReferencedPosts(result, referencedPosts);
+            AddCards(result, cards, _frontendBaseUrl);
             return ToToolResponseObject(result);
         }
         catch (Exception ex)
@@ -453,9 +484,13 @@ internal sealed class GeminiChatService : IGeminiChatService
         "get_recommendations"      => "tourism_get_recommendations",
         "get_new_content"          => "tourism_get_new_content",
         "search_activities"        => "tourism_search_activities",
-        "get_visit_trends"         => "tourism_get_visit_trends",
-        "get_external_click_stats" => "tourism_get_external_click_stats",
-        "get_direction_stats"      => "tourism_get_direction_stats",
+        "submit_review"            => "tourism_submit_review",
+        "save_location"            => "tourism_save_location",
+        "unsave_location"          => "tourism_unsave_location",
+        "like_location"            => "tourism_like_location",
+        "unlike_location"          => "tourism_unlike_location",
+        "add_to_planner"           => "tourism_add_to_planner",
+        "remove_from_planner"      => "tourism_remove_from_planner",
         _                          => toolName
     };
 
@@ -509,13 +544,28 @@ internal sealed class GeminiChatService : IGeminiChatService
                     AddPostReference(posts, new ChatPostReference(
                         rec.EntityId, rec.Title, rec.PostType, null, null, rec.RegionName));
                 return;
+            case PagedResult<RecommendationItem> pagedRecs:
+                foreach (var rec in pagedRecs.Items.Where(x => IsPostEntity(x.EntityType)))
+                    AddPostReference(posts, new ChatPostReference(
+                        rec.EntityId, rec.Title, rec.PostType, null, null, rec.RegionName));
+                return;
             case IReadOnlyList<NewContentItem> newContent:
                 foreach (var item in newContent.Where(x => IsPostEntity(x.EntityType)))
                     AddPostReference(posts, new ChatPostReference(
                         item.EntityId, item.Title, item.PostType, item.Rating, null, item.RegionName));
                 return;
+            case PagedResult<NewContentItem> pagedNew:
+                foreach (var item in pagedNew.Items.Where(x => IsPostEntity(x.EntityType)))
+                    AddPostReference(posts, new ChatPostReference(
+                        item.EntityId, item.Title, item.PostType, item.Rating, null, item.RegionName));
+                return;
             case IReadOnlyList<TopContentItem> topContent:
                 foreach (var item in topContent.Where(x => IsPostEntity(x.EntityType)))
+                    AddPostReference(posts, new ChatPostReference(
+                        item.EntityId, item.Title, item.PostType, item.AvgRating, (uint?)item.ReviewCount, null));
+                return;
+            case PagedResult<TopContentItem> pagedTop:
+                foreach (var item in pagedTop.Items.Where(x => IsPostEntity(x.EntityType)))
                     AddPostReference(posts, new ChatPostReference(
                         item.EntityId, item.Title, item.PostType, item.AvgRating, (uint?)item.ReviewCount, null));
                 return;
@@ -533,6 +583,144 @@ internal sealed class GeminiChatService : IGeminiChatService
         if (post.Id == 0 || string.IsNullOrWhiteSpace(post.Title)) return;
         if (posts.Any(existing => existing.Id == post.Id)) return;
         posts.Add(post);
+    }
+
+    // ── Kartice ──────────────────────────────────────────────────────────────
+
+    private static void AddCards(object? result, List<ChatCard> cards, string baseUrl)
+    {
+        switch (result)
+        {
+            case null:
+                return;
+
+            case PagedResult<PostSummary> pagedPosts:
+                foreach (var p in pagedPosts.Items) TryAddPostCard(cards, p, baseUrl);
+                return;
+
+            case IReadOnlyList<PostSummary> postList:
+                foreach (var p in postList) TryAddPostCard(cards, p, baseUrl);
+                return;
+
+            case PostDetail detail:
+                TryAddPostCardFromDetail(cards, detail, baseUrl);
+                return;
+
+            case PagedResult<RouteSummary> pagedRoutes:
+                foreach (var r in pagedRoutes.Items) TryAddRouteCard(cards, r, baseUrl);
+                return;
+
+            case RouteDetail routeDetail:
+                TryAddRouteCardFromDetail(cards, routeDetail, baseUrl);
+                return;
+
+            case PagedResult<RecommendationItem> pagedRecs:
+                foreach (var rec in pagedRecs.Items)
+                {
+                    if (string.Equals(rec.EntityType, "route", StringComparison.OrdinalIgnoreCase))
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "route", rec.Title, null, rec.RegionName, null, null, null, null, $"{baseUrl}/routes/{rec.EntityId}", null, null, null));
+                    else if (IsPostEntity(rec.EntityType))
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "post", rec.Title, rec.PostType, rec.RegionName, null, null, null, $"{baseUrl}/posts/{rec.EntityId}", null, null, null, null));
+                }
+                return;
+
+            case IReadOnlyList<RecommendationItem> recs:
+                foreach (var rec in recs)
+                {
+                    if (string.Equals(rec.EntityType, "route", StringComparison.OrdinalIgnoreCase))
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "route", rec.Title, null, rec.RegionName, null, null, null, null, $"{baseUrl}/routes/{rec.EntityId}", null, null, null));
+                    else if (IsPostEntity(rec.EntityType))
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "post", rec.Title, rec.PostType, rec.RegionName, null, null, null, $"{baseUrl}/posts/{rec.EntityId}", null, null, null, null));
+                }
+                return;
+
+            case PagedResult<TopContentItem> pagedTop:
+                foreach (var item in pagedTop.Items)
+                {
+                    if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, null, item.AvgRating, (uint?)item.ReviewCount, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                    else if (IsPostEntity(item.EntityType))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, null, item.AvgRating, (uint?)item.ReviewCount, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                }
+                return;
+
+            case IReadOnlyList<TopContentItem> topContent:
+                foreach (var item in topContent)
+                {
+                    if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, null, item.AvgRating, (uint?)item.ReviewCount, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                    else if (IsPostEntity(item.EntityType))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, null, item.AvgRating, (uint?)item.ReviewCount, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                }
+                return;
+
+            case PagedResult<NewContentItem> pagedNew:
+                foreach (var item in pagedNew.Items)
+                {
+                    if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, item.RegionName, item.Rating, null, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                    else if (IsPostEntity(item.EntityType))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, item.RegionName, item.Rating, null, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                }
+                return;
+
+            case IReadOnlyList<NewContentItem> newContent:
+                foreach (var item in newContent)
+                {
+                    if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, item.RegionName, item.Rating, null, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                    else if (IsPostEntity(item.EntityType))
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, item.RegionName, item.Rating, null, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                }
+                return;
+
+            case PagedResult<EventSummary> pagedEvents:
+                foreach (var ev in pagedEvents.Items)
+                    TryAddCard(cards, new ChatCard(ev.Id, "post", ev.Title, "event", null, ev.AvgRating, null, null, $"{baseUrl}/posts/{ev.Id}", null, null, null, null));
+                return;
+        }
+    }
+
+    private static void TryAddPostCard(List<ChatCard> cards, PostSummary p, string baseUrl) =>
+        TryAddCard(cards, new ChatCard(
+            p.Id, "post", p.Title, p.PostType, null, p.Rating, p.ReviewCount,
+            null, $"{baseUrl}/posts/{p.Id}", null, null, null, null));
+
+    private static void TryAddPostCardFromDetail(List<ChatCard> cards, PostDetail d, string baseUrl) =>
+        TryAddCard(cards, new ChatCard(
+            d.Id, "post", d.Title, d.PostType, d.RegionName, d.Rating, d.ReviewCount,
+            d.Images.FirstOrDefault(), $"{baseUrl}/posts/{d.Id}", null, null, null, null));
+
+    private static void TryAddRouteCard(List<ChatCard> cards, RouteSummary r, string baseUrl) =>
+        TryAddCard(cards, new ChatCard(
+            r.Id, "route", r.Name, null, null, null, null,
+            null, null, $"{baseUrl}/routes/{r.Id}", r.DistanceKm, (int?)r.DurationMinutes, r.Difficulty));
+
+    private static void TryAddRouteCardFromDetail(List<ChatCard> cards, RouteDetail r, string baseUrl) =>
+        TryAddCard(cards, new ChatCard(
+            r.Id, "route", r.Name, null, r.RegionName, null, null,
+            r.Images.FirstOrDefault(), null, $"{baseUrl}/routes/{r.Id}", r.DistanceKm, (int?)r.DurationMinutes, r.Difficulty));
+
+    private static void TryAddCard(List<ChatCard> cards, ChatCard card)
+    {
+        if (card.Id == 0 || string.IsNullOrWhiteSpace(card.Title)) return;
+        if (cards.Any(c => c.Id == card.Id && c.Type == card.Type)) return;
+        cards.Add(card);
+    }
+
+    private static IReadOnlyList<ChatCard> BuildCardsForReply(
+        string reply,
+        IReadOnlyList<ChatCard> cards)
+    {
+        if (cards.Count == 0 || string.IsNullOrWhiteSpace(reply)) return [];
+
+        var normalizedReply = NormalizeReferenceText(reply);
+        var mentioned = cards
+            .Where(c => normalizedReply.Contains(NormalizeReferenceText(c.Title), StringComparison.Ordinal))
+            .Take(6)
+            .ToList();
+
+        return mentioned.Count > 0 ? mentioned : cards.Take(4).ToList();
     }
 
     private static IReadOnlyList<ChatPostReference> FilterReferencedPostsForReply(
@@ -722,14 +910,15 @@ internal sealed class GeminiChatService : IGeminiChatService
             HasCapacity: GetBool  (args, "hasCapacity"),
             Limit:       GetInt   (args, "limit") ?? 50), ct);
 
-    private Task<IReadOnlyList<PostSummary>> ExecuteGetNearbyAsync(JsonObject? args, CancellationToken ct) =>
+    private Task<PagedResult<PostSummary>> ExecuteGetNearbyAsync(JsonObject? args, CancellationToken ct) =>
         _tourismQueryService.GetNearbyAsync(new GetNearbyRequest(
             Latitude:  GetDouble    (args, "latitude")  ?? 0,
             Longitude: GetDouble    (args, "longitude") ?? 0,
             RadiusKm:  GetDouble    (args, "radiusKm")  ?? 5.0,
             PostTypes: GetStringList(args, "postTypes"),
             MinRating: GetDouble    (args, "minRating"),
-            Limit:     GetInt       (args, "limit") ?? 10), ct);
+            Limit:     GetInt       (args, "limit") ?? 10,
+            Offset:    GetInt       (args, "offset") ?? 0), ct);
 
     private async Task<IReadOnlyList<PostSummary>> ExecuteGetSimilarPostsAsync(JsonObject? args, CancellationToken ct)
     {
@@ -749,7 +938,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             Limit:  GetInt(args, "limit") ?? 5), ct);
     }
 
-    private async Task<IReadOnlyList<TopContentItem>> ExecuteGetTopContentAsync(JsonObject? args, CancellationToken ct)
+    private async Task<PagedResult<TopContentItem>> ExecuteGetTopContentAsync(JsonObject? args, CancellationToken ct)
     {
         var regionId = GetUint(args, "regionId");
         if (regionId is null)
@@ -763,7 +952,8 @@ internal sealed class GeminiChatService : IGeminiChatService
             PostType:      GetString(args, "postType"),
             IncludeRoutes: GetBool  (args, "includeRoutes") ?? true,
             RegionId:      regionId,
-            Limit:         GetInt   (args, "limit") ?? 10), ct);
+            Limit:         GetInt   (args, "limit")  ?? 10,
+            Offset:        GetInt   (args, "offset") ?? 0), ct);
     }
 
     private async Task<PagedResult<EventSummary>> ExecuteSearchEventsAsync(JsonObject? args, CancellationToken ct)
@@ -787,7 +977,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             Offset:       GetInt     (args, "offset") ?? 0), ct);
     }
 
-    private async Task<IReadOnlyList<RecommendationItem>> ExecuteGetRecommendationsAsync(JsonObject? args, CancellationToken ct)
+    private async Task<PagedResult<RecommendationItem>> ExecuteGetRecommendationsAsync(JsonObject? args, CancellationToken ct)
     {
         var regionId = GetUint(args, "regionId");
         if (regionId is null || regionId == 0)
@@ -796,15 +986,16 @@ internal sealed class GeminiChatService : IGeminiChatService
             if (!string.IsNullOrWhiteSpace(regionName))
                 regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
         }
-        if (regionId is null || regionId == 0) return [];
+        if (regionId is null || regionId == 0) return new PagedResult<RecommendationItem>([], 0, false);
         return await _tourismQueryService.GetRecommendationsAsync(new GetRecommendationsRequest(
             RegionId:    regionId.Value,
             TouristId:   null,
             ContextMode: GetString(args, "contextMode") ?? "onsite",
-            Limit:       Math.Clamp(GetInt(args, "limit") ?? 10, 1, 20)), ct);
+            Limit:       Math.Clamp(GetInt(args, "limit") ?? 10, 1, 20),
+            Offset:      GetInt(args, "offset") ?? 0), ct);
     }
 
-    private async Task<IReadOnlyList<NewContentItem>> ExecuteGetNewContentAsync(JsonObject? args, CancellationToken ct)
+    private async Task<PagedResult<NewContentItem>> ExecuteGetNewContentAsync(JsonObject? args, CancellationToken ct)
     {
         var regionId = GetUint(args, "regionId");
         if (regionId is null)
@@ -816,17 +1007,28 @@ internal sealed class GeminiChatService : IGeminiChatService
         return await _tourismQueryService.GetNewContentAsync(new GetNewContentRequest(
             RegionId: regionId,
             DaysBack: GetInt(args, "daysBack") ?? 30,
-            Limit:    GetInt(args, "limit")    ?? 20), ct);
+            Limit:    GetInt(args, "limit")    ?? 20,
+            Offset:   GetInt(args, "offset")   ?? 0), ct);
     }
 
-    private Task<IReadOnlyList<TagSummary>> ExecuteSearchActivitiesAsync(JsonObject? args, CancellationToken ct) =>
-        _tourismQueryService.SearchActivitiesAsync(new SearchActivitiesRequest(
+    private async Task<IReadOnlyList<TagSummary>> ExecuteSearchActivitiesAsync(JsonObject? args, CancellationToken ct)
+    {
+        var regionId = GetUint(args, "regionId");
+        if (regionId is null)
+        {
+            var regionName = GetString(args, "regionName");
+            if (!string.IsNullOrWhiteSpace(regionName))
+                regionId = await _tourismQueryService.ResolveRegionIdAsync(regionName, ct);
+        }
+        return await _tourismQueryService.SearchActivitiesAsync(new SearchActivitiesRequest(
             Query:       GetString(args, "query"),
             Category:    GetString(args, "category"),
             Difficulty:  GetString(args, "difficulty"),
             MinCapacity: GetInt   (args, "minCapacity"),
             MaxCapacity: GetInt   (args, "maxCapacity"),
-            Limit:       GetInt   (args, "limit") ?? 50), ct);
+            Limit:       GetInt   (args, "limit") ?? 50,
+            RegionId:    regionId), ct);
+    }
 
     private async Task<IReadOnlyList<VisitTrendPoint>> ExecuteGetVisitTrendsAsync(JsonObject? args, CancellationToken ct)
     {
@@ -880,6 +1082,79 @@ internal sealed class GeminiChatService : IGeminiChatService
         return await _tourismQueryService.GetDirectionStatsAsync(new GetDirectionStatsRequest(
             RegionId: regionId,
             Limit:    GetInt(args, "limit") ?? 20), ct);
+    }
+
+    // ── Write Execute metode ────────────────────────────────────────────────
+
+    private async Task<WriteResult> ExecuteSubmitReviewAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = GetUint(args, "postId");
+        if (postId is null || postId == 0)
+        {
+            var name = GetString(args, "postName");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var resolved = await _tourismQueryService.ResolvePostAsync(name, ct);
+                if (resolved.Found) postId = resolved.Id;
+            }
+        }
+        if (postId is null || postId == 0)
+            return new WriteResult(false, "Lokacija nije pronađena.");
+        var rating = GetInt(args, "rating") ?? 0;
+        var comment = GetString(args, "comment");
+        return await _tourismWriteService.SubmitReviewAsync(postId.Value, rating, comment, ct);
+    }
+
+    private async Task<WriteResult> ExecuteSaveLocationAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = await ResolveWritePostIdAsync(args, ct);
+        if (postId is null) return new WriteResult(false, "Lokacija nije pronađena.");
+        return await _tourismWriteService.SavePostAsync(postId.Value, ct);
+    }
+
+    private async Task<WriteResult> ExecuteUnsaveLocationAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = await ResolveWritePostIdAsync(args, ct);
+        if (postId is null) return new WriteResult(false, "Lokacija nije pronađena.");
+        return await _tourismWriteService.UnsavePostAsync(postId.Value, ct);
+    }
+
+    private async Task<WriteResult> ExecuteLikeLocationAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = await ResolveWritePostIdAsync(args, ct);
+        if (postId is null) return new WriteResult(false, "Lokacija nije pronađena.");
+        return await _tourismWriteService.LikePostAsync(postId.Value, ct);
+    }
+
+    private async Task<WriteResult> ExecuteUnlikeLocationAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = await ResolveWritePostIdAsync(args, ct);
+        if (postId is null) return new WriteResult(false, "Lokacija nije pronađena.");
+        return await _tourismWriteService.UnlikePostAsync(postId.Value, ct);
+    }
+
+    private async Task<WriteResult> ExecuteAddToPlannerAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = await ResolveWritePostIdAsync(args, ct);
+        if (postId is null) return new WriteResult(false, "Lokacija nije pronađena.");
+        return await _tourismWriteService.AddToCalendarAsync(postId.Value, ct);
+    }
+
+    private async Task<WriteResult> ExecuteRemoveFromPlannerAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = await ResolveWritePostIdAsync(args, ct);
+        if (postId is null) return new WriteResult(false, "Lokacija nije pronađena.");
+        return await _tourismWriteService.RemoveFromCalendarAsync(postId.Value, ct);
+    }
+
+    private async Task<uint?> ResolveWritePostIdAsync(JsonObject? args, CancellationToken ct)
+    {
+        var postId = GetUint(args, "postId");
+        if (postId is not null && postId > 0) return postId;
+        var name = GetString(args, "postName");
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var resolved = await _tourismQueryService.ResolvePostAsync(name, ct);
+        return resolved.Found ? resolved.Id : null;
     }
 
     // ── Pomoćne metode za čitanje argumenata ─────────────────────────────────
@@ -1240,7 +1515,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                             "radiusKm":  { "type": "number",  "description": "Search radius in kilometers (default 5)." },
                             "postTypes": { "type": "array", "items": { "type": "string" }, "description": "Optional post type filter." },
                             "minRating": { "type": "number",  "description": "Optional minimum rating filter." },
-                            "limit":     { "type": "integer", "description": "Maximum number of results (default 10)." }
+                            "limit":     { "type": "integer", "description": "Maximum number of results (default 10)." },
+                            "offset":    { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
                         },
                         "required": ["latitude", "longitude"]
                     }
@@ -1274,7 +1550,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                             "includeRoutes": { "type": "boolean", "description": "If true (default), includes routes alongside locations." },
                             "regionId":      { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
                             "regionName":    { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
-                            "limit":         { "type": "integer", "description": "Maximum number of results (default 10)." }
+                            "limit":         { "type": "integer", "description": "Maximum number of results (default 10)." },
+                            "offset":        { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
                         }
                     }
                     """)
@@ -1312,7 +1589,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                             "regionId":    { "type": "integer", "description": "Numeric region ID (use if already known)." },
                             "regionName":  { "type": "string",  "description": "Region name or partial name (e.g. 'Zabljak'). Used when regionId is not provided." },
                             "contextMode": { "type": "string",  "description": "Context mode: onsite (default) or planning." },
-                            "limit":       { "type": "integer", "description": "Maximum number of results (default 10, max 20)." }
+                            "limit":       { "type": "integer", "description": "Maximum number of results (default 10, max 20)." },
+                            "offset":      { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
                         }
                     }
                     """)
@@ -1328,7 +1606,8 @@ internal sealed class GeminiChatService : IGeminiChatService
                             "regionId":   { "type": "integer", "description": "Optional region ID (use regionName if unknown)." },
                             "regionName": { "type": "string",  "description": "Region name or partial name. Resolved when regionId not provided." },
                             "daysBack":   { "type": "integer", "description": "How many days back to look for new content (default 30)." },
-                            "limit":      { "type": "integer", "description": "Maximum number of results (default 20)." }
+                            "limit":      { "type": "integer", "description": "Maximum number of results (default 20)." },
+                            "offset":     { "type": "integer", "description": "Number of results to skip for pagination (default 0)." }
                         }
                     }
                     """)
@@ -1336,11 +1615,12 @@ internal sealed class GeminiChatService : IGeminiChatService
                 new GeminiFunctionDeclaration
                 {
                     Name        = "tourism_search_activities",
-                    Description = "Search activities and things to do (tags with category=aktivnost). Categories: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER.",
+                    Description = "Search activities and things to do in a specific region or globally. When user asks for activities in a place (e.g. 'activities in Zabljak'), use regionName to scope results. Categories: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER.",
                     Parameters  = ParseSchema("""
                     {
                         "type": "object",
                         "properties": {
+                            "regionName":  { "type": "string",  "description": "Region name or partial name (e.g. 'Zabljak'). Scopes activities to this region." },
                             "query":       { "type": "string",  "description": "Optional free-text search on activity name or description." },
                             "category":    { "type": "string",  "description": "Optional category: SPORT, ADVENTURE, WELLNESS, SHOPPING, DINING, NIGHTLIFE, SIGHTSEEING, CULTURE, OTHER." },
                             "difficulty":  { "type": "string",  "description": "Optional difficulty: EASY, MEDIUM, HARD." },
@@ -1398,6 +1678,101 @@ internal sealed class GeminiChatService : IGeminiChatService
                         }
                     }
                     """)
+                },
+                // ── Write alati (zahtijevaju prijavljenog turista) ──
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_save_location",
+                    Description = "Save a location to the logged-in tourist's saved list. Requires authentication. Use when the user says 'save', 'bookmark', 'add to saved', 'sacuvaj' etc.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string", "description": "Location name or partial name (e.g. 'Hotel Durmitor')." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_unsave_location",
+                    Description = "Remove a location from the logged-in tourist's saved list. Requires authentication. Use when the user says 'unsave', 'remove from saved', 'ukloni iz sacuvanih'.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string", "description": "Location name or partial name." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_like_location",
+                    Description = "Like a location on behalf of the logged-in tourist. Requires authentication. Use when user says 'like', 'lajkuj', 'oznaci kao omiljeno'.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string", "description": "Location name or partial name." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_unlike_location",
+                    Description = "Remove a like from a location. Requires authentication.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string", "description": "Location name or partial name." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_add_to_planner",
+                    Description = "Add a location to the logged-in tourist's travel planner/calendar. Requires authentication. Use when user says 'add to planner', 'dodaj u planer', 'planiram posjetiti'.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string", "description": "Location name or partial name (e.g. 'Crno jezero')." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_remove_from_planner",
+                    Description = "Remove a location from the logged-in tourist's travel planner. Requires authentication.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string", "description": "Location name or partial name." }
+                        }
+                    }
+                    """)
+                },
+                new GeminiFunctionDeclaration
+                {
+                    Name        = "tourism_submit_review",
+                    Description = "Submit a review (rating + optional comment) for a location. Requires authentication. Rating must be 1-5. Use when user says 'leave review', 'rate', 'ocijeni', 'ostavi recenziju'.",
+                    Parameters  = ParseSchema("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "postName": { "type": "string",  "description": "Location name or partial name." },
+                            "rating":   { "type": "integer", "description": "Rating from 1 (worst) to 5 (best)." },
+                            "comment":  { "type": "string",  "description": "Optional written comment." }
+                        },
+                        "required": ["rating"]
+                    }
+                    """)
                 }
             ]
         }
@@ -1434,7 +1809,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         - Prefer the logged-in tourist profile language when available.
         - If no profile language is available, use the USER INTERFACE LANGUAGE appended to this instruction.
         - If neither is available, respond in the same language the user writes in.
-        - Support pagination: if HasMore is true, offer to show more results.
+        - Support pagination: if HasMore is true in the response, offer to show more results by calling the same tool with offset incremented by limit. Always mention to the user when more results are available.
         - Be concise but informative — highlight the most important details.
         - When listing multiple results, use a structured format (numbered list or table).
 
@@ -1455,7 +1830,7 @@ internal sealed class GeminiChatService : IGeminiChatService
           and, when relevant, tourism_search_routes(regionName='X', sortBy='popular', limit=5)
         - "Find hotels/restaurants in X" → tourism_search_posts(regionName='X', postTypes=['accommodation'])
         - "Tell me about location Y" → tourism_get_post_detail(postName='Y')
-        - "Reviews for Y" → tourism_get_reviews(postName='Y') or tourism_get_route_reviews(routeName='Y')
+        - "Reviews for Y" → tourism_get_reviews(postName='Y') or tourism_get_route_reviews(routeName='Y'). If returns empty (0 reviews), try tourism_search_posts to find the exact name first, then retry reviews with the exact title found.
         - "Best/most popular" → tourism_get_top_content(sortBy='views') — includes both locations AND routes
         - "Popular routes" → tourism_search_routes(sortBy='popular', regionName='X')
         - "Easy hikes" → tourism_search_routes(difficulties=['easy'], maxElevationGain=300)
@@ -1463,7 +1838,8 @@ internal sealed class GeminiChatService : IGeminiChatService
         - "Similar to Y" → tourism_get_similar_posts(postName='Y')
         - "New content in X" → tourism_get_new_content(regionName='X', daysBack=30)
         - "Events in X" → tourism_search_events(regionName='X', category='CONCERT')
-        - "Activities for groups" → tourism_search_activities(minCapacity=10)
+        - "Activities in X" / "Sta ima u X" → tourism_search_activities(regionName='X') then tourism_search_posts(regionName='X', tags=[activity_names_from_result], limit=6) to find concrete locations offering those activities. Show locations as cards, list activity descriptions in text.
+        - "Activities for groups" → tourism_search_activities(minCapacity=10) then tourism_search_posts(tags=[result_names])
         - "Peak season?" → tourism_get_visit_trends(regionName='X')
         - "Most-booked locations?" → tourism_get_external_click_stats(regionName='X')
         - "Where do tourists navigate to?" → tourism_get_direction_stats(regionName='X')
