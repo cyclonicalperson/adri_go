@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -16,6 +16,7 @@ import { TouristActivitiesService, TouristActivityItem } from '../services/touri
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 // Max cards shown per section row (prevents overcrowding)
@@ -69,7 +70,7 @@ interface PopularDestination {
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent],
+  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
@@ -1665,4 +1666,43 @@ export class LocationListComponent implements OnInit, OnDestroy {
     if (lat == null || lng == null) return null;
     return { lat: Number(lat), lng: Number(lng) };
   }
+
+  // Povezujemo se sa HTML elementom koji ima #scrollContainer
+  @ViewChild('scrollContainer') scrollContainer!: ElementRef;
+
+  isDown = false;
+  startY = 0;
+  scrollTop = 0;
+
+  // Kada korisnik pritisne levi klik
+  onMouseDown(e: MouseEvent) {
+    this.isDown = true;
+    const el = this.scrollContainer.nativeElement;
+    // Računamo početnu poziciju miša u odnosu na kontejner
+    this.startY = e.pageY - el.offsetTop;
+    // Čuvamo trenutnu poziciju skrola
+    this.scrollTop = el.scrollTop;
+  }
+
+  // Kada korisnik pusti klik
+  onMouseUp() {
+    this.isDown = false;
+  }
+
+  // Ako miš izađe izvan okvira kontejnera dok je kliknut
+  onMouseLeave() {
+    this.isDown = false;
+  }
+
+  // Dok korisnik pomera miša
+  onMouseMove(e: MouseEvent) {
+    if (!this.isDown) return; // Ako nije kliknuto, ne radi ništa
+    e.preventDefault(); // Sprečava selektovanje teksta dok vučeš
+
+    const el = this.scrollContainer.nativeElement;
+    const y = e.pageY - el.offsetTop;
+    const walk = (y - this.startY) * 1.5; // Množimo sa 1.5 da ubrzamo skrol
+    el.scrollTop = this.scrollTop - walk;
+  }
+
 }

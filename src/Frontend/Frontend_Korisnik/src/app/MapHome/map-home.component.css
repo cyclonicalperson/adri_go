@@ -583,26 +583,45 @@
 .search-no-results svg { width: 16px; height: 16px; fill: var(--gray-300); flex-shrink: 0; }
 
 /* ── CATEGORY CHIP ROW ────────────────────────────────────────── */
+/* ── CATEGORY CHIP ROW ────────────────────────────────────────── */
 .category-chips-row {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  
+  max-width: 348px; /* Ograničava širinu kako bi se klipovalo na ivici sidebara */
   padding: 2px 4px 4px;
   border: none;
   box-shadow: none;
+
+  /* Logika za drag & scroll */
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+
+  /* Sakrivanje scroll trake (Firefox, IE, Edge) */
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.category-chips-row::-webkit-scrollbar { display: none; }
-/* Chips must never shrink — they overflow so the row scrolls */
-.category-chips-row .cat-chip { flex-shrink: 0; }
 
-/*
- * Base chip — inactive: outline u boji kategorije, beo background
- * --cat-color je postavljen inline per chip iz getCategoryColor().
- */
+/* Sakrivanje scroll trake (Chrome, Safari, Edge) */
+.category-chips-row::-webkit-scrollbar { 
+  display: none; 
+}
+
+/* Vizuelni indikator kada korisnik klikne i vuče */
+.category-chips-row:active { 
+  cursor: grabbing; 
+}
+
+/* KLJUČNO: Sprečava da se dugmići suze i natera ih da "iscure" van kontejnera */
+.category-chips-row .cat-chip { 
+  flex-shrink: 0; 
+}
+
+
 .cat-chip {
   display: flex;
   align-items: center;
@@ -1052,20 +1071,7 @@ app-location-details-card {
     position: relative;
     overflow: visible;
   }
-  .category-chips-row {
-    flex-wrap: nowrap;
-    /* Use a max-width equal to the sidebar content width so the row
-       clips at the sidebar edge without needing overflow:hidden on a parent */
-    max-width: 348px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    scrollbar-width: none;
-    padding: 2px 4px 4px;
-    cursor: grab;
-  }
-  .category-chips-row::-webkit-scrollbar { display: none; }
-  .category-chips-row:active { cursor: grabbing; }
+ 
   /* Dropdown search results — wider on desktop since sidebar is 380px */
   .search-results-dropdown {
     border-radius: 14px;

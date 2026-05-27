@@ -1,4 +1,10 @@
-﻿<div class="list-container">
+﻿<div class="list-container" 
+     #scrollContainer
+     (mousedown)="onMouseDown($event)"
+     (mouseup)="onMouseUp()"
+     (mouseleave)="onMouseLeave()"
+     (mousemove)="onMouseMove($event)"
+     appDragScroll axis="y-window">
 
   <div class="sticky-top">
     <div class="header-bar">
@@ -25,7 +31,6 @@
     </button>
   </div>
 
-  <!-- ── SEARCH SECTION ── -->
   <div class="search-section">
     <div class="explore-intro" *ngIf="!activeSectionView">
       <span class="explore-kicker">Explore the unknown</span>
@@ -67,7 +72,6 @@
         </div>
       </div>
 
-      <!-- ── Live search dropdown ── -->
       <div class="search-results-dropdown" *ngIf="showDropdown">
         <div
           *ngFor="let result of searchResults"
@@ -107,9 +111,7 @@
         {{ searchNoResultsMessage }}
       </div>
 
-    </div><!-- /search-row-wrapper -->
-
-    <div class="search-actions-row">
+    </div><div class="search-actions-row">
       <div class="sort-dropdown" *ngIf="activeResultCount > 0 || isSearchActive || hasActiveTypeFilters">
         <button class="sort-btn" (click)="sortMenuOpen = !sortMenuOpen" [class.sort-btn-active]="sortMenuOpen">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
@@ -125,24 +127,18 @@
       </div>
     </div>
 
-  </div><!-- /search-section -->
-  </div><!-- /sticky-top -->
+  </div></div><div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
-  <div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
-
-  <!-- ── LOADING ── -->
   <div class="loading-state" *ngIf="isLoading">
     <div class="loading-icon"></div>
     Loading {{ activeContentLabel | lowercase }}...
   </div>
 
-  <!-- ── ERROR ── -->
   <div class="error-state" *ngIf="activeErrorMessage && !isLoading">
     {{ activeErrorMessage }}
     <button (click)="retryActiveLoad()" style="margin-left:10px;cursor:pointer;text-decoration:underline;background:none;border:none;color:inherit;font-weight:700;">Retry</button>
   </div>
 
-  <!-- ── SEARCH RESULTS VIEW ── -->
   <ng-container *ngIf="activeContentType === 'destinations' && isSearchActive && !isLoading">
     <div class="empty-state" *ngIf="locations.length === 0">
       <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -162,7 +158,6 @@
     </div>
   </ng-container>
 
-  <!-- ── FILTER RESULTS VIEW ── -->
   <ng-container *ngIf="isFilterView && !isLoading">
     <div class="filter-results-header">
       <div class="filter-results-title">
@@ -187,10 +182,8 @@
     </div>
   </ng-container>
 
-  <!-- ── EXPLORE SECTIONS VIEW ── -->
   <ng-container *ngIf="activeContentType === 'destinations' && !isSearchActive && !isFilterView && !isLoading && !activeErrorMessage">
 
-    <!-- ── EXPANDED SECTION (when See All clicked) ── -->
     <ng-container *ngIf="activeSectionView">
       <div class="expanded-section-header">
         <button class="back-to-explore-btn" (click)="closeSection()">
@@ -206,10 +199,8 @@
       </div>
     </ng-container>
 
-    <!-- ── NORMAL 3-SECTION VIEW ── -->
     <ng-container *ngIf="!activeSectionView">
 
-      <!-- NEAR YOU -->
       <div class="explore-section" *ngIf="nearYouLocations.length > 0">
         <div class="section-header">
           <div>
@@ -221,14 +212,13 @@
             <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
           </button>
         </div>
-        <div class="horizontal-scroll">
+        <div class="horizontal-scroll" appDragScroll axis="x">
           <div class="h-card" *ngFor="let loc of nearYouLocations | slice:0:4">
             <ng-container *ngTemplateOutlet="hCardTpl; context: { loc: loc }"></ng-container>
           </div>
         </div>
       </div>
 
-      <!-- RECOMMENDED FOR YOU -->
       <div class="explore-section" *ngIf="recommendedLocations.length > 0">
         <div class="section-header">
           <div>
@@ -240,14 +230,13 @@
             <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
           </button>
         </div>
-        <div class="horizontal-scroll">
+        <div class="horizontal-scroll" appDragScroll axis="x">
           <div class="h-card" *ngFor="let loc of recommendedLocations | slice:0:4">
             <ng-container *ngTemplateOutlet="hCardTpl; context: { loc: loc }"></ng-container>
           </div>
         </div>
       </div>
 
-      <!-- TOP RATED (GLOBAL) -->
       <div class="explore-section" *ngIf="topRatedLocations.length > 0">
         <div class="section-header">
           <div>
@@ -259,14 +248,13 @@
             <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
           </button>
         </div>
-        <div class="horizontal-scroll">
+        <div class="horizontal-scroll" appDragScroll axis="x">
           <div class="h-card" *ngFor="let loc of topRatedLocations | slice:0:4">
             <ng-container *ngTemplateOutlet="hCardTpl; context: { loc: loc }"></ng-container>
           </div>
         </div>
       </div>
 
-      <!-- POPULAR DESTINATIONS -->
       <div class="popular-destinations-section" *ngIf="popularDestinations.length > 0">
         <div class="section-header">
           <div>
@@ -289,7 +277,6 @@
         </div>
       </div>
 
-      <!-- Empty state -->
       <div class="empty-state" *ngIf="nearYouLocations.length === 0 && recommendedLocations.length === 0 && topRatedLocations.length === 0">
         <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
         <p>No locations available right now.</p>
@@ -298,7 +285,6 @@
     </ng-container>
   </ng-container>
 
-  <!-- ACTIVITIES VIEW -->
   <ng-container *ngIf="activeContentType === 'activities' && !isLoading && !activeErrorMessage">
     <div class="filter-results-header">
       <div class="filter-results-title">
@@ -347,7 +333,6 @@
     </div>
   </ng-container>
 
-  <!-- ROUTES VIEW -->
   <ng-container *ngIf="activeContentType === 'routes' && !isLoading && !activeErrorMessage">
     <div class="filter-results-header">
       <div class="filter-results-title">
@@ -407,7 +392,6 @@
     </div>
   </ng-container>
 
-  <!-- ── HORIZONTAL CARD TEMPLATE ── -->
   <ng-template #hCardTpl let-loc="loc">
     <div class="h-image-wrapper" (click)="viewDetails(loc.id)">
       <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/placeholder.jpg'">
@@ -451,7 +435,6 @@
     </div>
   </ng-template>
 
-  <!-- ── FULL GRID CARD TEMPLATE (for search results) ── -->
   <ng-template #cardTpl let-loc="loc">
     <div class="image-wrapper" (click)="viewDetails(loc.id)">
       <img [src]="getFirstImage(loc)" [alt]="loc.title" (error)="$any($event.target).src='assets/placeholder.jpg'">

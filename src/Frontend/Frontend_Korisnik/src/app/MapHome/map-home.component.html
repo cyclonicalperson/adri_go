@@ -1,4 +1,4 @@
-<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating" [class.sidebar-is-collapsed]="sidebarCollapsed">
+﻿<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating" [class.sidebar-is-collapsed]="sidebarCollapsed">
 
   <div class="app-header">
     <button type="button" class="header-left logo-button" (click)="goHome()" aria-label="AdriGo home">
@@ -67,7 +67,7 @@
     </button>
   </div>
 
-  <div class="sidebar" [class.sidebar-collapsed]="sidebarCollapsed">
+<div class="sidebar" [class.sidebar-collapsed]="sidebarCollapsed">
 
     <div class="top-search-strip">
       <div class="search-wrapper">
@@ -100,7 +100,6 @@
           </button>
         </div>
 
-        <!-- ── Search results dropdown ── -->
         <div class="search-suggestions" *ngIf="searchFocused && !searchQuery && searchPromptSuggestions.length > 0">
           <button
             *ngFor="let suggestion of searchPromptSuggestions"
@@ -152,8 +151,15 @@
           No results for "{{ searchQuery }}"
         </div>
       </div>
-      <!-- ── Category chip row ── -->
-      <div class="category-chips-row">
+
+      <div class="category-chips-row"
+                  appDragScroll axis="x"
+                  #chipsContainer
+                  (mousedown)="onChipsMouseDown($event)"
+                  (mouseleave)="onChipsMouseLeave()"
+                  (mouseup)="onChipsMouseUp()"
+                  (mousemove)="onChipsMouseMove($event)">
+        
         <button
           *ngFor="let cat of categories"
           class="cat-chip"
@@ -163,6 +169,7 @@
           {{ cat.label }}
         </button>
       </div>
+
       <button
         class="builder-mode-pill"
         *ngIf="!isNavigating && (plannerMode || showRoutePanel)"
@@ -175,13 +182,22 @@
       </button>
     </div>
 
-    <div class="top-ui-layer" [class.sheet-expanded]="sheetExpanded" [class.sidebar-collapsed]="sidebarCollapsed">
+    <div class="top-ui-layer" 
+            [class.sheet-expanded]="sheetExpanded" 
+            [class.sidebar-collapsed]="sidebarCollapsed"
+            #sidebarContainer
+            (mousedown)="onSidebarMouseDown($event)"
+            (mouseleave)="onSidebarMouseLeave()"
+            (mouseup)="onSidebarMouseUp()"
+            (mousemove)="onSidebarMouseMove($event)"
+            appDragScroll axis="y">
       <button class="sidebar-collapse-btn" (click)="toggleSidebar()" [attr.aria-label]="sidebarCollapsed ? 'Proširi panel' : 'Skupi panel'">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
           <path *ngIf="!sidebarCollapsed" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/>
           <path *ngIf="sidebarCollapsed" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
         </svg>
       </button>
+
       <div class="sheet-header" (click)="toggleSheet()">
         <div class="sheet-header-left">
           <span class="sheet-title">{{ showRoutePanel ? (routeDestTitle || 'Route') : 'Explore nearby' }}</span>
@@ -247,7 +263,7 @@
       </app-map-recommendations-panel>
     </div>
 
-  </div>
+</div>
 
   <!-- ── CHAT FAB ── -->
   <div class="chat-fab-wrap"

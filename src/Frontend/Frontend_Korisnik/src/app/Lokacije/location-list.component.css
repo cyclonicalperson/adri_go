@@ -413,9 +413,7 @@
   font-family: var(--font-sans);
 }
 
-/* ── SEARCH RESULTS DROPDOWN ────────────────────────────────────
-   (u map-home postoji ekvivalent; ovde dodajemo isti stil)
-   ─────────────────────────────────────────────────────────────── */
+/* ── SEARCH RESULTS DROPDOWN ─────────────────────────────────── */
 .search-row-wrapper {
   position: relative;
 }
@@ -779,8 +777,10 @@
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  cursor: grab;
 }
 .horizontal-scroll::-webkit-scrollbar { display: none; }
+.horizontal-scroll:active { cursor: grabbing; }
 
 /* ── HORIZONTAL CARD ─────────────────────────────────────────── */
 .h-card {
@@ -1204,7 +1204,7 @@
 .clear-filter-btn:hover { background: var(--gray-200); }
 .clear-filter-btn svg { fill: var(--gray-600); }
 
-/* ── GRID AREA (search results + expanded section + filter results) ── */
+/* ── GRID AREA ───────────────────────────────────────────────── */
 .grid-area {
   padding: 0 16px;
 }
@@ -1245,7 +1245,7 @@
   color: var(--gray-900);
 }
 
-/* ── DESKTOP adjustments for explore sections ────────────────── */
+/* ── DESKTOP adjustments ─────────────────────────────────────── */
 @media (min-width: 900px) {
   .section-header { padding: 14px 32px 8px; }
   .horizontal-scroll { padding: 2px 32px 12px 32px; }
@@ -1290,6 +1290,7 @@
   }
   .expanded-section-header { padding: 14px 56px 10px; }
 }
+
 @media (min-width: 900px) {
   .header-bar    { padding: 12px 32px; }
   .search-section { padding: 10px 32px; }
@@ -1305,6 +1306,7 @@
   .search-section { padding: 10px 56px; }
 }
 
+/* ── DARK MODE ───────────────────────────────────────────────── */
 :host-context(html[data-theme='dark']) .list-container {
   background: #111827;
 }
@@ -1476,7 +1478,7 @@
   box-shadow: none;
 }
 
-/* Redesigned explore header and content layout */
+/* ── REDESIGNED EXPLORE HEADER ───────────────────────────────── */
 .sticky-top {
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
 }
@@ -1749,6 +1751,7 @@
   background: var(--gray-200);
   text-align: left;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  cursor: pointer;
 }
 
 .destination-card img,
@@ -1880,6 +1883,7 @@
     overflow: visible;
     padding: 2px 32px 14px;
     scroll-snap-type: none;
+    cursor: default;
   }
 
   .h-card {
@@ -1975,4 +1979,12 @@
 :host-context(html[data-theme='dark']) .destination-count {
   background: rgba(17, 24, 39, 0.9);
   color: #f8fafc;
+}
+.moja-skrol-lista {
+  overflow-y: auto; /* Mora da ima overflow da bi postojao skrol */
+  cursor: grab; /* Kursor izgleda kao otvorena šaka */
+}
+
+.moja-skrol-lista:active {
+  cursor: grabbing; /* Kad klikneš, šaka se zatvori */
 }

@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -32,6 +32,7 @@ import { TouristRouteItem, TouristRoutesService } from '../services/tourist-rout
 import { formatPostType } from '../utils/post-type.utils';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
+import { DragScrollDirective } from '../directives/drag-scroll.directive';
 
 type RecommendationTab = 'personalized' | 'global';
 
@@ -73,6 +74,7 @@ type SearchResult = MapLocation & {
     FiltersComponent,
     NotificationBadgeComponent,
     ChatPopupComponent,
+    DragScrollDirective,
   ],
   templateUrl: './map-home.component.html',
   styleUrls: ['./map-home.component.css']
@@ -3086,5 +3088,65 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleListView(): void {
     this.activeTab = 'list';
     this.router.navigate(['/location-list']);
+  }
+
+  //LOGIKA ZA PREVLACENJE
+
+  // =========================================================
+  // LOGIKA ZA PREVLAČENJE MIŠEM (DRAG TO SCROLL)
+  // =========================================================
+
+  @ViewChild('chipsContainer') chipsContainer!: ElementRef;
+  @ViewChild('sidebarContainer') sidebarContainer!: ElementRef;
+
+  // Promenljive za horizontalni skrol (kategorije)
+  isDraggingChips = false;
+  startX = 0;
+  scrollLeft = 0;
+
+  // Promenljive za vertikalni skrol (sidebar)
+  isDraggingSidebar = false;
+  startY = 0;
+  scrollTop = 0;
+
+  // ── HORIZONTALNI SKROL (KATEGORIJE) ──
+  onChipsMouseDown(e: MouseEvent) {
+    this.isDraggingChips = true;
+    const el = this.chipsContainer.nativeElement;
+    this.startX = e.pageX - el.offsetLeft;
+    this.scrollLeft = el.scrollLeft;
+  }
+  
+  onChipsMouseLeave() { this.isDraggingChips = false; }
+  onChipsMouseUp() { this.isDraggingChips = false; }
+  
+  onChipsMouseMove(e: MouseEvent) {
+    if (!this.isDraggingChips) return;
+    e.preventDefault(); // Sprečava selektovanje teksta i difoltno prevlačenje
+    const el = this.chipsContainer.nativeElement;
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - this.startX) * 1.5; // Množilac za brzinu skrola
+    el.scrollLeft = this.scrollLeft - walk;
+  }
+
+  // ── VERTIKALNI SKROL (SIDEBAR) ──
+  onSidebarMouseDown(e: MouseEvent) {
+    // Ako korisnik pokuša da skroluje mapu ili nešto drugo, ne želimo da reaguje sidebar
+    this.isDraggingSidebar = true;
+    const el = this.sidebarContainer.nativeElement;
+    this.startY = e.pageY - el.offsetTop;
+    this.scrollTop = el.scrollTop;
+  }
+
+  onSidebarMouseLeave() { this.isDraggingSidebar = false; }
+  onSidebarMouseUp() { this.isDraggingSidebar = false; }
+
+  onSidebarMouseMove(e: MouseEvent) {
+    if (!this.isDraggingSidebar) return;
+    e.preventDefault();
+    const el = this.sidebarContainer.nativeElement;
+    const y = e.pageY - el.offsetTop;
+    const walk = (y - this.startY) * 1.5;
+    el.scrollTop = this.scrollTop - walk;
   }
 }
