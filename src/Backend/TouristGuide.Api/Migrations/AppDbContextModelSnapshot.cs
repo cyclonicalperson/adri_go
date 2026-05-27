@@ -401,8 +401,7 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasIndex("RegionId");
 
-                    b.HasIndex("AdminUserId", "PermissionId")
-                        .IsUnique();
+                    b.HasIndex("AdminUserId", "PermissionId", "RegionId");
 
                     b.ToTable("admin_user_permission");
                 });

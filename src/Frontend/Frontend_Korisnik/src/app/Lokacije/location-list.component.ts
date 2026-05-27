@@ -16,6 +16,7 @@ import { TouristActivitiesService, TouristActivityItem } from '../services/touri
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
@@ -73,8 +74,6 @@ interface PopularDestination {
   styleUrls: ['./location-list.component.css']
 })
 export class LocationListComponent implements OnInit, OnDestroy {
-  readonly IMAGE_BASE_URL = 'http://localhost:5125/';
-
   isMenuOpen = false;
   sortMenuOpen = false;
   isFiltersOpen = false;
@@ -640,8 +639,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
     if (!firstImg) return 'assets/Budva.jpg';
-    if (!firstImg.startsWith('http')) { const c = firstImg.startsWith('/') ? firstImg.substring(1) : firstImg; return `${this.IMAGE_BASE_URL}${c}`; }
-    return firstImg;
+    return resolveBackendAssetUrl(firstImg, 'assets/Budva.jpg');
   }
 
   getCategoryColor(postType?: string | null): string {

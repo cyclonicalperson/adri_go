@@ -1247,10 +1247,6 @@ namespace TouristGuide.Api.Controllers
             if (!post.Lat.HasValue || !post.Lng.HasValue)
                 return;
 
-            if (!string.Equals(post.Status, "draft", StringComparison.OrdinalIgnoreCase) &&
-                string.IsNullOrWhiteSpace(post.ProposedRegionName))
-                return;
-
             var sessionId = $"post-proposal-{post.Id}";
             var recentExists = await _context.TouristLocationSamples.AnyAsync(s =>
                 s.SessionId == sessionId &&

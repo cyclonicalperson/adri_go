@@ -170,15 +170,15 @@ dotnet run
 
 ## Konfiguracija
 
-Sve postavke se nalaze u `Backend/TouristGuide.Api/appsettings.json`:
+`Backend/TouristGuide.Api/appsettings.json` sadrzi samo neosetljive podrazumevane vrednosti. Tajne i konekcije podesiti kroz environment varijable, user-secrets ili lokalni `appsettings.Development.json` koji nije u repozitorijumu:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=turisticka_baza;Username=postgres;Password=admin;"
+    "DefaultConnection": ""
   },
   "Jwt": {
-    "Secret": "TouristGuide-SuperSecret-Key-2024-MinLength32Chars!",
+    "Secret": "",
     "Issuer": "TouristGuideApi",
     "Audience": "TouristGuideClients",
     "ExpiresInHours": 8

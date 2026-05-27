@@ -8,7 +8,8 @@ internal static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddMcpServer(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IWebHostEnvironment environment)
     {
         // CORS
         var corsSection = configuration.GetSection(McpCorsOptions.SectionName);
@@ -21,6 +22,13 @@ internal static class ServiceCollectionExtensions
             cors.AddPolicy(McpCorsOptions.PolicyName, policy =>
             {
                 var allowedOrigins = corsOptions.AllowedOrigins;
+                if (environment.IsDevelopment())
+                {
+                    allowedOrigins = allowedOrigins
+                        .Concat(["http://localhost:4200", "http://localhost:4201"])
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                }
 
                 if (allowedOrigins.Length > 0)
                 {
@@ -29,13 +37,17 @@ internal static class ServiceCollectionExtensions
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 }
-                else
+                else if (environment.IsDevelopment())
                 {
                     // Nema konfiguriranih origina — dozvoli sve (pogodno za lokalni razvoj)
                     policy
-                        .AllowAnyOrigin()
+                        .WithOrigins("http://localhost:4200", "http://localhost:4201")
                         .AllowAnyHeader()
                         .AllowAnyMethod();
+                }
+                else
+                {
+                    throw new InvalidOperationException("Cors:AllowedOrigins must be configured outside Development.");
                 }
             });
         });

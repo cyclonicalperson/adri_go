@@ -339,21 +339,21 @@ Backend → localhost:5285
 Zbog bezbednosnih pravila browser blokira takve zahteve, pa moramo omogućiti **CORS**.
 
 ```
-var allowedOrigins = "AllowAll";
+var allowedOrigins = "AllowFrontends";
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: allowedOrigins,
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:4200")
                   .AllowAnyMethod()
                   .AllowAnyHeader();
         });
 });
 ```
 
-Ovo znači da backend prihvata zahteve sa bilo kog frontend servera.
+Ovo znači da backend prihvata zahteve samo sa eksplicitno navedenih frontend origin-a.
 
 ---
 

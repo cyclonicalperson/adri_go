@@ -19,6 +19,12 @@ namespace TouristGuide.Api.Services
             _logger = logger;
         }
 
+        public bool IsConfigured =>
+            !string.IsNullOrWhiteSpace(_configuration["Email:SmtpHost"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Email:SmtpUser"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Email:SmtpPass"]) &&
+            !string.IsNullOrWhiteSpace(_configuration["Email:From"]);
+
         // ─── Lokalizovani stringovi ───────────────────────────────────────────
 
         private static readonly Dictionary<string, (string Subject, string Title, string Intro, string Body, string Button, string Footer)>
@@ -297,7 +303,7 @@ namespace TouristGuide.Api.Services
             var fromEmail = _configuration["Email:From"] ?? "noreply@adrigo.com";
             var fromName = _configuration["Email:FromName"] ?? "AdriGo";
 
-            if (string.IsNullOrWhiteSpace(smtpHost) || string.IsNullOrWhiteSpace(smtpUser))
+            if (!IsConfigured)
             {
                 _logger.LogWarning(
                     "[EMAIL - DEV MODE] Nije konfigurisan SMTP. Email koji bi bio poslat na {To}: {Subject}\n{Body}",

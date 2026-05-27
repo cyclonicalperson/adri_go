@@ -168,11 +168,11 @@ internal sealed class GeminiChatService : IGeminiChatService
 
     public async Task<ChatResponse> ChatAsync(ChatRequest request, CancellationToken ct)
     {
-        var apiKey = _configuration["Gemini:ApiKey"]
-            ?? throw new InvalidOperationException("Gemini:ApiKey nije postavljen u appsettings.json");
+        var apiKey = _configuration["Gemini:ApiKey"];
 
         // FIX #5: Validacija da ključ nije placeholder vrednost
-        if (apiKey.Equals("YOUR_GEMINI_API_KEY_HERE", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(apiKey) ||
+            apiKey.Equals("YOUR_GEMINI_API_KEY_HERE", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
                 "Gemini:ApiKey nije podešen. Unesite pravi API ključ u appsettings.json ili environment varijablu.");
 

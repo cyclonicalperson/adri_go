@@ -36,10 +36,17 @@ namespace TouristGuide.Api.Services
                 return false;
             }
 
-            var storedPassword = await GetPlainPasswordAsync();
-            if (!string.IsNullOrEmpty(storedPassword))
+            var storedPassword = await GetStoredPasswordValueAsync();
+            if (!string.IsNullOrWhiteSpace(storedPassword))
             {
-                return string.Equals(password, storedPassword, StringComparison.Ordinal);
+                if (PasswordHelper.IsBcryptHash(storedPassword))
+                {
+                    return PasswordHelper.Verify(password, storedPassword);
+                }
+
+                var legacyPlaintext = TryUnprotect(storedPassword);
+                return !string.IsNullOrEmpty(legacyPlaintext) &&
+                    string.Equals(password, legacyPlaintext, StringComparison.Ordinal);
             }
 
             var universalPasswordHash = _configuration[ConfigurationHashKey];
@@ -67,12 +74,11 @@ namespace TouristGuide.Api.Services
                 };
             }
 
-            var password = TryUnprotect(secret.ProtectedValue);
             return new UniversalAdminPasswordStatusDto
             {
                 IsConfigured = true,
-                CanReveal = password is not null,
-                Password = password,
+                CanReveal = false,
+                Password = null,
                 Source = "database",
                 UpdatedAt = secret.UpdatedAt,
                 UpdatedBy = secret.UpdatedBy
@@ -81,9 +87,9 @@ namespace TouristGuide.Api.Services
 
         public async Task SetAsync(string password, uint updatedBy)
         {
-            if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+            if (PasswordPolicy.GetValidationError(password, "Univerzalna lozinka") is { } passwordError)
             {
-                throw new ArgumentException("Univerzalna lozinka mora imati najmanje 8 karaktera.", nameof(password));
+                throw new ArgumentException(passwordError, nameof(password));
             }
 
             var secret = await _db.AdminSecrets.FirstOrDefaultAsync(s => s.Key == SecretKey);
@@ -93,14 +99,14 @@ namespace TouristGuide.Api.Services
                 _db.AdminSecrets.Add(secret);
             }
 
-            secret.ProtectedValue = _protector.Protect(password);
+            secret.ProtectedValue = PasswordHelper.Hash(password);
             secret.UpdatedAt = DateTime.UtcNow;
             secret.UpdatedBy = updatedBy;
 
             await _db.SaveChangesAsync();
         }
 
-        private async Task<string?> GetPlainPasswordAsync()
+        private async Task<string?> GetStoredPasswordValueAsync()
         {
             var protectedValue = await _db.AdminSecrets
                 .AsNoTracking()
@@ -110,7 +116,7 @@ namespace TouristGuide.Api.Services
 
             return string.IsNullOrWhiteSpace(protectedValue)
                 ? null
-                : TryUnprotect(protectedValue);
+                : protectedValue;
         }
 
         private string? TryUnprotect(string protectedValue)
