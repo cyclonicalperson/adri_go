@@ -17,15 +17,21 @@ namespace TouristGuide.Api.Services
         private readonly AppDbContext _context;
         private readonly IReviewModerationService _moderation;
         private readonly TouristNotificationService _notifications;
+        private readonly NotificationService _adminNotifications;
+        private readonly ILogger<ReviewService> _logger;
 
         public ReviewService(
             AppDbContext context,
             IReviewModerationService moderation,
-            TouristNotificationService notifications)
+            TouristNotificationService notifications,
+            NotificationService adminNotifications,
+            ILogger<ReviewService> logger)
         {
-            _context       = context;
-            _moderation    = moderation;
-            _notifications = notifications;
+            _context            = context;
+            _moderation         = moderation;
+            _notifications      = notifications;
+            _adminNotifications = adminNotifications;
+            _logger             = logger;
         }
 
         public async Task<IReadOnlyList<AdminReviewListItemDto>> GetAllReviews(string role, uint currentAdminId)
@@ -135,6 +141,10 @@ namespace TouristGuide.Api.Services
                     await _context.SaveChangesAsync();
                     await _notifications.DispatchAsync(notification);
                 }
+                else
+                {
+                    await NotifyAdminOfFlaggedReviewAsync(post, existingReview, moderation.FlagReason);
+                }
 
                 return CreateReviewResult.Success(MapToReviewDto(existingReview, tourist.Name));
             }
@@ -160,8 +170,48 @@ namespace TouristGuide.Api.Services
                 await _context.SaveChangesAsync();
                 await _notifications.DispatchAsync(notification);
             }
+            else
+            {
+                await NotifyAdminOfFlaggedReviewAsync(post, review, moderation.FlagReason);
+            }
 
             return CreateReviewResult.Success(MapToReviewDto(review, tourist.Name));
+        }
+
+        private async Task NotifyAdminOfFlaggedReviewAsync(Post post, Review review, string? flagReason)
+        {
+            try
+            {
+                var reason = flagReason ?? "FLAGGED";
+                var shortReason = reason.StartsWith("LOCAL_KEYWORD:") ? "sadrži zabranjenu reč" :
+                                  reason.StartsWith("LOCAL_SPACED_KEYWORD:") ? "sadrži zabranjenu reč (maskirana)" :
+                                  reason == "LOCAL_URL_DETECTED" ? "sadrži URL/link" :
+                                  reason == "LOCAL_REPETITION" ? "sadrži ponavljanje karaktera" :
+                                  reason == "LOCAL_NO_CONTENT" ? "nema stvarnog sadržaja" :
+                                  reason == "LOCAL_TOO_SHORT" ? "previše kratka" :
+                                  reason == "LOCAL_TOO_LONG" ? "previše dugačka" :
+                                  reason.StartsWith("GEMINI:") ? "AI moderacija" :
+                                  "automatska moderacija";
+
+                await _adminNotifications.SendToAdminAsync(
+                    adminId: post.AdminId,
+                    type: "flagged_review",
+                    title: "Nova recenzija čeka pregled",
+                    body: $"Recenzija za \"{ post.Title}\" je flagovana ({shortReason}) i čeka odobrenje.",
+                    payload: new
+                    {
+                        reviewId  = review.Id,
+                        postId    = post.Id,
+                        postTitle = post.Title,
+                        flagReason = reason,
+                        url       = "/reviews?status=PENDING"
+                    });
+            }
+            catch (Exception ex)
+            {
+                // Neuspeh notifikacije ne sme da blokira kreiranje recenzije
+                _logger.LogWarning(ex, "ReviewService: neuspelo slanje admin notifikacije za review {ReviewId}", review.Id);
+            }
         }
 
         private async Task RefreshReviewStats(Post post)
