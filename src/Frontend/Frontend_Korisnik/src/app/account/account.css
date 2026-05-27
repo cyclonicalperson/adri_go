@@ -1337,55 +1337,143 @@ html[data-theme='dark'] .link-text {
   }
 }
 
-/* Final dark-mode contrast pass for account/settings-style cards. */
+/* -- Guest login banner -- */
+.guest-login-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(22,163,74,0.04) 100%);
+  border: 1.5px solid rgba(34,197,94,0.22);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-top: 6px;
+}
+
+.guest-banner-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(34,197,94,0.12);
+  color: var(--green-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.guest-banner-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.guest-banner-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guest-banner-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.guest-banner-sub {
+  font-size: 12px;
+  color: var(--gray-500);
+  line-height: 1.3;
+}
+
+.guest-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  background: var(--green-500);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font: 700 13px var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(34,197,94,0.28);
+  transition: background 0.15s, transform 0.1s;
+}
+
+.guest-banner-btn:hover  { background: var(--green-600); transform: translateY(-1px); }
+.guest-banner-btn:active { transform: scale(0.97); }
+
+.guest-banner-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* -- Dark mode: complete overrides -- */
 :host-context(html[data-theme='dark']) .account-container {
   --account-surface: #111827;
-  --account-border: #334155;
-  --account-shadow-soft: none;
-  background: #0f172a !important;
-  color: #e2e8f0;
-}
-
-:host-context(html[data-theme='dark']) .scroll-content {
-  background: #0f172a !important;
-}
-
-:host-context(html[data-theme='dark']) .profile-stat-card,
-:host-context(html[data-theme='dark']) .desktop-stat-card,
-:host-context(html[data-theme='dark']) .account-list,
-:host-context(html[data-theme='dark']) .management-list,
-:host-context(html[data-theme='dark']) .support-list,
-:host-context(html[data-theme='dark']) .logout-list {
-  background: #111827 !important;
-  border-color: #334155 !important;
-  box-shadow: none !important;
-}
-
-:host-context(html[data-theme='dark']) .account-link-card {
-  background: #111827 !important;
-  border-color: #334155 !important;
+  --account-border: rgba(51, 65, 85, 0.7);
+  background: #0f172a;
 }
 
 :host-context(html[data-theme='dark']) .account-link-card:hover,
-:host-context(html[data-theme='dark']) .profile-stat-card:hover {
-  background: #1f2937 !important;
+:host-context(html[data-theme='dark']) .toggle-card:hover {
+  background: #1f2937;
 }
 
-:host-context(html[data-theme='dark']) .profile-stat-label,
-:host-context(html[data-theme='dark']) .account-link-title,
-:host-context(html[data-theme='dark']) .logout-row .account-link-title {
-  color: #f8fafc !important;
+:host-context(html[data-theme='dark']) .account-link-title {
+  color: #f1f5f9;
 }
 
-:host-context(html[data-theme='dark']) .profile-stat-subtitle,
-:host-context(html[data-theme='dark']) .account-link-subtitle,
-:host-context(html[data-theme='dark']) .logout-row .account-link-subtitle,
+:host-context(html[data-theme='dark']) .account-link-subtitle {
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .account-link-arrow svg {
+  fill: #475569;
+}
+
 :host-context(html[data-theme='dark']) .section-title {
-  color: #94a3b8 !important;
+  color: #475569;
 }
 
-:host-context(html[data-theme='dark']) .account-link-arrow {
-  color: #94a3b8 !important;
+:host-context(html[data-theme='dark']) .profile-stat-card {
+  background: #111827;
+  border-color: #1e293b;
+}
+
+:host-context(html[data-theme='dark']) .profile-stat-label {
+  color: #f1f5f9;
+}
+
+:host-context(html[data-theme='dark']) .profile-stat-subtitle {
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .loader-container {
+  background: #0f172a;
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .modal-dialog {
+  background: #111827;
+}
+
+:host-context(html[data-theme='dark']) .modal-dialog h3 {
+  color: #f1f5f9;
+}
+
+:host-context(html[data-theme='dark']) .modal-dialog p {
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .modal-btn-cancel {
+  background: #1f2937;
+  color: #94a3b8;
 }
 
 :host-context(html[data-theme='dark']) .dark-slider {
@@ -1393,5 +1481,18 @@ html[data-theme='dark'] .link-text {
 }
 
 :host-context(html[data-theme='dark']) .dark-slider:before {
-  background: #f8fafc;
+  background: #475569;
+}
+
+:host-context(html[data-theme='dark']) .guest-login-banner {
+  background: rgba(34,197,94,0.06);
+  border-color: rgba(34,197,94,0.18);
+}
+
+:host-context(html[data-theme='dark']) .guest-banner-title {
+  color: #f1f5f9;
+}
+
+:host-context(html[data-theme='dark']) .guest-banner-sub {
+  color: #64748b;
 }

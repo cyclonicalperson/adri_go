@@ -3,25 +3,20 @@
 </div>
 
 <div class="account-container" *ngIf="!loading && userData">
-  <div class="header-bar">
-    <button class="back-btn" (click)="goBack()" aria-label="Go back">
-      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-    </button>
-    <h1>Account</h1>
-  </div>
 
+  <app-header title="Account" [showNotifications]="false" (backClick)="goBack()"></app-header>
 
   <div class="scroll-content">
     <div class="account-shell">
       <section class="profile-hero">
         <div class="profile-hero-art" aria-hidden="true"></div>
         <div class="profile-hero-content">
-          <button class="hero-edit-btn" type="button" (click)="goToPersonalInfo()">
+          <button class="hero-edit-btn" type="button" (click)="isGuest ? showGuestPopup() : goToPersonalInfo()">
             <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.04a1.003 1.003 0 0 0 0-1.42l-2.5-2.5a1.003 1.003 0 0 0-1.42 0L14.84 5.24l3.75 3.75 2.12-1.78z"/></svg>
             Edit Profile
           </button>
 
-          <div class="profile-avatar-wrap">
+          <div class="profile-avatar-wrap" (click)="isGuest ? showGuestPopup() : goToPersonalInfo()" style="cursor:pointer">
             <img [src]="profileImageUrl" alt="Profile" class="profile-avatar">
             <span class="avatar-camera-badge" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M20 5h-3.17l-1.84-2H9.01L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
@@ -47,7 +42,6 @@
               </span>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -218,7 +212,7 @@
         </div>
       </section>
 
-      <section class="account-section account-section-logout">
+      <section class="account-section account-section-logout" *ngIf="!isGuest">
         <div class="section-heading">
           <h3 class="section-title">Account</h3>
         </div>
@@ -239,6 +233,33 @@
         </div>
       </section>
 
+      <!-- Guest: login banner -->
+      <section class="guest-login-banner" *ngIf="isGuest">
+        <div class="guest-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+        <div class="guest-banner-copy">
+          <span class="guest-banner-title">Sign in to your account</span>
+          <span class="guest-banner-sub">Save places, write reviews and plan trips.</span>
+        </div>
+        <button class="guest-banner-btn" type="button" (click)="goToLogin()">
+          <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
+          Log in
+        </button>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Login Required Popup -->
+  <div class="auth-modal-overlay" *ngIf="showLoginPopup" (click)="closeLoginPopup()">
+    <div class="auth-modal" (click)="$event.stopPropagation()">
+      <h3>Login Required</h3>
+      <p>Please log in to save items, use your calendar, and access your account.</p>
+      <div class="auth-modal-actions">
+        <button class="btn-cancel" (click)="closeLoginPopup()">Cancel</button>
+        <button class="btn-login" (click)="goToLogin()">Login</button>
+      </div>
     </div>
   </div>
 
