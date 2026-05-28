@@ -122,7 +122,7 @@ namespace TouristGuide.Api.Services
 
             // AI moderacija — određuje početni status recenzije
             var moderation = await _moderation.ModerateAsync(normalizedComment);
-            var initialStatus = moderation.IsSafe ? ApprovedReviewStatus : PendingReviewStatus;
+            var initialStatus = moderation.IsSafe ? ApprovedReviewStatus : RejectedReviewStatus;
             var isApproved = moderation.IsSafe;
 
             if (existingReview is not null)

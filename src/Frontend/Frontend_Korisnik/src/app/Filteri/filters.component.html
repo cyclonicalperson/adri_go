@@ -233,6 +233,23 @@
         </div>
       </section>
 
+      <section *ngIf="routeCountryOptions.length > 0">
+        <div class="section-header">
+          <h2>Route Country</h2>
+        </div>
+        <div class="filter-chip-grid">
+          <button
+            type="button"
+              class="filter-chip"
+              *ngFor="let country of routeCountryOptions"
+              [class.active]="routeFilters.countries.includes(country)"
+              [style.--filter-color]="getStableFilterColor(country)"
+              (click)="toggleRouteFilter('countries', country)">
+              {{ country }}
+            </button>
+        </div>
+      </section>
+
       <section *ngIf="routeRegionOptions.length > 0">
         <div class="section-header">
           <h2>Route Region</h2>

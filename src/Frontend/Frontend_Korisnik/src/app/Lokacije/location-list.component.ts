@@ -129,9 +129,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
   showDropdown = false;
 
   readonly contentTypeTabs: { value: ExploreContentType; label: string }[] = [
-    { value: 'destinations', label: 'Destinacije' },
-    { value: 'activities', label: 'Aktivnosti' },
-    { value: 'routes', label: 'Rute' },
+    { value: 'destinations', label: 'Destinations' },
+    { value: 'activities', label: 'Activities' },
+    { value: 'routes', label: 'Routes' },
   ];
 
   // Section arrays
@@ -162,6 +162,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   };
   routeFilters = {
     difficulties: [] as string[],
+    countries: [] as string[],
     regions: [] as string[],
     distanceBand: '',
     durationBand: '',
@@ -180,7 +181,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get activeContentLabel(): string {
-    return this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinacije';
+    return this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinations';
   }
 
   get activeSearchPlaceholder(): string {
@@ -209,6 +210,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
         || this.activityFilters.linkedOnly;
     }
     return this.routeFilters.difficulties.length > 0
+      || this.routeFilters.countries.length > 0
       || this.routeFilters.regions.length > 0
       || !!this.routeFilters.distanceBand
       || !!this.routeFilters.durationBand;
@@ -224,6 +226,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get routeDifficultyOptions(): string[] {
     return this.uniqueSorted(this.allRoutes.map(item => item.difficulty || '').filter(Boolean));
+  }
+
+  get routeCountryOptions(): string[] {
+    return this.uniqueSorted(this.allRoutes.map(item => item.countryName || '').filter(Boolean));
   }
 
   get routeRegionOptions(): string[] {
@@ -968,7 +974,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  toggleRouteFilter(group: 'difficulties' | 'regions', value: string): void {
+  toggleRouteFilter(group: 'difficulties' | 'countries' | 'regions', value: string): void {
     const list = this.routeFilters[group];
     this.routeFilters[group] = list.includes(value)
       ? list.filter(item => item !== value)
@@ -999,7 +1005,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     if (this.activeContentType === 'activities') {
       this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
     } else if (this.activeContentType === 'routes') {
-      this.routeFilters = { difficulties: [], regions: [], distanceBand: '', durationBand: '' };
+      this.routeFilters = { difficulties: [], countries: [], regions: [], distanceBand: '', durationBand: '' };
     }
     this.refreshVisibleContent();
     this.cdr.markForCheck();
@@ -1195,6 +1201,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
   private getRouteFilterBase(): TouristRouteItem[] {
     return this.allRoutes.filter(route => {
       if (this.routeFilters.difficulties.length > 0 && !this.routeFilters.difficulties.includes(route.difficulty || '')) {
+        return false;
+      }
+      if (this.routeFilters.countries.length > 0 && !this.routeFilters.countries.includes(route.countryName || '')) {
         return false;
       }
       if (this.routeFilters.regions.length > 0 && !this.routeFilters.regions.includes(route.regionName || '')) {

@@ -4,6 +4,7 @@
 // View mode tabs
 .view-toggle-tabs {
   display: flex;
+  flex: 0 0 auto;
   border: 1px solid $gray-200;
   border-radius: 10px;
   overflow: hidden;

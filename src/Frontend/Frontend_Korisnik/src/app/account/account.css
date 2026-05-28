@@ -1649,3 +1649,55 @@ html[data-theme='dark'] .link-text {
 :host-context(html[data-theme='dark']) .guest-banner-sub {
   color: #64748b;
 }
+
+:host-context(html[data-theme='dark']) .hero-edit-btn {
+  background: rgba(15, 23, 42, 0.86);
+  color: #bbf7d0;
+  border: 1px solid rgba(187, 247, 208, 0.28);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+:host-context(html[data-theme='dark']) .hero-edit-btn:hover {
+  background: rgba(31, 41, 55, 0.96);
+}
+
+.profile-stats-mobile .profile-stat-top {
+  align-items: center;
+}
+
+.profile-stats-mobile .profile-stat-value {
+  flex: 1;
+  text-align: center;
+  font-size: 30px;
+}
+
+.profile-stats-mobile .guest-lock-icon {
+  font-size: 24px;
+}
+
+@media (max-width: 679px) {
+  .guest-hero-content {
+    grid-template-columns: 58px minmax(0, 1fr);
+    padding: 14px 16px;
+  }
+
+  .guest-avatar-wrap {
+    width: 58px;
+    height: 58px;
+  }
+
+  .guest-hero .profile-heading h2 {
+    font-size: 25px;
+    line-height: 1.05;
+  }
+
+  .guest-hero .profile-email {
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 680px) {
+  .guest-hero .profile-heading h2 {
+    font-size: 32px;
+  }
+}

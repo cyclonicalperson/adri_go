@@ -22,6 +22,19 @@ namespace TouristGuide.Api.Migrations
                 columns: new[] { "admin_user_id", "permission_id", "region_id" });
 
             migrationBuilder.Sql("""
+                DELETE FROM admin_user_permission p
+                USING (
+                    SELECT id,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY admin_user_id, permission_id, COALESCE(region_id, 0)
+                               ORDER BY granted_at DESC, id DESC
+                           ) AS rn
+                    FROM admin_user_permission
+                ) d
+                WHERE p.id = d.id AND d.rn > 1;
+                """);
+
+            migrationBuilder.Sql("""
                 CREATE UNIQUE INDEX "UX_admin_user_permission_scope"
                 ON admin_user_permission (admin_user_id, permission_id, COALESCE(region_id, 0));
                 """);

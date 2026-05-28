@@ -14,7 +14,7 @@ import {
 } from '../services/tourist-notification.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
-type SettingsSheet = 'accounts' | 'content' | 'booking' | 'support' | 'language' | 'notifications' | null;
+type SettingsSheet = 'accounts' | 'content' | 'support' | 'language' | 'notifications' | null;
 
 @Component({
   selector: 'app-settings',
@@ -43,12 +43,6 @@ export class SettingsComponent implements OnInit {
 
   accountOptions = [
     { id: 'google' as const, label: 'Google', desc: 'Use Google as your preferred sign-in method.' },
-  ];
-
-  bookingOptions = [
-    { id: 'booking', label: 'Booking.com' },
-    { id: 'airbnb', label: 'Airbnb' },
-    { id: 'tripadvisor', label: 'Tripadvisor' },
   ];
 
   showPasswordModal = false;
@@ -137,13 +131,6 @@ export class SettingsComponent implements OnInit {
       .filter(option => this.settings.contentPreferences.includes(option.id))
       .map(option => option.label);
     return enabled.length > 0 ? enabled.join(', ') : 'Use general discovery mode';
-  }
-
-  get bookingServicesSummary(): string {
-    const enabled = this.bookingOptions
-      .filter(option => this.settings.bookingServices.includes(option.id))
-      .map(option => option.label);
-    return enabled.length > 0 ? enabled.join(', ') : 'No preferred services';
   }
 
   get passwordRulesVisible(): boolean {
@@ -285,7 +272,6 @@ export class SettingsComponent implements OnInit {
     switch (this.activeSheet) {
       case 'accounts': return 'Accounts';
       case 'content': return 'Content';
-      case 'booking': return 'Booking';
       case 'language': return 'Language';
       case 'notifications': return 'Notifications';
       default: return 'Support';
@@ -296,7 +282,6 @@ export class SettingsComponent implements OnInit {
     switch (this.activeSheet) {
       case 'accounts': return 'Connected Accounts';
       case 'content': return 'Content Preferences';
-      case 'booking': return 'Connected Booking Services';
       case 'language': return 'App Language';
       case 'notifications': return 'Notification Preferences';
       default: return 'Help & Support Center';
@@ -394,17 +379,6 @@ export class SettingsComponent implements OnInit {
       }
     };
     this.saveChanges('Connected account preferences updated');
-  }
-
-  isBookingServiceEnabled(id: string): boolean {
-    return this.settings.bookingServices.includes(id);
-  }
-
-  toggleBookingService(id: string): void {
-    this.settings = {
-      ...this.settings,
-      bookingServices: this.toggleArrayValue(this.settings.bookingServices, id),
-    };
   }
 
   saveSheet(): void {

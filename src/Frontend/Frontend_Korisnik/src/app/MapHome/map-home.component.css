@@ -117,18 +117,17 @@
 }
 
 /*
- * #map is intentionally oversized (142% x 142%, offset -21% to stay centred).
- * sqrt(2)*100% ~= 141.4%, so at any rotation up to 45deg all four corners
- * that swing into view already have tiles. Leaflet sees this larger element
+ * #map is intentionally oversized so compass rotation never exposes container
+ * corners before Leaflet finishes loading newly visible tiles. Leaflet sees this larger element
  * as its viewport and pre-fetches tiles for the whole area.
  * .map-container clips the excess so nothing bleeds outside the screen.
  */
 #map {
   position: absolute;
-  top: -21%;
-  left: -21%;
-  width: 142%;
-  height: 142%;
+  top: -40%;
+  left: -40%;
+  width: 180%;
+  height: 180%;
   background: #e8efe8;
   transform-origin: 50% 50%;
   will-change: transform;
@@ -136,6 +135,44 @@
 
 :host ::ng-deep .user-location-marker {
   transition: none !important;
+}
+
+:host ::ng-deep .map-pin-cluster {
+  background: transparent;
+  border: 0;
+}
+
+:host ::ng-deep .map-pin-cluster-bubble {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 50%, var(--cluster-color, #22c55e) 0 47%, transparent 49%),
+    rgba(255, 255, 255, 0.78);
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.24);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+:host ::ng-deep .map-pin-cluster-bubble::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--cluster-color, #22c55e) 60%, transparent);
+}
+
+:host-context(html[data-theme='dark']) ::ng-deep .map-pin-cluster-bubble {
+  border-color: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.36);
 }
 
 
@@ -365,11 +402,15 @@
 .search-input::placeholder { color: var(--gray-400); }
 
 .search-clear-btn {
-  background: none;
+  background: transparent !important;
   border: none;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   cursor: pointer;
   color: var(--gray-400);
   flex-shrink: 0;
@@ -1272,6 +1313,33 @@ app-location-details-card {
 .modal-btn-confirm { background: #ef4444; color: #fff; }
 .modal-btn-cancel:hover  { background: #e2e8f0; }
 .modal-btn-confirm:hover { background: #dc2626; }
+
+:host-context(html[data-theme='dark']) .modal-overlay {
+  background: rgba(2, 6, 23, 0.62);
+}
+
+:host-context(html[data-theme='dark']) .modal-dialog {
+  background: #1f2937;
+  border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .modal-dialog h3 {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .modal-dialog p {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .modal-btn-cancel {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .modal-btn-confirm {
+  background: #ef4444;
+  color: #fff;
+}
 
 .route-calendar-input {
   width: 100%;

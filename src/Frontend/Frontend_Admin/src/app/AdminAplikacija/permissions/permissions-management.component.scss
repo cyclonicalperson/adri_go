@@ -249,6 +249,13 @@
   margin-top: 2px;
 }
 
+.perm-scope {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 700;
+}
+
 // ── Toggle switch ─────────────────────────────────────────────────────────
 .toggle {
   width: 42px;
@@ -380,6 +387,16 @@
   border: 1px solid #dbeafe;
   border-radius: 10px;
   background: #eff6ff;
+}
+
+.scope-box {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .preset-label {

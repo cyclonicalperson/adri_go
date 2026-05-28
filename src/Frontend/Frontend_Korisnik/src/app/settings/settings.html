@@ -90,20 +90,6 @@
       </div>
     </div>
 
-    <div class="settings-group settings-group-integrations" *ngIf="authService.isLoggedIn">
-      <p class="group-label">Integrations &amp; Bookings</p>
-      <div class="group-items">
-        <button class="setting-row" (click)="openSheet('booking')">
-          <span class="row-icon icon-booking"><svg viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></span>
-          <div class="row-text">
-            <span class="label">Connected Booking Services</span>
-            <span class="value">{{ bookingServicesSummary }}</span>
-          </div>
-          <span class="row-chevron"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></span>
-        </button>
-      </div>
-    </div>
-
     <div class="settings-group settings-group-about">
       <p class="group-label">About &amp; Support</p>
       <div class="group-items">
@@ -216,16 +202,6 @@
           <span>{{ option.icon }}</span> {{ option.label }}
         </button>
       </div>
-    </div>
-
-    <div class="sheet-body" *ngIf="activeSheet === 'booking'">
-      <p class="sheet-copy">Pick the booking ecosystems AdriGo should prefer when surfacing trip-related links.</p>
-      <button class="sheet-option" *ngFor="let option of bookingOptions" (click)="toggleBookingService(option.id)">
-        <strong>{{ option.label }}</strong>
-        <span class="sheet-pill" [class.active]="isBookingServiceEnabled(option.id)">
-          {{ isBookingServiceEnabled(option.id) ? 'Enabled' : 'Hidden' }}
-        </span>
-      </button>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'notifications'">

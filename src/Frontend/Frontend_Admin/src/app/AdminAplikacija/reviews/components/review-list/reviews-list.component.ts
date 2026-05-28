@@ -30,6 +30,7 @@ export class ReviewsListComponent implements OnInit {
   rejectedCount = 0;
 
   req: PageRequest & {
+    search?: string;
     status?: ReviewStatus;
     entityType?: ReviewEntityType;
     minRating?: number;

@@ -8,7 +8,7 @@
 
   <div class="detour-card" *ngFor="let suggestion of scenicSuggestions">
     <div class="detour-copy">
-      <div class="detour-title">{{ suggestion.location.title }}</div>
+      <div class="detour-title">{{ cleanTitle(suggestion.location.title) }}</div>
       <div class="detour-meta">
         <span>{{ formatPostType(suggestion.location.postType) }}</span>
         <span>&middot; {{ suggestion.distanceToRouteKm | number:'1.1-1' }} km off route</span>

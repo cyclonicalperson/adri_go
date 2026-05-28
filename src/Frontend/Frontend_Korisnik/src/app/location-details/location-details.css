@@ -504,6 +504,80 @@
   margin-bottom: 12px;
 }
 
+.review-form-card {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #f1f5f9;
+}
+
+.review-form-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.review-form-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  display: block;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.review-stars-input {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.review-form-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.review-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.review-form-footer small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+:host-context(html[data-theme='dark']) .review-form-card {
+  background: #111827;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .review-form-label,
+:host-context(html[data-theme='dark']) .review-form-footer small {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .review-form-textarea {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .review-form-textarea::placeholder {
+  color: #64748b;
+}
+
 .user-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 
 .avatar-placeholder {
@@ -767,6 +841,37 @@
 }
 .auth-modal-login:hover  { opacity: 0.92; }
 .auth-modal-login:active { transform: scale(0.97); }
+
+:host-context(html[data-theme='dark']) .auth-modal-overlay {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+:host-context(html[data-theme='dark']) .auth-modal-card {
+  background: #111827;
+  border: 1px solid #334155;
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.42);
+}
+
+:host-context(html[data-theme='dark']) .auth-modal-icon {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+:host-context(html[data-theme='dark']) .auth-modal-title {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .auth-modal-body {
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .auth-modal-cancel {
+  background: #1f2937;
+  color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .auth-modal-cancel:hover {
+  background: #334155;
+}
 
 .calendar-scheduler-card {
   background: #fff;

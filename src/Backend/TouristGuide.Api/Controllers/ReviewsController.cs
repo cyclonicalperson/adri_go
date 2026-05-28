@@ -38,6 +38,7 @@ namespace TouristGuide.Api.Controllers
         public async Task<IActionResult> GetAll(
             [FromQuery] string? status,
             [FromQuery] string? entityType,
+            [FromQuery] string? search,
             [FromQuery] string? sortBy,
             [FromQuery] string? sortDir,
             [FromQuery] int? minRating,
@@ -77,6 +78,17 @@ namespace TouristGuide.Api.Controllers
                 };
             }
 
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var normalizedSearch = NormalizeSearch(search);
+                filtered = filtered.Where(r =>
+                    NormalizeSearch(r.TouristName).Contains(normalizedSearch) ||
+                    NormalizeSearch(r.PostTitle).Contains(normalizedSearch) ||
+                    NormalizeSearch(r.RouteName).Contains(normalizedSearch) ||
+                    NormalizeSearch(r.Comment).Contains(normalizedSearch) ||
+                    r.ReviewId.ToString().Contains(normalizedSearch));
+            }
+
             var list = filtered.ToList();
 
             // Sortiranje
@@ -114,6 +126,16 @@ namespace TouristGuide.Api.Controllers
                 .ToList();
 
             return Ok(new { total, page, pageSize, totalPages = (int)Math.Ceiling((double)total / pageSize), data });
+        }
+
+        private static string NormalizeSearch(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            var normalized = value.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            var chars = normalized
+                .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+                .ToArray();
+            return new string(chars).Normalize(System.Text.NormalizationForm.FormC);
         }
 
         // PATCH /api/reviews/{id}/status

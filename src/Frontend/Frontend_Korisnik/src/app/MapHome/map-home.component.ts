@@ -61,6 +61,24 @@ type SearchResult = MapLocation & {
   searchBadges?: string[];
 };
 
+type LocationPin = {
+  kind: 'location';
+  id: number;
+  loc: MapLocation;
+  marker: L.Marker;
+  latLng: L.LatLng;
+};
+
+type RoutePin = {
+  kind: 'route';
+  id: number;
+  route: TouristRouteItem;
+  marker: L.Marker;
+  latLng: L.LatLng;
+};
+
+type VisiblePin = LocationPin | RoutePin;
+
 @Component({
   selector: 'app-map-home',
   standalone: true,
@@ -93,6 +111,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private map: L.Map | undefined;
   private markers: { loc: MapLocation; marker: L.Marker }[] = [];
   private routeMarkers: { route: TouristRouteItem; marker: L.Marker }[] = [];
+  private markerClusterMarkers: L.Marker[] = [];
+  private readonly markerClusterMaxZoom = 15;
   private userMarker: L.Marker<any> | null = null;
   private routeStopMarkers: L.Marker[] = [];
   private latestQueryParams: Record<string, string> = {};
@@ -208,9 +228,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   filterActivityDifficulties: string[] = [];
   filterActivityLinkedOnly = false;
   filterRouteDifficulties: string[] = [];
+  filterRouteCountries: string[] = [];
   filterRouteRegions: string[] = [];
   filterRouteDistanceBand = '';
   filterRouteDurationBand = '';
+  filterEventFromDate = '';
+  filterEventToDate = '';
   mapFilterContentType: FilterContentType = 'destinations';
   userPosition: [number, number] | null = null;
   routeIsRoutable = true;
@@ -230,9 +253,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       || this.filterActivityDifficulties.length > 0
       || this.filterActivityLinkedOnly
       || this.filterRouteDifficulties.length > 0
+      || this.filterRouteCountries.length > 0
       || this.filterRouteRegions.length > 0
       || !!this.filterRouteDistanceBand
       || !!this.filterRouteDurationBand
+      || !!this.filterEventFromDate
+      || !!this.filterEventToDate
       || this.mapFilterContentType !== 'destinations';
   }
 
@@ -1159,6 +1185,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
                 limit: 4,
               })
             : [];
+
+          if (this.scenicMode && this.scenicSuggestions.length === 0) {
+            this.scenicSuggestions = this.buildNearbyStopSuggestions(this.plannerStops[this.plannerStops.length - 1]).slice(0, 4);
+          }
         }
 
         if (route.usedFallback) {
@@ -1186,8 +1216,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildNearbyStopSuggestions(stop: PlannerStop): RouteDetourSuggestion[] {
+    const plannedStopIds = new Set(this.plannerStops.map(item => item.id));
     return this.locationsList
-      .filter(location => location.id !== stop.id)
+      .filter(location => !plannedStopIds.has(location.id))
       .map(location => {
         const coordinates = this.getLocationCoordinates(location);
         if (!coordinates) return null;
@@ -2020,9 +2051,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterActivityDifficulties = state.activityDifficulties ?? [];
     this.filterActivityLinkedOnly = state.activityLinkedOnly ?? false;
     this.filterRouteDifficulties = state.routeDifficulties ?? [];
+    this.filterRouteCountries = state.routeCountries ?? [];
     this.filterRouteRegions = state.routeRegions ?? [];
     this.filterRouteDistanceBand = state.routeDistanceBand ?? '';
     this.filterRouteDurationBand = state.routeDurationBand ?? '';
+    this.filterEventFromDate = state.eventFromDate ?? '';
+    this.filterEventToDate = state.eventToDate ?? '';
     // Vrati zapamćeni content type ako postoji
     if (state.activeContentType) {
       this.mapFilterContentType = state.activeContentType;
@@ -2111,6 +2145,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.filterOpenNow && !this.isLocationOpen(loc)) return false;
     if (this.filterDestinationCountries.length > 0 && !this.filterDestinationCountries.includes(loc.country || '')) return false;
     if (this.filterDestinationRegions.length > 0 && !this.filterDestinationRegions.includes(loc.regionName || '')) return false;
+    if (!this.locationPassesEventDateFilter(loc)) return false;
 
     if (this.filterRadius > 0 && this.userPosition) {
       const coordinates = this.getLocationCoordinates(loc);
@@ -2124,6 +2159,49 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return true;
+  }
+
+  private locationPassesEventDateFilter(loc: MapLocation): boolean {
+    if (!this.filterEventFromDate && !this.filterEventToDate) return true;
+    if ((loc.postType || loc.category || '').toLowerCase() !== 'event') return true;
+
+    const range = this.getLocationEventRange(loc);
+    if (!range.start && !range.end) return true;
+
+    const filterStart = this.parseDateOnly(this.filterEventFromDate);
+    const filterEnd = this.parseDateOnly(this.filterEventToDate, true);
+    const eventStart = range.start ?? range.end;
+    const eventEnd = range.end ?? range.start;
+
+    if (filterStart && eventEnd && eventEnd < filterStart) return false;
+    if (filterEnd && eventStart && eventStart > filterEnd) return false;
+    return true;
+  }
+
+  private getLocationEventRange(loc: MapLocation): { start: Date | null; end: Date | null } {
+    const raw = (loc as any).details;
+    if (!raw) return { start: null, end: null };
+
+    try {
+      const details = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const startRaw = details?.eventStart ?? details?.startAt;
+      const endRaw = details?.eventEnd ?? details?.endAt;
+      const start = startRaw ? new Date(startRaw) : null;
+      const end = endRaw ? new Date(endRaw) : null;
+      return {
+        start: start && !isNaN(start.getTime()) ? start : null,
+        end: end && !isNaN(end.getTime()) ? end : null,
+      };
+    } catch {
+      return { start: null, end: null };
+    }
+  }
+
+  private parseDateOnly(value: string, endOfDay = false): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2], endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
   }
 
   private locationPassesActivityContent(loc: MapLocation): boolean {
@@ -2145,38 +2223,159 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyMarkerFilter(): void {
+    if (!this.map) return;
+
+    const visiblePins: VisiblePin[] = [];
+    const renderBounds = this.map.getBounds().pad(0.35);
+
     this.markers.forEach(({ loc, marker }) => {
+      const latLng = marker.getLatLng();
+
       // During navigation: only show pins that are part of the route
       if (this.isNavigating) {
         const isRouteStop = this.plannerStops.some(stop => stop.id === loc.id);
-        if (isRouteStop) {
-          if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
-        } else if (this.map!.hasLayer(marker)) {
-          this.map!.removeLayer(marker);
+        if (isRouteStop && renderBounds.contains(latLng)) {
+          visiblePins.push({ kind: 'location', id: loc.id, loc, marker, latLng });
         }
         return;
       }
-      const visible = this.passesFilters(loc);
-      if (visible) {
-        if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
-      } else if (this.map!.hasLayer(marker)) {
-        this.map!.removeLayer(marker);
+
+      if (this.passesFilters(loc) && renderBounds.contains(latLng)) {
+        visiblePins.push({ kind: 'location', id: loc.id, loc, marker, latLng });
       }
     });
 
     const selectedKeys = this.categories.filter(c => c.active).map(c => c.key);
     this.routeMarkers.forEach(({ route, marker }) => {
+      const latLng = marker.getLatLng();
       const visible = !this.isNavigating
         && (this.mapFilterContentType === 'routes' || (this.hasAnyCategorySelected && selectedKeys.includes('route')))
         && this.routePassesRadiusFilter(route)
-        && this.routeMatchesExploreFilters(route);
+        && this.routeMatchesExploreFilters(route)
+        && renderBounds.contains(latLng);
 
       if (visible) {
-        if (!this.map!.hasLayer(marker)) marker.addTo(this.map!);
-      } else if (this.map!.hasLayer(marker)) {
-        this.map!.removeLayer(marker);
+        visiblePins.push({ kind: 'route', id: route.id, route, marker, latLng });
       }
     });
+
+    this.renderVisiblePins(visiblePins);
+  }
+
+  private renderVisiblePins(pins: VisiblePin[]): void {
+    if (!this.map) return;
+
+    this.clearRenderedPinLayers();
+
+    const zoom = this.map.getZoom();
+    const shouldCluster = !this.isNavigating && !this.plannerMode && zoom < this.markerClusterMaxZoom;
+    if (!shouldCluster) {
+      pins.forEach(pin => pin.marker.addTo(this.map!));
+      return;
+    }
+
+    const forcedPins = pins.filter(pin => this.shouldRenderPinIndividually(pin));
+    const clusteredPins = pins.filter(pin => !this.shouldRenderPinIndividually(pin));
+    forcedPins.forEach(pin => pin.marker.addTo(this.map!));
+
+    const gridSize = this.getClusterGridSize(zoom);
+    const buckets = new Map<string, VisiblePin[]>();
+
+    clusteredPins.forEach(pin => {
+      const point = this.map!.project(pin.latLng, zoom);
+      const key = `${Math.floor(point.x / gridSize)}:${Math.floor(point.y / gridSize)}`;
+      const bucket = buckets.get(key) ?? [];
+      bucket.push(pin);
+      buckets.set(key, bucket);
+    });
+
+    buckets.forEach(bucketPins => {
+      if (bucketPins.length === 1) {
+        bucketPins[0].marker.addTo(this.map!);
+        return;
+      }
+
+      const clusterMarker = this.createClusterMarker(bucketPins);
+      this.markerClusterMarkers.push(clusterMarker);
+      clusterMarker.addTo(this.map!);
+    });
+  }
+
+  private clearRenderedPinLayers(): void {
+    this.markerClusterMarkers.forEach(marker => {
+      if (this.map?.hasLayer(marker)) this.map.removeLayer(marker);
+    });
+    this.markerClusterMarkers = [];
+
+    this.markers.forEach(({ marker }) => {
+      if (this.map?.hasLayer(marker)) this.map.removeLayer(marker);
+    });
+    this.routeMarkers.forEach(({ marker }) => {
+      if (this.map?.hasLayer(marker)) this.map.removeLayer(marker);
+    });
+  }
+
+  private shouldRenderPinIndividually(pin: VisiblePin): boolean {
+    if (pin.kind === 'location') {
+      return this.selectedLocation?.id === pin.id || this.plannerStops.some(stop => stop.id === pin.id);
+    }
+    return this.selectedPublicRoute?.id === pin.id;
+  }
+
+  private getClusterGridSize(zoom: number): number {
+    if (zoom <= 9) return 96;
+    if (zoom <= 11) return 82;
+    if (zoom <= 13) return 66;
+    return 52;
+  }
+
+  private createClusterMarker(pins: VisiblePin[]): L.Marker {
+    const bounds = L.latLngBounds(pins.map(pin => pin.latLng));
+    const dominantCategory = this.getDominantClusterCategory(pins);
+    const marker = L.marker(bounds.getCenter(), {
+      icon: L.divIcon({
+        html: this.getClusterHtml(pins.length, dominantCategory),
+        className: 'map-pin-cluster',
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+      }),
+      zIndexOffset: 450,
+    });
+
+    marker.on('click', (event: L.LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(event as unknown as Event);
+      this.dismissSearchMenu();
+      const nextZoom = Math.min((this.map?.getZoom() ?? 10) + 2, this.markerClusterMaxZoom);
+      this.map?.fitBounds(bounds, { padding: [72, 72], maxZoom: nextZoom, animate: true });
+    });
+
+    return marker;
+  }
+
+  private getDominantClusterCategory(pins: VisiblePin[]): string {
+    const counts = new Map<string, number>();
+    pins.forEach(pin => {
+      const category = this.getPinCategory(pin);
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'other';
+  }
+
+  private getPinCategory(pin: VisiblePin): string {
+    if (pin.kind === 'route') return 'route';
+    return pin.loc.postType || pin.loc.category || 'other';
+  }
+
+  private getClusterHtml(count: number, category: string): string {
+    const key = category.toLowerCase().replace(/\s+/g, '_');
+    const categoryStyle = this.categoryColors[key] || this.categoryColors['other'];
+    const label = count > 99 ? '99+' : String(count);
+
+    return `<div class="map-pin-cluster-bubble" style="--cluster-color:${categoryStyle.bg};">
+      <span>${label}</span>
+    </div>`;
   }
 
   private routePassesRadiusFilter(route: TouristRouteItem): boolean {
@@ -2192,6 +2391,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private routeMatchesExploreFilters(route: TouristRouteItem): boolean {
     if (this.filterRouteDifficulties.length > 0 && !this.filterRouteDifficulties.includes(route.difficulty || '')) {
+      return false;
+    }
+    if (this.filterRouteCountries.length > 0 && !this.filterRouteCountries.includes(route.countryName || '')) {
       return false;
     }
     if (this.filterRouteRegions.length > 0 && !this.filterRouteRegions.includes(route.regionName || '')) {
@@ -2260,6 +2462,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.isNavigating && !this.navFollowMode) {
         this.scheduleNavRefollow();
       }
+    });
+
+    this.map.on('zoomend moveend', () => {
+      this.applyMarkerFilter();
     });
 
   }
@@ -2498,9 +2704,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private addMarkers(): void {
-    this.markers.forEach(({ marker }) => {
-      if (this.map!.hasLayer(marker)) this.map!.removeLayer(marker);
-    });
+    this.clearRenderedPinLayers();
     this.markers = [];
 
     this.locationsList.forEach(loc => {
@@ -2516,7 +2720,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         popupAnchor: [0, -36]
       });
 
-      const marker = L.marker([coordinates.lat, coordinates.lng], { icon }).addTo(this.map!);
+      const marker = L.marker([coordinates.lat, coordinates.lng], { icon });
       this.markers.push({ loc, marker });
 
       marker.on('click', (event: L.LeafletMouseEvent) => {
@@ -2545,9 +2749,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private addRouteMarkers(): void {
     if (!this.map) return;
 
-    this.routeMarkers.forEach(({ marker }) => {
-      if (this.map!.hasLayer(marker)) this.map!.removeLayer(marker);
-    });
+    this.clearRenderedPinLayers();
     this.routeMarkers = [];
 
     this.publicRoutes.forEach(route => {
@@ -2562,7 +2764,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         popupAnchor: [0, -36],
       });
 
-      const marker = L.marker([waypoint.lat, waypoint.lng], { icon }).addTo(this.map!);
+      const marker = L.marker([waypoint.lat, waypoint.lng], { icon });
       marker.on('click', (event: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(event as unknown as Event);
         this.dismissSearchMenu();

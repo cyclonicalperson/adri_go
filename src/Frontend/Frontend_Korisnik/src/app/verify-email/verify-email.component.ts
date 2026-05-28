@@ -20,10 +20,10 @@ import { AuthService } from '../services/auth.service';
           <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:#22c55e;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
         </div>
         <h1 class="verify-title" style="font-size:24px;font-weight:800;color:#0f172a;margin:0 0 12px;">Email Verified!</h1>
-        <p class="verify-copy" style="font-size:15px;color:#64748b;line-height:1.6;margin-bottom:28px;">Your email address has been confirmed. You can now log in to your account.</p>
-        <button (click)="goToLogin()"
+        <p class="verify-copy" style="font-size:15px;color:#64748b;line-height:1.6;margin-bottom:28px;">{{ successCopy }}</p>
+        <button (click)="goToDestination()"
           style="background:#22c55e;color:#fff;border:none;padding:14px 32px;border-radius:100px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(34,197,94,0.35);">
-          Go to Login
+          {{ successButtonLabel }}
         </button>
       </div>
 
@@ -33,9 +33,9 @@ import { AuthService } from '../services/auth.service';
         </div>
         <h1 class="verify-title" style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 12px;">Already Verified</h1>
         <p class="verify-copy" style="font-size:15px;color:#64748b;line-height:1.6;margin-bottom:28px;">This email address has already been confirmed. You can log in now.</p>
-        <button (click)="goToLogin()"
+        <button (click)="goToDestination()"
           style="background:#3b82f6;color:#fff;border:none;padding:14px 32px;border-radius:100px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">
-          Go to Login
+          {{ successButtonLabel }}
         </button>
       </div>
 
@@ -51,9 +51,9 @@ import { AuthService } from '../services/auth.service';
             ? 'This verification link has expired. Please request a new one.'
             : 'This verification link is not valid. Please register again or contact support.' }}
         </p>
-        <button (click)="goToLogin()"
+        <button (click)="goToDestination()"
           style="background:#0f172a;color:#fff;border:none;padding:14px 32px;border-radius:100px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">
-          Back to Login
+          {{ successButtonLabel }}
         </button>
       </div>
 
@@ -86,6 +86,7 @@ import { AuthService } from '../services/auth.service';
 export class VerifyEmailComponent implements OnInit, OnDestroy {
   state: 'loading' | 'success' | 'already' | 'error' = 'loading';
   isExpired = false;
+  isEmailChange = false;
   private redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -98,6 +99,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token');
     const lang = this.route.snapshot.queryParamMap.get('lang');
+    this.isEmailChange = this.route.snapshot.queryParamMap.get('purpose') === 'email-change';
     if (lang) {
       localStorage.setItem('adrigo_user_language', lang);
       localStorage.setItem('site_language', lang);
@@ -109,9 +111,13 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
     this.authService.verifyEmail(token).subscribe({
       next: res => {
+        this.isEmailChange = !!res?.emailChange || this.isEmailChange;
+        if (this.isEmailChange && res?.email) {
+          this.authService.updateCurrentTourist({ email: res.email, isEmailVerified: true });
+        }
         this.state = res?.alreadyVerified ? 'already' : 'success';
         this.cdr.detectChanges();
-        this.redirectTimer = setTimeout(() => this.goToLogin(), 1800);
+        this.redirectTimer = setTimeout(() => this.goToDestination(), 1800);
       },
       error: err => {
         this.isExpired = err?.error?.expired === true;
@@ -127,7 +133,17 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
     }
   }
 
-  goToLogin(): void {
-    this.router.navigate(['/login']);
+  get successCopy(): string {
+    return this.isEmailChange
+      ? 'Your new email address has been confirmed. You can return to your account settings.'
+      : 'Your email address has been confirmed. You can now log in to your account.';
+  }
+
+  get successButtonLabel(): string {
+    return this.isEmailChange ? 'Go to Account' : 'Go to Login';
+  }
+
+  goToDestination(): void {
+    this.router.navigate([this.isEmailChange ? '/account' : '/login']);
   }
 }

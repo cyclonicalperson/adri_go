@@ -581,6 +581,21 @@
           </div>
         </div>
 
+        <div class="filter-group" *ngIf="routeCountryOptions.length > 0">
+          <h3>Country</h3>
+          <div class="filter-chip-grid">
+            <button
+              type="button"
+              class="filter-chip"
+              *ngFor="let country of routeCountryOptions"
+              [class.active]="routeFilters.countries.includes(country)"
+              [style.--filter-color]="getStableFilterColor(country)"
+              (click)="toggleRouteFilter('countries', country)">
+              {{ country }}
+            </button>
+          </div>
+        </div>
+
         <div class="filter-group" *ngIf="routeRegionOptions.length > 0">
           <h3>Region</h3>
           <div class="filter-chip-grid">

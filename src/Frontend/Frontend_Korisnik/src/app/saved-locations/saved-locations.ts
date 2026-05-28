@@ -9,11 +9,12 @@ import { TouristPreferencesService } from '../services/tourist-preferences.servi
 import { formatPostType } from '../utils/post-type.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 
 @Component({
   selector: 'app-saved-locations',
   standalone: true,
-  imports: [CommonModule, AppHeaderComponent, AuthRequiredModalComponent],
+  imports: [CommonModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent],
   templateUrl: './saved-locations.html',
   styleUrls: ['./saved-locations.css']
 })

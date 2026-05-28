@@ -46,10 +46,12 @@
   border: 1px solid var(--gray-100);
   border-radius: 16px;
   padding: 12px;
+  min-width: 0;
 }
 
 .detour-copy {
   flex: 1;
+  min-width: 0;
 }
 
 .detour-copy p {
@@ -89,6 +91,26 @@
   font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
+  max-width: 104px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 520px) {
+  .detours-panel {
+    max-width: calc(100vw - 28px);
+  }
+
+  .detour-card {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .detour-add-btn {
+    width: 76px;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
 }
 
 :host-context(html[data-theme='dark']) .detours-panel {

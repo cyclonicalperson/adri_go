@@ -85,7 +85,7 @@ section ul {
 section li { margin-bottom: 4px; }
 
 @media (min-width: 900px) {
-  .doc-container { max-width: 760px; margin: 0 auto; background: #fff; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
+  .doc-container { max-width: none; margin: 0; background: var(--gray-50, #f8fafc); box-shadow: none; }
 }
 
 :host-context(html[data-theme='dark']) .doc-container {
@@ -126,7 +126,7 @@ section li { margin-bottom: 4px; }
 
 @media (min-width: 900px) {
   :host-context(html[data-theme='dark']) .doc-container {
-    background: #111827;
+    background: #0f172a;
     box-shadow: none;
   }
 }

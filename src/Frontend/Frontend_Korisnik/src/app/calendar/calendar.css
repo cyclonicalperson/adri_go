@@ -75,7 +75,7 @@
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 14px 24px 20px;
+  padding: 14px 24px 88px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1509,10 +1509,25 @@
   color: #f8fafc;
 }
 
+@media (min-width: 900px) {
+  .calendar-scroll {
+    padding-bottom: 20px;
+  }
+}
+
+:host-context(html[data-theme='dark']) .time-picker-day,
+:host-context(html[data-theme='dark']) .time-picker-label {
+  color: #cbd5e1;
+}
+
 :host-context(html[data-theme='dark']) .time-picker-input {
   background: #111827;
   border-color: #334155;
   color: #f1f5f9;
+}
+
+:host-context(html[data-theme='dark']) .time-picker-error {
+  color: #fca5a5;
 }
 
 :host-context(html[data-theme='dark']) .time-picker-cancel {

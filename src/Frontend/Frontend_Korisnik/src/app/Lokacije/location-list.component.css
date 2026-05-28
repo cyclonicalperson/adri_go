@@ -178,11 +178,15 @@
 .search-input::placeholder { color: var(--gray-400); }
 
 .search-clear-btn {
-  background: none;
+  background: transparent !important;
   border: none;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
 }
