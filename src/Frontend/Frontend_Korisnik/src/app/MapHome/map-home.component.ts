@@ -1218,7 +1218,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
 
-        this.scenicSuggestions = [];
+        const lastStop = this.plannerStops[this.plannerStops.length - 1];
+        this.scenicSuggestions = lastStop
+          ? this.buildNearbyStopSuggestions(lastStop).slice(0, 4)
+          : [];
         this.routeIsRoutable = false;
         this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
         this.plannerMessage = this.getRouteProblemMessage();
@@ -2263,11 +2266,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    const selectedKeys = this.categories.filter(c => c.active).map(c => c.key);
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
       const visible = !this.isNavigating
-        && (this.mapFilterContentType === 'routes' || (this.hasAnyCategorySelected && selectedKeys.includes('route')))
         && this.routePassesRadiusFilter(route)
         && this.routeMatchesExploreFilters(route)
         && renderBounds.contains(latLng);

@@ -111,6 +111,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
   showAuthModal = false;
   hasReviewed = false;
   myReviewStatus: string | null = null;
+  private toastTimerIds: ReturnType<typeof setTimeout>[] = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -301,7 +302,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
             this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
           }
           this.likeMessage = 'Like removed';
-          setTimeout(() => (this.likeMessage = ''), 3000);
+          this.clearToastAfter('likeMessage');
           this.cdr.markForCheck();
         },
         error: (err) => console.error('unlike error:', err)
@@ -314,7 +315,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
             this.location.likeCount = (this.location.likeCount || 0) + 1;
           }
           this.likeMessage = '❤️ Liked!';
-          setTimeout(() => (this.likeMessage = ''), 3000);
+          this.clearToastAfter('likeMessage');
           this.cdr.markForCheck();
         },
         error: (err) => console.error('like error:', err)
@@ -341,7 +342,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       }
     }
     this.openAuthModal();
-    setTimeout(() => (this.likeMessage = ''), 3000);
+    this.clearToastAfter('likeMessage');
     this.cdr.markForCheck();
   }
 
@@ -366,7 +367,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
           }
         }
         this.saveMessage = res.isSaved ? '🔖 Saved!' : 'Removed from saved';
-        setTimeout(() => (this.saveMessage = ''), 3000);
+        this.clearToastAfter('saveMessage');
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -398,7 +399,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       }
     }
     this.openAuthModal();
-    setTimeout(() => (this.saveMessage = ''), 3000);
+    this.clearToastAfter('saveMessage');
     this.cdr.markForCheck();
   }
 
@@ -513,10 +514,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         this.reviewSuccess  = status === 'APPROVED'
           ? 'Review submitted!'
           : 'Review submitted for moderation.';
-        setTimeout(() => {
-          this.reviewSuccess = '';
-          this.cdr.markForCheck();
-        }, 3000);
+        this.clearToastAfter('reviewSuccess');
         this.hasReviewed    = true;
         this.myReviewStatus = status || 'PENDING';
         this.newRating      = 5;
@@ -628,7 +626,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     } else {
       navigator.clipboard.writeText(url).then(() => {
         this.saveMessage = '🔗 Link copied to clipboard!';
-        setTimeout(() => (this.saveMessage = ''), 3000);
+        this.clearToastAfter('saveMessage');
         this.cdr.markForCheck();
       }).catch(() => {
         // Last resort: prompt
@@ -650,7 +648,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     }
     if (this.eventHasPassed) {
       this.calendarMessage = 'This event has already ended.';
-      setTimeout(() => { this.calendarMessage = ''; this.cdr.markForCheck(); }, 3000);
+      this.clearToastAfter('calendarMessage');
       return;
     }
 
@@ -672,6 +670,8 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
 
   ngOnDestroy(): void {
     this.setBodyScrollLock(false);
+    this.toastTimerIds.forEach(timerId => clearTimeout(timerId));
+    this.toastTimerIds = [];
     if (this.detailMap) {
       this.detailMap.remove();
       this.detailMap = null;
@@ -679,6 +679,14 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     if (this.lightboxOpen) {
       document.body.style.overflow = '';
     }
+  }
+
+  private clearToastAfter(field: 'likeMessage' | 'saveMessage' | 'calendarMessage' | 'reviewSuccess', delayMs = 3000): void {
+    const timerId = setTimeout(() => {
+      this[field] = '';
+      this.cdr.detectChanges();
+    }, delayMs);
+    this.toastTimerIds.push(timerId);
   }
 
   private setBodyScrollLock(locked: boolean): void {

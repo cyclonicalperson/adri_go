@@ -19,6 +19,7 @@ import { formatPostType } from '../utils/post-type.utils';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
+import { WORLD_COUNTRIES } from '../shared/data/world-countries';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
@@ -233,11 +234,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get routeCountryOptions(): string[] {
-    return this.uniqueSorted(this.allRoutes.map(item => item.countryName || '').filter(Boolean));
+    return [...WORLD_COUNTRIES];
   }
 
   get routeRegionOptions(): string[] {
-    return this.uniqueSorted(this.allRoutes.map(item => item.regionName || '').filter(Boolean));
+    return this.uniqueSorted(this.destinationRegionItems.map(item => item.name));
   }
 
   get filteredRouteRegionOptions(): string[] {
@@ -247,10 +248,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     const selectedCountries = new Set(this.routeFilters.countries);
     return this.uniqueSorted(
-      this.allRoutes
-        .filter(item => selectedCountries.has(item.countryName || ''))
-        .map(item => item.regionName || '')
-        .filter(Boolean)
+      this.destinationRegionItems
+        .filter(item => selectedCountries.has(item.country))
+        .map(item => item.name)
     );
   }
 

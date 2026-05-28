@@ -432,7 +432,7 @@ input:checked + .slider:before { transform: translateX(21px); }
   box-shadow: 0 4px 14px rgba(34,197,94,0.28);
   font-family: inherit;
   transition: background 0.2s;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
 }
 .apply-btn:hover { background: var(--green-600); }
 

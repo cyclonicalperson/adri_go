@@ -102,7 +102,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   activityCategoryOptions: string[] = [];
   activityDifficultyOptions: string[] = [];
   routeDifficultyOptions: string[] = [];
-  routeCountryOptions: string[] = [];
+  routeCountryOptions: string[] = [...WORLD_COUNTRIES];
   routeRegionOptions: string[] = [];
   activityFilters = {
     categories: [] as string[],
@@ -130,10 +130,6 @@ export class FiltersComponent implements OnInit, OnChanges {
   private static activityCategoryCache: string[] | null = null;
   private static activityDifficultyCache: string[] | null = null;
   private static routeDifficultyCache: string[] | null = null;
-  private static routeCountryCache: string[] | null = null;
-  private static routeRegionCache: string[] | null = null;
-  private static routeRegionItemCache: Array<{ country: string; region: string }> | null = null;
-  private cachedRouteRegionItems: Array<{ country: string; region: string }> = [];
   private contentFilterOptionsRequested = false;
 
   constructor(
@@ -424,9 +420,9 @@ export class FiltersComponent implements OnInit, OnChanges {
 
     const selectedCountries = new Set(this.routeFilters.countries);
     return this.uniqueSorted(
-      this.cachedRouteRegionItems
+      this.destinationRegionItems
         .filter(item => selectedCountries.has(item.country))
-        .map(item => item.region)
+        .map(item => item.name)
     );
   }
 
@@ -496,9 +492,7 @@ export class FiltersComponent implements OnInit, OnChanges {
 
     if (FiltersComponent.routeDifficultyCache) {
       this.routeDifficultyOptions = [...FiltersComponent.routeDifficultyCache];
-      this.routeCountryOptions = [...(FiltersComponent.routeCountryCache ?? [])];
-      this.routeRegionOptions = [...(FiltersComponent.routeRegionCache ?? [])];
-      this.cachedRouteRegionItems = [...(FiltersComponent.routeRegionItemCache ?? [])];
+      this.syncRouteLocationOptionsWithDestinations();
     }
 
     if (
@@ -531,21 +525,12 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.routesService.getRoutes().subscribe({
       next: routes => {
         this.routeDifficultyOptions = this.uniqueSorted(routes.map(item => item.difficulty || '').filter(Boolean));
-        this.routeCountryOptions = this.uniqueSorted(routes.map(item => item.countryName || '').filter(Boolean));
-        this.routeRegionOptions = this.uniqueSorted(routes.map(item => item.regionName || '').filter(Boolean));
-        this.cachedRouteRegionItems = routes
-          .map(item => ({ country: item.countryName || '', region: item.regionName || '' }))
-          .filter(item => item.country && item.region);
         FiltersComponent.routeDifficultyCache = [...this.routeDifficultyOptions];
-        FiltersComponent.routeCountryCache = [...this.routeCountryOptions];
-        FiltersComponent.routeRegionCache = [...this.routeRegionOptions];
-        FiltersComponent.routeRegionItemCache = [...this.cachedRouteRegionItems];
+        this.syncRouteLocationOptionsWithDestinations();
       },
       error: () => {
         this.routeDifficultyOptions = [...(FiltersComponent.routeDifficultyCache ?? this.routeDifficultyOptions)];
-        this.routeCountryOptions = [...(FiltersComponent.routeCountryCache ?? this.routeCountryOptions)];
-        this.routeRegionOptions = [...(FiltersComponent.routeRegionCache ?? this.routeRegionOptions)];
-        this.cachedRouteRegionItems = [...(FiltersComponent.routeRegionItemCache ?? this.cachedRouteRegionItems)];
+        this.syncRouteLocationOptionsWithDestinations();
         this.contentFilterOptionsRequested = false;
       },
     });
@@ -608,9 +593,17 @@ export class FiltersComponent implements OnInit, OnChanges {
   private applyDestinationRegionItems(items: DestinationRegionOption[]): void {
     this.destinationRegionItems = this.normalizeRegionItems(items);
     this.destinationRegionOptions = this.uniqueSorted(this.destinationRegionItems.map(item => item.name));
+    this.syncRouteLocationOptionsWithDestinations();
     const availableRegions = new Set(this.filteredDestinationRegionOptions);
     this.destinationFilters.regions = this.destinationFilters.regions.filter(region => availableRegions.has(region));
     this.destinationRegionsLoading = false;
+  }
+
+  private syncRouteLocationOptionsWithDestinations(): void {
+    this.routeCountryOptions = [...this.destinationCountryOptions];
+    this.routeRegionOptions = [...this.destinationRegionOptions];
+    const availableRegions = new Set(this.filteredRouteRegionOptions);
+    this.routeFilters.regions = this.routeFilters.regions.filter(region => availableRegions.has(region));
   }
 
   private normalizeRegionItems(items: Array<{ name?: string | null; country?: string | null }>): DestinationRegionOption[] {

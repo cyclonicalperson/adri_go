@@ -5,6 +5,7 @@
 .detours-panel {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 14px;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -12,18 +13,19 @@
   padding: 18px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
   pointer-events: auto;
+  text-align: center;
 }
 
 .panel-heading {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
 }
 
 .panel-heading h3 {
   margin: 4px 0 0;
-  max-width: 260px;
+  max-width: 300px;
   font-size: 16px;
   font-weight: 800;
   color: var(--gray-900);
@@ -66,6 +68,7 @@
 .detour-copy {
   flex: 1;
   min-width: 0;
+  text-align: left;
 }
 
 .detour-copy p {
@@ -114,9 +117,7 @@
   font-weight: 800;
   white-space: nowrap;
   flex-shrink: 0;
-  max-width: 116px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 62px;
 }
 
 @media (max-width: 520px) {
@@ -133,7 +134,7 @@
   }
 
   .detour-add-btn {
-    width: 82px;
+    width: 62px;
     padding: 10px 8px;
     font-size: 12px;
   }
