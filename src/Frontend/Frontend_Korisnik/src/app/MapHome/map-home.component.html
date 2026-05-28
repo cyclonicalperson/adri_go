@@ -259,7 +259,7 @@
       </app-route-detours-panel>
 
       <app-map-recommendations-panel
-        *ngIf="!isRenderingRoute"
+        *ngIf="!showRoutePanel && !isRenderingRoute"
         [recommendationCards]="recommendationCards"
         [hasPersonalizedRecommendations]="hasPersonalizedRecommendations"
         [activeRecommendationTab]="activeRecommendationTab"
