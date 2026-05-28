@@ -183,10 +183,10 @@
       </div>
 
       <!-- Feedback toasts -->
-      <div *ngIf="likeMessage"      style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ likeMessage }}</div>
-      <div *ngIf="saveMessage"      style="background:#eff6ff;color:#1d4ed8;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ saveMessage }}</div>
-      <div *ngIf="calendarMessage"  style="background:#fdf4ff;color:#7e22ce;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ calendarMessage }}</div>
-      <div *ngIf="reviewSuccess"    style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ reviewSuccess }}</div>
+      <div *ngIf="likeMessage" class="detail-toast toast-success">{{ likeMessage }}</div>
+      <div *ngIf="saveMessage" class="detail-toast toast-info">{{ saveMessage }}</div>
+      <div *ngIf="calendarMessage" class="detail-toast toast-calendar">{{ calendarMessage }}</div>
+      <div *ngIf="reviewSuccess" class="detail-toast toast-success">{{ reviewSuccess }}</div>
 
       <div class="section-divider"></div>
 

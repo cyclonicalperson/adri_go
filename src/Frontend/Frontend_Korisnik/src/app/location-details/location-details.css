@@ -602,6 +602,54 @@
 
 .review-text { font-size: 13px; color: var(--gray-600); line-height: 1.55; margin: 0; font-style: italic; }
 
+.detail-toast {
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.toast-success {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.toast-info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.toast-calendar {
+  background: #fdf4ff;
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+:host-context(html[data-theme='dark']) .detail-toast {
+  background: #111827;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+:host-context(html[data-theme='dark']) .toast-success {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+:host-context(html[data-theme='dark']) .toast-info {
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+:host-context(html[data-theme='dark']) .toast-calendar {
+  color: #d8b4fe;
+  border-color: rgba(168, 85, 247, 0.35);
+}
+
 /* ── NEARBY ──────────────────────────────────────────────────── */
 .nearby-section { margin-top: 28px; }
 .nearby-section h3 { font-size: 17px; font-weight: 800; color: var(--gray-900); margin-bottom: 14px; }

@@ -24,6 +24,8 @@ export class ReviewsListComponent implements OnInit {
   loading = true;
   moderateTarget: Review | null = null;
   deleteTarget: Review | null = null;
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private loadSequence = 0;
 
   pendingCount = 0;
   approvedCount = 0;
@@ -48,15 +50,20 @@ export class ReviewsListComponent implements OnInit {
   ngOnInit(): void { this.load(); this.loadCounts(); this.loadTotalAll(); }
 
   load(): void {
+    const sequence = ++this.loadSequence;
     this.loading = true;
     this.service.getAll(this.req).subscribe({
       next: res => {
+        if (sequence !== this.loadSequence) return;
         this.reviews = res.data;
         this.total = res.total;
         this.totalPages = res.totalPages;
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: () => {
+        if (sequence !== this.loadSequence) return;
+        this.loading = false;
+      },
     });
   }
 
@@ -74,7 +81,16 @@ export class ReviewsListComponent implements OnInit {
   }
 
   onSearch(q: string): void {
-    this.req = { ...this.req, search: q, page: 1 }; this.load();
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+
+    const search = q.trim();
+    this.req = { ...this.req, search: search || undefined, page: 1 };
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = null;
+      this.load();
+    }, 250);
   }
 
   onStatusChange(s: string): void {

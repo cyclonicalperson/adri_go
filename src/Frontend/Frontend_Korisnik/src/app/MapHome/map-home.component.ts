@@ -921,12 +921,30 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
     this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex);
+    this.scenicSuggestions = this.scenicSuggestions.filter(item => item.location.id !== suggestion.location.id);
+    this.replenishScenicSuggestions();
     this.optimizeRouteSilently();
     this.analytics.track('planner_detour_applied', {
       postId: suggestion.location.id,
       postType: suggestion.location.postType,
       distanceToRouteKm: suggestion.distanceToRouteKm,
     });
+  }
+
+  openDetourDetails(suggestion: RouteDetourSuggestion): void {
+    this.router.navigate(['/location-details', suggestion.location.id], {
+      state: { returnTo: 'map-home', fromDetourIdeas: true },
+    });
+  }
+
+  private replenishScenicSuggestions(): void {
+    if (!this.scenicMode || this.plannerStops.length === 0) return;
+    if (this.scenicSuggestions.length >= 3) return;
+
+    const existingIds = new Set(this.scenicSuggestions.map(item => item.location.id));
+    const fallback = this.buildNearbyStopSuggestions(this.plannerStops[this.plannerStops.length - 1])
+      .filter(item => !existingIds.has(item.location.id));
+    this.scenicSuggestions = [...this.scenicSuggestions, ...fallback].slice(0, 4);
   }
 
   private optimizeRouteSilently(): void {

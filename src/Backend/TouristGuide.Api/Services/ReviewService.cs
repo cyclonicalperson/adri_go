@@ -53,7 +53,6 @@ namespace TouristGuide.Api.Services
 
             return await query
                 .OrderByDescending(r => r.CreatedAt)
-                .Take(500)  // Limit za performanse — frontend radi client-side pagination
                 .Select(r => new AdminReviewListItemDto
                 {
                     ReviewId = r.Id,
@@ -122,7 +121,7 @@ namespace TouristGuide.Api.Services
 
             // AI moderacija — određuje početni status recenzije
             var moderation = await _moderation.ModerateAsync(normalizedComment);
-            var initialStatus = moderation.IsSafe ? ApprovedReviewStatus : RejectedReviewStatus;
+            var initialStatus = moderation.IsSafe ? ApprovedReviewStatus : PendingReviewStatus;
             var isApproved = moderation.IsSafe;
 
             if (existingReview is not null)
@@ -204,7 +203,7 @@ namespace TouristGuide.Api.Services
                         postId    = post.Id,
                         postTitle = post.Title,
                         flagReason = reason,
-                        url       = "/reviews?status=PENDING"
+                        url       = "/admin/reviews?status=PENDING"
                     });
             }
             catch (Exception ex)

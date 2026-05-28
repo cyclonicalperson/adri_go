@@ -321,7 +321,7 @@
 /* ── FEEDBACK / STATUS ───────────────────────────────────────── */
 .feedback-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   background: var(--gray-900);
@@ -564,6 +564,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  flex: 1 0 100%;
   color: #92400e;
   background: #fffbeb;
   border: 1px solid #fde68a;
@@ -799,7 +801,16 @@
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   font-family: var(--font-sans);
-  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  white-space: normal;
+  text-align: center;
+}
+
+:host-context(html[data-theme='dark']) .feedback-toast {
+  background: #020617;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
 }
 .see-all-btn:hover { background: var(--green-50); border-color: var(--green-500); }
 .see-all-btn svg { width: 14px; height: 14px; fill: var(--green-600); }
@@ -1167,6 +1178,24 @@
   gap: 8px;
 }
 
+.filter-dropdown {
+  width: 100%;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--gray-800);
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+}
+
+.filter-dropdown:focus {
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
 .filter-chip {
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-pill);
@@ -1489,10 +1518,17 @@
 }
 
 :host-context(html[data-theme='dark']) .filter-chip,
+:host-context(html[data-theme='dark']) .filter-dropdown,
 :host-context(html[data-theme='dark']) .saved-routes-close {
   background: #1f2937;
   border-color: #334155;
   color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .search-no-results {
+  background: rgba(245, 158, 11, 0.13);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.32);
 }
 
 :host-context(html[data-theme='dark']) .filter-chip.active {
@@ -1602,7 +1638,8 @@
 
 .search-line {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -1681,6 +1718,7 @@
 .search-actions-row {
   justify-content: flex-end;
   margin-top: 0;
+  padding-top: 6px;
 }
 
 .search-line .sort-dropdown {
@@ -1691,6 +1729,9 @@
   height: 38px;
   border-radius: var(--radius-pill);
   padding: 0 17px;
+  max-width: 148px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .section-header {

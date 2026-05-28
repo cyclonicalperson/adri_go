@@ -513,6 +513,10 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         this.reviewSuccess  = status === 'APPROVED'
           ? 'Review submitted!'
           : 'Review submitted for moderation.';
+        setTimeout(() => {
+          this.reviewSuccess = '';
+          this.cdr.markForCheck();
+        }, 3000);
         this.hasReviewed    = true;
         this.myReviewStatus = status || 'PENDING';
         this.newRating      = 5;

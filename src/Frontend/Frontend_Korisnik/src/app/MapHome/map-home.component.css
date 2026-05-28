@@ -631,7 +631,8 @@
   flex-wrap: nowrap;
   gap: 6px;
   
-  max-width: 348px; /* Ograničava širinu kako bi se klipovalo na ivici sidebara */
+  width: 100%;
+  max-width: 100%;
   padding: 2px 4px 4px;
   border: none;
   box-shadow: none;

@@ -228,12 +228,30 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return this.uniqueSorted(this.allRoutes.map(item => item.difficulty || '').filter(Boolean));
   }
 
+  get selectedSortLabel(): string {
+    return this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Sort';
+  }
+
   get routeCountryOptions(): string[] {
     return this.uniqueSorted(this.allRoutes.map(item => item.countryName || '').filter(Boolean));
   }
 
   get routeRegionOptions(): string[] {
     return this.uniqueSorted(this.allRoutes.map(item => item.regionName || '').filter(Boolean));
+  }
+
+  get filteredRouteRegionOptions(): string[] {
+    if (this.routeFilters.countries.length === 0) {
+      return this.routeRegionOptions;
+    }
+
+    const selectedCountries = new Set(this.routeFilters.countries);
+    return this.uniqueSorted(
+      this.allRoutes
+        .filter(item => selectedCountries.has(item.countryName || ''))
+        .map(item => item.regionName || '')
+        .filter(Boolean)
+    );
   }
 
   get destinationRegionItems(): { name: string; country: string }[] {
@@ -603,6 +621,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   onSortChanged(): void {
+    this.ensureSortForActiveType();
     this.refreshVisibleContent();
     this.filteredLocations = this.applySort(this.filteredLocations);
     this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
@@ -975,10 +994,18 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   toggleRouteFilter(group: 'difficulties' | 'countries' | 'regions', value: string): void {
+    if (!value) return;
+
     const list = this.routeFilters[group];
     this.routeFilters[group] = list.includes(value)
       ? list.filter(item => item !== value)
       : [...list, value];
+
+    if (group === 'countries') {
+      const availableRegions = new Set(this.filteredRouteRegionOptions);
+      this.routeFilters.regions = this.routeFilters.regions.filter(region => availableRegions.has(region));
+    }
+
     this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
@@ -1080,6 +1107,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
     let hash = 0;
     for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
     return palette[Math.abs(hash) % palette.length];
+  }
+
+  selectedSummary(values: string[], fallback: string, formatter: (value: string) => string = value => value): string {
+    return values.length ? values.map(formatter).join(', ') : fallback;
   }
 
   private normalizeFilterColorKey(value: string): string {

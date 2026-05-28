@@ -250,7 +250,8 @@
 
       <app-route-detours-panel
         [scenicSuggestions]="scenicSuggestions"
-        (detourAdded)="applyDetourSuggestion($event)">
+        (detourAdded)="applyDetourSuggestion($event)"
+        (detourSelected)="openDetourDetails($event)">
       </app-route-detours-panel>
 
       <app-map-recommendations-panel

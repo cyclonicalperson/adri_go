@@ -205,6 +205,10 @@
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'notifications'">
+      <p class="sheet-copy" *ngIf="notificationPreferencesLoading">Loading notification preferences...</p>
+      <p class="sheet-copy sheet-warning" *ngIf="!notificationPreferencesLoading && notificationPreferencesError">
+        {{ notificationPreferencesError }}
+      </p>
       <div class="sheet-option" *ngFor="let pref of notificationPreferences">
         <div>
           <strong>{{ pref.label }}</strong>

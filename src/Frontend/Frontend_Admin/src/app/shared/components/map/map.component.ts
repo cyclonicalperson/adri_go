@@ -290,10 +290,10 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     const style = MapComponent.CATEGORY_COLORS[dominantCategory] ?? MapComponent.CATEGORY_COLORS['other'];
     const cluster = L.marker(bounds.getCenter(), {
       icon: L.divIcon({
-        className: 'admin-map-cluster',
-        html: `<div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${style.bg};color:white;font-weight:800;font-size:13px;border:3px solid rgba(255,255,255,.9);box-shadow:0 8px 22px rgba(15,23,42,.26);">${markers.length}</div>`,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
+        className: 'admin-map-cluster map-pin-cluster',
+        html: `<div class="map-pin-cluster-bubble" style="--cluster-color:${style.bg};"><span>${markers.length > 99 ? '99+' : markers.length}</span></div>`,
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
       }),
     });
 
