@@ -15,6 +15,7 @@ namespace TouristGuide.Api.Controllers
         private readonly AdminIdentityService _adminIdentityService;
         private readonly AdminPermissionService _permissionService;
         private readonly NotificationService _notificationService;
+        private readonly DatabaseTransactionRunner _transactionRunner;
         private const char SEP = '|';
         private const string INNER_SEP = "\u2630";
 
@@ -22,12 +23,14 @@ namespace TouristGuide.Api.Controllers
             AppDbContext context,
             AdminIdentityService adminIdentityService,
             AdminPermissionService permissionService,
-            NotificationService notificationService)
+            NotificationService notificationService,
+            DatabaseTransactionRunner transactionRunner)
         {
             _context = context;
             _adminIdentityService = adminIdentityService;
             _permissionService = permissionService;
             _notificationService = notificationService;
+            _transactionRunner = transactionRunner;
         }
 
         private static readonly Dictionary<string, string> ColorMap = new()
@@ -333,21 +336,21 @@ namespace TouristGuide.Api.Controllers
                 MaxCapacity = NormalizeCapacity(dto.MaxCapacity),
                 ActivityTags = NormalizeOptionalText(dto.Tags, 500),
             };
-            _context.Tags.Add(noviTag);
-            await _context.SaveChangesAsync();
+            await _transactionRunner.ExecuteAsync(async _ =>
+            {
+                _context.Tags.Add(noviTag);
+                await _context.SaveChangesAsync();
 
-            if (requestedPostIds is { Count: > 0 })
-            {
-                await ReplaceActivityPostsAsync(noviTag.Id, requestedPostIds);
-            }
-            else if (dto.PostId.HasValue)
-            {
-                if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
+                if (requestedPostIds is { Count: > 0 })
+                {
+                    await ReplaceActivityPostsAsync(noviTag.Id, requestedPostIds);
+                }
+                else if (dto.PostId.HasValue && await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
                 {
                     _context.PostTags.Add(new PostTag { PostId = dto.PostId.Value, TagId = noviTag.Id });
                     await _context.SaveChangesAsync();
                 }
-            }
+            });
             if (statusFlag == "pending")
             {
                 await _notificationService.BroadcastToSuperAdminsAsync(
@@ -389,7 +392,16 @@ namespace TouristGuide.Api.Controllers
             var newDiff = dto.Difficulty != null ? dto.Difficulty : existing.Difficulty;
             var newCap = dto.MaxCapacity.HasValue ? dto.MaxCapacity : existing.MaxCapacity;
             var newTags = dto.Tags != null ? dto.Tags : existing.Tags;
+            var requestedPostIdsForUpdate = dto.PostIds?.Where(postId => postId > 0).Distinct().ToList();
 
+            if (requestedPostIdsForUpdate is not null && !await CanAttachToPostsAsync(requestedPostIdsForUpdate))
+                return Forbid();
+
+            if (dto.PostId.HasValue && !await CanAttachToPostAsync(dto.PostId.Value))
+                return Forbid();
+
+            await _transactionRunner.ExecuteAsync(async _ =>
+            {
             tag.Color = EncodeColor(subcat, hex, statusFlag, null, null, null, null, null);
             tag.Description = NormalizeOptionalText(newDesc, 500);
             tag.Duration = NormalizeOptionalText(newDur, 50);
@@ -409,23 +421,17 @@ namespace TouristGuide.Api.Controllers
             }
             else if (dto.PostIds is not null)
             {
-                var postIds = dto.PostIds.Where(postId => postId > 0).Distinct().ToList();
-                if (!await CanAttachToPostsAsync(postIds))
-                    return Forbid();
-
-                await ReplaceActivityPostsAsync(id, postIds);
+                await ReplaceActivityPostsAsync(id, requestedPostIdsForUpdate!);
             }
             else if (dto.PostId.HasValue)
             {
-                if (!await CanAttachToPostAsync(dto.PostId.Value))
-                    return Forbid();
-
                 var links = await _context.PostTags.Where(pt => pt.TagId == id).ToListAsync();
                 _context.PostTags.RemoveRange(links);
                 if (await _context.Posts.AnyAsync(p => p.Id == dto.PostId.Value))
                     _context.PostTags.Add(new PostTag { PostId = dto.PostId.Value, TagId = id });
                 await _context.SaveChangesAsync();
             }
+            });
 
             if (statusFlag == "pending" && existing.Status != "pending")
             {

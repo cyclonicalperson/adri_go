@@ -21,6 +21,7 @@ namespace TouristGuide.Api.Controllers
         private readonly IReviewService _reviewService;
         private readonly AdminPermissionService _permissionService;
         private readonly NotificationService _notificationService;
+        private readonly DatabaseTransactionRunner _transactionRunner;
 
         private static readonly HashSet<string> AllowedPostTypes = new()
         {
@@ -37,12 +38,14 @@ namespace TouristGuide.Api.Controllers
             AppDbContext context,
             IReviewService reviewService,
             AdminPermissionService permissionService,
-            NotificationService notificationService)
+            NotificationService notificationService,
+            DatabaseTransactionRunner transactionRunner)
         {
             _context = context;
             _reviewService = reviewService;
             _permissionService = permissionService;
             _notificationService = notificationService;
+            _transactionRunner = transactionRunner;
         }
 
         [HttpGet]
@@ -391,43 +394,49 @@ namespace TouristGuide.Api.Controllers
             if (!await CanCreatePostAsync(postTypeLower, dto.RegionId, hasRegionProposal))
                 return Forbid();
 
-            var now = DateTime.UtcNow;
-            var resolvedRegionId = statusLower == "published" && hasRegionProposal
-                ? await ResolveRegionProposalAsync(proposedRegionName!, country)
-                : dto.RegionId;
-            var post = new Post
+            uint? resolvedRegionId = null;
+            Post post = null!;
+            await _transactionRunner.ExecuteAsync(async _ =>
             {
-                AdminId = dto.AdminId,
-                RegionId = resolvedRegionId,
-                ProposedRegionName = resolvedRegionId.HasValue ? null : proposedRegionName,
-                Country = country,
-                Title = dto.Title.Trim(),
-                PostType = postTypeLower,
-                Description = dto.Description?.Trim(),
-                Lat = dto.Lat,
-                Lng = dto.Lng,
-                Address = dto.Address?.Trim(),
-                ExternalUrl = dto.ExternalUrl?.Trim(),
-                ExternalUrlLabel = dto.ExternalUrlLabel?.Trim(),
-                Images = dto.ImagesToString(),
-                OpeningHours = dto.OpeningHoursToString(),
-                Details = dto.DetailsToString(),
-                Status = statusLower,
-                PublishedAt = statusLower == "published" ? now : null,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
+                var now = DateTime.UtcNow;
+                resolvedRegionId = statusLower == "published" && hasRegionProposal
+                    ? await ResolveRegionProposalAsync(proposedRegionName!, country)
+                    : dto.RegionId;
+                post = new Post
+                {
+                    AdminId = dto.AdminId,
+                    RegionId = resolvedRegionId,
+                    ProposedRegionName = resolvedRegionId.HasValue ? null : proposedRegionName,
+                    Country = country,
+                    Title = dto.Title.Trim(),
+                    PostType = postTypeLower,
+                    Description = dto.Description?.Trim(),
+                    Lat = dto.Lat,
+                    Lng = dto.Lng,
+                    Address = dto.Address?.Trim(),
+                    ExternalUrl = dto.ExternalUrl?.Trim(),
+                    ExternalUrlLabel = dto.ExternalUrlLabel?.Trim(),
+                    Images = dto.ImagesToString(),
+                    OpeningHours = dto.OpeningHoursToString(),
+                    Details = dto.DetailsToString(),
+                    Status = statusLower,
+                    PublishedAt = statusLower == "published" ? now : null,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
 
-            _context.Posts.Add(post);
-            await _context.SaveChangesAsync();
+                _context.Posts.Add(post);
+                await _context.SaveChangesAsync();
 
-            if (dto.TagIds is not null)
-                await ReplacePostTagsAsync(post.Id, dto.TagIds);
+                if (dto.TagIds is not null)
+                    await ReplacePostTagsAsync(post.Id, dto.TagIds);
+
+                await RecordHeatmapSampleForProposedLocationAsync(post);
+            });
 
             if (hasRegionProposal && !resolvedRegionId.HasValue)
                 await NotifyRegionProposalAsync(proposedRegionName!, post);
 
-            await RecordHeatmapSampleForProposedLocationAsync(post);
 
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
@@ -579,19 +588,21 @@ namespace TouristGuide.Api.Controllers
             }
 
             // Ažuriranje tag veza
-            if (dto.TagIds is not null)
-                await ReplacePostTagsAsync(id, dto.TagIds);
+            await _transactionRunner.ExecuteAsync(async _ =>
+            {
+                if (dto.TagIds is not null)
+                    await ReplacePostTagsAsync(id, dto.TagIds);
 
-            post.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                post.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                await RecordHeatmapSampleForProposedLocationAsync(post);
+            });
 
             if (!string.IsNullOrWhiteSpace(post.ProposedRegionName) &&
                 !string.Equals(previousProposedRegion, post.ProposedRegionName, StringComparison.OrdinalIgnoreCase))
             {
                 await NotifyRegionProposalAsync(post.ProposedRegionName, post);
             }
-
-            await RecordHeatmapSampleForProposedLocationAsync(post);
 
             await _context.Entry(post).Reference(p => p.Admin).LoadAsync();
             await _context.Entry(post).Reference(p => p.Region).LoadAsync();
@@ -629,21 +640,43 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var likeExists = await _context.PostLikes.AnyAsync(x => x.PostId == id && x.TouristId == touristId.Value);
-            if (likeExists)
-                return Ok(new { message = "Objava je vec lajkovana.", likeCount = post.LikeCount });
-
-            _context.PostLikes.Add(new PostLike
+            try
             {
-                PostId = id,
-                TouristId = touristId.Value,
-                CreatedAt = DateTime.UtcNow
-            });
+                var likeCount = await _transactionRunner.ExecuteAsync(async _ =>
+                {
+                    _context.PostLikes.Add(new PostLike
+                    {
+                        PostId = id,
+                        TouristId = touristId.Value,
+                        CreatedAt = DateTime.UtcNow
+                    });
 
-            await _context.SaveChangesAsync();
-            await RefreshLikeCount(post);
+                    await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Objava je uspesno lajkovana.", likeCount = post.LikeCount });
+                    var now = DateTime.UtcNow;
+                    await _context.Posts
+                        .Where(p => p.Id == id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(p => p.LikeCount, p => p.LikeCount + 1u)
+                            .SetProperty(p => p.UpdatedAt, now));
+
+                    return await _context.Posts
+                        .Where(p => p.Id == id)
+                        .Select(p => p.LikeCount)
+                        .FirstAsync();
+                });
+
+                return Ok(new { message = "Objava je uspesno lajkovana.", likeCount });
+            }
+            catch (DbUpdateException ex) when (DatabaseErrorClassifier.IsUniqueViolation(ex))
+            {
+                var likeCount = await _context.Posts
+                    .Where(p => p.Id == id)
+                    .Select(p => p.LikeCount)
+                    .FirstAsync();
+
+                return Ok(new { message = "Objava je vec lajkovana.", likeCount });
+            }
         }
 
         [HttpDelete("{id}/like")]
@@ -658,15 +691,34 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var like = await _context.PostLikes.FirstOrDefaultAsync(x => x.PostId == id && x.TouristId == touristId.Value);
-            if (like is null)
-                return Ok(new { message = "Objava nije bila lajkovana.", likeCount = post.LikeCount });
+            var result = await _transactionRunner.ExecuteAsync(async _ =>
+            {
+                var deleted = await _context.PostLikes
+                    .Where(x => x.PostId == id && x.TouristId == touristId.Value)
+                    .ExecuteDeleteAsync();
 
-            _context.PostLikes.Remove(like);
-            await _context.SaveChangesAsync();
-            await RefreshLikeCount(post);
+                if (deleted == 0)
+                    return (Removed: false, LikeCount: post.LikeCount);
 
-            return Ok(new { message = "Lajk je uklonjen.", likeCount = post.LikeCount });
+                var now = DateTime.UtcNow;
+                await _context.Posts
+                    .Where(p => p.Id == id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.LikeCount, p => p.LikeCount == 0 ? 0u : p.LikeCount - 1u)
+                        .SetProperty(p => p.UpdatedAt, now));
+
+                var likeCount = await _context.Posts
+                    .Where(p => p.Id == id)
+                    .Select(p => p.LikeCount)
+                    .FirstAsync();
+
+                return (Removed: true, LikeCount: likeCount);
+            });
+
+            if (!result.Removed)
+                return Ok(new { message = "Objava nije bila lajkovana.", likeCount = result.LikeCount });
+
+            return Ok(new { message = "Lajk je uklonjen.", likeCount = result.LikeCount });
         }
 
         [HttpPost("{id}/save")]
@@ -681,21 +733,43 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var saveExists = await _context.SavedPosts.AnyAsync(x => x.PostId == id && x.TouristId == touristId.Value);
-            if (saveExists)
-                return Ok(new { message = "Objava je vec sacuvana.", saveCount = post.SaveCount });
-
-            _context.SavedPosts.Add(new SavedPost
+            try
             {
-                PostId = id,
-                TouristId = touristId.Value,
-                CreatedAt = DateTime.UtcNow
-            });
+                var saveCount = await _transactionRunner.ExecuteAsync(async _ =>
+                {
+                    _context.SavedPosts.Add(new SavedPost
+                    {
+                        PostId = id,
+                        TouristId = touristId.Value,
+                        CreatedAt = DateTime.UtcNow
+                    });
 
-            await _context.SaveChangesAsync();
-            await RefreshSaveCount(post);
+                    await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Objava je uspesno sacuvana.", saveCount = post.SaveCount });
+                    var now = DateTime.UtcNow;
+                    await _context.Posts
+                        .Where(p => p.Id == id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(p => p.SaveCount, p => p.SaveCount + 1u)
+                            .SetProperty(p => p.UpdatedAt, now));
+
+                    return await _context.Posts
+                        .Where(p => p.Id == id)
+                        .Select(p => p.SaveCount)
+                        .FirstAsync();
+                });
+
+                return Ok(new { message = "Objava je uspesno sacuvana.", saveCount });
+            }
+            catch (DbUpdateException ex) when (DatabaseErrorClassifier.IsUniqueViolation(ex))
+            {
+                var saveCount = await _context.Posts
+                    .Where(p => p.Id == id)
+                    .Select(p => p.SaveCount)
+                    .FirstAsync();
+
+                return Ok(new { message = "Objava je vec sacuvana.", saveCount });
+            }
         }
 
         [HttpDelete("{id}/save")]
@@ -710,15 +784,34 @@ namespace TouristGuide.Api.Controllers
             if (post is null)
                 return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            var savedPost = await _context.SavedPosts.FirstOrDefaultAsync(x => x.PostId == id && x.TouristId == touristId.Value);
-            if (savedPost is null)
-                return Ok(new { message = "Objava nije bila sacuvana.", saveCount = post.SaveCount });
+            var result = await _transactionRunner.ExecuteAsync(async _ =>
+            {
+                var deleted = await _context.SavedPosts
+                    .Where(x => x.PostId == id && x.TouristId == touristId.Value)
+                    .ExecuteDeleteAsync();
 
-            _context.SavedPosts.Remove(savedPost);
-            await _context.SaveChangesAsync();
-            await RefreshSaveCount(post);
+                if (deleted == 0)
+                    return (Removed: false, SaveCount: post.SaveCount);
 
-            return Ok(new { message = "Sačuvana objava je uklonjena.", saveCount = post.SaveCount });
+                var now = DateTime.UtcNow;
+                await _context.Posts
+                    .Where(p => p.Id == id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.SaveCount, p => p.SaveCount == 0 ? 0u : p.SaveCount - 1u)
+                        .SetProperty(p => p.UpdatedAt, now));
+
+                var saveCount = await _context.Posts
+                    .Where(p => p.Id == id)
+                    .Select(p => p.SaveCount)
+                    .FirstAsync();
+
+                return (Removed: true, SaveCount: saveCount);
+            });
+
+            if (!result.Removed)
+                return Ok(new { message = "Objava nije bila sacuvana.", saveCount = result.SaveCount });
+
+            return Ok(new { message = "Sacuvana objava je uklonjena.", saveCount = result.SaveCount });
         }
 
         [HttpPost("{id}/view")]
@@ -727,22 +820,37 @@ namespace TouristGuide.Api.Controllers
         {
             var touristId = GetAuthorizedTouristId();
 
-            var post = await _context.Posts.FirstOrDefaultAsync(p => p.Id == id && p.Status == "published");
-            if (post is null)
-                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
-
-            _context.PostViews.Add(new PostView
+            var viewCount = await _transactionRunner.ExecuteAsync(async _ =>
             {
-                PostId = id,
-                TouristId = touristId,
-                CreatedAt = DateTime.UtcNow
+                var now = DateTime.UtcNow;
+                var updated = await _context.Posts
+                    .Where(p => p.Id == id && p.Status == "published")
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.ViewCount, p => p.ViewCount + 1u)
+                        .SetProperty(p => p.UpdatedAt, now));
+
+                if (updated == 0)
+                    return (uint?)null;
+
+                _context.PostViews.Add(new PostView
+                {
+                    PostId = id,
+                    TouristId = touristId,
+                    CreatedAt = now
+                });
+
+                await _context.SaveChangesAsync();
+
+                return await _context.Posts
+                    .Where(p => p.Id == id)
+                    .Select(p => (uint?)p.ViewCount)
+                    .FirstAsync();
             });
 
-            post.ViewCount += 1;
-            post.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            if (viewCount is null)
+                return NotFound(new { message = $"Objava sa ID={id} nije pronadjena." });
 
-            return Ok(new { message = "Pregled je evidentiran.", viewCount = post.ViewCount });
+            return Ok(new { message = "Pregled je evidentiran.", viewCount });
         }
 
         #region Private Helpers

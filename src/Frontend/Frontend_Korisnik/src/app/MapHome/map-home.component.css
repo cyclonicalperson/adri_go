@@ -444,9 +444,14 @@
 
 .map-wrapper.filters-open .top-search-strip,
 .map-wrapper.filters-open .top-ui-layer,
-.map-wrapper.filters-open .locate-btn,
-.map-wrapper.filters-open app-location-details-card {
+.map-wrapper.filters-open .locate-btn {
   pointer-events: none;
+}
+
+@media (max-width: 899px) {
+  .map-wrapper.filters-open app-location-details-card {
+    pointer-events: none;
+  }
 }
 
 .map-wrapper app-filters {
