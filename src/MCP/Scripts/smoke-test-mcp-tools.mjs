@@ -5,21 +5,23 @@ const baseUrl = process.argv.find((arg) => arg.startsWith("--base-url="))?.split
   ?? "http://127.0.0.1:5057";
 
 const timeoutMs = Number(process.env.MCP_SMOKE_TIMEOUT_MS ?? 30000);
+const samplePostName = "Restaurant Galion Kotor";
+const sampleRouteName = "Staza oko Crnog jezera";
 
 const smokeCases = [
   ["tourism_search_regions", { query: "Kotor", limit: 3 }],
   ["tourism_get_region_summary", { regionName: "Kotor" }],
   ["tourism_search_posts", { regionName: "Kotor", postTypes: ["restaurant"], sortBy: "rating", limit: 10 }],
-  ["tourism_get_post_detail", { postId: 6 }],
+  ["tourism_get_post_detail", { postName: samplePostName }],
   ["tourism_search_routes", { regionName: "Kotor", limit: 5 }],
-  ["tourism_get_route_detail", { routeId: 1 }],
-  ["tourism_get_reviews", { postId: 6, limit: 5 }],
-  ["tourism_get_route_reviews", { routeId: 1, limit: 5 }],
+  ["tourism_get_route_detail", { routeName: sampleRouteName }],
+  ["tourism_get_reviews", { postName: samplePostName, limit: 5 }],
+  ["tourism_get_route_reviews", { routeName: sampleRouteName, limit: 5 }],
   ["tourism_search_tags", { limit: 5 }],
   ["tourism_search_activities", { limit: 5 }],
   ["tourism_search_events", { regionName: "Kotor", limit: 5 }],
   ["tourism_get_nearby", { latitude: 42.4247, longitude: 18.7712, radiusKm: 10, limit: 5 }],
-  ["tourism_get_similar_posts", { postId: 6, limit: 5 }],
+  ["tourism_get_similar_posts", { postName: samplePostName, limit: 5 }],
   ["tourism_get_recommendations", { regionName: "Kotor", limit: 5 }],
   ["tourism_get_top_content", { regionName: "Kotor", sortBy: "rating", limit: 5 }],
   ["tourism_get_new_content", { regionName: "Kotor", daysBack: 3650, limit: 5 }],
@@ -30,13 +32,13 @@ const smokeCases = [
   ["tourism_get_my_planner", {}],
   ["tourism_get_my_favorites", { limit: 5 }],
   ["tourism_get_my_profile", {}],
-  ["tourism_submit_review", { postId: 6, rating: 5, comment: "Smoke test without auth" }],
-  ["tourism_save_location", { postId: 6 }],
-  ["tourism_unsave_location", { postId: 6 }],
-  ["tourism_like_location", { postId: 6 }],
-  ["tourism_unlike_location", { postId: 6 }],
-  ["tourism_add_to_planner", { postId: 6 }],
-  ["tourism_remove_from_planner", { postId: 6 }]
+  ["tourism_submit_review", { postName: samplePostName, rating: 5, comment: "Smoke test without auth" }],
+  ["tourism_save_location", { postName: samplePostName }],
+  ["tourism_unsave_location", { postName: samplePostName }],
+  ["tourism_like_location", { postName: samplePostName }],
+  ["tourism_unlike_location", { postName: samplePostName }],
+  ["tourism_add_to_planner", { postName: samplePostName }],
+  ["tourism_remove_from_planner", { postName: samplePostName }]
 ];
 
 function withTimeout(promise, label) {

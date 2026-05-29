@@ -55,6 +55,7 @@ export const routes: Routes = [
   { path: 'map-home', component: MapHomeComponent },
   { path: 'location-list', component: LocationListComponent },
   { path: 'explore-section', component: ExploreSectionComponent },
+  { path: 'routes', component: RoutesComponent },
   { path: 'chat', component: ChatComponent },
   { path: 'filters', component: FiltersComponent },
 
