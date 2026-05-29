@@ -95,16 +95,11 @@
         {{ searchIntentSummary }}
       </div>
 
-      <div class="search-no-results" *ngIf="isSearchActive && searchQuery && searchResults.length === 0">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        {{ searchNoResultsMessage }}
-      </div>
-
     </div><div class="search-actions-row">
       <div class="sort-dropdown" *ngIf="activeResultCount > 0 || isSearchActive || hasActiveTypeFilters">
         <button class="sort-btn" (click)="sortMenuOpen = !sortMenuOpen" [class.sort-btn-active]="sortMenuOpen">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
-          Sort
+          {{ selectedSortLabel }}
         </button>
         <div class="sort-menu" *ngIf="sortMenuOpen">
           <button class="sort-option" *ngFor="let option of sortOptions"
@@ -115,6 +110,11 @@
         </div>
       </div>
     </div>
+
+      <div class="search-no-results" *ngIf="isSearchActive && searchQuery && activeResultCount === 0">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        {{ searchNoResultsMessage }}
+      </div>
 
   </div></div>
 
@@ -581,19 +581,24 @@
           </div>
         </div>
 
-        <div class="filter-group" *ngIf="routeRegionOptions.length > 0">
+        <div class="filter-group" *ngIf="routeCountryOptions.length > 0">
+          <h3>Country</h3>
+          <select class="filter-dropdown" #routeCountryDropdown (change)="toggleRouteFilter('countries', routeCountryDropdown.value); routeCountryDropdown.value = ''">
+            <option value="">{{ selectedSummary(routeFilters.countries, 'All countries') }}</option>
+            <option *ngFor="let country of routeCountryOptions" [value]="country">
+              {{ routeFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-group" *ngIf="filteredRouteRegionOptions.length > 0">
           <h3>Region</h3>
-          <div class="filter-chip-grid">
-            <button
-              type="button"
-              class="filter-chip"
-              *ngFor="let region of routeRegionOptions"
-              [class.active]="routeFilters.regions.includes(region)"
-              [style.--filter-color]="getStableFilterColor(region)"
-              (click)="toggleRouteFilter('regions', region)">
-              {{ region }}
-            </button>
-          </div>
+          <select class="filter-dropdown" #routeRegionDropdown (change)="toggleRouteFilter('regions', routeRegionDropdown.value); routeRegionDropdown.value = ''">
+            <option value="">{{ selectedSummary(routeFilters.regions, 'All regions') }}</option>
+            <option *ngFor="let region of filteredRouteRegionOptions" [value]="region">
+              {{ routeFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}
+            </option>
+          </select>
         </div>
 
         <div class="filter-group">

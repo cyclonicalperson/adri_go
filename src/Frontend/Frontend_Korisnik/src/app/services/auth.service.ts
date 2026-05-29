@@ -38,6 +38,8 @@ export interface TouristRegistrationResponse {
 export interface VerifyEmailResponse {
   message: string;
   alreadyVerified?: boolean;
+  emailChange?: boolean;
+  email?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

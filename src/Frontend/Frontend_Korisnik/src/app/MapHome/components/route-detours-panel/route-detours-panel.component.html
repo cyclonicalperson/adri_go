@@ -6,18 +6,18 @@
     </div>
   </div>
 
-  <div class="detour-card" *ngFor="let suggestion of scenicSuggestions">
+  <button type="button" class="detour-card" *ngFor="let suggestion of scenicSuggestions" (click)="detourSelected.emit(suggestion)">
     <div class="detour-copy">
-      <div class="detour-title">{{ suggestion.location.title }}</div>
+      <div class="detour-title">{{ cleanTitle(suggestion.location.title) }}</div>
       <div class="detour-meta">
         <span>{{ formatPostType(suggestion.location.postType) }}</span>
-        <span>&middot; {{ suggestion.distanceToRouteKm | number:'1.1-1' }} km off route</span>
-        <span>&middot; ~{{ suggestion.estimatedExtraMinutes }} min</span>
+        <span>{{ suggestion.distanceToRouteKm | number:'1.1-1' }} km off route</span>
+        <span>~{{ suggestion.estimatedExtraMinutes }} min</span>
       </div>
       <p>{{ suggestion.reason }}</p>
     </div>
-    <button type="button" class="detour-add-btn" (click)="detourAdded.emit(suggestion)">
-      Add detour
+    <button type="button" class="detour-add-btn" (click)="$event.stopPropagation(); detourAdded.emit(suggestion)">
+      Add
     </button>
-  </div>
+  </button>
 </div>

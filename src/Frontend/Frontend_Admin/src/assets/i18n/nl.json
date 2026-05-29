@@ -616,5 +616,13 @@
   "Ime Z-A": "Name Z-A",
   "Email A-Z": "Email A-Z",
   "Email Z-A": "Email Z-A",
-  "CSV": "CSV"
+  "CSV": "CSV",
+  "Scope dozvola": "Permissiebereik",
+  "Globalno - svi regioni": "Globaal - alle regio’s",
+  "Toggle menja dozvole samo za izabrani scope:": "Schakelaars wijzigen permissies alleen voor het geselecteerde bereik:",
+  "Aktivno u:": "Actief in:",
+  "Nije dodeljena": "Niet toegewezen",
+  "Globalno": "Globaal",
+  "Region #": "Regio #",
+  "je primenjen. Sacuvajte da bi promene otisle na server.": "is toegepast. Sla op om de wijzigingen naar de server te sturen."
 }

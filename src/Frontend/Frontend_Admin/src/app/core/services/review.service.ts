@@ -26,6 +26,7 @@ export class ReviewService {
   constructor(private http: HttpClient) { }
 
   getAll(req: PageRequest & {
+    search?: string;
     status?: string;
     entityType?: string;
     minRating?: number;
@@ -37,6 +38,7 @@ export class ReviewService {
 
     if (req.sortBy) params = params.set('sortBy', req.sortBy);
     if (req.sortDir) params = params.set('sortDir', req.sortDir!);
+    if (req.search?.trim()) params = params.set('search', req.search.trim());
     if (req.status) params = params.set('status', req.status);
     if (req.entityType) params = params.set('entityType', req.entityType);
     if (req.minRating != null) params = params.set('minRating', req.minRating);

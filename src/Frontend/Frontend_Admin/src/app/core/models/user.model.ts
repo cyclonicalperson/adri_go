@@ -97,6 +97,7 @@ export interface UserPermission {
   adminUserId: number;
   permission: Permission;
   regionId: number | null;  // null = global, value = scoped to region
+  region?: { regionId: number; name: string } | null;
   grantedBy: number;
   grantedAt: string;
 }

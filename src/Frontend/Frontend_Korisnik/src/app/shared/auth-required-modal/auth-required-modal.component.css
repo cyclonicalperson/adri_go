@@ -106,6 +106,8 @@
 
 :host-context(html[data-theme='dark']) .auth-modal {
   background: #1f2937;
+  border: 1px solid #334155;
+  color-scheme: dark;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 
@@ -119,7 +121,11 @@
 
 :host-context(html[data-theme='dark']) .btn-cancel {
   background: #374151;
-  color: #cbd5e1;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .btn-cancel:hover {
+  background: #475569;
 }
 
 :host-context(html[data-theme='dark']) .auth-modal-icon {

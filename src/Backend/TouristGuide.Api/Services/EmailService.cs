@@ -160,7 +160,7 @@ namespace TouristGuide.Api.Services
             var verificationLink = BuildFrontendUrl(
                 configKey: "Email:TouristBaseUrl",
                 fallbackBaseUrl: "http://localhost:4201",
-                pathAndQuery: $"/verify-email?token={Uri.EscapeDataString(verificationToken)}&lang={Uri.EscapeDataString(lang)}");
+                pathAndQuery: $"/verify-email?token={Uri.EscapeDataString(verificationToken)}&lang={Uri.EscapeDataString(lang)}&purpose=email-change");
 
             var s = VerificationStrings[lang];
 

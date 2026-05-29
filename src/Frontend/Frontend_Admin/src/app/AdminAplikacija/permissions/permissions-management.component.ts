@@ -229,7 +229,7 @@ export class PermissionsManagementComponent implements OnInit {
     this.userService.getUserPermissions(userId).subscribe({
       next: res => {
         this.userPermissions = res.data;
-        this.activePermCodes = new Set(res.data.map(up => up.permission.code));
+        this.refreshActivePermCodesForSelectedScope();
         this.permLoading = false;
         // Ažuriraj permissionCount u listi korisnika
         const idx = this.users.findIndex(u => u.userId === userId);
@@ -246,17 +246,28 @@ export class PermissionsManagementComponent implements OnInit {
     return this.activePermCodes.has(code);
   }
 
+  onScopeChange(value: string | number | null): void {
+    const numericValue = value === null || value === '' ? null : Number(value);
+    this.selectedRegionId = numericValue && Number.isFinite(numericValue) ? numericValue : null;
+    this.refreshActivePermCodesForSelectedScope();
+    this.saveMsg = null;
+  }
+
   togglePermission(permCode: PermissionCode): void {
     if (!this.selectedUser) return;
     const perm = this.allPermissions.find(p => p.code === permCode);
     if (!perm) return;
 
+    const scopeRegionId = this.selectedRegionId;
+
     if (this.activePermCodes.has(permCode)) {
       // Revoke
       this.activePermCodes.delete(permCode);
-      this.userService.revokePermission(this.selectedUser.userId, perm.id).subscribe({
+      this.userService.revokePermission(this.selectedUser.userId, perm.id, scopeRegionId).subscribe({
         next: () => {
-          this.userPermissions = this.userPermissions.filter(up => up.permission.code !== permCode);
+          this.userPermissions = this.userPermissions.filter(up =>
+            !(up.permission.code === permCode && this.sameScope(up.regionId, scopeRegionId))
+          );
           this.addLog('revoke', permCode, this.selectedUser!.fullName);
           this.refreshPermCount(this.selectedUser!.userId, -1);
           this.showToast(`Dozvola "${permCode}" uklonjena.`, 'success');
@@ -272,14 +283,15 @@ export class PermissionsManagementComponent implements OnInit {
       this.userService.grantPermission(
         this.selectedUser.userId,
         perm.id,
-        this.selectedRegionId ?? undefined,
+        scopeRegionId ?? undefined,
       ).subscribe({
         next: () => {
           this.userPermissions = [...this.userPermissions, {
             id: 0,
             adminUserId: this.selectedUser!.userId,
             permission: perm,
-            regionId: this.selectedRegionId,
+            regionId: scopeRegionId,
+            region: this.regionForScope(scopeRegionId),
             grantedBy: 0,
             grantedAt: new Date().toISOString(),
           }];
@@ -311,9 +323,15 @@ export class PermissionsManagementComponent implements OnInit {
     this.saving = true;
     this.saveMsg = null;
 
-    const originalCodes = new Set(this.userPermissions.map(up => up.permission.code));
+    const originalCodes = new Set(
+      this.userPermissions
+        .filter(up => this.sameScope(up.regionId, this.selectedRegionId))
+        .map(up => up.permission.code)
+    );
     const toGrant = this.allPermissions.filter(p => this.activePermCodes.has(p.code) && !originalCodes.has(p.code));
-    const toRevoke = this.userPermissions.filter(up => !this.activePermCodes.has(up.permission.code));
+    const toRevoke = this.userPermissions.filter(up =>
+      this.sameScope(up.regionId, this.selectedRegionId) && !this.activePermCodes.has(up.permission.code)
+    );
 
     const userId = this.selectedUser.userId;
     let pending = toGrant.length + toRevoke.length;
@@ -335,7 +353,7 @@ export class PermissionsManagementComponent implements OnInit {
         .subscribe({ next: () => { this.addLog('grant', p.code, this.selectedUser?.fullName ?? ''); done(); }, error: done });
     }
     for (const up of toRevoke) {
-      this.userService.revokePermission(userId, up.permission.id)
+      this.userService.revokePermission(userId, up.permission.id, up.regionId)
         .subscribe({ next: () => { this.addLog('revoke', up.permission.code, this.selectedUser?.fullName ?? ''); done(); }, error: done });
     }
   }
@@ -419,7 +437,7 @@ export class PermissionsManagementComponent implements OnInit {
   // delta=null means recompute from current activePermCodes
   private refreshPermCount(userId: number, delta: number | null): void {
     const newCount = delta === null
-      ? this.activePermCodes.size
+      ? this.userPermissions.length
       : Math.max(0, (this.users.find(u => u.userId === userId)?.permissionCount ?? 0) + delta);
 
     const idx = this.users.findIndex(u => u.userId === userId);
@@ -433,6 +451,37 @@ export class PermissionsManagementComponent implements OnInit {
 
   // ── Helpers ────────────────────────────────────────────────────────────
   permCount(u: User): number { return u.permissionCount ?? 0; }
+
+  scopeLabel(regionId: number | null | undefined): string {
+    if (regionId == null) return 'Globalno';
+    return this.regions.find(region => region.regionId === regionId)?.name ?? `Region #${regionId}`;
+  }
+
+  permissionScopeSummary(code: PermissionCode): string {
+    const scopes = this.userPermissions
+      .filter(up => up.permission.code === code)
+      .map(up => this.scopeLabel(up.regionId));
+
+    return scopes.length ? `Aktivno u: ${Array.from(new Set(scopes)).join(', ')}` : 'Nije dodeljena';
+  }
+
+  private refreshActivePermCodesForSelectedScope(): void {
+    this.activePermCodes = new Set(
+      this.userPermissions
+        .filter(up => this.sameScope(up.regionId, this.selectedRegionId))
+        .map(up => up.permission.code)
+    );
+  }
+
+  private sameScope(left: number | null | undefined, right: number | null | undefined): boolean {
+    return (left ?? null) === (right ?? null);
+  }
+
+  private regionForScope(regionId: number | null): { regionId: number; name: string } | null {
+    if (regionId == null) return null;
+    const region = this.regions.find(item => item.regionId === regionId);
+    return region ? { regionId: region.regionId, name: region.name } : { regionId, name: `Region #${regionId}` };
+  }
 
   initials(name: string): string {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();

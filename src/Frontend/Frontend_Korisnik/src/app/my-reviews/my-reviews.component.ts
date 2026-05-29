@@ -279,6 +279,11 @@ export class MyReviewsComponent implements OnInit {
     this.activeTab = tab;
   }
 
+  onReviewSearchChanged(query: string): void {
+    this.searchQuery = query;
+    this.cdr.markForCheck();
+  }
+
   setSortOption(option: ReviewSort, event?: Event): void {
     event?.stopPropagation();
     this.sortOption = option;
@@ -530,11 +535,19 @@ export class MyReviewsComponent implements OnInit {
         return true;
       }
 
-      return (
-        review.entityTitle.toLowerCase().includes(query) ||
-        review.typeLabel.toLowerCase().includes(query) ||
-        (review.comment || '').toLowerCase().includes(query)
-      );
+      const searchable = [
+        review.entityTitle,
+        review.typeLabel,
+        review.category,
+        review.status,
+        review.summaryText,
+        review.comment,
+      ]
+        .filter(Boolean)
+        .map(value => String(value).toLowerCase())
+        .join(' ');
+
+      return searchable.includes(query);
     });
   }
 

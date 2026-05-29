@@ -72,10 +72,13 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   private map!: L.Map;
   private markerLayer!: L.LayerGroup;
+  private markerClusterLayer!: L.LayerGroup;
   private pathLayer!: L.LayerGroup;
   private heatLayer!: L.LayerGroup;
   private selectedPin: L.Marker | null = null;
   private markerRefs = new Map<number, L.Marker>();
+  private readonly clusterMaxZoom = 15;
+  private readonly clusterGridSize = 72;
 
   constructor(private zone: NgZone) {}
 
@@ -130,16 +133,18 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   focusMarker(markerId: number, zoom = 16): void {
     const marker = this.markerRefs.get(markerId);
-    if (!marker) return;
+    const markerData = this.markers.find(item => item.id === markerId);
+    if (!marker && !markerData) return;
 
     this.selectedMarkerId = markerId;
     this.renderMarkers();
-    const nextMarker = this.markerRefs.get(markerId) ?? marker;
-    this.map.flyTo(nextMarker.getLatLng(), Math.max(this.map.getZoom(), zoom), {
+    const nextMarker = this.markerRefs.get(markerId);
+    const target = nextMarker?.getLatLng() ?? L.latLng(markerData!.lat, markerData!.lng);
+    this.map.flyTo(target, Math.max(this.map.getZoom(), zoom), {
       animate: true,
       duration: 0.8,
     });
-    nextMarker.openPopup();
+    nextMarker?.openPopup();
   }
 
   private initMap(): void {
@@ -155,6 +160,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     }).addTo(this.map);
 
     this.markerLayer = L.layerGroup().addTo(this.map);
+    this.markerClusterLayer = L.layerGroup().addTo(this.map);
     this.pathLayer = L.layerGroup().addTo(this.map);
     this.heatLayer = L.layerGroup().addTo(this.map);
 
@@ -163,6 +169,8 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
         this.zone.run(() => this.mapClicked.emit({ lat: e.latlng.lat, lng: e.latlng.lng }));
       });
     }
+
+    this.map.on('zoomend moveend', () => this.renderMarkers());
 
     this.renderMarkers();
     this.renderPaths();
@@ -223,9 +231,41 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   private renderMarkers(): void {
     this.markerLayer.clearLayers();
+    this.markerClusterLayer.clearLayers();
     this.markerRefs.clear();
 
-    this.markers.forEach(m => {
+    if (!this.map || this.markers.length === 0) return;
+
+    const zoom = this.map.getZoom();
+    const shouldCluster = zoom < this.clusterMaxZoom && this.markers.length > 30;
+    if (!shouldCluster) {
+      this.markers.forEach(m => this.addMarker(m));
+      return;
+    }
+
+    const forced = this.markers.filter(m => m.id === this.selectedMarkerId);
+    const clusterable = this.markers.filter(m => m.id !== this.selectedMarkerId);
+    forced.forEach(m => this.addMarker(m));
+
+    const buckets = new Map<string, MapMarker[]>();
+    clusterable.forEach(marker => {
+      const point = this.map.project([marker.lat, marker.lng], zoom);
+      const key = `${Math.floor(point.x / this.clusterGridSize)}:${Math.floor(point.y / this.clusterGridSize)}`;
+      const bucket = buckets.get(key) ?? [];
+      bucket.push(marker);
+      buckets.set(key, bucket);
+    });
+
+    buckets.forEach(bucket => {
+      if (bucket.length === 1) {
+        this.addMarker(bucket[0]);
+      } else {
+        this.addClusterMarker(bucket);
+      }
+    });
+  }
+
+  private addMarker(m: MapMarker): void {
       const isSelected = m.id === this.selectedMarkerId;
       const marker = L.marker([m.lat, m.lng], {
         icon: this.buildIcon(isSelected ? 'selected' : 'default', m.color, m.category),
@@ -242,7 +282,36 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
       if (isSelected) {
         setTimeout(() => marker.openPopup(), 0);
       }
+  }
+
+  private addClusterMarker(markers: MapMarker[]): void {
+    const bounds = L.latLngBounds(markers.map(marker => [marker.lat, marker.lng] as [number, number]));
+    const dominantCategory = this.getDominantCategory(markers);
+    const style = MapComponent.CATEGORY_COLORS[dominantCategory] ?? MapComponent.CATEGORY_COLORS['other'];
+    const cluster = L.marker(bounds.getCenter(), {
+      icon: L.divIcon({
+        className: 'admin-map-cluster map-pin-cluster',
+        html: `<div class="map-pin-cluster-bubble" style="--cluster-color:${style.bg};"><span>${markers.length > 99 ? '99+' : markers.length}</span></div>`,
+        iconSize: [46, 46],
+        iconAnchor: [23, 23],
+      }),
     });
+
+    cluster.on('click', () => {
+      const nextZoom = Math.min(this.map.getZoom() + 2, this.clusterMaxZoom);
+      this.map.flyToBounds(bounds.pad(0.25), { maxZoom: nextZoom, duration: 0.45 });
+    });
+
+    this.markerClusterLayer.addLayer(cluster);
+  }
+
+  private getDominantCategory(markers: MapMarker[]): string {
+    const counts = new Map<string, number>();
+    markers.forEach(marker => {
+      const key = (marker.category ?? 'other').toLowerCase().replace(/\s+/g, '_');
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'other';
   }
 
   // ── Friendly display labels for map popups ───────────────────────────────

@@ -183,10 +183,10 @@
       </div>
 
       <!-- Feedback toasts -->
-      <div *ngIf="likeMessage"      style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ likeMessage }}</div>
-      <div *ngIf="saveMessage"      style="background:#eff6ff;color:#1d4ed8;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ saveMessage }}</div>
-      <div *ngIf="calendarMessage"  style="background:#fdf4ff;color:#7e22ce;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ calendarMessage }}</div>
-      <div *ngIf="reviewSuccess"    style="background:#f0fdf4;color:#15803d;padding:10px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;">{{ reviewSuccess }}</div>
+      <div *ngIf="likeMessage" class="detail-toast toast-success">{{ likeMessage }}</div>
+      <div *ngIf="saveMessage" class="detail-toast toast-info">{{ saveMessage }}</div>
+      <div *ngIf="calendarMessage" class="detail-toast toast-calendar">{{ calendarMessage }}</div>
+      <div *ngIf="reviewSuccess" class="detail-toast toast-success">{{ reviewSuccess }}</div>
 
       <div class="section-divider"></div>
 
@@ -268,19 +268,19 @@
         </div>
 
         <!-- Review form -->
-        <div *ngIf="showReviewForm && authService.isLoggedIn" style="background:#f8fafc;padding:16px;border-radius:20px;margin-bottom:16px;border:1px solid #f1f5f9;">
-          <div *ngIf="reviewError" style="color:#ef4444;font-size:13px;margin-bottom:10px;">{{ reviewError }}</div>
-          <label style="font-size:12px;font-weight:700;color:#94a3b8;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px;">Rating</label>
-          <div style="display:flex;gap:4px;margin-bottom:14px;">
+        <div *ngIf="showReviewForm && authService.isLoggedIn" class="review-form-card">
+          <div *ngIf="reviewError" class="review-form-error">{{ reviewError }}</div>
+          <label class="review-form-label">Rating</label>
+          <div class="review-stars-input">
             <button *ngFor="let s of [1,2,3,4,5]" type="button" (click)="newRating = s"
               style="background:none;border:none;font-size:28px;cursor:pointer;line-height:1;transition:transform 0.1s;"
               [style.color]="s <= newRating ? '#f59e0b' : '#e2e8f0'">★</button>
           </div>
-          <label style="font-size:12px;font-weight:700;color:#94a3b8;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.4px;">Comment (optional)</label>
+          <label class="review-form-label">Comment (optional)</label>
           <textarea [(ngModel)]="newComment" rows="3" maxlength="1000" placeholder="Share your experience..."
-            style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-            <small style="color:#94a3b8;font-size:11px;">{{ newComment.length }}/1000</small>
+            class="review-form-textarea"></textarea>
+          <div class="review-form-footer">
+            <small>{{ newComment.length }}/1000</small>
             <button (click)="submitReview()" [disabled]="isSubmittingReview"
               style="background:#22c55e;color:#fff;border:none;padding:11px 24px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;">
               {{ isSubmittingReview ? 'Submitting...' : 'Submit review' }}

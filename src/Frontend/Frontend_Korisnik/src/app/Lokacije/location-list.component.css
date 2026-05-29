@@ -178,11 +178,15 @@
 .search-input::placeholder { color: var(--gray-400); }
 
 .search-clear-btn {
-  background: none;
+  background: transparent !important;
   border: none;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -317,7 +321,7 @@
 /* ── FEEDBACK / STATUS ───────────────────────────────────────── */
 .feedback-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(86px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   background: var(--gray-900);
@@ -373,7 +377,16 @@
 .footer-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
 .footer-icon svg { width: 20px; height: 20px; fill: currentColor; }
 .footer-btn.active .footer-icon { transform: scale(1.1); }
-.footer-label { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; line-height: 1; white-space: nowrap; }
+.footer-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .auth-modal-overlay {
   position: fixed;
@@ -560,6 +573,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  flex: 1 0 100%;
   color: #92400e;
   background: #fffbeb;
   border: 1px solid #fde68a;
@@ -625,7 +640,7 @@
   border-radius: var(--radius-pill);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(4px);
   color: var(--gray-700);
@@ -795,7 +810,16 @@
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   font-family: var(--font-sans);
-  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  white-space: normal;
+  text-align: center;
+}
+
+:host-context(html[data-theme='dark']) .feedback-toast {
+  background: #020617;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
 }
 .see-all-btn:hover { background: var(--green-50); border-color: var(--green-500); }
 .see-all-btn svg { width: 14px; height: 14px; fill: var(--green-600); }
@@ -852,7 +876,7 @@
   border-radius: var(--radius-pill);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.3px;
+  letter-spacing: 0;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(4px);
   color: var(--gray-700);
@@ -1161,6 +1185,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.filter-dropdown {
+  width: 100%;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--gray-800);
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+}
+
+.filter-dropdown:focus {
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
 }
 
 .filter-chip {
@@ -1485,10 +1527,17 @@
 }
 
 :host-context(html[data-theme='dark']) .filter-chip,
+:host-context(html[data-theme='dark']) .filter-dropdown,
 :host-context(html[data-theme='dark']) .saved-routes-close {
   background: #1f2937;
   border-color: #334155;
   color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .search-no-results {
+  background: rgba(245, 158, 11, 0.13);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.32);
 }
 
 :host-context(html[data-theme='dark']) .filter-chip.active {
@@ -1599,6 +1648,7 @@
 .search-line {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 12px;
 }
 
@@ -1677,6 +1727,7 @@
 .search-actions-row {
   justify-content: flex-end;
   margin-top: 0;
+  padding-top: 0;
 }
 
 .search-line .sort-dropdown {
@@ -1684,9 +1735,12 @@
 }
 
 .search-line .sort-btn {
-  height: 38px;
+  height: 50px;
   border-radius: var(--radius-pill);
-  padding: 0 17px;
+  padding: 0 16px;
+  max-width: 146px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .section-header {
@@ -1835,9 +1889,18 @@
 }
 
 @media (max-width: 430px) {
+  .search-line {
+    gap: 8px;
+  }
+
   .search-input-wrapper {
     padding-left: 13px;
     gap: 7px;
+  }
+
+  .search-line .sort-btn {
+    max-width: 132px;
+    padding: 0 13px;
   }
 
   .search-input-wrapper .main-search-btn {

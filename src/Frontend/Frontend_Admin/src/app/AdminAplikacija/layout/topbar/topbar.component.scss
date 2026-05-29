@@ -10,7 +10,7 @@
   padding: 0 32px;
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 5000;
   flex-shrink: 0;
 }
 
@@ -149,7 +149,7 @@
   border: 1px solid $gray-200;
   border-radius: $radius-lg;
   box-shadow: 0 12px 40px rgba(0,0,0,.12);
-  z-index: 150;
+  z-index: 5020;
   padding: 8px;
   display: grid;
   gap: 6px;
@@ -247,7 +247,7 @@
   border: 1px solid $gray-200;
   border-radius: $radius-lg;
   box-shadow: 0 12px 40px rgba(0,0,0,.12);
-  z-index: 150;
+  z-index: 5020;
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -339,7 +339,7 @@
 .notif-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 149;
+  z-index: 5010;
 }
 
 .notif-panel {
@@ -351,7 +351,7 @@
   border: 1px solid $gray-200;
   border-radius: $radius-lg;
   box-shadow: 0 12px 40px rgba(0,0,0,.12);
-  z-index: 150;
+  z-index: 5020;
   overflow: hidden;
 }
 
@@ -668,7 +668,7 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 999;  // above page overlays (modals ~100), below sidebar (1002)
+    z-index: 5000;
   }
 
   .header-title {
