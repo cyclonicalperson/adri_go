@@ -31,13 +31,13 @@
 }
 
 // ── Mobile backdrop ────────────────────────────────────────────────────────
-// z-index 1001 — above Leaflet popup pane (700) and controls (800)
+// Above Leaflet and topbar overlays on mobile.
 .mobile-backdrop {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  z-index: 1001;
+  z-index: 5500;
 }
 
 // ── Mobile breakpoint ─────────────────────────────────────────────────────
@@ -51,13 +51,13 @@
   }
 
   // Sidebar becomes a slide-in drawer on mobile
-  // z-index 1002 — above Leaflet (max 1000) and the backdrop (1001)
+  // Above Leaflet, topbar and the mobile backdrop.
   app-sidebar {
     position: fixed !important;
     top: 0;
     left: 0;
     height: 100vh;
-    z-index: 1002;
+    z-index: 5510;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: 4px 0 24px rgba(0,0,0,.12);

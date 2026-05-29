@@ -50,6 +50,10 @@
   --shadow-green: 0 6px 20px rgba(34,197,94,0.30);
   --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Manrope', var(--font-sans);
+
+  --z-popup-backdrop: 11000;
+  --z-popup-panel: 11010;
+  --z-toast: 11020;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,6 +73,38 @@ img { display: block; }
 /* ── Leaflet overrides ──────────────────────────────────────── */
 .leaflet-div-icon        { background: none !important; border: none !important; }
 .leaflet-control-attribution { display: none !important; }
+
+/* Keep app popups above Leaflet panes and fixed map controls. */
+.modal-overlay,
+.auth-modal-overlay,
+.day-detail-overlay,
+.month-picker-backdrop,
+.type-filter-overlay,
+.saved-routes-overlay,
+.settings-sheet-overlay,
+.chat-backdrop,
+.bottom-sheet-overlay {
+  z-index: var(--z-popup-backdrop) !important;
+}
+
+.modal-dialog,
+.auth-modal,
+.day-detail-panel,
+.month-picker,
+.type-filter-panel,
+.saved-routes-sheet,
+.settings-sheet,
+.chat-popup,
+.search-results-dropdown,
+.sort-dropdown,
+.filter-dropdown {
+  z-index: var(--z-popup-panel) !important;
+}
+
+.rp-overlay,
+.saved-toast {
+  z-index: var(--z-toast) !important;
+}
 
 /* Route preview card mirrors the destination map card. */
 .rp-overlay {
