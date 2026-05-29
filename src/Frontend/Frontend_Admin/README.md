@@ -1,42 +1,89 @@
-# Login kredencijali
+# AdriGo Admin Frontend
 
-Login kredencijali za tipove admin naloga:
+Angular 21 admin panel za upravljanje AdriGo turistickim sadrzajem, korisnicima, recenzijama, analitikom i admin registracionim zahtevima.
 
-### Superadmin
+## URL-ovi
 
-E-mail: `superadmin@touristguide.me`<br>
-Pass: `Admin123!`
+| Okruzenje | URL |
+| --- | --- |
+| Lokalno | http://localhost:4200 |
+| Hostovano | https://softeng.pmf.kg.ac.rs:10188 |
+| Lokalni API | http://localhost:5125/api |
+| Hostovani API | https://softeng.pmf.kg.ac.rs:10185/api |
+| Korisnicki frontend | https://softeng.pmf.kg.ac.rs:10187 |
 
-### Admin
+Production environment je u `src/environments/environment.production.ts` i vec pokazuje na hostovane URL-ove.
 
-E-mail: `ana.kovacevic@zabljak.travel`<br>
-Pass: `Admin123!`<br>
+## Pokretanje
 
-E-mail: `nikola.djuric@npdurmitor.me`<br>
-Pass: `Admin123!`<br>
+```bash
+npm install
+npm start
+```
 
-E-mail: `marija.p@touristguide.me`<br>
-Pass: `Admin123!`<br>
+Angular dev server se pokrece na `http://localhost:4200`.
 
-E-mail: `dragana.m@tozabljak.me`<br>
-Pass: `Admin123!`<br>
+Za production build:
 
-E-mail: `stefan.v@skidurmitor.me`<br>
-Pass: `Admin123!`<br>
+```bash
+npm run build
+```
 
-E-mail: `ivana.j@budva.travel`<br>
-Pass: `Admin123!`<br>
+Build artefakti idu u `dist/frontend`.
 
-E-mail: `aleksandar.b@kotor.travel`<br>
-Pass: `Admin123!`<br>
+## Sta aplikacija pokriva
 
-E-mail: `dragan.lazovic@outdoorme.me`<br>
-Pass: `Admin123!`<br>
-- Login treba da bude odbijen jer je nalog suspendovan
+- dashboard i analitika
+- rute, aktivnosti, dogadjaji i lokacije
+- moderacija recenzija
+- pregled turista i njihove aktivnosti
+- admin korisnici, organizacije, role i granularne dozvole
+- registracioni zahtevi za nove admine
+- SignalR notifikacije u realnom vremenu
+- mock mod za rad bez backend-a
 
-# Drop-ovanje baze za reset podataka na seed podatke
+## Konfiguracija
 
-Pokrenuti sledece komande u terminalu set-ovanom na backend folder:
+Relevantni fajlovi:
+
+- `src/environments/environment.ts`
+- `src/environments/environment.development.ts`
+- `src/environments/environment.production.ts`
+- `proxy.conf.json`
+
+Za mock mod promeniti `useMocks` na `true` u environment fajlu koji se koristi.
+
+## Login kredencijali
+
+Superadmin:
+
+| Email | Lozinka |
+| --- | --- |
+| `superadmin@touristguide.me` | `Admin123!` |
+
+Admin nalozi:
+
+| Email | Lozinka | Napomena |
+| --- | --- | --- |
+| `ana.kovacevic@zabljak.travel` | `Admin123!` | aktivan |
+| `nikola.djuric@npdurmitor.me` | `Admin123!` | aktivan |
+| `marija.p@touristguide.me` | `Admin123!` | aktivan |
+| `dragana.m@tozabljak.me` | `Admin123!` | aktivan |
+| `stefan.v@skidurmitor.me` | `Admin123!` | aktivan |
+| `ivana.j@budva.travel` | `Admin123!` | aktivan |
+| `aleksandar.b@kotor.travel` | `Admin123!` | aktivan |
+| `dragan.lazovic@outdoorme.me` | `Admin123!` | suspendovan, login treba da bude odbijen |
+
+Mock kredencijali:
+
+| Email | Lozinka | Uloga |
+| --- | --- | --- |
+| `superadmin@adrigo.rs` | `admin123` | superadmin |
+| `admin@kopaonik.rs` | `admin123` | admin |
+
+## Reset backend baze
+
+Pokrenuti iz `src/Backend/TouristGuide.Api`:
 
 ```bash
 dotnet ef database drop --force
