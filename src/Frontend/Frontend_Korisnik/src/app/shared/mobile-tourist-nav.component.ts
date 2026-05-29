@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { AuthRequiredModalComponent } from './auth-required-modal/auth-required-modal.component';
 
-type TouristNavTab = 'map' | 'explore' | 'saved' | 'calendar' | 'activities' | 'routes' | 'account';
+type TouristNavTab = 'map' | 'explore' | 'saved' | 'calendar' | 'account';
 
 @Component({
   selector: 'app-mobile-tourist-nav',
@@ -45,18 +45,6 @@ export class MobileTouristNavComponent {
       return;
     }
     this.router.navigate(['/calendar']);
-  }
-
-  goToActivities(): void {
-    if (!this.authService.isLoggedIn) {
-      this.openAuthPopup('Create a free account or log in to explore personalized activities.');
-      return;
-    }
-    this.router.navigate(['/activities']);
-  }
-
-  goToRoutes(): void {
-    this.router.navigate(['/routes']);
   }
 
   goToAccount(): void {

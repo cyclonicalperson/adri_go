@@ -108,12 +108,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 
   .search-wrap {
     position: relative;
-    flex: 2 1 280px;
-    min-width: 220px;
+    flex: 1 1 320px;
+    min-width: 260px;
     max-width: none;
   }
 
@@ -160,6 +161,7 @@
     cursor: pointer;
     outline: none;
     min-width: 130px;
+    flex: 0 0 auto;
     color: $gray-900;
 
     &:focus {
@@ -168,12 +170,13 @@
   }
 
   .spacer {
-    flex: 1;
+    flex: 1 0 12px;
   }
 
   .btn-group {
     display: flex;
     gap: 8px;
+    flex: 0 0 auto;
   }
 
   .btn {
@@ -188,6 +191,7 @@
     cursor: pointer;
     border: 1px solid;
     transition: .2s;
+    white-space: nowrap;
 
     &-primary {
       background: $primary;
@@ -210,6 +214,22 @@
         color: $primary-dark;
         background: $surface-green;
       }
+    }
+  }
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+
+    .search-wrap {
+      flex-basis: 100%;
+      min-width: 100%;
+    }
+
+    .spacer {
+      display: none;
     }
   }
 }

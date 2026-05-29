@@ -616,5 +616,13 @@
   "Ime Z-A": "Name Z-A",
   "Email A-Z": "Email A-Z",
   "Email Z-A": "Email Z-A",
-  "CSV": "CSV"
+  "CSV": "CSV",
+  "Scope dozvola": "Alcance de permisos",
+  "Globalno - svi regioni": "Global - todas las regiones",
+  "Toggle menja dozvole samo za izabrani scope:": "Los interruptores cambian permisos solo para el alcance seleccionado:",
+  "Aktivno u:": "Activo en:",
+  "Nije dodeljena": "Sin asignar",
+  "Globalno": "Global",
+  "Region #": "Región #",
+  "je primenjen. Sacuvajte da bi promene otisle na server.": "se ha aplicado. Guarda para enviar los cambios al servidor."
 }

@@ -102,6 +102,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   activityCategoryOptions: string[] = [];
   activityDifficultyOptions: string[] = [];
   routeDifficultyOptions: string[] = [];
+  routeCountryOptions: string[] = [...WORLD_COUNTRIES];
   routeRegionOptions: string[] = [];
   activityFilters = {
     categories: [] as string[],
@@ -110,21 +111,25 @@ export class FiltersComponent implements OnInit, OnChanges {
   };
   routeFilters = {
     difficulties: [] as string[],
+    countries: [] as string[],
     regions: [] as string[],
     distanceBand: '',
     durationBand: '',
   };
   destinationRegionsLoading = false;
   readonly contentTypeTabs: { value: FilterContentType; label: string }[] = [
-    { value: 'destinations', label: 'Destinacije' },
-    { value: 'activities', label: 'Aktivnosti' },
-    { value: 'routes', label: 'Rute' },
+    { value: 'destinations', label: 'Destinations' },
+    { value: 'activities', label: 'Activities' },
+    { value: 'routes', label: 'Routes' },
   ];
 
   private returnTo: string = 'map-home';
   private availableSavedPostIdsInternal: number[] = [];
   private static destinationRegionCache: DestinationRegionOption[] | null = null;
   private static destinationRegionRequest$: Observable<DestinationRegionOption[]> | null = null;
+  private static activityCategoryCache: string[] | null = null;
+  private static activityDifficultyCache: string[] | null = null;
+  private static routeDifficultyCache: string[] | null = null;
   private contentFilterOptionsRequested = false;
 
   constructor(
@@ -152,6 +157,8 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.openNow       = state.openNow;
     this.showOnlySaved = state.showOnlySaved ?? false;
     this.savedPostIds  = state.savedPostIds ?? [];
+    this.fromDate      = state.eventFromDate ?? '';
+    this.toDate        = state.eventToDate ?? '';
     this.syncSavedPostIdsFromInput();
     this.destinationFilters = {
       countries: [...(state.destinationCountries ?? [])],
@@ -164,6 +171,7 @@ export class FiltersComponent implements OnInit, OnChanges {
     };
     this.routeFilters = {
       difficulties: [...(state.routeDifficulties ?? [])],
+      countries: [...(state.routeCountries ?? [])],
       regions: [...(state.routeRegions ?? [])],
       distanceBand: state.routeDistanceBand ?? '',
       durationBand: state.routeDurationBand ?? '',
@@ -301,11 +309,17 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.onAnyChange();
   }
 
-  toggleRouteFilter(group: 'difficulties' | 'regions', value: string): void {
+  toggleRouteFilter(group: 'difficulties' | 'countries' | 'regions', value: string): void {
     const list = this.routeFilters[group];
     this.routeFilters[group] = list.includes(value)
       ? list.filter(item => item !== value)
       : [...list, value];
+
+    if (group === 'countries') {
+      const availableRegions = new Set(this.filteredRouteRegionOptions);
+      this.routeFilters.regions = this.routeFilters.regions.filter(region => availableRegions.has(region));
+    }
+
     this.onAnyChange();
   }
 
@@ -329,7 +343,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   }
 
   onDropdownToggle(
-    group: 'destinationCountries' | 'destinationRegions' | 'activityCategories' | 'activityDifficulties' | 'routeDifficulties' | 'routeRegions',
+    group: 'destinationCountries' | 'destinationRegions' | 'activityCategories' | 'activityDifficulties' | 'routeDifficulties' | 'routeCountries' | 'routeRegions',
     value: string
   ): void {
     if (!value) return;
@@ -349,6 +363,9 @@ export class FiltersComponent implements OnInit, OnChanges {
         break;
       case 'routeDifficulties':
         this.toggleRouteFilter('difficulties', value);
+        break;
+      case 'routeCountries':
+        this.toggleRouteFilter('countries', value);
         break;
       case 'routeRegions':
         this.toggleRouteFilter('regions', value);
@@ -396,6 +413,19 @@ export class FiltersComponent implements OnInit, OnChanges {
     return values.length ? values.map(formatter).join(', ') : fallback;
   }
 
+  get filteredRouteRegionOptions(): string[] {
+    if (this.routeFilters.countries.length === 0) {
+      return this.routeRegionOptions;
+    }
+
+    const selectedCountries = new Set(this.routeFilters.countries);
+    return this.uniqueSorted(
+      this.destinationRegionItems
+        .filter(item => selectedCountries.has(item.country))
+        .map(item => item.name)
+    );
+  }
+
   onAnyChange(): void {
     const state = this.buildState();
     this.filterState.set(state);
@@ -413,7 +443,7 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.toDate        = '';
     this.destinationFilters = { countries: [], regions: [] };
     this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
-    this.routeFilters = { difficulties: [], regions: [], distanceBand: '', durationBand: '' };
+    this.routeFilters = { difficulties: [], countries: [], regions: [], distanceBand: '', durationBand: '' };
     const defaultState = {
       ...this.filterState.getDefault(),
       savedPostIds: this.savedPostIds,
@@ -443,16 +473,36 @@ export class FiltersComponent implements OnInit, OnChanges {
       activityDifficulties: this.activityFilters.difficulties,
       activityLinkedOnly: this.activityFilters.linkedOnly,
       routeDifficulties: this.routeFilters.difficulties,
+      routeCountries: this.routeFilters.countries,
       routeRegions: this.routeFilters.regions,
       routeDistanceBand: this.routeFilters.distanceBand,
       routeDurationBand: this.routeFilters.durationBand,
+      eventFromDate: this.fromDate,
+      eventToDate: this.toDate,
       activeContentType: this.activeContentType,
     };
   }
 
   /** applyFilters kept for backward compat — now just saves and navigates */
   private ensureContentFilterOptions(): void {
-    if (this.contentFilterOptionsRequested) return;
+    if (FiltersComponent.activityCategoryCache) {
+      this.activityCategoryOptions = [...FiltersComponent.activityCategoryCache];
+      this.activityDifficultyOptions = [...(FiltersComponent.activityDifficultyCache ?? [])];
+    }
+
+    if (FiltersComponent.routeDifficultyCache) {
+      this.routeDifficultyOptions = [...FiltersComponent.routeDifficultyCache];
+      this.syncRouteLocationOptionsWithDestinations();
+    }
+
+    if (
+      this.contentFilterOptionsRequested &&
+      (this.activityCategoryOptions.length > 0 || this.activityDifficultyOptions.length > 0) &&
+      (this.routeDifficultyOptions.length > 0 || this.routeCountryOptions.length > 0 || this.routeRegionOptions.length > 0)
+    ) {
+      return;
+    }
+
     this.contentFilterOptionsRequested = true;
     this.loadContentFilterOptions();
   }
@@ -462,21 +512,26 @@ export class FiltersComponent implements OnInit, OnChanges {
       next: activities => {
         this.activityCategoryOptions = this.uniqueSorted(activities.map(item => item.category).filter(Boolean));
         this.activityDifficultyOptions = this.uniqueSorted(activities.map(item => item.difficulty || '').filter(Boolean));
+        FiltersComponent.activityCategoryCache = [...this.activityCategoryOptions];
+        FiltersComponent.activityDifficultyCache = [...this.activityDifficultyOptions];
       },
       error: () => {
-        this.activityCategoryOptions = [];
-        this.activityDifficultyOptions = [];
+        this.activityCategoryOptions = [...(FiltersComponent.activityCategoryCache ?? this.activityCategoryOptions)];
+        this.activityDifficultyOptions = [...(FiltersComponent.activityDifficultyCache ?? this.activityDifficultyOptions)];
+        this.contentFilterOptionsRequested = false;
       },
     });
 
     this.routesService.getRoutes().subscribe({
       next: routes => {
         this.routeDifficultyOptions = this.uniqueSorted(routes.map(item => item.difficulty || '').filter(Boolean));
-        this.routeRegionOptions = this.uniqueSorted(routes.map(item => item.regionName || '').filter(Boolean));
+        FiltersComponent.routeDifficultyCache = [...this.routeDifficultyOptions];
+        this.syncRouteLocationOptionsWithDestinations();
       },
       error: () => {
-        this.routeDifficultyOptions = [];
-        this.routeRegionOptions = [];
+        this.routeDifficultyOptions = [...(FiltersComponent.routeDifficultyCache ?? this.routeDifficultyOptions)];
+        this.syncRouteLocationOptionsWithDestinations();
+        this.contentFilterOptionsRequested = false;
       },
     });
   }
@@ -538,9 +593,17 @@ export class FiltersComponent implements OnInit, OnChanges {
   private applyDestinationRegionItems(items: DestinationRegionOption[]): void {
     this.destinationRegionItems = this.normalizeRegionItems(items);
     this.destinationRegionOptions = this.uniqueSorted(this.destinationRegionItems.map(item => item.name));
+    this.syncRouteLocationOptionsWithDestinations();
     const availableRegions = new Set(this.filteredDestinationRegionOptions);
     this.destinationFilters.regions = this.destinationFilters.regions.filter(region => availableRegions.has(region));
     this.destinationRegionsLoading = false;
+  }
+
+  private syncRouteLocationOptionsWithDestinations(): void {
+    this.routeCountryOptions = [...this.destinationCountryOptions];
+    this.routeRegionOptions = [...this.destinationRegionOptions];
+    const availableRegions = new Set(this.filteredRouteRegionOptions);
+    this.routeFilters.regions = this.routeFilters.regions.filter(region => availableRegions.has(region));
   }
 
   private normalizeRegionItems(items: Array<{ name?: string | null; country?: string | null }>): DestinationRegionOption[] {

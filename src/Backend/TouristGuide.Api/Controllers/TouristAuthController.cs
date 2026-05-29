@@ -167,6 +167,8 @@ namespace TouristGuide.Api.Controllers
                 {
                     Message = "Nova email adresa je uspesno potvrdjena.",
                     AlreadyVerified = false,
+                    EmailChange = true,
+                    Email = pendingEmail,
                     VerifiedAt = emailChangeTourist.UpdatedAt
                 });
             }

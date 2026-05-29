@@ -56,6 +56,7 @@ export function isRoutingUnavailableError(error: unknown): boolean {
 export class RoutingService {
   private readonly cacheTtlMs = 4 * 60 * 1000;
   private readonly requestTimeoutMs = 10000;
+  private readonly snapRadiusM = 2000;
   private readonly routeCache = new Map<string, { route: ComputedRoute; storedAt: number }>();
 
   async computeRoute(
@@ -471,8 +472,8 @@ export class RoutingService {
       .map(([lat, lng]) => `${lng},${lat}`)
       .join(';');
 
-    // 500 m snap radius covers rural/mountain coordinates without misrouting in cities.
-    const radiuses = coordinates.map(() => '500').join(';');
+    // Seed pins can be slightly off-road; OSRM snaps each point to the nearest routable segment.
+    const radiuses = coordinates.map(() => String(this.snapRadiusM)).join(';');
     const params = `?overview=full&geometries=geojson&alternatives=false&continue_straight=false&radiuses=${radiuses}${includeSteps ? '&steps=true' : ''}`;
 
     if (profile === 'foot-osm') {

@@ -14,9 +14,12 @@ export interface FilterState {
   activityDifficulties?: string[];
   activityLinkedOnly?: boolean;
   routeDifficulties?: string[];
+  routeCountries?: string[];
   routeRegions?: string[];
   routeDistanceBand?: string;
   routeDurationBand?: string;
+  eventFromDate?: string;
+  eventToDate?: string;
   savedPostIds?: number[];
   activeContentType?: FilterContentType;
 }
@@ -40,9 +43,12 @@ export class FilterStateService {
       activityDifficulties: [],
       activityLinkedOnly: false,
       routeDifficulties: [],
+      routeCountries: [],
       routeRegions: [],
       routeDistanceBand: '',
       routeDurationBand: '',
+      eventFromDate: '',
+      eventToDate: '',
       activeContentType: 'destinations',
     };
   }
@@ -76,8 +82,11 @@ export class FilterStateService {
       || (s.activityDifficulties?.length ?? 0) > 0
       || !!s.activityLinkedOnly
       || (s.routeDifficulties?.length ?? 0) > 0
+      || (s.routeCountries?.length ?? 0) > 0
       || (s.routeRegions?.length ?? 0) > 0
       || !!s.routeDistanceBand
-      || !!s.routeDurationBand;
+      || !!s.routeDurationBand
+      || !!s.eventFromDate
+      || !!s.eventToDate;
   }
 }

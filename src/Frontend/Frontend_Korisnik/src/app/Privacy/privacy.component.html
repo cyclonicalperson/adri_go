@@ -1,22 +1,5 @@
 <div class="subpage-container">
 
-  <!-- Delete Account Confirmation Modal -->
-  <div *ngIf="showDeleteModal" class="modal-overlay" (click)="cancelDelete()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-icon-wrap">
-        <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-      </div>
-      <h2 class="modal-title">Deactivate Account?</h2>
-      <p class="modal-body">
-        This will deactivate your account. Your saved locations, reviews, and history will stay stored, but you will no longer be able to log in.
-      </p>
-      <div class="modal-actions">
-        <button class="modal-cancel-btn" (click)="cancelDelete()">Keep Account</button>
-        <button class="modal-delete-btn" (click)="confirmDelete()">Yes, Deactivate</button>
-      </div>
-    </div>
-  </div>
-
   <div class="header-bar">
     <button class="back-btn" (click)="goBack()">
       <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
@@ -105,29 +88,11 @@
             </div>
             <div class="rights-item">
               <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              Delete your account and all associated data
-            </div>
-            <div class="rights-item">
-              <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
               Opt out of non-essential communications
             </div>
           </div>
         </div>
       </div>
-
-      <div class="danger-zone">
-        <div class="danger-zone-title">
-          <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-          Danger Zone
-        </div>
-        <p class="danger-zone-desc">Deactivate your account while keeping existing account data stored.</p>
-        <div *ngIf="deleteError" style="color:#dc2626;font-size:13px;margin-bottom:10px;padding:10px 14px;background:#fef2f2;border-radius:10px;">{{ deleteError }}</div>
-        <button class="delete-account-btn" (click)="deleteAccount()" [disabled]="isDeleting">
-          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          {{ isDeleting ? 'Deactivating...' : 'Deactivate My Account' }}
-        </button>
-      </div>
-
     </div>
 
     <!-- TERMS OF USE -->

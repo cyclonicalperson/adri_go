@@ -171,6 +171,8 @@ public class EmailVerificationResultDto
     public string Message { get; set; } = string.Empty;
     public bool AlreadyVerified { get; set; }
     public bool Expired { get; set; }
+    public bool EmailChange { get; set; }
+    public string? Email { get; set; }
     public DateTime? VerifiedAt { get; set; }
 }
 

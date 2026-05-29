@@ -19,7 +19,8 @@
             type="text"
             class="search-input"
             placeholder="Search your reviews..."
-            [(ngModel)]="searchQuery">
+            [ngModel]="searchQuery"
+            (ngModelChange)="onReviewSearchChanged($event)">
           <button
             class="search-filter-btn"
             type="button"
@@ -59,7 +60,8 @@
             type="text"
             class="search-input"
             placeholder="Search your reviews..."
-            [(ngModel)]="searchQuery">
+            [ngModel]="searchQuery"
+            (ngModelChange)="onReviewSearchChanged($event)">
           <div class="search-divider"></div>
           <button
             class="search-filter-btn"

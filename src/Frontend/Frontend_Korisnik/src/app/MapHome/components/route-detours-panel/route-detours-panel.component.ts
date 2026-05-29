@@ -13,6 +13,11 @@ import { formatPostType } from '../../../utils/post-type.utils';
 export class RouteDetoursPanelComponent {
   @Input() scenicSuggestions: RouteDetourSuggestion[] = [];
   @Output() detourAdded = new EventEmitter<RouteDetourSuggestion>();
+  @Output() detourSelected = new EventEmitter<RouteDetourSuggestion>();
+
+  cleanTitle(title?: string | null): string {
+    return (title ?? '').replace(/^\s*\[[A-Z]{1,4}\]\s*/g, '').trim();
+  }
 
   formatPostType(type?: string | null): string {
     return formatPostType(type);

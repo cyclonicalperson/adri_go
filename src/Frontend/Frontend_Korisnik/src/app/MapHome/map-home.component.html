@@ -217,6 +217,10 @@
         {{ saveRouteMessage }}
       </div>
 
+      <div class="planner-floating-toast" *ngIf="plannerMessage && !isNavigating">
+        {{ plannerMessage }}
+      </div>
+
       <app-trip-planner-panel
         [isNavigating]="isNavigating"
         [plannerMode]="plannerMode"
@@ -250,10 +254,12 @@
 
       <app-route-detours-panel
         [scenicSuggestions]="scenicSuggestions"
-        (detourAdded)="applyDetourSuggestion($event)">
+        (detourAdded)="applyDetourSuggestion($event)"
+        (detourSelected)="openDetourDetails($event)">
       </app-route-detours-panel>
 
       <app-map-recommendations-panel
+        *ngIf="!showRoutePanel && !isRenderingRoute"
         [recommendationCards]="recommendationCards"
         [hasPersonalizedRecommendations]="hasPersonalizedRecommendations"
         [activeRecommendationTab]="activeRecommendationTab"

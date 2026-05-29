@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Models;
 using BCrypt.Net;
@@ -24,9 +25,10 @@ namespace TouristGuide.Api.Services
         private const int LoadTestNotificationCount = 1400;
         private const int LoadTestLocationSampleCount = 7200;
         private const int LoadTestPlannerCount = 180;
-        private const string LoadTestEmailDomain = "@loadtest.touristguide.test";
-        private const string LoadTestPostTitlePrefix = "[LT]";
-        private const string LoadTestPlannerTitlePrefix = "[LT] Plan";
+        private const string LegacyLoadTestEmailDomain = "@loadtest.touristguide.test";
+        private const string SeedTouristEmailDomain = "@adrigo-travel.me";
+        private const string LegacyLoadTestPostTitlePrefix = "[" + "LT" + "]";
+        private const string LegacyLoadTestPlannerTitlePrefix = LegacyLoadTestPostTitlePrefix + " Plan";
         private static readonly JsonSerializerOptions SeedJsonOptions = new(JsonSerializerDefaults.Web);
 
         public DatabaseSeeder(AppDbContext db, ILogger<DatabaseSeeder> logger, IWebHostEnvironment env)
@@ -63,6 +65,7 @@ namespace TouristGuide.Api.Services
             await SeedVisitPlannersAsync();
             await SeedMailingListAsync();
             await SeedLoadTestDataAsync();
+            await NormalizeSyntheticSeedDisplayDataAsync();
             await EnsureLoadTestRouteWaypointConsistencyAsync();
             await EnsureReviewAggregateConsistencyAsync();
 
@@ -1526,7 +1529,9 @@ namespace TouristGuide.Api.Services
 
         private async Task SeedLoadTestDataAsync()
         {
-            if (await _db.Tourists.AnyAsync(t => t.Email != null && t.Email.EndsWith(LoadTestEmailDomain)))
+            if (await _db.Tourists.AnyAsync(t =>
+                    t.Email != null &&
+                    (t.Email.EndsWith(LegacyLoadTestEmailDomain) || t.Email.EndsWith(SeedTouristEmailDomain))))
                 return;
 
             _logger.LogInformation(
@@ -1575,19 +1580,19 @@ namespace TouristGuide.Api.Services
 
                 var touristIds = await _db.Tourists
                     .AsNoTracking()
-                    .Where(t => t.Email != null && t.Email.EndsWith(LoadTestEmailDomain))
+                    .Where(t => t.Email != null && t.Email.EndsWith(SeedTouristEmailDomain))
                     .OrderBy(t => t.Id)
                     .Select(t => t.Id)
                     .ToListAsync();
 
-                await AddInBatchesAsync(BuildLoadTestPosts(adminIds, regions, random, now).ToList(), 200);
+                var generatedPosts = BuildLoadTestPosts(adminIds, regions, random, now).ToList();
+                await AddInBatchesAsync(generatedPosts, 200);
 
-                var generatedPostIds = await _db.Posts
-                    .AsNoTracking()
-                    .Where(p => p.Title.StartsWith(LoadTestPostTitlePrefix))
+                var generatedPostIds = generatedPosts
+                    .Where(p => p.Id != 0)
                     .OrderBy(p => p.Id)
                     .Select(p => p.Id)
-                    .ToListAsync();
+                    .ToList();
 
                 await SeedLoadTestPostTagsAsync(generatedPostIds, tagIds, random);
                 await AddInBatchesAsync(BuildLoadTestRoutes(adminIds, regions, random, now).ToList(), 100);
@@ -1622,12 +1627,96 @@ namespace TouristGuide.Api.Services
             }
         }
 
+        private async Task NormalizeSyntheticSeedDisplayDataAsync()
+        {
+            var changed = false;
+
+            var legacyTourists = await _db.Tourists
+                .Where(t => t.Email != null && t.Email.EndsWith(LegacyLoadTestEmailDomain))
+                .OrderBy(t => t.Id)
+                .ToListAsync();
+
+            for (var i = 0; i < legacyTourists.Count; i++)
+            {
+                var tourist = legacyTourists[i];
+                var cleanName = StripTrailingSeedNumber(tourist.Name ?? $"Putnik {i + 1}");
+                tourist.Name = cleanName;
+                tourist.Email = $"{ToEmailSlug(cleanName)}{i + 1:0000}{SeedTouristEmailDomain}";
+                tourist.Bio = "Voli da cuva omiljena mjesta, poredi preporuke i pravi planove za naredna putovanja.";
+                changed = true;
+            }
+
+            var legacyPosts = await _db.Posts
+                .Include(p => p.Region)
+                .Where(p => p.Title.StartsWith(LegacyLoadTestPostTitlePrefix))
+                .ToListAsync();
+
+            foreach (var post in legacyPosts)
+            {
+                post.Title = NormalizeSeedTitle(post.Title);
+                post.Description = BuildNaturalPostDescription(post.PostType ?? "other", post.Region?.Name ?? post.Country ?? "Crna Gora");
+                if (!string.IsNullOrWhiteSpace(post.Address) && post.Address.Contains("test zona", StringComparison.OrdinalIgnoreCase))
+                    post.Address = post.Address.Replace("test zona", "centar", StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrWhiteSpace(post.ExternalUrl) && post.ExternalUrl.Contains("example.test", StringComparison.OrdinalIgnoreCase))
+                    post.ExternalUrl = null;
+                changed = true;
+            }
+
+            var legacyRoutes = await _db.Routes
+                .Where(r => r.Name.StartsWith(LegacyLoadTestPostTitlePrefix))
+                .ToListAsync();
+
+            foreach (var route in legacyRoutes)
+            {
+                route.Name = NormalizeSeedTitle(route.Name).Replace("scenic ruta", "panoramska ruta", StringComparison.OrdinalIgnoreCase);
+                route.Description = "Ruta sa lokalnim putevima, prirodnim predjelima i nekoliko dobrih mjesta za odmor ili fotografisanje.";
+                changed = true;
+            }
+
+            var legacyPlanners = await _db.VisitPlanners
+                .Where(p => p.Title.StartsWith(LegacyLoadTestPlannerTitlePrefix))
+                .OrderBy(p => p.Id)
+                .ToListAsync();
+
+            var plannerTitles = new[] { "Ljetnji obilazak obale", "Planinski vikend", "Kultura i stari gradovi", "Gastro tura kroz Crnu Goru" };
+            for (var i = 0; i < legacyPlanners.Count; i++)
+            {
+                legacyPlanners[i].Title = plannerTitles[i % plannerTitles.Length];
+                legacyPlanners[i].Notes = "Plan sa nekoliko preporucenih mjesta i dovoljno vremena za obilazak.";
+                changed = true;
+            }
+
+            var notifications = await _db.Notifications
+                .Where(n => n.Payload != null && n.Payload.Contains("load-test"))
+                .ToListAsync();
+
+            foreach (var notification in notifications)
+            {
+                notification.Body = NotificationBodyFor(notification.Type ?? "system");
+                notification.Payload = """{"source":"recommendation"}""";
+                changed = true;
+            }
+
+            if (changed)
+            {
+                await _db.SaveChangesAsync();
+                _db.ChangeTracker.Clear();
+            }
+        }
+
         private IEnumerable<Tourist> BuildLoadTestTourists(string passwordHash, DateTime now)
         {
             var firstNames = new[] { "Mila", "Luka", "Noah", "Sara", "David", "Elena", "Marko", "Nina", "Leo", "Iva", "Amir", "Hana" };
             var lastNames = new[] { "Petrovic", "Kovacevic", "Wilson", "Rossi", "Garcia", "Novak", "Muller", "Smith", "Popescu", "Tanaka" };
             var locations = new[] { "Berlin", "London", "Belgrade", "Rome", "Paris", "Madrid", "Vienna", "Amsterdam", "Stockholm", "Podgorica" };
             var languages = new[] { "en", "sr", "de", "fr", "es", "it", "nl" };
+            var bios = new[]
+            {
+                "Najvise volim gradove koji se obilaze pjeske, lokalnu hranu i male muzeje.",
+                "Planiram putovanja oko prirode, fotografije i dobrih preporuka za porodicu.",
+                "Uvijek trazim staze sa lijepim pogledom, mirne plaze i autenticne konobe.",
+                "Volim kratke vikend ture, festivale i mjesta koja lokalci rado preporucuju."
+            };
             var interestSets = new[]
             {
                 """["hiking","nature","photography","culture"]""",
@@ -1642,12 +1731,12 @@ namespace TouristGuide.Api.Services
             {
                 yield return new Tourist
                 {
-                    Name = $"{firstNames[i % firstNames.Length]} {lastNames[(i * 7) % lastNames.Length]} {i:000}",
-                    Email = $"loadtest.tourist{i:0000}{LoadTestEmailDomain}",
+                    Name = $"{firstNames[i % firstNames.Length]} {lastNames[(i * 7) % lastNames.Length]}",
+                    Email = $"{ToEmailSlug(firstNames[i % firstNames.Length])}.{ToEmailSlug(lastNames[(i * 7) % lastNames.Length])}{i:0000}{SeedTouristEmailDomain}",
                     PasswordHash = passwordHash,
                     Language = languages[i % languages.Length],
                     Interests = interestSets[i % interestSets.Length],
-                    Bio = "Load-test profil za provjeru pretrage, preporuka, analitike i notifikacija.",
+                    Bio = bios[i % bios.Length],
                     Location = locations[i % locations.Length],
                     IsEmailVerified = i % 9 != 0,
                     CreatedAt = now.AddDays(-(i % 365)),
@@ -1660,6 +1749,7 @@ namespace TouristGuide.Api.Services
         {
             var postTypes = new[] { "accommodation", "restaurant", "club", "cultural_site", "monument", "sports_facility", "event", "attraction", "shop", "other" };
             var adjectives = new[] { "Central", "Panorama", "Old Town", "Blue Bay", "Mountain", "Heritage", "Vista", "Garden", "Sunset", "Family" };
+            var streets = new[] { "Njegoseva", "Jadranska", "Ribarska", "Mediteranska", "Bokeljska", "Planinska", "Primorska", "Stara carsija" };
 
             for (var i = 1; i <= LoadTestPostCount; i++)
             {
@@ -1674,13 +1764,13 @@ namespace TouristGuide.Api.Services
                     AdminId = adminIds[i % adminIds.Count],
                     RegionId = region.Id,
                     Country = region.Country,
-                    Title = $"{LoadTestPostTitlePrefix} {adjectives[i % adjectives.Length]} {PostTypeLabel(postType)} {region.Name} #{i:000}",
+                    Title = $"{adjectives[i % adjectives.Length]} {PostTypeLabel(postType)} {region.Name}",
                     PostType = postType,
-                    Description = $"Generisana {PostTypeLabel(postType).ToLowerInvariant()} lokacija u regiji {region.Name}. Koristi se za testiranje velikih listi, filtera, mapa i preporuka.",
+                    Description = BuildNaturalPostDescription(postType, region.Name),
                     Lat = DecimalRound(region.Lat + NextOffset(random, 0.08m)),
                     Lng = DecimalRound(region.Lng + NextOffset(random, 0.08m)),
-                    Address = $"{region.Name} test zona {i % 40 + 1}",
-                    ExternalUrl = i % 3 == 0 ? $"https://example.test/tourism/{i:000}" : null,
+                    Address = $"{streets[i % streets.Length]} {i % 88 + 1}, {region.Name}",
+                    ExternalUrl = i % 3 == 0 ? $"https://visit-{ToUrlSlug(region.Name)}.me/{ToUrlSlug(PostTypeLabel(postType))}" : null,
                     ExternalUrlLabel = i % 3 == 0 ? "Vise informacija" : null,
                     Images = JsonSerializer.Serialize(new[] { LoadTestImageFor(postType, i) }, SeedJsonOptions),
                     OpeningHours = """{"mon":"09:00-21:00","tue":"09:00-21:00","wed":"09:00-21:00","thu":"09:00-21:00","fri":"09:00-23:00","sat":"09:00-23:00","sun":"10:00-20:00"}""",
@@ -1701,6 +1791,7 @@ namespace TouristGuide.Api.Services
         private IEnumerable<Models.Route> BuildLoadTestRoutes(IReadOnlyList<uint> adminIds, IReadOnlyList<SeedRegion> regions, Random random, DateTime now)
         {
             var difficulties = new[] { "easy", "moderate", "hard", "expert" };
+            var routeStyles = new[] { "panoramska staza", "setnja uz vidikovce", "kruzna ruta", "planinska tura", "obalna staza" };
 
             for (var i = 1; i <= LoadTestRouteCount; i++)
             {
@@ -1716,12 +1807,12 @@ namespace TouristGuide.Api.Services
                 {
                     AdminId = adminIds[(i * 2) % adminIds.Count],
                     RegionId = region.Id,
-                    Name = $"{LoadTestPostTitlePrefix} {region.Name} scenic ruta #{i:000}",
+                    Name = $"{region.Name} {routeStyles[i % routeStyles.Length]}",
                     Difficulty = difficulties[i % difficulties.Length],
                     DistanceKm = distance,
                     DurationMin = (uint)(45 + (int)(distance * 18)),
                     ElevationGain = (uint)random.Next(20, 1250),
-                    Description = $"Generisana ruta za load test kroz regiju {region.Name}.",
+                    Description = $"Ruta kroz regiju {region.Name} sa kombinacijom lokalnih puteva, prirodnih predjela i mjesta za kratak odmor.",
                     Waypoints = JsonSerializer.Serialize(new[]
                     {
                         new { lat = lat1, lng = lng1, name = "Start" },
@@ -1742,7 +1833,7 @@ namespace TouristGuide.Api.Services
             var routes = await _db.Routes
                 .Include(r => r.Region)
                 .Where(r =>
-                    r.Name.StartsWith(LoadTestPostTitlePrefix) &&
+                    (r.Name.StartsWith(LegacyLoadTestPostTitlePrefix) || (r.Description != null && r.Description.StartsWith("Ruta kroz regiju "))) &&
                     r.Region != null &&
                     r.Region.Lat != null &&
                     r.Region.Lng != null)
@@ -1907,8 +1998,8 @@ namespace TouristGuide.Api.Services
                     TouristId = touristIds[random.Next(touristIds.Count)],
                     Type = type,
                     Title = LoadTestNotificationTitle(type),
-                    Body = "Generisana notifikacija za testiranje liste, badge broja i real-time stanja.",
-                    Payload = """{"source":"load-test"}""",
+                    Body = NotificationBodyFor(type),
+                    Payload = """{"source":"recommendation"}""",
                     IsRead = random.Next(100) < 62,
                     CreatedAt = now.AddDays(-random.Next(0, 90)),
                     SentAt = now.AddDays(-random.Next(0, 90))
@@ -1967,16 +2058,25 @@ namespace TouristGuide.Api.Services
         private async Task SeedLoadTestVisitPlannersAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, IReadOnlyList<uint> routeIds, Random random, DateTime now)
         {
             var planners = new List<VisitPlanner>(LoadTestPlannerCount);
+            var plannerTitles = new[]
+            {
+                "Ljetnji obilazak obale",
+                "Planinski vikend",
+                "Porodicni odmor u prirodi",
+                "Kultura i stari gradovi",
+                "Gastro tura kroz Crnu Goru",
+                "Aktivan odmor uz more"
+            };
             for (var i = 1; i <= LoadTestPlannerCount; i++)
             {
                 var start = new DateOnly(2026, 6, 1).AddDays(i % 120);
                 planners.Add(new VisitPlanner
                 {
                     TouristId = touristIds[random.Next(touristIds.Count)],
-                    Title = $"{LoadTestPlannerTitlePrefix} #{i:000}",
+                    Title = plannerTitles[i % plannerTitles.Length],
                     StartDate = start,
                     EndDate = start.AddDays(2 + i % 8),
-                    Notes = "Generisani plan putovanja za opterecenje planera.",
+                    Notes = "Plan sa nekoliko preporucenih mjesta, pauzama i dovoljno vremena za obilazak.",
                     IsPublic = i % 4 == 0,
                     CreatedAt = now.AddDays(-random.Next(0, 120)),
                     UpdatedAt = now.AddDays(-random.Next(0, 60))
@@ -1987,7 +2087,7 @@ namespace TouristGuide.Api.Services
 
             var plannerIds = await _db.VisitPlanners
                 .AsNoTracking()
-                .Where(p => p.Title.StartsWith(LoadTestPlannerTitlePrefix))
+                .Where(p => touristIds.Contains(p.TouristId))
                 .OrderBy(p => p.Id)
                 .Select(p => p.Id)
                 .ToListAsync();
@@ -2039,6 +2139,38 @@ namespace TouristGuide.Api.Services
 
             await AddInBatchesAsync(entries, 1000);
         }
+
+        private static string NormalizeSeedTitle(string title)
+        {
+            var clean = title.Replace(LegacyLoadTestPostTitlePrefix, "", StringComparison.OrdinalIgnoreCase).Trim();
+            clean = Regex.Replace(clean, @"\s*#\d+\b", "").Trim();
+            clean = Regex.Replace(clean, @"\s{2,}", " ").Trim();
+            return clean;
+        }
+
+        private static string StripTrailingSeedNumber(string value) =>
+            Regex.Replace(value, @"\s+\d{3,}$", "").Trim();
+
+        private static string BuildNaturalPostDescription(string postType, string regionName) => postType switch
+        {
+            "accommodation" => $"Smjestaj u regiji {regionName} sa dobrim polazistem za obilazak okolnih znamenitosti.",
+            "restaurant" => $"Restoran u regiji {regionName} sa lokalnim jelima, sezonskim namirnicama i opustenom atmosferom.",
+            "club" => $"Mjesto za vecernji izlazak u regiji {regionName}, sa muzikom, koktelima i prostorom za vece drustvo.",
+            "cultural_site" => $"Kulturna lokacija u regiji {regionName}, pogodna za kratak obilazak i upoznavanje lokalne istorije.",
+            "monument" => $"Znamenitost u regiji {regionName} koju vrijedi obici zbog pogleda, istorije i fotografija.",
+            "sports_facility" => $"Sportski centar u regiji {regionName} sa aktivnostima za rekreativce i goste koji vole aktivan odmor.",
+            "event" => $"Dogadjaj u regiji {regionName} sa programom za posjetioce, lokalnom atmosferom i vecernjim sadrzajem.",
+            "shop" => $"Prodavnica u regiji {regionName} sa suvenirima, lokalnim proizvodima i prakticnim stvarima za putovanje.",
+            _ => $"Turisticka tacka u regiji {regionName}, pogodna za obilazak, predah i planiranje ostatka dana."
+        };
+
+        private static string NotificationBodyFor(string type) => type switch
+        {
+            "new_event" => "U blizini se odrzava dogadjaj koji odgovara vasim interesovanjima.",
+            "reminder" => "Imate stavke u planu putovanja koje vrijedi provjeriti prije polaska.",
+            "promo" => "Dostupna je nova preporuka za destinaciju koju ste ranije sacuvali.",
+            _ => "Imate novo obavjestenje vezano za vase putovanje."
+        };
 
         private async Task RefreshSeededAggregateCountersAsync(IReadOnlyList<uint> postIds, IReadOnlyList<uint> routeIds)
         {
@@ -2215,6 +2347,22 @@ namespace TouristGuide.Api.Services
 
         private static decimal NextSmallRouteOffset(int seed, int multiplier) =>
             ((seed * multiplier) % 5 - 2) * 0.0008m;
+
+        private static string ToEmailSlug(string value) =>
+            ToUrlSlug(value).Replace("-", ".");
+
+        private static string ToUrlSlug(string value)
+        {
+            var normalized = value
+                .ToLowerInvariant()
+                .Replace("š", "s")
+                .Replace("đ", "dj")
+                .Replace("č", "c")
+                .Replace("ć", "c")
+                .Replace("ž", "z");
+
+            return Regex.Replace(normalized, @"[^a-z0-9]+", "-").Trim('-');
+        }
 
         private static string BuildWaypointJson(params (decimal Lat, decimal Lng, string Name)[] points) =>
             JsonSerializer.Serialize(

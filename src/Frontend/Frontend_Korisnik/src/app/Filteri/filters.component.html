@@ -233,21 +233,28 @@
         </div>
       </section>
 
-      <section *ngIf="routeRegionOptions.length > 0">
+      <section *ngIf="routeCountryOptions.length > 0">
+        <div class="section-header">
+          <h2>Route Country</h2>
+        </div>
+        <select class="filter-dropdown" #routeCountryDropdown (change)="onDropdownToggle('routeCountries', routeCountryDropdown.value); routeCountryDropdown.value = ''">
+          <option value="">{{ selectedSummary(routeFilters.countries, 'All countries') }}</option>
+          <option *ngFor="let country of routeCountryOptions" [value]="country">
+            {{ routeFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
+          </option>
+        </select>
+      </section>
+
+      <section *ngIf="filteredRouteRegionOptions.length > 0">
         <div class="section-header">
           <h2>Route Region</h2>
         </div>
-        <div class="filter-chip-grid">
-          <button
-            type="button"
-              class="filter-chip"
-              *ngFor="let region of routeRegionOptions"
-              [class.active]="routeFilters.regions.includes(region)"
-              [style.--filter-color]="getStableFilterColor(region)"
-              (click)="toggleRouteFilter('regions', region)">
-              {{ region }}
-            </button>
-        </div>
+        <select class="filter-dropdown" #routeRegionDropdown (change)="onDropdownToggle('routeRegions', routeRegionDropdown.value); routeRegionDropdown.value = ''">
+          <option value="">{{ selectedSummary(routeFilters.regions, 'All regions') }}</option>
+          <option *ngFor="let region of filteredRouteRegionOptions" [value]="region">
+            {{ routeFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}
+          </option>
+        </select>
       </section>
 
       <section>

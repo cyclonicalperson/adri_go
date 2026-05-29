@@ -18,6 +18,7 @@ export interface TouristRouteItem {
   distanceKm: number;
   durationMin: number;
   elevationGainM?: number;
+  countryName?: string | null;
   regionName?: string | null;
   createdAt?: string;
   images?: string | string[];
@@ -77,6 +78,7 @@ export class TouristRoutesService {
       distanceKm: Number(item.distanceKm ?? 0),
       durationMin: Number(item.durationMin ?? 0),
       elevationGainM: item.elevationGainM ?? item.elevationGain ?? null,
+      countryName: item.region?.country ?? item.countryName ?? item.country ?? null,
       regionName: item.region?.name ?? item.regionName ?? null,
       createdAt: item.createdAt,
       images: item.images ?? [],

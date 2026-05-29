@@ -153,8 +153,12 @@ export class UserService {
     ).pipe(map(res => ({ data: undefined, success: res.success ?? true })));
   }
 
-  revokePermission(userId: number, permissionId: number): Observable<ApiResponse<void>> {
-    return this.http.delete<any>(`${this.url}/${userId}/permissions/${permissionId}`).pipe(
+  revokePermission(userId: number, permissionId: number, regionId?: number | null): Observable<ApiResponse<void>> {
+    const options = regionId == null
+      ? {}
+      : { params: new HttpParams().set('regionId', regionId) };
+
+    return this.http.delete<any>(`${this.url}/${userId}/permissions/${permissionId}`, options).pipe(
       map(res => ({ data: undefined, success: res.success ?? true }))
     );
   }

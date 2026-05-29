@@ -275,6 +275,11 @@ namespace TouristGuide.Api.Controllers
                         description = p.Permission.Description
                     },
                     regionId = p.RegionId,
+                    region = p.Region == null ? null : new
+                    {
+                        regionId = p.Region.Id,
+                        name = p.Region.Name
+                    },
                     grantedBy = p.GrantedBy,
                     grantedAt = p.GrantedAt
                 }),
@@ -350,10 +355,10 @@ namespace TouristGuide.Api.Controllers
 
             var matches = await query.ToListAsync();
 
-            if (!regionId.HasValue && matches.Count > 1)
+            if (!regionId.HasValue && matches.Select(p => p.RegionId).Distinct().Count() > 1)
                 return BadRequest(new { message = "Postoji više scope-ova za ovu permisiju. Prosledite regionId za uklanjanje konkretne permisije." });
 
-            var perm = matches.SingleOrDefault();
+            var perm = matches.FirstOrDefault();
 
             if (perm is null)
                 return NotFound(new { message = "Permisija nije pronađena." });
@@ -378,7 +383,7 @@ namespace TouristGuide.Api.Controllers
                 IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
             });
 
-            _db.AdminUserPermissions.Remove(perm);
+            _db.AdminUserPermissions.RemoveRange(matches);
             await _db.SaveChangesAsync();
 
             return Ok(new { success = true, message = "Permisija je uklonjena." });
