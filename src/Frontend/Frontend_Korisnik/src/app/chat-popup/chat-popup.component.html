@@ -88,7 +88,7 @@
           [class.user-bubble]="isUserMessage(msg)"
           [class.assistant-bubble]="!isUserMessage(msg)"
           [class.error-bubble]="isErrorMessage(msg)"
-          [class.has-location-cards]="!isUserMessage(msg) && ((msg.locationCards?.length || 0) > 0 || hasRouteCards(msg) || hasActivityCards(msg))">
+          [class.has-location-cards]="!isUserMessage(msg) && (msg.cards?.length || 0) > 0">
 
           @if (isThinkingMessage(msg)) {
             <div class="thinking-state" aria-label="Pretražujem…">
@@ -101,18 +101,18 @@
               [attr.aria-label]="isUserMessage(msg) ? 'Vi: ' + msg.content : 'Asistent: ' + msg.content">
             </div>
 
-            @if (!isUserMessage(msg) && msg.locationCards?.length) {
+            @if (!isUserMessage(msg) && msg.cards?.length) {
               <div class="chat-location-cards" aria-label="Predložene objave">
-                @for (card of msg.locationCards; track card.id) {
-                  <button class="chat-location-card" type="button" (click)="openLocationDetails(card)">
+                @for (card of msg.cards; track card.type + '-' + card.id) {
+                  <button class="chat-location-card" type="button" (click)="openCard(card)">
                     <img
                       class="chat-location-image"
-                      [src]="getLocationImage(card)"
+                      [src]="getCardImage(card)"
                       [alt]="card.title || 'Objava'">
                     <span class="chat-location-info">
                       <span class="chat-location-category">
                         <span class="chat-location-dot" aria-hidden="true"></span>
-                        {{ getLocationCategory(card) }}
+                        {{ getCardCategory(card) }}
                       </span>
                       <span class="chat-location-title">{{ card.title }}</span>
                       <span class="chat-location-meta">
@@ -135,7 +135,7 @@
               </div>
             }
 
-            @if (!isUserMessage(msg) && hasRouteCards(msg)) {
+            @if (!isUserMessage(msg) && (msg.cards?.length || 0) === 0 && hasRouteCards(msg)) {
               <div class="chat-route-cards" aria-label="Predložene rute">
                 <div class="chat-cards-label">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -180,7 +180,7 @@
               </div>
             }
 
-            @if (!isUserMessage(msg) && hasActivityCards(msg)) {
+            @if (!isUserMessage(msg) && (msg.cards?.length || 0) === 0 && hasActivityCards(msg)) {
               <div class="chat-activity-cards" aria-label="Mjesta za aktivnosti">
                 <div class="chat-cards-label">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

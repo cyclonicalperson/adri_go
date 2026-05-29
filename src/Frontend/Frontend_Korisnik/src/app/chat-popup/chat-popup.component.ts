@@ -7,7 +7,7 @@ import { CommonModule }          from '@angular/common';
 import { FormsModule }           from '@angular/forms';
 import { Router }                from '@angular/router';
 import { firstValueFrom }        from 'rxjs';
-import { ChatService, ChatMessage } from '../services/chat.service';
+import { ChatCard, ChatService, ChatMessage } from '../services/chat.service';
 import { AuthService }           from '../services/auth.service';
 import { Location }              from '../services/location.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
@@ -120,6 +120,28 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
     this.router.navigate(['/location-details', location.id]);
   }
 
+  openCard(card: ChatCard): void {
+    if (!card.id) return;
+
+    const appUrl = this.toAppUrl(card.type === 'route'
+      ? card.mapUrl || card.detailUrl
+      : card.detailUrl);
+
+    this.closePopup.emit();
+
+    if (appUrl) {
+      this.router.navigateByUrl(appUrl);
+      return;
+    }
+
+    if (card.type === 'route') {
+      this.router.navigate(['/map-home'], { queryParams: { routeId: card.id } });
+      return;
+    }
+
+    this.router.navigate(['/location-details', card.id]);
+  }
+
   openRouteOnMap(route: TouristRouteItem): void {
     // Ako ruta vec ima waypoints, direktno otvaramo mapu
     if (route.waypoints && route.waypoints.length > 0) {
@@ -199,6 +221,31 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
     return formatPostType(location.postType || location.category);
   }
 
+  getCardImage(card: ChatCard): string {
+    return resolveBackendAssetUrl(card.imageUrl || '', 'assets/Budva.jpg');
+  }
+
+  getCardCategory(card: ChatCard): string {
+    if (card.type === 'route') return card.difficulty || 'Ruta';
+    if (card.type === 'activity') return 'Aktivnost';
+    return formatPostType(card.postType || 'post');
+  }
+
+  getCardMeta(card: ChatCard): string[] {
+    const meta: string[] = [];
+    if (card.regionName) meta.push(card.regionName);
+
+    if (card.type === 'route') {
+      if (card.distanceKm != null) meta.push(`${Number(card.distanceKm).toFixed(1)} km`);
+      if (card.durationMinutes != null) meta.push(this.formatRouteDuration(card.durationMinutes));
+      return meta;
+    }
+
+    if (card.rating != null) meta.push(`★ ${Number(card.rating).toFixed(1)}`);
+    if (card.reviewCount != null && card.reviewCount > 0) meta.push(`${card.reviewCount} reviews`);
+    return meta;
+  }
+
   hasRouteCards(msg: ChatMessage): boolean {
     return !!(msg.routeCards && msg.routeCards.length > 0);
   }
@@ -217,6 +264,17 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
       return Array.isArray(parsed) ? (parsed[0] || '') : images;
     } catch {
       return images;
+    }
+  }
+
+  private toAppUrl(url?: string | null): string | null {
+    if (!url) return null;
+
+    try {
+      const parsed = new URL(url, window.location.origin);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return url.startsWith('/') ? url : null;
     }
   }
 
