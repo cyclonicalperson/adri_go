@@ -5,9 +5,8 @@ import {
 import { CommonModule }          from '@angular/common';
 import { FormsModule }           from '@angular/forms';
 import { Router }                from '@angular/router';
-import { ChatService, ChatMessage } from '../services/chat.service';
+import { ChatCard, ChatService, ChatMessage } from '../services/chat.service';
 import { AuthService }           from '../services/auth.service';
-import { Location }              from '../services/location.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType }        from '../utils/post-type.utils';
 
@@ -112,30 +111,58 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   isErrorMessage(msg: ChatMessage): boolean   { return msg.status === 'error'; }
   isThinkingMessage(msg: ChatMessage): boolean { return msg.status === 'sending'; }
 
-  openLocationDetails(location: Location): void {
-    if (!location.id) return;
-    this.router.navigate(['/location-details', location.id]);
+  openCard(card: ChatCard): void {
+    if (!card.id) return;
+
+    const appUrl = this.toAppUrl(card.type === 'route'
+      ? card.mapUrl || card.detailUrl
+      : card.detailUrl);
+
+    if (appUrl) {
+      this.router.navigateByUrl(appUrl);
+      return;
+    }
+
+    if (card.type === 'route') {
+      this.router.navigate(['/map-home'], { queryParams: { routeId: card.id } });
+      return;
+    }
+
+    this.router.navigate(['/location-details', card.id]);
   }
 
-  getLocationImage(location: Location): string {
-    const image = this.firstImage(location);
+  getCardImage(card: ChatCard): string {
+    const image = card.imageUrl || '';
     return resolveBackendAssetUrl(image, 'assets/Budva.jpg');
   }
 
-  getLocationCategory(location: Location): string {
-    return formatPostType(location.postType || location.category);
+  getCardCategory(card: ChatCard): string {
+    if (card.type === 'route') return card.difficulty || 'Route';
+    if (card.type === 'activity') return 'Activity';
+    return formatPostType(card.postType || 'post');
   }
 
-  private firstImage(location: Location): string {
-    if (location.imageUrl) return location.imageUrl;
-    const images = location.images;
-    if (!images) return '';
-    if (Array.isArray(images)) return images[0] || '';
+  getCardMeta(card: ChatCard): string[] {
+    const meta: string[] = [];
+    if (card.regionName) meta.push(card.regionName);
+    if (card.type === 'route') {
+      if (card.distanceKm != null) meta.push(`${Number(card.distanceKm).toFixed(1)} km`);
+      if (card.durationMinutes != null) meta.push(`${card.durationMinutes} min`);
+      return meta;
+    }
+    if (card.rating != null) meta.push(`★ ${Number(card.rating).toFixed(1)}`);
+    if (card.reviewCount != null && card.reviewCount > 0) meta.push(`${card.reviewCount} reviews`);
+    return meta;
+  }
+
+  private toAppUrl(url?: string | null): string | null {
+    if (!url) return null;
+
     try {
-      const parsed = JSON.parse(images);
-      return Array.isArray(parsed) ? (parsed[0] || '') : images;
+      const parsed = new URL(url, window.location.origin);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     } catch {
-      return images;
+      return url.startsWith('/') ? url : null;
     }
   }
 

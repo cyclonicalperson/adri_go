@@ -618,9 +618,9 @@ internal sealed class GeminiChatService : IGeminiChatService
                 foreach (var rec in pagedRecs.Items)
                 {
                     if (string.Equals(rec.EntityType, "route", StringComparison.OrdinalIgnoreCase))
-                        TryAddCard(cards, new ChatCard(rec.EntityId, "route", rec.Title, null, rec.RegionName, null, null, null, null, $"{baseUrl}/routes/{rec.EntityId}", null, null, null));
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "route", rec.Title, null, rec.RegionName, null, null, null, BuildRouteMapUrl(baseUrl, rec.EntityId), BuildRouteMapUrl(baseUrl, rec.EntityId), null, null, null));
                     else if (IsPostEntity(rec.EntityType))
-                        TryAddCard(cards, new ChatCard(rec.EntityId, "post", rec.Title, rec.PostType, rec.RegionName, null, null, null, $"{baseUrl}/posts/{rec.EntityId}", null, null, null, null));
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "post", rec.Title, rec.PostType, rec.RegionName, null, null, null, BuildPostDetailUrl(baseUrl, rec.EntityId), null, null, null, null));
                 }
                 return;
 
@@ -628,9 +628,9 @@ internal sealed class GeminiChatService : IGeminiChatService
                 foreach (var rec in recs)
                 {
                     if (string.Equals(rec.EntityType, "route", StringComparison.OrdinalIgnoreCase))
-                        TryAddCard(cards, new ChatCard(rec.EntityId, "route", rec.Title, null, rec.RegionName, null, null, null, null, $"{baseUrl}/routes/{rec.EntityId}", null, null, null));
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "route", rec.Title, null, rec.RegionName, null, null, null, BuildRouteMapUrl(baseUrl, rec.EntityId), BuildRouteMapUrl(baseUrl, rec.EntityId), null, null, null));
                     else if (IsPostEntity(rec.EntityType))
-                        TryAddCard(cards, new ChatCard(rec.EntityId, "post", rec.Title, rec.PostType, rec.RegionName, null, null, null, $"{baseUrl}/posts/{rec.EntityId}", null, null, null, null));
+                        TryAddCard(cards, new ChatCard(rec.EntityId, "post", rec.Title, rec.PostType, rec.RegionName, null, null, null, BuildPostDetailUrl(baseUrl, rec.EntityId), null, null, null, null));
                 }
                 return;
 
@@ -638,9 +638,9 @@ internal sealed class GeminiChatService : IGeminiChatService
                 foreach (var item in pagedTop.Items)
                 {
                     if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, null, item.AvgRating, (uint?)item.ReviewCount, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, null, item.AvgRating, (uint?)item.ReviewCount, null, BuildRouteMapUrl(baseUrl, item.EntityId), BuildRouteMapUrl(baseUrl, item.EntityId), null, null, null));
                     else if (IsPostEntity(item.EntityType))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, null, item.AvgRating, (uint?)item.ReviewCount, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, null, item.AvgRating, (uint?)item.ReviewCount, null, BuildPostDetailUrl(baseUrl, item.EntityId), null, null, null, null));
                 }
                 return;
 
@@ -648,9 +648,9 @@ internal sealed class GeminiChatService : IGeminiChatService
                 foreach (var item in topContent)
                 {
                     if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, null, item.AvgRating, (uint?)item.ReviewCount, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, null, item.AvgRating, (uint?)item.ReviewCount, null, BuildRouteMapUrl(baseUrl, item.EntityId), BuildRouteMapUrl(baseUrl, item.EntityId), null, null, null));
                     else if (IsPostEntity(item.EntityType))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, null, item.AvgRating, (uint?)item.ReviewCount, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, null, item.AvgRating, (uint?)item.ReviewCount, null, BuildPostDetailUrl(baseUrl, item.EntityId), null, null, null, null));
                 }
                 return;
 
@@ -658,9 +658,9 @@ internal sealed class GeminiChatService : IGeminiChatService
                 foreach (var item in pagedNew.Items)
                 {
                     if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, item.RegionName, item.Rating, null, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, item.RegionName, item.Rating, null, null, BuildRouteMapUrl(baseUrl, item.EntityId), BuildRouteMapUrl(baseUrl, item.EntityId), null, null, null));
                     else if (IsPostEntity(item.EntityType))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, item.RegionName, item.Rating, null, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, item.RegionName, item.Rating, null, null, BuildPostDetailUrl(baseUrl, item.EntityId), null, null, null, null));
                 }
                 return;
 
@@ -668,15 +668,50 @@ internal sealed class GeminiChatService : IGeminiChatService
                 foreach (var item in newContent)
                 {
                     if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, item.RegionName, item.Rating, null, null, null, $"{baseUrl}/routes/{item.EntityId}", null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "route", item.Title, null, item.RegionName, item.Rating, null, null, BuildRouteMapUrl(baseUrl, item.EntityId), BuildRouteMapUrl(baseUrl, item.EntityId), null, null, null));
                     else if (IsPostEntity(item.EntityType))
-                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, item.RegionName, item.Rating, null, null, $"{baseUrl}/posts/{item.EntityId}", null, null, null, null));
+                        TryAddCard(cards, new ChatCard(item.EntityId, "post", item.Title, item.PostType, item.RegionName, item.Rating, null, null, BuildPostDetailUrl(baseUrl, item.EntityId), null, null, null, null));
                 }
                 return;
 
             case PagedResult<EventSummary> pagedEvents:
                 foreach (var ev in pagedEvents.Items)
-                    TryAddCard(cards, new ChatCard(ev.Id, "post", ev.Title, "event", null, ev.AvgRating, null, null, $"{baseUrl}/posts/{ev.Id}", null, null, null, null));
+                    TryAddCard(cards, new ChatCard(ev.Id, "post", ev.Title, "event", null, ev.AvgRating, null, null, BuildPostDetailUrl(baseUrl, ev.Id), null, null, null, null));
+                return;
+
+            case PagedResult<SavedPostSummary> savedPosts:
+                foreach (var item in savedPosts.Items)
+                    TryAddCard(cards, new ChatCard(item.PostId, "post", item.PostTitle, item.PostType, null, item.Rating, null, null, BuildPostDetailUrl(baseUrl, item.PostId), null, null, null, null));
+                return;
+
+            case PagedResult<TouristFavoriteSummary> favorites:
+                foreach (var item in favorites.Items)
+                {
+                    if (string.Equals(item.EntityType, "route", StringComparison.OrdinalIgnoreCase) && item.RouteId.HasValue)
+                        TryAddCard(cards, new ChatCard(item.RouteId.Value, "route", item.Title ?? "Ruta", null, null, null, null, null, BuildRouteMapUrl(baseUrl, item.RouteId.Value), BuildRouteMapUrl(baseUrl, item.RouteId.Value), null, null, null));
+                    else if (item.PostId.HasValue)
+                        TryAddCard(cards, new ChatCard(item.PostId.Value, "post", item.Title ?? "Objava", item.PostType, null, null, null, null, BuildPostDetailUrl(baseUrl, item.PostId.Value), null, null, null, null));
+                }
+                return;
+
+            case IReadOnlyList<PlannerSummary> planners:
+                foreach (var plannerItem in planners.SelectMany(p => p.Days).SelectMany(d => d.Items))
+                {
+                    if (string.Equals(plannerItem.EntityType, "route", StringComparison.OrdinalIgnoreCase) && plannerItem.RouteId.HasValue)
+                        TryAddCard(cards, new ChatCard(plannerItem.RouteId.Value, "route", plannerItem.Title ?? "Ruta", null, null, null, null, null, BuildRouteMapUrl(baseUrl, plannerItem.RouteId.Value), BuildRouteMapUrl(baseUrl, plannerItem.RouteId.Value), null, null, null));
+                    else if (plannerItem.PostId.HasValue)
+                        TryAddCard(cards, new ChatCard(plannerItem.PostId.Value, "post", plannerItem.Title ?? "Objava", null, null, null, null, null, BuildPostDetailUrl(baseUrl, plannerItem.PostId.Value), null, null, null, null));
+                }
+                return;
+
+            case IReadOnlyList<ExternalClickSummary> clickStats:
+                foreach (var item in clickStats)
+                    TryAddCard(cards, new ChatCard(item.PostId, "post", item.PostTitle, item.PostType, null, null, null, null, BuildPostDetailUrl(baseUrl, item.PostId), null, null, null, null));
+                return;
+
+            case IReadOnlyList<DirectionRequestSummary> directionStats:
+                foreach (var item in directionStats)
+                    TryAddCard(cards, new ChatCard(item.PostId, "post", item.PostTitle, item.PostType, null, null, null, null, BuildPostDetailUrl(baseUrl, item.PostId), null, null, null, null));
                 return;
         }
     }
@@ -684,22 +719,28 @@ internal sealed class GeminiChatService : IGeminiChatService
     private static void TryAddPostCard(List<ChatCard> cards, PostSummary p, string baseUrl) =>
         TryAddCard(cards, new ChatCard(
             p.Id, "post", p.Title, p.PostType, null, p.Rating, p.ReviewCount,
-            null, $"{baseUrl}/posts/{p.Id}", null, null, null, null));
+            null, BuildPostDetailUrl(baseUrl, p.Id), null, null, null, null));
 
     private static void TryAddPostCardFromDetail(List<ChatCard> cards, PostDetail d, string baseUrl) =>
         TryAddCard(cards, new ChatCard(
             d.Id, "post", d.Title, d.PostType, d.RegionName, d.Rating, d.ReviewCount,
-            d.Images.FirstOrDefault(), $"{baseUrl}/posts/{d.Id}", null, null, null, null));
+            d.Images.FirstOrDefault(), BuildPostDetailUrl(baseUrl, d.Id), null, null, null, null));
 
     private static void TryAddRouteCard(List<ChatCard> cards, RouteSummary r, string baseUrl) =>
         TryAddCard(cards, new ChatCard(
             r.Id, "route", r.Name, null, null, null, null,
-            null, null, $"{baseUrl}/routes/{r.Id}", r.DistanceKm, (int?)r.DurationMinutes, r.Difficulty));
+            null, BuildRouteMapUrl(baseUrl, r.Id), BuildRouteMapUrl(baseUrl, r.Id), r.DistanceKm, (int?)r.DurationMinutes, r.Difficulty));
 
     private static void TryAddRouteCardFromDetail(List<ChatCard> cards, RouteDetail r, string baseUrl) =>
         TryAddCard(cards, new ChatCard(
             r.Id, "route", r.Name, null, r.RegionName, null, null,
-            r.Images.FirstOrDefault(), null, $"{baseUrl}/routes/{r.Id}", r.DistanceKm, (int?)r.DurationMinutes, r.Difficulty));
+            r.Images.FirstOrDefault(), BuildRouteMapUrl(baseUrl, r.Id), BuildRouteMapUrl(baseUrl, r.Id), r.DistanceKm, (int?)r.DurationMinutes, r.Difficulty));
+
+    private static string BuildPostDetailUrl(string baseUrl, uint postId) =>
+        $"{baseUrl}/location-details/{postId}";
+
+    private static string BuildRouteMapUrl(string baseUrl, uint routeId) =>
+        $"{baseUrl}/map-home?routeId={routeId}";
 
     private static void TryAddCard(List<ChatCard> cards, ChatCard card)
     {
@@ -720,7 +761,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             .Take(6)
             .ToList();
 
-        return mentioned.Count > 0 ? mentioned : cards.Take(4).ToList();
+        return mentioned;
     }
 
     private static IReadOnlyList<ChatPostReference> FilterReferencedPostsForReply(
@@ -735,7 +776,7 @@ internal sealed class GeminiChatService : IGeminiChatService
             .Take(4)
             .ToList();
 
-        return mentioned.Count > 0 ? mentioned : posts.Take(3).ToList();
+        return mentioned;
     }
 
     private static string NormalizeReferenceText(string value)
@@ -1812,6 +1853,7 @@ internal sealed class GeminiChatService : IGeminiChatService
         - Support pagination: if HasMore is true in the response, offer to show more results by calling the same tool with offset incremented by limit. Always mention to the user when more results are available.
         - Be concise but informative — highlight the most important details.
         - When listing multiple results, use a structured format (numbered list or table).
+        - When a tool returns locations or routes that should be shown to the user, mention the exact returned titles in your final answer.
 
         NAME-BASED LOOKUP — ALWAYS prefer this:
         All tools that accept regionId, postId, or routeId ALSO accept regionName, postName, or routeName.
