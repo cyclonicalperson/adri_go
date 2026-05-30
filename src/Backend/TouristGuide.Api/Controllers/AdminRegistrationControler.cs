@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.DTOs;
 using TouristGuide.Api.Models;
@@ -18,19 +19,22 @@ namespace TouristGuide.Api.Controllers
         private readonly EmailService _emailService;
         private readonly ILogger<AdminRegistrationController> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly DatabaseTransactionRunner _transactionRunner;
 
         public AdminRegistrationController(
             AppDbContext dbContext,
             AdminIdentityService adminIdentityService,
             EmailService emailService,
             ILogger<AdminRegistrationController> logger,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            DatabaseTransactionRunner transactionRunner)
         {
             _dbContext = dbContext;
             _adminIdentityService = adminIdentityService;
             _emailService = emailService;
             _logger = logger;
             _environment = environment;
+            _transactionRunner = transactionRunner;
         }
 
         [HttpGet]
@@ -195,6 +199,7 @@ namespace TouristGuide.Api.Controllers
             [FromBody] AdminRegistrationDecisionDto? decision)
         {
             var request = await _dbContext.AdminRegistrationRequests
+                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (request is null)
@@ -216,27 +221,39 @@ namespace TouristGuide.Api.Controllers
             if (reviewerId is null)
                 return Unauthorized(new { message = "Superadmin nije autentifikovan." });
 
-            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            var approval = await _transactionRunner.ExecuteAsync(async _ =>
+            {
+                var lockedRequest = await LoadRegistrationRequestForUpdateAsync(id);
+                if (lockedRequest is null)
+                    return (Request: (AdminRegistrationRequest?)null, Admin: (AdminUser?)null, ConflictMessage: "Admin registration request nije pronadjen.");
+
+                if (!string.Equals(lockedRequest.Status, "pending", StringComparison.OrdinalIgnoreCase))
+                    return (Request: lockedRequest, Admin: (AdminUser?)null, ConflictMessage: "Samo pending zahtevi mogu biti odobreni.");
+
+                if (!lockedRequest.EmailVerifiedAt.HasValue)
+                    return (Request: lockedRequest, Admin: (AdminUser?)null, ConflictMessage: "Email kandidata nije verifikovan. Odobrenje je moguce tek nakon potvrde email adrese.");
+
+                var normalizedEmail = lockedRequest.Email.Trim().ToLowerInvariant();
 
             // Ako admin već postoji, aktivira se postojeći nalog
             var existingAdmin = await _dbContext.AdminUsers
                 .FirstOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail);
 
             // Poveži admina sa postojećom organizacijom ako postoji u bazi
-            var organizationId = await ResolveOrganizationIdAsync(request);
+            var organizationId = await ResolveOrganizationIdAsync(lockedRequest);
 
             if (existingAdmin is null)
             {
                 // Kreiranje novog admin naloga iz odobrenog request-a
                 existingAdmin = new AdminUser
                 {
-                    FullName = request.FullName,
-                    Email = request.Email,
-                    PasswordHash = request.PasswordHash,
+                    FullName = lockedRequest.FullName,
+                    Email = lockedRequest.Email,
+                    PasswordHash = lockedRequest.PasswordHash,
                     Role = "admin",
-                    IsIndividual = !request.IsOrganization,
+                    IsIndividual = !lockedRequest.IsOrganization,
                     AccountStatus = "active",
-                    EmailVerifiedAt = request.EmailVerifiedAt,
+                    EmailVerifiedAt = lockedRequest.EmailVerifiedAt,
                     OrganizationId = organizationId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -247,25 +264,37 @@ namespace TouristGuide.Api.Controllers
             else
             {
                 // Aktivacija i osvežavanje postojećeg naloga
-                existingAdmin.FullName = request.FullName;
+                existingAdmin.FullName = lockedRequest.FullName;
                 existingAdmin.PasswordHash = string.IsNullOrWhiteSpace(existingAdmin.PasswordHash)
-                    ? request.PasswordHash
+                    ? lockedRequest.PasswordHash
                     : existingAdmin.PasswordHash;
-                existingAdmin.IsIndividual = !request.IsOrganization;
+                existingAdmin.IsIndividual = !lockedRequest.IsOrganization;
                 existingAdmin.AccountStatus = "active";
-                existingAdmin.EmailVerifiedAt ??= request.EmailVerifiedAt;
+                existingAdmin.EmailVerifiedAt ??= lockedRequest.EmailVerifiedAt;
                 existingAdmin.OrganizationId = organizationId ?? existingAdmin.OrganizationId;
                 existingAdmin.UpdatedAt = DateTime.UtcNow;
             }
 
-            request.Status = "approved";
-            request.RejectionReason = null;
-            request.EmailVerificationToken = null;
-            request.EmailVerificationTokenExpiresAt = null;
-            request.ReviewedAt = DateTime.UtcNow;
-            request.ReviewedBy = reviewerId.Value;
+            lockedRequest.Status = "approved";
+            lockedRequest.RejectionReason = null;
+            lockedRequest.EmailVerificationToken = null;
+            lockedRequest.EmailVerificationTokenExpiresAt = null;
+            lockedRequest.ReviewedAt = DateTime.UtcNow;
+            lockedRequest.ReviewedBy = reviewerId.Value;
 
             await _dbContext.SaveChangesAsync();
+
+                return (Request: lockedRequest, Admin: existingAdmin, ConflictMessage: (string?)null);
+            }, IsolationLevel.ReadCommitted);
+
+            if (approval.Request is null)
+                return NotFound(new { message = approval.ConflictMessage });
+
+            if (approval.ConflictMessage is not null)
+                return Conflict(new { message = approval.ConflictMessage });
+
+            request = approval.Request;
+            var existingAdmin = approval.Admin!;
 
             try
             {
@@ -295,6 +324,7 @@ namespace TouristGuide.Api.Controllers
             [FromBody] AdminRegistrationDecisionDto? decision)
         {
             var request = await _dbContext.AdminRegistrationRequests
+                .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (request is null)
@@ -311,16 +341,36 @@ namespace TouristGuide.Api.Controllers
             if (reviewerId is null)
                 return Unauthorized(new { message = "Superadmin nije autentifikovan." });
 
-            request.Status = "rejected";
-            request.RejectionReason = string.IsNullOrWhiteSpace(decision?.RejectionReason)
-                ? null
-                : decision.RejectionReason.Trim();
-            request.EmailVerificationToken = null;
-            request.EmailVerificationTokenExpiresAt = null;
-            request.ReviewedAt = DateTime.UtcNow;
-            request.ReviewedBy = reviewerId.Value;
+            var rejection = await _transactionRunner.ExecuteAsync(async _ =>
+            {
+                var lockedRequest = await LoadRegistrationRequestForUpdateAsync(id);
+                if (lockedRequest is null)
+                    return (Request: (AdminRegistrationRequest?)null, ConflictMessage: "Admin registration request nije pronadjen.");
 
-            await _dbContext.SaveChangesAsync();
+                if (!string.Equals(lockedRequest.Status, "pending", StringComparison.OrdinalIgnoreCase))
+                    return (Request: lockedRequest, ConflictMessage: "Samo pending zahtevi mogu biti odbijeni.");
+
+                lockedRequest.Status = "rejected";
+                lockedRequest.RejectionReason = string.IsNullOrWhiteSpace(decision?.RejectionReason)
+                    ? null
+                    : decision.RejectionReason.Trim();
+                lockedRequest.EmailVerificationToken = null;
+                lockedRequest.EmailVerificationTokenExpiresAt = null;
+                lockedRequest.ReviewedAt = DateTime.UtcNow;
+                lockedRequest.ReviewedBy = reviewerId.Value;
+
+                await _dbContext.SaveChangesAsync();
+
+                return (Request: lockedRequest, ConflictMessage: (string?)null);
+            }, IsolationLevel.ReadCommitted);
+
+            if (rejection.Request is null)
+                return NotFound(new { message = rejection.ConflictMessage });
+
+            if (rejection.ConflictMessage is not null)
+                return Conflict(new { message = rejection.ConflictMessage });
+
+            request = rejection.Request;
 
             try
             {
@@ -344,6 +394,13 @@ namespace TouristGuide.Api.Controllers
         }
 
         // Pokušaj da pronađeš već postojeću organizaciju po nazivu ili email-u
+        private Task<AdminRegistrationRequest?> LoadRegistrationRequestForUpdateAsync(int id)
+        {
+            return _dbContext.AdminRegistrationRequests
+                .FromSqlInterpolated($"SELECT * FROM admin_registration_request WHERE id = {id} FOR UPDATE")
+                .FirstOrDefaultAsync();
+        }
+
         private async Task<uint?> ResolveOrganizationIdAsync(AdminRegistrationRequest request)
         {
             if (!request.IsOrganization)

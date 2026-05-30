@@ -1,59 +1,88 @@
-# FrontendKorisnik
+# AdriGo Korisnicki Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.2.
+Angular 21 turisticki portal za istrazivanje Crne Gore kroz mapu, lokacije, aktivnosti, rute, dogadjaje, preporuke i chat asistenta.
 
-## Development server
+## URL-ovi
 
-To start a local development server, run:
+| Okruzenje | URL |
+| --- | --- |
+| Lokalno | http://localhost:4201 |
+| Hostovano | https://softeng.pmf.kg.ac.rs:10187 |
+| Lokalni API | http://localhost:5125/api |
+| Hostovani API | https://softeng.pmf.kg.ac.rs:10185/api |
+| Lokalni MCP/chat | http://localhost:5200 |
+| Hostovani MCP/chat | https://softeng.pmf.kg.ac.rs:10186 |
+| Admin frontend | https://softeng.pmf.kg.ac.rs:10188 |
 
-```bash
-ng serve
-```
+Production environment je u `src/environments/environment.production.ts` i vec pokazuje na hostovane URL-ove.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Pokretanje
 
 ```bash
-ng generate --help
+npm install
+npm start
 ```
 
-## Building
+Angular dev server se pokrece na `http://localhost:4201`.
 
-To build the project run:
+Za production build:
 
 ```bash
-ng build
+npm run build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Sta aplikacija pokriva
 
-## Running unit tests
+- registracija, login, email verifikacija i Google prijava
+- glavna mapa sa lokacijama, rutama, aktivnostima i preporukama
+- detalji lokacija i sadrzaja, galerije i recenzije
+- cuvanje, lajkovanje, deljenje i pracenje interakcija
+- planer putovanja i korisnicki kalendar
+- korisnicki profil, privatnost i obavestenja
+- Gemini chat kroz MCP/backend servis
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Konfiguracija
+
+Relevantni fajlovi:
+
+- `src/environments/environment.ts`
+- `src/environments/environment.development.ts`
+- `src/environments/environment.production.ts`
+
+Lokalni development koristi:
+
+```ts
+apiUrl: 'http://localhost:5125/api'
+touristAppUrl: 'http://localhost:4201'
+adminAppUrl: 'http://localhost:4200'
+mcpUrl: 'http://localhost:5200/mcp'
+chatApiUrl: 'http://localhost:5200/api/chat'
+```
+
+Production build koristi hostovane servise:
+
+```ts
+apiUrl: 'https://softeng.pmf.kg.ac.rs:10185/api'
+touristAppUrl: 'https://softeng.pmf.kg.ac.rs:10187'
+adminAppUrl: 'https://softeng.pmf.kg.ac.rs:10188'
+mcpUrl: 'https://softeng.pmf.kg.ac.rs:10186/mcp'
+chatApiUrl: 'https://softeng.pmf.kg.ac.rs:10186/api/chat'
+```
+
+## Backend zavisnosti
+
+Za pun rad lokalno treba pokrenuti:
 
 ```bash
-ng test
+cd ../../Backend/TouristGuide.Api
+dotnet run
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Za chat:
 
 ```bash
-ng e2e
+cd ../../MCP
+dotnet run
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Turisticke naloge najjednostavnije je kreirati kroz registracionu formu.

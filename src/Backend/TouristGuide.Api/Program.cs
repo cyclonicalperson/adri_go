@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -6,6 +8,9 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Net.Http.Headers;
 using System.Net;
+using System.IO.Compression;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.Extensions.FileProviders;
 using System.IO;
 using TouristGuide.Api.Data;
@@ -19,6 +24,11 @@ var dataProtectionPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "Dat
 var configuredCorsOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>() ?? [];
+var dbContextPoolSize = Math.Clamp(builder.Configuration.GetValue("Performance:DbContextPoolSize", 256), 32, 2048);
+var rateLimitPermitLimit = Math.Clamp(builder.Configuration.GetValue("Performance:RateLimit:PermitLimit", 240), 60, 5000);
+var rateLimitQueueLimit = Math.Clamp(builder.Configuration.GetValue("Performance:RateLimit:QueueLimit", 40), 0, 1000);
+var rateLimitWindowSeconds = Math.Clamp(builder.Configuration.GetValue("Performance:RateLimit:WindowSeconds", 60), 10, 3600);
+var rateLimitSegmentsPerWindow = Math.Clamp(builder.Configuration.GetValue("Performance:RateLimit:SegmentsPerWindow", 6), 1, 60);
 
 Directory.CreateDirectory(dataProtectionPath);
 
@@ -121,6 +131,7 @@ builder.Services.AddSingleton<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<TouristNotificationService>();
 builder.Services.AddScoped<RouteSafetyService>();
+builder.Services.AddScoped<DatabaseTransactionRunner>();
 
 // ── Anthropic HTTP klijent (za AI chat proxy) ──────────────────────────────
 builder.Services.AddHttpClient("AnthropicApi", client =>
@@ -155,6 +166,36 @@ builder.Services.AddScoped<NotificationService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/json"]);
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            GetRateLimitPartitionKey(context),
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                QueueLimit = rateLimitQueueLimit,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                PermitLimit = rateLimitPermitLimit,
+                SegmentsPerWindow = rateLimitSegmentsPerWindow,
+                Window = TimeSpan.FromSeconds(rateLimitWindowSeconds)
+            }));
+});
 
 // ────────────────────────────────────────────────────────────
 // 4. SWAGGER SA JWT PODRŠKOM
@@ -188,10 +229,19 @@ builder.Services.AddSwaggerGen(options =>
 // ────────────────────────────────────────────────────────────
 // 5. POSTGRESQL KONEKCIJA
 // ────────────────────────────────────────────────────────────
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContextPool<AppDbContext>(options =>
     options.UseNpgsql(
-        GetRequiredSetting(builder.Configuration, "ConnectionStrings:DefaultConnection")
-    ));
+        GetRequiredSetting(builder.Configuration, "ConnectionStrings:DefaultConnection"),
+        npgsqlOptions =>
+        {
+            npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorCodesToAdd: null);
+            npgsqlOptions.CommandTimeout(30);
+        }
+    ),
+    poolSize: dbContextPoolSize);
 
 var app = builder.Build();
 
@@ -201,10 +251,20 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    await db.Database.OpenConnectionAsync();
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_lock(902100501);");
+        await db.Database.MigrateAsync();
 
-    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-    await seeder.SeedAsync();
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+        await seeder.SeedAsync();
+    }
+    finally
+    {
+        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(902100501);");
+        await db.Database.CloseConnectionAsync();
+    }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -229,6 +289,8 @@ app.UseWhen(
     context => !IsLoopbackRequest(context),
     branch => branch.UseHttpsRedirection());
 
+app.UseResponseCompression();
+
 var imagesPhysicalPath = Path.Combine(app.Environment.ContentRootPath, "images");
 Directory.CreateDirectory(imagesPhysicalPath);
 app.MapWhen(
@@ -251,6 +313,7 @@ if (Directory.Exists(app.Environment.WebRootPath))
 
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
@@ -264,6 +327,20 @@ static bool IsLoopbackRequest(HttpContext context)
 {
     var remoteIp = context.Connection.RemoteIpAddress;
     return remoteIp is not null && IPAddress.IsLoopback(remoteIp);
+}
+
+static string GetRateLimitPartitionKey(HttpContext context)
+{
+    var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? context.User.FindFirstValue("sub");
+
+    if (!string.IsNullOrWhiteSpace(userId))
+        return $"user:{userId}";
+
+    var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+    return string.IsNullOrWhiteSpace(remoteIp)
+        ? "anonymous:unknown"
+        : $"ip:{remoteIp}";
 }
 
 static string GetRequiredSecret(

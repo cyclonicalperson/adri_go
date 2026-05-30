@@ -13,11 +13,29 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : req;
 
+  // Javni endpointi koji mogu da vrate 401 bez aktivne sesije —
+  // interceptor ih ne smije tretirati kao "sesija istekla".
+  const PUBLIC_AUTH_ENDPOINTS = [
+    '/forgot-password',
+    '/reset-password',
+    '/resend-verification',
+    '/verify-email',
+    '/login',
+    '/register',
+    '/social-login',
+  ];
+
+  const isPublicEndpoint = PUBLIC_AUTH_ENDPOINTS.some(path =>
+    req.url.includes(path)
+  );
+
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       // Ako backend vrati 401, token je nevažeći (istekao, Google šifra promijenjena, itd.)
       // Brišemo lokalnu sesiju i šaljemo korisnika na login.
-      if (error.status === 401 && authService.isLoggedIn) {
+      // Javne rute (forgot-password, reset-password itd.) preskačemo — tamo korisnik
+      // legitimno nema token i greška treba da stigne do komponente.
+      if (error.status === 401 && authService.isLoggedIn && !isPublicEndpoint) {
         authService.logout();
         router.navigate(['/login'], {
           queryParams: { reason: 'session_expired' }

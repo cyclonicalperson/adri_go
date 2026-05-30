@@ -508,6 +508,8 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasIndex("PostId");
 
+                    b.HasIndex("PostId", "CreatedAt");
+
                     b.HasIndex("TouristId");
 
                     b.ToTable("direction_request");
@@ -1051,6 +1053,8 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name", "Country");
+
                     b.ToTable("region");
                 });
 
@@ -1100,9 +1104,21 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasIndex("PostId");
 
+                    b.HasIndex("PostId", "Status");
+
                     b.HasIndex("RouteId");
 
+                    b.HasIndex("RouteId", "Status");
+
                     b.HasIndex("TouristId");
+
+                    b.HasIndex("TouristId", "PostId")
+                        .IsUnique()
+                        .HasFilter("tourist_id IS NOT NULL AND post_id IS NOT NULL");
+
+                    b.HasIndex("TouristId", "RouteId")
+                        .IsUnique()
+                        .HasFilter("tourist_id IS NOT NULL AND route_id IS NOT NULL");
 
                     b.ToTable("review");
                 });

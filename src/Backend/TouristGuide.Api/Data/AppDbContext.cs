@@ -98,6 +98,28 @@ namespace TouristGuide.Api.Data
                 .HasIndex(x => x.Name)
                 .IsUnique();
 
+            modelBuilder.Entity<Review>()
+                .HasIndex(x => new { x.TouristId, x.PostId })
+                .IsUnique()
+                .HasFilter("tourist_id IS NOT NULL AND post_id IS NOT NULL");
+
+            modelBuilder.Entity<Review>()
+                .HasIndex(x => new { x.TouristId, x.RouteId })
+                .IsUnique()
+                .HasFilter("tourist_id IS NOT NULL AND route_id IS NOT NULL");
+
+            modelBuilder.Entity<Review>()
+                .HasIndex(x => new { x.PostId, x.Status });
+
+            modelBuilder.Entity<Review>()
+                .HasIndex(x => new { x.RouteId, x.Status });
+
+            modelBuilder.Entity<PostView>()
+                .HasIndex(x => new { x.PostId, x.CreatedAt });
+
+            modelBuilder.Entity<Region>()
+                .HasIndex(x => new { x.Name, x.Country });
+
             // ════════════════════════════════════════════════════════════════
             //  PostTag — kompozitni PK (bez surrogate ključa)
             // ════════════════════════════════════════════════════════════════

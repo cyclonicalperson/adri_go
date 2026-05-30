@@ -19,19 +19,22 @@ namespace TouristGuide.Api.Services
         private readonly TouristNotificationService _notifications;
         private readonly NotificationService _adminNotifications;
         private readonly ILogger<ReviewService> _logger;
+        private readonly DatabaseTransactionRunner _transactionRunner;
 
         public ReviewService(
             AppDbContext context,
             IReviewModerationService moderation,
             TouristNotificationService notifications,
             NotificationService adminNotifications,
-            ILogger<ReviewService> logger)
+            ILogger<ReviewService> logger,
+            DatabaseTransactionRunner transactionRunner)
         {
             _context            = context;
             _moderation         = moderation;
             _notifications      = notifications;
             _adminNotifications = adminNotifications;
             _logger             = logger;
+            _transactionRunner  = transactionRunner;
         }
 
         public async Task<IReadOnlyList<AdminReviewListItemDto>> GetAllReviews(string role, uint currentAdminId)
@@ -124,57 +127,60 @@ namespace TouristGuide.Api.Services
             var initialStatus = moderation.IsSafe ? ApprovedReviewStatus : PendingReviewStatus;
             var isApproved = moderation.IsSafe;
 
-            if (existingReview is not null)
+            try
             {
-                existingReview.Rating = (byte)dto.Rating;
-                existingReview.Comment = normalizedComment;
-                existingReview.Status = initialStatus;
-                existingReview.IsApproved = isApproved;
-                existingReview.CreatedAt = submittedAt;
-                await _context.SaveChangesAsync();
-
-                if (isApproved)
+                var result = await _transactionRunner.ExecuteAsync(async _ =>
                 {
-                    await RefreshReviewStats(post);
-                    var notification = await _notifications.QueueReviewStatusUpdateAsync(existingReview, PendingReviewStatus, null);
+                    var reviewToReturn = existingReview;
+                    if (reviewToReturn is not null)
+                    {
+                        reviewToReturn.Rating = (byte)dto.Rating;
+                        reviewToReturn.Comment = normalizedComment;
+                        reviewToReturn.Status = initialStatus;
+                        reviewToReturn.IsApproved = isApproved;
+                        reviewToReturn.CreatedAt = submittedAt;
+                    }
+                    else
+                    {
+                        reviewToReturn = new Review
+                        {
+                            PostId = postId,
+                            TouristId = touristId,
+                            Rating = (byte)dto.Rating,
+                            Comment = normalizedComment,
+                            Status = initialStatus,
+                            IsApproved = isApproved,
+                            CreatedAt = submittedAt
+                        };
+
+                        _context.Reviews.Add(reviewToReturn);
+                    }
+
                     await _context.SaveChangesAsync();
-                    await _notifications.DispatchAsync(notification);
-                }
-                else
-                {
-                    await NotifyAdminOfFlaggedReviewAsync(post, existingReview, moderation.FlagReason);
-                }
 
-                return CreateReviewResult.Success(MapToReviewDto(existingReview, tourist.Name));
+                    Notification? notification = null;
+                    if (isApproved)
+                    {
+                        await RefreshReviewStats(post);
+                        notification = await _notifications.QueueReviewStatusUpdateAsync(reviewToReturn, PendingReviewStatus, null);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    return (Review: reviewToReturn, Notification: notification, IsApproved: isApproved);
+                });
+
+                if (result.Notification is not null)
+                    await _notifications.DispatchAsync(result.Notification);
+
+                if (!result.IsApproved)
+                    await NotifyAdminOfFlaggedReviewAsync(post, result.Review, moderation.FlagReason);
+
+                return CreateReviewResult.Success(MapToReviewDto(result.Review, tourist.Name));
             }
-
-            var review = new Review
+            catch (DbUpdateException ex) when (DatabaseErrorClassifier.IsUniqueViolation(ex))
             {
-                PostId = postId,
-                TouristId = touristId,
-                Rating = (byte)dto.Rating,
-                Comment = normalizedComment,
-                Status = initialStatus,
-                IsApproved = isApproved,
-                CreatedAt = submittedAt
-            };
-
-            _context.Reviews.Add(review);
-            await _context.SaveChangesAsync();
-
-            if (isApproved)
-            {
-                await RefreshReviewStats(post);
-                var notification = await _notifications.QueueReviewStatusUpdateAsync(review, PendingReviewStatus, null);
-                await _context.SaveChangesAsync();
-                await _notifications.DispatchAsync(notification);
+                return CreateReviewResult.DuplicateReview();
             }
-            else
-            {
-                await NotifyAdminOfFlaggedReviewAsync(post, review, moderation.FlagReason);
-            }
-
-            return CreateReviewResult.Success(MapToReviewDto(review, tourist.Name));
         }
 
         private async Task NotifyAdminOfFlaggedReviewAsync(Post post, Review review, string? flagReason)
