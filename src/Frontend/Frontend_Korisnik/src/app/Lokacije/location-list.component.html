@@ -23,7 +23,9 @@
   <div class="search-section">
     <div class="explore-intro" *ngIf="!activeSectionView">
       <span class="explore-kicker">Explore the unknown</span>
-      <h1>{{ discoverTitle }}</h1>
+      <h1>
+        <span>Discover</span><span *ngIf="allLocationCount > 0"> {{ allLocationCount }}</span><span> curated places</span>
+      </h1>
     </div>
 
     <div class="search-line">

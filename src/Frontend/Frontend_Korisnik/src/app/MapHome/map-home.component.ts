@@ -214,7 +214,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'accommodation', label: 'Accommodation', icon: '🏨', active: false },
     { key: 'shop', label: 'Shopping', icon: '🛍️', active: false },
     { key: 'route', label: 'Routes', icon: 'Route', active: false },
-    { key: 'other', label: 'Ostalo', icon: '\u{1F4CD}', active: false },
+    { key: 'other', label: 'Other', icon: '\u{1F4CD}', active: false },
   ];
 
   filterMinRating = 0;

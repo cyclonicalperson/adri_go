@@ -27,7 +27,7 @@ export class HelpComponent {
     },
     {
       q: 'How do I report incorrect information about a location?',
-      a: 'Open the location detail page and scroll to the bottom. Tap "Report an issue" and fill in the form. Our team reviews reports within 24–48 hours.'
+      a: 'Open the location detail page and scroll to the bottom. Tap "Report an issue" and fill in the form. Our team reviews reports within 24-48 hours.'
     },
     {
       q: 'Is AdriGo available offline?',
@@ -35,7 +35,7 @@ export class HelpComponent {
     },
     {
       q: 'How do I delete my account?',
-      a: 'Go to Account → Privacy & Terms → Delete Account. This action is permanent and removes all your data from our servers.'
+      a: 'Go to Account -> Privacy & Terms -> Delete Account. This action is permanent and removes all your data from our servers.'
     }
   ];
 

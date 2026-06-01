@@ -77,7 +77,7 @@ export class FiltersComponent implements OnInit, OnChanges {
     { id: 'event',           label: 'Events',        icon: '📅', selected: false },
     { id: 'accommodation',   label: 'Accommodation', icon: '🏨', selected: false },
     { id: 'shop',            label: 'Shopping',      icon: '🛍️', selected: false },
-    { id: 'other',           label: 'Ostalo',        icon: '\u{1F4CD}', selected: false },
+    { id: 'other',           label: 'Other',         icon: '\u{1F4CD}', selected: false },
   ];
 
   readonly radiusSteps = [0, 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100, 150, 200];

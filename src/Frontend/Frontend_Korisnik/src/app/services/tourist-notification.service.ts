@@ -5,6 +5,7 @@ import { BehaviorSubject, Observable, Subscription, map, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 import { TouristPreferencesService } from './tourist-preferences.service';
+import { SiteTranslateService } from './site-translate.service';
 
 export interface TouristNotification {
   id: number;
@@ -50,6 +51,7 @@ export class TouristNotificationService implements OnDestroy {
     private authService: AuthService,
     private preferences: TouristPreferencesService,
     private ngZone: NgZone,
+    private translate: SiteTranslateService,
   ) {
     this.authSubscription = this.authService.tourist$.subscribe(session => {
       if (session?.token) {
@@ -236,8 +238,8 @@ export class TouristNotificationService implements OnDestroy {
       return;
     }
 
-    new Notification(notification.title, {
-      body: notification.body ?? undefined,
+    new Notification(this.translate.instant(notification.title), {
+      body: notification.body ? this.translate.instant(notification.body) : undefined,
     });
   }
 
