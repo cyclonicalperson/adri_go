@@ -11,11 +11,13 @@ import { formatPostType } from '../utils/post-type.utils';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 @Component({
   selector: 'app-explore-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './explore-section.component.html',
   styleUrls: ['./explore-section.component.css']
 })

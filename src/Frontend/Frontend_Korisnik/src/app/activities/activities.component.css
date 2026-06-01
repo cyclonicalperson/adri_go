@@ -1,9 +1,11 @@
 
 .activities-page {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: var(--gray-50, #f8fafc);
   color: var(--gray-900, #0f172a);
-  padding-bottom: 86px;
+  padding-bottom: var(--mobile-footer-space);
 }
 
 .controls {
@@ -182,6 +184,12 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     max-width: 1180px;
     margin: 0 auto;
+  }
+}
+
+@media (min-width: 900px) {
+  .activities-page {
+    padding-bottom: var(--mobile-footer-space);
   }
 }
 

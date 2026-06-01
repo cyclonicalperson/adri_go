@@ -75,7 +75,7 @@
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 14px 24px 88px;
+  padding: 14px 24px var(--mobile-footer-space);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -589,12 +589,14 @@
   .calendar-scroll {
     flex: none;
     overflow: visible;
+    padding-bottom: calc(var(--mobile-footer-total-height) + 64px);
   }
   .calendar-layout {
     display: flex;
     flex-direction: column;
     flex: none;
     min-height: 0;
+    padding-bottom: 24px;
   }
   .calendar-panel {
     display: block;
@@ -607,6 +609,7 @@
   .events-side {
     overflow: visible;
     max-height: none;
+    padding-bottom: 24px;
   }
 }
 
@@ -1511,7 +1514,7 @@
 
 @media (min-width: 900px) {
   .calendar-scroll {
-    padding-bottom: 20px;
+    padding-bottom: var(--mobile-footer-space);
   }
 }
 

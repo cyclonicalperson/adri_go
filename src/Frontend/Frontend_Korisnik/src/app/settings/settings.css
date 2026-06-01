@@ -4,9 +4,11 @@
 
 .settings-container {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: var(--gray-50);
   font-family: var(--font-sans);
-  padding-bottom: 100px;
+  padding-bottom: var(--mobile-footer-space);
 }
 
 /* ── HEADER ─────────────────────────────────────────────────── */
@@ -466,7 +468,7 @@ input:checked + .slider:before { transform: translateX(21px); }
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    padding-bottom: 0 !important;
+    padding-bottom: var(--mobile-footer-space) !important;
     display: flex;
     flex-direction: column;
     overflow: visible;

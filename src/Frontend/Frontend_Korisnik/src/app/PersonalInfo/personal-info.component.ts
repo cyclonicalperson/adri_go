@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserService, UserProfile } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 @Component({
   selector: 'app-personal-info',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './personal-info.component.html',
   styleUrls: ['./personal-info.component.css']
 })

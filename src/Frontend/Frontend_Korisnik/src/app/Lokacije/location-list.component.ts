@@ -20,6 +20,8 @@ import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
@@ -72,7 +74,7 @@ interface PopularDestination {
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective, AuthRequiredModalComponent],
+  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
