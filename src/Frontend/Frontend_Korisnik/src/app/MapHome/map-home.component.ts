@@ -1481,13 +1481,23 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async ensureUserPosition(): Promise<void> {
-    if (this.userPosition || !this.preferences.snapshot.locationSharing) {
+    if (this.userPosition) {
       return;
+    }
+
+    const locationSharingWasDisabled = !this.preferences.snapshot.locationSharing;
+    if (locationSharingWasDisabled) {
+      this.preferences.update({ locationSharing: true });
     }
 
     const position = await this.geolocationService.requestCurrentPosition({ maximumAge: 30000 });
     if (position) {
       this.handleUserPositionAvailable(position, { fly: false, rerenderRoute: false });
+      return;
+    }
+
+    if (locationSharingWasDisabled) {
+      this.preferences.update({ locationSharing: false });
     }
   }
 
