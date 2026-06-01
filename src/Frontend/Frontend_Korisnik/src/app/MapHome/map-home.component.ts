@@ -697,6 +697,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const coordinates = this.getLocationCoordinates(loc);
     if (this.map && coordinates) {
       this.dismissSearchMenu();
+      this.isFiltersOpen = false;
       this.flyToVisibleMapCenter([coordinates.lat, coordinates.lng], 16);
       this.selectedPublicRoute = null;
       this.selectedLocation = loc;
