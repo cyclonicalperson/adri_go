@@ -14,6 +14,7 @@ import { NotificationBadgeComponent } from '../notifications/notification-badge.
 import { AuthService } from '../services/auth.service';
 import { LocationService, Location } from '../services/location.service';
 import { FilterStateService, FilterState, FilterContentType } from '../services/filter-state.service';
+import { SearchStateService } from '../services/search-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { UserService, CalendarItem, UserProfile, ServerPreferences, PendingSchedule } from '../services/user.service';
 import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
@@ -380,7 +381,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private themeService: ThemeService,
     private touristActivitiesService: TouristActivitiesService,
     private touristRoutesService: TouristRoutesService,
-  ) {}
+    private searchStateService: SearchStateService,
+  ) {
+    const persistedQuery = this.searchStateService.get();
+    if (persistedQuery) {
+      this.searchQuery = persistedQuery;
+    }
+  }
 
   ngOnInit(): void {
     this.isDarkMode = this.themeService.isDarkMode;
@@ -2865,6 +2872,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onSearchInput(query: string): void {
+    this.searchStateService.set(query);
     const intent = this.parseSearchIntent(query);
     if (!intent.normalizedQuery) {
       this.searchResults = [];
@@ -3173,12 +3181,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectSearchResult(loc: MapLocation): void {
     this.searchQuery = loc.title;
+    this.searchStateService.set(this.searchQuery);
     this.dismissSearchMenu();
     this.focusOnLocation(loc);
   }
 
   clearSearch(): void {
     this.searchQuery = '';
+    this.searchStateService.clear();
     this.dismissSearchMenu();
   }
 
