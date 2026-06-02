@@ -448,7 +448,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.siteTranslate.instant(formatPostType(type));
   }
 
   get isEvent(): boolean {

@@ -40,6 +40,8 @@ export class ZahteviComponent implements OnInit {
   rejectReason = '';
   rejectTarget: RegistrationRequest | null = null;
   processing = false;
+  actionMessage = '';
+  actionMessageType: 'success' | 'error' = 'success';
 
   constructor(
     private service: UserService,
@@ -140,20 +142,27 @@ export class ZahteviComponent implements OnInit {
 
   approve(request: RegistrationRequest): void {
     if (!this.canApprove(request)) {
+      this.showActionMessage('Zahtev ne može biti odobren dok korisnik ne verifikuje email adresu.', 'error');
       return;
     }
 
     this.processing = true;
+    this.actionMessage = '';
     this.service.approveRegistration(request.id).subscribe({
       next: () => {
         this.processing = false;
+        this.showActionMessage('Zahtev je odobren.', 'success');
         this.closeDetail();
         this.load();
         this.loadCounts();
         this.badgeService.refresh();
       },
-      error: () => {
+      error: err => {
         this.processing = false;
+        this.showActionMessage(this.resolveActionError(err, 'Zahtev nije mogao biti odobren.'), 'error');
+        this.load();
+        this.loadCounts();
+        this.badgeService.refresh();
       },
     });
   }
@@ -173,9 +182,11 @@ export class ZahteviComponent implements OnInit {
   submitReject(): void {
     if (!this.rejectTarget) return;
     this.processing = true;
+    this.actionMessage = '';
     this.service.rejectRegistration(this.rejectTarget.id, { rejectionReason: this.rejectReason }).subscribe({
       next: () => {
         this.processing = false;
+        this.showActionMessage('Zahtev je odbijen.', 'success');
         this.rejectDialogOpen = false;
         this.rejectTarget = null;
         this.closeDetail();
@@ -183,10 +194,33 @@ export class ZahteviComponent implements OnInit {
         this.loadCounts();
         this.badgeService.refresh();
       },
-      error: () => {
+      error: err => {
         this.processing = false;
+        this.showActionMessage(this.resolveActionError(err, 'Zahtev nije mogao biti odbijen.'), 'error');
+        this.rejectDialogOpen = false;
+        this.rejectTarget = null;
+        this.load();
+        this.loadCounts();
+        this.badgeService.refresh();
       },
     });
+  }
+
+  private showActionMessage(message: string, type: 'success' | 'error'): void {
+    this.actionMessage = message;
+    this.actionMessageType = type;
+  }
+
+  private resolveActionError(err: any, fallback: string): string {
+    if (err?.status === 409) {
+      return err?.error?.message || 'Zahtev je u međuvremenu već obrađen. Lista je osvežena.';
+    }
+
+    if (err?.status === 429) {
+      return err?.error?.message || 'Previše zahteva. Sačekajte trenutak pa pokušajte ponovo.';
+    }
+
+    return err?.error?.message || fallback;
   }
 
   get pageNumbers(): number[] {

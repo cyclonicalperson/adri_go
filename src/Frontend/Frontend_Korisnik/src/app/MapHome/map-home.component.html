@@ -166,7 +166,7 @@
           [class.active]="cat.active"
           [style.--cat-color]="getCategoryColor(cat.key)"
           (click)="toggleCategory(cat)">
-          {{ cat.label }}
+          {{ translateLabel(cat.label) }}
         </button>
       </div>
 

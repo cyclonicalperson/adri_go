@@ -7,6 +7,8 @@ import { AnalyticsService } from '@core/services/analytics.service';
 import { UserPermission } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { DecimalPipe } from '@angular/common';
+import { SiteTranslateService } from '@core/services/site-translate.service';
+import { adminPermissionDescription, adminPermissionLabel } from '@core/utils/admin-permission-i18n';
 
 function passwordMatchValidator(g: AbstractControl): ValidationErrors | null {
   const pw = g.get('newPassword')?.value;
@@ -93,6 +95,7 @@ export class ProfileComponent implements OnInit {
     private analytics: AnalyticsService,
     private fb: FormBuilder,
     private router: Router,
+    private translate: SiteTranslateService,
   ) {
     this.user = this.authService.currentUser as ExtendedUser | null;
   }
@@ -289,6 +292,14 @@ export class ProfileComponent implements OnInit {
       icon: categoryMeta[cat]?.icon ?? '🔑',
       perms,
     }));
+  }
+
+  permissionLabel(permission: UserPermission['permission']): string {
+    return this.translate.instant(adminPermissionLabel(permission));
+  }
+
+  permissionDescription(permission: UserPermission['permission']): string {
+    return this.translate.instant(adminPermissionDescription(permission));
   }
 
   // ── Profile edit ──────────────────────────────────────────────────────

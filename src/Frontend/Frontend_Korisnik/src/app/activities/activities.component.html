@@ -52,14 +52,14 @@
         </span>
         <div>
           <h2>{{ activity.name }}</h2>
-          <p>{{ activity.locationName || activity.category }}</p>
+          <p>{{ activity.locationName || formatDynamicTag(activity.category) }}</p>
         </div>
       </div>
       <p class="description">{{ activity.description || 'No description available.' }}</p>
       <div class="tags">
-        <span *ngIf="activity.duration">{{ activity.duration }}</span>
-        <span *ngIf="activity.difficulty">{{ activity.difficulty }}</span>
-        <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} places</span>
+        <span *ngIf="activity.duration">{{ formatDynamicTag(activity.duration) }}</span>
+        <span *ngIf="activity.difficulty">{{ formatDynamicTag(activity.difficulty) }}</span>
+        <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} {{ translateLabel('places') }}</span>
         <span class="activity-tag" *ngFor="let tag of getTagList(activity.tags)">{{ tag }}</span>
       </div>
       <button class="primary-btn" (click)="openActivity(activity)">

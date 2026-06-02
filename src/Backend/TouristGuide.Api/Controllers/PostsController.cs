@@ -587,6 +587,16 @@ namespace TouristGuide.Api.Controllers
                 post.Status = statusLower;
             }
 
+            if (string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) &&
+                post.ProposedRegionName is not null)
+            {
+                if (!IsSuperAdmin())
+                    return Forbid();
+
+                post.RegionId = await ResolveRegionProposalAsync(post.ProposedRegionName, post.Country);
+                post.ProposedRegionName = null;
+            }
+
             // Ažuriranje tag veza
             await _transactionRunner.ExecuteAsync(async _ =>
             {

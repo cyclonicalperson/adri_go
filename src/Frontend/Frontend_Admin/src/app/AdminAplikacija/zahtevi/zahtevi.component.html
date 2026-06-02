@@ -61,6 +61,12 @@
     </div>
   </div>
 
+  @if (actionMessage) {
+  <div class="action-message" [class.action-message-error]="actionMessageType === 'error'">
+    {{ actionMessage }}
+  </div>
+  }
+
   @if (loading) {
   <div class="state-msg">Učitavanje...</div>
   } @else if (requests.length === 0) {

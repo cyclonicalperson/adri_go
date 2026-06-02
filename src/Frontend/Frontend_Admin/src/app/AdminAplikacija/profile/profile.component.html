@@ -115,8 +115,8 @@
             </div>
             <div class="perm-chips">
               @for (up of group.perms; track up.id) {
-              <span class="perm-chip" [title]="up.permission.description ?? ''">
-                {{ up.permission.label }}
+              <span class="perm-chip" [title]="permissionDescription(up.permission)">
+                {{ permissionLabel(up.permission) }}
                 @if (up.regionId) {
                 <span class="perm-region">🗺 Scope</span>
                 }

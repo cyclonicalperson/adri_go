@@ -30,6 +30,7 @@ import { ThemeService } from '../services/theme.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
@@ -214,7 +215,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'accommodation', label: 'Accommodation', icon: '🏨', active: false },
     { key: 'shop', label: 'Shopping', icon: '🛍️', active: false },
     { key: 'route', label: 'Routes', icon: 'Route', active: false },
-    { key: 'other', label: 'Ostalo', icon: '\u{1F4CD}', active: false },
+    { key: 'other', label: 'Other', icon: '\u{1F4CD}', active: false },
   ];
 
   filterMinRating = 0;
@@ -380,6 +381,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private themeService: ThemeService,
     private touristActivitiesService: TouristActivitiesService,
     private touristRoutesService: TouristRoutesService,
+    private siteTranslate: SiteTranslateService,
   ) {}
 
   ngOnInit(): void {
@@ -642,10 +644,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return {
           location: { ...location, distanceKm },
           score: distanceKm == null ? fallbackScore : Math.max(0, 100 - distanceKm),
-          badge: distanceKm == null ? 'Nearby' : this.formatDistance(distanceKm),
+          badge: distanceKm == null ? this.translateLabel('Nearby') : this.formatDistance(distanceKm),
           reason: distanceKm == null
-            ? 'Enable location sharing to sort this spot by distance.'
-            : `${this.formatDistance(distanceKm)} from your current location.`,
+            ? this.translateLabel('Enable location sharing to sort this spot by distance.')
+            : `${this.formatDistance(distanceKm)} ${this.translateLabel('from your current location.')}`,
         };
       });
 
@@ -1482,13 +1484,23 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async ensureUserPosition(): Promise<void> {
-    if (this.userPosition || !this.preferences.snapshot.locationSharing) {
+    if (this.userPosition) {
       return;
+    }
+
+    const locationSharingWasDisabled = !this.preferences.snapshot.locationSharing;
+    if (locationSharingWasDisabled) {
+      this.preferences.update({ locationSharing: true });
     }
 
     const position = await this.geolocationService.requestCurrentPosition({ maximumAge: 30000 });
     if (position) {
       this.handleUserPositionAvailable(position, { fly: false, rerenderRoute: false });
+      return;
+    }
+
+    if (locationSharingWasDisabled) {
+      this.preferences.update({ locationSharing: false });
     }
   }
 
@@ -3183,7 +3195,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.siteTranslate.instant(formatPostType(type));
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
   }
 
   getCategoryIcon(postType: string | undefined): string {

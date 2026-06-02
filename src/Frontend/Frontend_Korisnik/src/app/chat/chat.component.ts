@@ -37,10 +37,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   readonly touristName = computed(() => this.auth.currentTourist?.name ?? null);
 
   readonly suggestions = [
-    'Šta da posetim u Budvi?',
-    'Preporuči mi hiking rute za početnike',
-    'Koji su popularni restorani u Kotoru?',
-    'Šta je novo u Durmitoru?',
+    'What should I visit in Budva?',
+    'Recommend beginner hiking routes',
+    'Which restaurants are popular in Kotor?',
+    'What is new in Durmitor?',
   ];
 
   ngOnInit(): void {

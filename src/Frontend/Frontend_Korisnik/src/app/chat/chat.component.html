@@ -45,8 +45,8 @@
     @if (!hasMessages()) {
       <div class="welcome" aria-label="Dobrodošli">
         <div class="welcome-icon" aria-hidden="true">🗺️</div>
-        <h2>Zdravo{{ touristName() ? ', ' + touristName() : '' }}!</h2>
-        <p>Pitaj me šta god želiš o destinacijama, hotelima,<br>restoranima, rutama i aktivnostima.</p>
+        <h2>Hello{{ touristName() ? ', ' + touristName() : '' }}!</h2>
+        <p>Ask me anything about destinations, hotels,<br>restaurants, routes and activities.</p>
 
         @if (!isLoggedIn()) {
           <div class="login-hint" role="note">
@@ -56,8 +56,8 @@
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <span>
-              <button class="inline-link" (click)="goToLogin()">Prijavi se</button>
-              za personalizovane preporuke, čuvanje lokacija i planer putovanja.
+              <button class="inline-link" (click)="goToLogin()">Log in</button>
+              for personalized recommendations, saved places and trip planning.
             </span>
           </div>
         }
@@ -187,7 +187,7 @@
         [(ngModel)]="inputText"
         (keydown)="onKeydown($event)"
         (input)="autoResize()"
-        placeholder="Postavi pitanje o destinacijama, rutama, hotelima…"
+        placeholder="Ask about destinations, routes, hotels..."
         rows="1"
         [disabled]="isLoading()"
         aria-label="Upiši poruku"
