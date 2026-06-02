@@ -55,7 +55,7 @@
 .scroll-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 20px var(--mobile-footer-space);
   min-height: 0;
 }
 .scroll-content::-webkit-scrollbar { display: none; }
@@ -152,7 +152,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 12px 12px;
+  padding: 10px 12px var(--mobile-footer-space);
 }
 
 .scroll-content::-webkit-scrollbar {
@@ -742,7 +742,7 @@ html[data-theme='dark'] .link-text {
   .scroll-content {
     width: min(780px, calc(100vw - 48px)) !important;
     margin: 0 auto !important;
-    padding: 24px 0 60px !important;
+    padding: 24px 0 var(--mobile-footer-space) !important;
     /* Ne override-uje scroll — container vec skroluje */
     overflow-y: visible !important;
     overflow-x: hidden !important;
@@ -1195,7 +1195,7 @@ html[data-theme='dark'] .link-text {
   }
 
   .scroll-content {
-    padding: 24px 32px;
+    padding: 24px 32px var(--mobile-footer-space);
   }
 
   .account-shell {
@@ -1335,7 +1335,7 @@ html[data-theme='dark'] .link-text {
 
 @media (min-width: 1180px) {
   .scroll-content {
-    padding: 28px 40px;
+    padding: 28px 40px var(--mobile-footer-space);
   }
 }
 

@@ -120,7 +120,7 @@
 .scroll-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 18px 86px;
+  padding: 16px 18px var(--mobile-footer-space);
   min-height: 0;
 }
 .scroll-content.empty-scroll {
@@ -452,35 +452,6 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* -- FOOTER -- */
-.footer {
-  padding: 12px 18px 80px;
-  background: #fff;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
-  flex-shrink: 0;
-}
-
-.map-btn {
-  width: 100%;
-  padding: 14px;
-  background: var(--green-500);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 15px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: var(--shadow-green);
-  cursor: pointer;
-  font-family: inherit;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.map-btn:hover  { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(34,197,94,0.35); }
-.map-btn svg { width: 20px; height: 20px; fill: #fff; }
-
 /* -- DESKTOP: full-screen kao Calendar, kartice u grid -- */
 @media (min-width: 900px) {
   .header { padding: 12px 32px; }
@@ -489,7 +460,7 @@
 
   /* 3 kolone, iste dimenzije kao Explore kartice */
   .scroll-content {
-    padding: 16px 32px;
+    padding: 16px 32px var(--mobile-footer-space);
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
@@ -509,14 +480,11 @@
   .divider { margin: 8px 0; }
   .view-link { font-size: 11px; }
   .arrow-icon { width: 18px; height: 18px; }
-
-  .footer { padding: 12px 32px; }
 }
 
 @media (min-width: 1200px) {
-  .scroll-content { grid-template-columns: repeat(4, 1fr); padding: 16px 40px; }
+  .scroll-content { grid-template-columns: repeat(4, 1fr); padding: 16px 40px var(--mobile-footer-space); }
   .header { padding: 12px 40px; }
   .filter-scroll { padding: 8px 40px; }
-  .footer { padding: 12px 40px; }
   .image-box { height: 155px; }
 }
