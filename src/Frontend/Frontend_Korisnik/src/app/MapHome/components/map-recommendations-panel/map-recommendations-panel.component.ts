@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Location } from '../../../services/location.service';
 import { LocationRecommendation } from '../../../services/recommendation.service';
 import { formatPostType } from '../../../utils/post-type.utils';
+import { SiteTranslateService } from '../../../services/site-translate.service';
 
 export type RecommendationTab = 'personalized' | 'global';
 
@@ -22,8 +23,10 @@ export class MapRecommendationsPanelComponent {
   @Output() tabSelected = new EventEmitter<RecommendationTab>();
   @Output() locationSelected = new EventEmitter<Location>();
 
+  constructor(private siteTranslate: SiteTranslateService) {}
+
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.siteTranslate.instant(formatPostType(type));
   }
 
   onImgError(event: Event): void {

@@ -7,7 +7,7 @@
       <button *ngFor="let f of filters"
         class="chip" [class.active]="activeFilter === f.id" [style.--chip-accent]="f.color" (click)="setFilter(f.id)">
         <span class="chip-icon" aria-hidden="true">{{ f.icon }}</span>
-        <span class="chip-label">{{ f.label }}</span>
+        <span class="chip-label">{{ translateLabel(f.label) }}</span>
       </button>
     </div>
   </div>
@@ -28,7 +28,7 @@
     <ng-container *ngIf="!isLoading">
       
       <p class="section-label" *ngIf="filteredItems.length > 0">
-        {{ activeFilter | uppercase }} COLLECTIONS ({{ filteredItems.length }})
+        {{ getActiveFilterLabel() }} COLLECTIONS ({{ filteredItems.length }})
       </p>
 
       <div class="card" *ngFor="let item of filteredItems" (click)="viewDetails(item.id)">
@@ -97,7 +97,7 @@
 
       <div class="empty-state" *ngIf="filteredItems.length === 0">
         <svg class="empty-icon" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/></svg>
-        <p>No saved items in <b>{{activeFilter}}</b> category.</p>
+        <p>No saved items in <b>{{ getActiveFilterLabel() }}</b> category.</p>
         <button class="explore-btn" (click)="showOnMap()" *ngIf="activeFilter === 'All'">Explore locations</button>
       </div>
 

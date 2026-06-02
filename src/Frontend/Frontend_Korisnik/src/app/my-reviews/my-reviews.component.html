@@ -45,7 +45,7 @@
               class="menu-option"
               [class.active]="sortOption === option.value"
               (click)="setSortOption(option.value, $event)">
-              {{ option.label }}
+              {{ translateLabel(option.label) }}
             </button>
           </div>
         </div>
@@ -87,7 +87,7 @@
               class="menu-option"
               [class.active]="sortOption === option.value"
               (click)="setSortOption(option.value, $event)">
-              {{ option.label }}
+              {{ translateLabel(option.label) }}
             </button>
           </div>
         </div>
@@ -258,7 +258,7 @@
             [style.--cat-color]="category.color"
             (click)="toggleReviewCategory(category.id)">
             <span class="filters-chip-icon" aria-hidden="true">{{ category.icon }}</span>
-            {{ category.label }}
+            {{ translateLabel(category.label) }}
           </button>
         </div>
       </section>
@@ -291,7 +291,7 @@
             class="filters-comment-card"
             [class.active]="draftFilters.commentMode === option.value"
             (click)="setDraftCommentMode(option.value)">
-            {{ option.label }}
+            {{ translateLabel(option.label) }}
           </button>
         </div>
       </section>

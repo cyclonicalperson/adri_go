@@ -16,6 +16,7 @@ import { TouristActivitiesService, TouristActivityItem } from '../services/touri
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
@@ -182,14 +183,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get activeContentLabel(): string {
-    return this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinations';
+    return this.translateLabel(this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinations');
   }
 
   get activeSearchPlaceholder(): string {
     switch (this.activeContentType) {
-      case 'activities': return 'Search activities...';
-      case 'routes': return 'Search routes...';
-      default: return 'Search locations...';
+      case 'activities': return this.translateLabel('Search activities...');
+      case 'routes': return this.translateLabel('Search routes...');
+      default: return this.translateLabel('Search locations...');
     }
   }
 
@@ -230,7 +231,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get selectedSortLabel(): string {
-    return this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Sort';
+    return this.translateLabel(this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Sort');
   }
 
   get routeCountryOptions(): string[] {
@@ -301,9 +302,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get activeSectionLabel(): string {
     switch (this.activeSectionView) {
-      case 'near-you': return 'Near you';
-      case 'recommended': return 'Recommended for you';
-      case 'top-rated': return 'Top rated';
+      case 'near-you': return this.translateLabel('Near you');
+      case 'recommended': return this.translateLabel('Recommended for you');
+      case 'top-rated': return this.translateLabel('Top rated');
       default: return '';
     }
   }
@@ -335,6 +336,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     private routesService: TouristRoutesService,
     private routePlanner: RoutePlannerService,
     private preferences: TouristPreferencesService,
+    private siteTranslate: SiteTranslateService,
   ) { }
 
   ngOnInit(): void {
@@ -623,10 +625,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
   onSortChanged(): void {
     this.ensureSortForActiveType();
     this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations') {
+      this.buildSections();
+    }
     this.filteredLocations = this.applySort(this.filteredLocations);
-    this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
-    this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
-    this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
     this.cdr.markForCheck();
   }
 
@@ -678,7 +680,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return colors[(postType || '').toLowerCase().replace(/\s+/g, '_')] || '#6b7280';
   }
 
-  formatPostType(type?: string | null): string { return formatPostType(type); }
+  formatPostType(type?: string | null): string { return this.translateLabel(formatPostType(type)); }
 
   getActivityTags(loc: Partial<Location>, limit = 3): string[] {
     const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? [];
@@ -689,6 +691,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return Array.from(new Set(tags
       .map(tag => String(tag).trim())
       .filter(Boolean)))
+      .map(tag => this.formatDynamicTag(tag))
       .slice(0, limit);
   }
 
@@ -698,6 +701,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       .split(/[;,]/)
       .map(tag => tag.trim())
       .filter(Boolean)
+      .map(tag => this.formatDynamicTag(tag))
       .slice(0, 4);
   }
 
@@ -1110,7 +1114,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   selectedSummary(values: string[], fallback: string, formatter: (value: string) => string = value => value): string {
-    return values.length ? values.map(formatter).join(', ') : fallback;
+    return values.length ? values.map(value => this.translateLabel(formatter(value))).join(', ') : this.translateLabel(fallback);
   }
 
   private normalizeFilterColorKey(value: string): string {
@@ -1118,16 +1122,32 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   formatRouteDifficulty(value?: string | null): string {
-    if (!value) return 'Route';
-    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    if (!value) return this.translateLabel('Route');
+    return this.formatDynamicTag(value);
   }
 
   formatActivityCategory(value?: string | null): string {
-    if (!value) return 'Activity';
-    return value
-      .toLowerCase()
+    if (!value) return this.translateLabel('Activity');
+    return this.formatDynamicTag(value);
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
+  }
+
+  formatDynamicTag(value: string | null | undefined): string {
+    const raw = (value ?? '').toString().trim();
+    if (!raw) return '';
+    const normalizedRaw = raw.replace(/_/g, ' ').replace(/\s+/g, ' ');
+    const translatedRaw = this.translateLabel(normalizedRaw);
+    if (translatedRaw !== normalizedRaw) return translatedRaw;
+
+    const readable = raw
       .replace(/_/g, ' ')
-      .replace(/\b\w/g, char => char.toUpperCase());
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/(^|[\s-])\p{L}/gu, match => match.toUpperCase());
+    return this.translateLabel(readable);
   }
 
   private readContentTypeFromRoute(): void {

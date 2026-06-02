@@ -11,6 +11,7 @@ import { MyReviewItem, UserService } from '../services/user.service';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 
 type ReviewTab = 'all' | 'place' | 'route' | 'activity';
 type ReviewSort = 'newest' | 'oldest' | 'rating-desc' | 'rating-asc';
@@ -124,6 +125,7 @@ export class MyReviewsComponent implements OnInit {
     private locationService: LocationService,
     private routesService: TouristRoutesService,
     private cdr: ChangeDetectorRef,
+    private siteTranslate: SiteTranslateService,
   ) {}
 
   ngOnInit(): void {
@@ -359,7 +361,11 @@ export class MyReviewsComponent implements OnInit {
   }
 
   getSelectedSortLabel(): string {
-    return this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Newest first';
+    return this.translateLabel(this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Newest first');
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
   }
 
   isDraftCategorySelected(categoryId: string): boolean {
@@ -442,9 +448,9 @@ export class MyReviewsComponent implements OnInit {
   }
 
   private resolveTypeLabel(category: ReviewCategory, post: Location | null): string {
-    if (category === 'route') return 'Route';
-    if (category === 'activity') return 'Activity';
-    return formatPostType(post?.postType, 'Place');
+    if (category === 'route') return this.translateLabel('Route');
+    if (category === 'activity') return this.translateLabel('Activity');
+    return this.translateLabel(formatPostType(post?.postType, 'Place'));
   }
 
   private resolveFilterCategoryId(review: MyReviewItem, post: Location | null): string {

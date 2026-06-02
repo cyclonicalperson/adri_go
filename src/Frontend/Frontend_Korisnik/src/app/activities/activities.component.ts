@@ -6,6 +6,7 @@ import { TouristActivitiesService, TouristActivityItem } from '../services/touri
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthService } from '../services/auth.service';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
+import { SiteTranslateService } from '../services/site-translate.service';
 
 type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
 
@@ -30,6 +31,7 @@ export class ActivitiesComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef,
+    private siteTranslate: SiteTranslateService,
   ) {}
 
   ngOnInit(): void {
@@ -131,7 +133,27 @@ export class ActivitiesComponent implements OnInit {
       .split(/[;,]/)
       .map(tag => tag.trim())
       .filter(Boolean)
+      .map(tag => this.formatDynamicTag(tag))
       .slice(0, 4);
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
+  }
+
+  formatDynamicTag(value: string | null | undefined): string {
+    const raw = (value ?? '').toString().trim();
+    if (!raw) return '';
+    const normalizedRaw = raw.replace(/_/g, ' ').replace(/\s+/g, ' ');
+    const translatedRaw = this.translateLabel(normalizedRaw);
+    if (translatedRaw !== normalizedRaw) return translatedRaw;
+
+    const readable = raw
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/(^|[\s-])\p{L}/gu, match => match.toUpperCase());
+    return this.translateLabel(readable);
   }
 
   private sortActivities(activities: TouristActivityItem[]): TouristActivityItem[] {

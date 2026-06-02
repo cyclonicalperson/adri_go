@@ -10,6 +10,7 @@ import { TouristActivitiesService } from '../services/tourist-activities.service
 import { TouristRoutesService } from '../services/tourist-routes.service';
 import { environment } from '../../environments/environment';
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
+import { SiteTranslateService } from '../services/site-translate.service';
 
 interface DestinationRegionOption {
   name: string;
@@ -138,7 +139,8 @@ export class FiltersComponent implements OnInit, OnChanges {
     private filterState: FilterStateService,
     private activitiesService: TouristActivitiesService,
     private routesService: TouristRoutesService,
-    private http: HttpClient
+    private http: HttpClient,
+    private siteTranslate: SiteTranslateService
   ) {}
 
   ngOnInit(): void {
@@ -384,16 +386,17 @@ export class FiltersComponent implements OnInit, OnChanges {
   }
 
   formatActivityCategory(value?: string | null): string {
-    if (!value) return 'Other';
-    return value
+    if (!value) return this.translateLabel('Other');
+    const readable = value
       .toString()
       .toLowerCase()
       .replace(/[_-]+/g, ' ')
       .replace(/\b\w/g, letter => letter.toUpperCase());
+    return this.translateLabel(readable);
   }
 
   formatRouteDifficulty(value?: string | null): string {
-    if (!value) return 'Standard';
+    if (!value) return this.translateLabel('Standard');
     const normalized = value.toString().toLowerCase();
     const labels: Record<string, string> = {
       easy: 'Easy',
@@ -401,16 +404,20 @@ export class FiltersComponent implements OnInit, OnChanges {
       hard: 'Hard',
       expert: 'Expert',
     };
-    return labels[normalized] ?? this.formatActivityCategory(value);
+    return this.translateLabel(labels[normalized] ?? this.formatActivityCategory(value));
   }
 
   selectedCategorySummary(): string {
-    const selected = this.categories.filter(category => category.selected).map(category => category.label);
-    return selected.length ? selected.join(', ') : 'All categories';
+    const selected = this.categories.filter(category => category.selected).map(category => this.translateLabel(category.label));
+    return selected.length ? selected.join(', ') : this.translateLabel('All categories');
   }
 
   selectedSummary(values: string[], fallback: string, formatter: (value: string) => string = value => value): string {
-    return values.length ? values.map(formatter).join(', ') : fallback;
+    return values.length ? values.map(value => this.translateLabel(formatter(value))).join(', ') : this.translateLabel(fallback);
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
   }
 
   get filteredRouteRegionOptions(): string[] {

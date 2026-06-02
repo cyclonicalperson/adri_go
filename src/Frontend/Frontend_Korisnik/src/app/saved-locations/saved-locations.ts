@@ -7,6 +7,7 @@ import { FilterStateService } from '../services/filter-state.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
@@ -46,6 +47,7 @@ export class SavedLocationsComponent implements OnInit {
     private authService: AuthService,
     private filterStateService: FilterStateService,
     private preferences: TouristPreferencesService,
+    private siteTranslate: SiteTranslateService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -107,7 +109,7 @@ export class SavedLocationsComponent implements OnInit {
   }
 
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.translateLabel(formatPostType(type));
   }
 
   getActivityTags(item: any, limit = 3): string[] {
@@ -119,7 +121,31 @@ export class SavedLocationsComponent implements OnInit {
     return Array.from(new Set(tags
       .map(tag => String(tag).trim())
       .filter(Boolean)))
+      .map(tag => this.formatDynamicTag(tag))
       .slice(0, limit);
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
+  }
+
+  formatDynamicTag(value: string | null | undefined): string {
+    const raw = (value ?? '').toString().trim();
+    if (!raw) return '';
+    const normalizedRaw = raw.replace(/_/g, ' ').replace(/\s+/g, ' ');
+    const translatedRaw = this.translateLabel(normalizedRaw);
+    if (translatedRaw !== normalizedRaw) return translatedRaw;
+
+    const readable = raw
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/(^|[\s-])\p{L}/gu, match => match.toUpperCase());
+    return this.translateLabel(readable);
+  }
+
+  getActiveFilterLabel(): string {
+    return this.translateLabel(this.filters.find(filter => filter.id === this.activeFilter)?.label ?? this.activeFilter);
   }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {

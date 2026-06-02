@@ -17,7 +17,7 @@
       class="content-type-tab"
       [class.active]="activeContentType === tab.value"
       (click)="setActiveContentType(tab.value)">
-      {{ tab.label }}
+      {{ translateLabel(tab.label) }}
     </button>
   </div>
 
@@ -36,7 +36,7 @@
                 [class.active]="cat.selected"
                 [style.--cat-color]="getCategoryColor(cat.id)"
                 (click)="toggleCategory(cat)">
-          <span class="chip-icon">{{ cat.icon }}</span> {{ cat.label }}
+          <span class="chip-icon">{{ cat.icon }}</span> {{ translateLabel(cat.label) }}
         </button>
       </div>
     </section>
@@ -191,7 +191,7 @@
               [class.active]="activityFilters.difficulties.includes(difficulty)"
               [style.--filter-color]="getDifficultyFilterColor(difficulty)"
               (click)="toggleActivityFilter('difficulties', difficulty)">
-              {{ difficulty }}
+              {{ formatRouteDifficulty(difficulty) }}
             </button>
         </div>
       </section>
