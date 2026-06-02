@@ -2,9 +2,11 @@
 
 .list-container {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: var(--gray-50);
   font-family: var(--font-sans);
-  padding-bottom: 24px;
+  padding-bottom: 0;
 }
 
 /* ── HEADER ── */
@@ -81,7 +83,7 @@
 .empty-state p { font-size: 15px; font-weight: 600; color: var(--gray-600); margin: 0; }
 
 /* ── GRID ── */
-.scroll-area { padding: 16px; }
+.scroll-area { padding: 16px 16px var(--mobile-footer-space); }
 
 .location-card {
   background: #fff;
@@ -224,7 +226,7 @@
 
 .feedback-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: var(--mobile-footer-space);
   left: 50%;
   transform: translateX(-50%);
   background: var(--gray-900);
@@ -474,10 +476,14 @@
 }
 
 /* Make container not hide footer */
-.list-container { padding-bottom: 80px; }
+
 
 /* ── DESKTOP ── */
 @media (min-width: 900px) {
+  .list-container {
+    padding-bottom: var(--mobile-footer-space);
+  }
+
   .scroll-area {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

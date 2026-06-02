@@ -50,6 +50,13 @@
   --shadow-green: 0 6px 20px rgba(34,197,94,0.30);
   --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Manrope', var(--font-sans);
+  --mobile-footer-height: 68px;
+  --mobile-footer-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-footer-total-height: calc(var(--mobile-footer-height) + var(--mobile-footer-safe-bottom));
+  --mobile-footer-space: calc(var(--mobile-footer-total-height) + 18px);
+  --mobile-footer-action-space: calc(var(--mobile-footer-total-height) + 12px);
+  --desktop-footer-height: 64px;
+  --desktop-footer-space: calc(var(--desktop-footer-height) + 18px);
 
   --z-popup-backdrop: 11000;
   --z-popup-panel: 11010;
@@ -265,6 +272,11 @@ html[data-theme='dark'] .rp-load { box-shadow: 0 8px 22px rgba(34,197,94,0.22); 
 
 /* ── Desktop body background ────────────────────────────────── */
 @media (min-width: 900px) {
+  :root {
+    --mobile-footer-space: var(--desktop-footer-space);
+    --mobile-footer-action-space: calc(var(--desktop-footer-space) + 12px);
+  }
+
   body {
     background: var(--gray-100);
     min-height: 100dvh;
@@ -276,7 +288,7 @@ html[data-theme='dark'] .rp-load { box-shadow: 0 8px 22px rgba(34,197,94,0.22); 
 .app-container {
   min-height: 100dvh;
   position: relative;
-  padding-bottom: 75px; 
+  padding-bottom: var(--mobile-footer-space);
 }
 
 .app-footer {
@@ -284,9 +296,10 @@ html[data-theme='dark'] .rp-load { box-shadow: 0 8px 22px rgba(34,197,94,0.22); 
   bottom: 0;
   left: 0;
   width: 100%;
+  height: var(--mobile-footer-total-height);
   z-index: 9999;
   margin: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--mobile-footer-safe-bottom);
 }
 
 /* ── Dark Mode Root ─────────────────────────────────────────── */

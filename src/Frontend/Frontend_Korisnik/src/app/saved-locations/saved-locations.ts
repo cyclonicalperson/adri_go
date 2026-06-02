@@ -11,11 +11,12 @@ import { SiteTranslateService } from '../services/site-translate.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 @Component({
   selector: 'app-saved-locations',
   standalone: true,
-  imports: [CommonModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent],
+  imports: [CommonModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './saved-locations.html',
   styleUrls: ['./saved-locations.css']
 })

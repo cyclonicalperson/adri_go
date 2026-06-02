@@ -7,13 +7,15 @@ import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthService } from '../services/auth.service';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { SiteTranslateService } from '../services/site-translate.service';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 type ActivitySort = 'name-asc' | 'popular' | 'difficulty';
 
 @Component({
   selector: 'app-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './activities.component.html',
   styleUrls: ['./activities.component.css'],
 })

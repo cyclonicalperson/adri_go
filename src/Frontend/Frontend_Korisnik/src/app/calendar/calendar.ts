@@ -10,6 +10,7 @@ import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 interface DisplayEvent {
   id: number;       // PlannerItem id — used for removal
@@ -34,7 +35,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './calendar.html',
   styleUrls: ['./calendar.css']
 })

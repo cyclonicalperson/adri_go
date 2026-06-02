@@ -21,6 +21,8 @@ import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
@@ -73,7 +75,7 @@ interface PopularDestination {
 @Component({
   selector: 'app-location-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective, AuthRequiredModalComponent],
+  imports: [CommonModule, FormsModule, FiltersComponent, NotificationBadgeComponent, DragScrollDirective, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './location-list.component.html',
   styleUrls: ['./location-list.component.css']
 })
@@ -286,6 +288,17 @@ export class LocationListComponent implements OnInit, OnDestroy {
       case 'routes': return this.routes.length;
       default: return this.locations.length;
     }
+  }
+
+  get isActivityFilterView(): boolean {
+    return this.activeContentType === 'destinations'
+      && !!this.activeActivityFilter
+      && !this.isSearchActive
+      && !this.isFilterView;
+  }
+
+  get activeActivityFilterLabel(): string {
+    return this.activeActivityFilter?.name || 'Activity';
   }
 
   get searchNoResultsMessage(): string {
@@ -890,12 +903,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   private applyActivityFilter(filter: { id: number | null; name: string }): void {
-    const displayName = filter.name || 'Activity';
-    this.searchQuery = displayName;
-    this.submittedSearchQuery = displayName;
-    this.isSearchActive = true;
+    this.searchQuery = '';
+    this.submittedSearchQuery = '';
+    this.isSearchActive = false;
     this.showDropdown = false;
     this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.searchFocused = false;
     this.isFilterActive = false;
     this.filteredLocations = [];
     this.activeSectionView = null;
@@ -1283,6 +1297,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   private getDestinationSearchResults(query: string): ExploreSearchResult[] {
     const intent = this.parseSearchIntent(query);
     if (!intent.normalizedQuery) return [];
+    if (intent.terms.length === 0 && !this.hasExplicitDestinationIntent(intent)) return [];
 
     return this.getDestinationFilterBase()
       .map(loc => this.buildDestinationSearchMatch(loc, intent))
@@ -1322,8 +1337,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
           activity.tags,
           activity.locationName,
         ].map(value => this.normalizeSearchValue(value));
-        const score = this.scoreTextFields(terms, fields, this.normalizeSearchValue(activity.name))
-          + Math.min(12, activity.viewCount ?? 0);
+        const textScore = this.scoreTextFields(terms, fields, this.normalizeSearchValue(activity.name));
+        const score = textScore > 0
+          ? textScore + Math.min(12, activity.viewCount ?? 0)
+          : 0;
         return { activity, score };
       })
       .filter(item => item.score > 0)
@@ -1354,8 +1371,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
           route.regionName,
           ...route.waypoints.map(point => point.name || ''),
         ].map(value => this.normalizeSearchValue(value));
-        const score = this.scoreTextFields(terms, fields, this.normalizeSearchValue(route.name))
-          + Math.max(0, 20 - (route.distanceKm || 0) / 2);
+        const textScore = this.scoreTextFields(terms, fields, this.normalizeSearchValue(route.name));
+        const score = textScore > 0
+          ? textScore + Math.max(0, 20 - (route.distanceKm || 0) / 2)
+          : 0;
         return { route, score };
       })
       .filter(item => item.score > 0)
@@ -1391,78 +1410,97 @@ export class LocationListComponent implements OnInit, OnDestroy {
       ...this.getActivityTags(loc, 20),
     ].filter(Boolean).map(value => this.normalizeSearchText(String(value)));
 
+    let textScore = 0;
     let score = 0;
     const badges: string[] = [];
     const title = this.normalizeSearchText(loc.title || '');
     const typeKey = this.normalizeTypeKey(loc.postType || loc.category || '');
+    const rating = Number(loc.avgRating || loc.rating || 0);
+    const categoryMatch = intent.categoryKeys.includes(typeKey);
+    const isOpenNow = this.isLocationOpen(loc);
+    const openNowMatch = intent.openNow && isOpenNow;
+    const nearMeMatch = intent.nearMe && loc.distanceKm != null;
+    const familyFriendlyMatch = intent.familyFriendly && fields.some(field => /(family|kids|children|porodic|deca|djeca|mirno|park)/.test(field));
+    const timeSensitiveMatch = intent.timeSensitive && (typeKey === 'event' || isOpenNow);
+    const scenicMatch = intent.scenic && fields.some(field => /(view|scenic|panorama|vidikovac|nature|priroda|sunset|zalazak|photo|foto)/.test(field));
+    const personalTokens = this.preferences.snapshot.contentPreferences
+      .map(value => this.normalizeSearchText(value));
+    const personalizedMatch = intent.personalized
+      && personalTokens.some(token => fields.some(field => field.includes(token)));
+    const highRatedMatch = intent.highRated && rating >= 4;
 
     for (const term of terms) {
-      if (title === term) score += 120;
-      else if (title.startsWith(term)) score += 80;
-      else if (title.includes(term)) score += 55;
+      if (title === term) textScore += 120;
+      else if (title.startsWith(term)) textScore += 80;
+      else if (title.includes(term)) textScore += 55;
 
-      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
-      if (fields.some(field => field.includes(term))) score += 15;
+      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) textScore += 25;
+      if (fields.some(field => field.includes(term))) textScore += 15;
     }
 
-    if (intent.categoryKeys.includes(typeKey)) {
+    const hasPrimaryMatch = textScore > 0
+      || categoryMatch
+      || openNowMatch
+      || nearMeMatch
+      || familyFriendlyMatch
+      || timeSensitiveMatch
+      || scenicMatch
+      || personalizedMatch
+      || highRatedMatch;
+
+    if (!hasPrimaryMatch) {
+      return { loc, score: 0, reason: '', badges: [] };
+    }
+
+    score += textScore;
+
+    if (categoryMatch) {
       score += terms.length > 0 ? 70 : 45;
       badges.push(this.formatPostType(loc.postType || loc.category));
     }
 
     if (intent.openNow) {
-      if (!this.isLocationOpen(loc)) return { loc, score: 0, reason: '', badges: [] };
+      if (!isOpenNow) return { loc, score: 0, reason: '', badges: [] };
       score += 35;
       badges.push('Open now');
     }
 
     if (intent.highRated) {
-      const rating = Number(loc.avgRating || loc.rating || 0);
       if (rating < 4) score -= 20;
       score += Math.min(35, rating * 7);
       badges.push('Top rated');
     }
 
     if (intent.nearMe) {
-      if (loc.distanceKm == null) {
-        score += 4;
-      } else {
+      if (loc.distanceKm != null) {
         score += Math.max(0, 45 - loc.distanceKm * 7);
         if (loc.distanceKm <= 2) badges.push('Very close');
         else if (loc.distanceKm <= 8) badges.push('Nearby');
       }
     }
 
-    if (intent.familyFriendly && fields.some(field => /(family|kids|children|porodic|deca|djeca|mirno|park)/.test(field))) {
+    if (familyFriendlyMatch) {
       score += 25;
       badges.push('Family fit');
     }
 
-    if (intent.timeSensitive && (typeKey === 'event' || this.isLocationOpen(loc))) {
+    if (timeSensitiveMatch) {
       score += 20;
       badges.push(typeKey === 'event' ? 'Event' : 'Good timing');
     }
 
-    if (intent.scenic && fields.some(field => /(view|scenic|panorama|vidikovac|nature|priroda|sunset|zalazak|photo|foto)/.test(field))) {
+    if (scenicMatch) {
       score += 22;
       badges.push('Scenic');
     }
 
-    if (intent.personalized) {
-      const personalTokens = this.preferences.snapshot.contentPreferences
-        .map(value => this.normalizeSearchText(value));
-      if (personalTokens.some(token => fields.some(field => field.includes(token)))) {
-        score += 18;
-        badges.push('For you');
-      }
+    if (personalizedMatch) {
+      score += 18;
+      badges.push('For you');
     }
 
     if (loc.distanceKm != null) score += Math.max(0, 10 - loc.distanceKm);
-    score += Math.min(10, Number(loc.avgRating || loc.rating || 0));
-
-    if (terms.length === 0 && !intent.categoryKeys.length && !intent.nearMe && !intent.openNow && !intent.highRated && !intent.timeSensitive && !intent.scenic && !intent.personalized) {
-      score = 0;
-    }
+    score += Math.min(10, rating);
 
     const uniqueBadges = Array.from(new Set(badges.filter(Boolean))).slice(0, 3);
     return {
@@ -1531,7 +1569,21 @@ export class LocationListComponent implements OnInit, OnDestroy {
     };
   }
 
+  private hasExplicitDestinationIntent(intent: SearchIntent): boolean {
+    return intent.categoryKeys.length > 0
+      || intent.nearMe
+      || intent.openNow
+      || intent.highRated
+      || intent.savedOnly
+      || intent.familyFriendly
+      || intent.timeSensitive
+      || intent.scenic
+      || intent.personalized;
+  }
+
   private describeSearchForCurrentType(query: string, count: number): string {
+    if (count <= 0) return '';
+
     if (this.activeContentType !== 'destinations') {
       return `${count} ${count === 1 ? 'result' : 'results'} for "${query}".`;
     }

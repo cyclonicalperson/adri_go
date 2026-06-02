@@ -13,13 +13,15 @@ import {
   TouristNotificationService
 } from '../services/tourist-notification.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 type SettingsSheet = 'accounts' | 'content' | 'support' | 'language' | 'notifications' | null;
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './settings.html',
   styleUrls: ['./settings.css']
 })

@@ -211,7 +211,7 @@
 /* ── PANELS LAYER (bottom sheet on mobile) ───────────────────── */
 .top-ui-layer {
   position: fixed;
-  bottom: 68px;
+  bottom: var(--mobile-footer-total-height);
   left: 0;
   right: 0;
   max-height: 60px;
@@ -898,14 +898,14 @@
   left: 0;
   right: 0;
   width: auto;
-  height: 68px;
+  height: var(--mobile-footer-total-height);
   background: #fff;
   box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
   display: flex;
   align-items: center;
   justify-content: space-around;
   z-index: 20;
-  padding: 0 4px env(safe-area-inset-bottom, 0);
+  padding: 0 4px var(--mobile-footer-safe-bottom);
   margin: 0;
   border-radius: 0;
 }
@@ -1025,7 +1025,7 @@ app-location-details-card {
     position: fixed;
     top: 64px; left: 0;
     width: 380px;
-    height: calc(100vh - 64px - 68px);
+    height: calc(100vh - 64px - var(--mobile-footer-total-height));
     z-index: 20;
     background: #fff;
     border-right: 1px solid var(--gray-100);
@@ -1094,7 +1094,7 @@ app-location-details-card {
   /* ── Location card in sidebar ──────────────────────────── */
   app-location-details-card {
     position: fixed !important;
-    bottom: 68px;
+    bottom: var(--mobile-footer-total-height);
     left: 8px;
     right: auto;
     width: 364px;
@@ -1106,7 +1106,7 @@ app-location-details-card {
     position: fixed;
     bottom: 0; left: 0; right: auto;
     width: 380px;
-    height: 68px;
+    height: var(--mobile-footer-total-height);
     z-index: 30;
     box-shadow: 0 -1px 0 var(--gray-100);
     display: flex !important;
@@ -1662,7 +1662,7 @@ app-location-details-card {
 .chat-fab-wrap {
   position: fixed;
   right: 16px;
-  bottom: calc(68px + 60px + 14px + 58px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--mobile-footer-total-height) + 60px + 14px + 58px);
   z-index: 500;
   display: flex;
   align-items: flex-end;
@@ -1671,7 +1671,7 @@ app-location-details-card {
 }
 
 .map-wrapper.navigating .chat-fab-wrap {
-  bottom: calc(68px + 14px + 58px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--mobile-footer-total-height) + 14px + 58px);
 }
 
 .chat-fab {
@@ -1829,7 +1829,7 @@ app-location-details-card {
 .locate-btn {
   position: fixed;
   right: 16px;
-  bottom: calc(68px + 60px + 14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--mobile-footer-total-height) + 60px + 14px);
   z-index: 500;
   width: 48px;
   height: 48px;
@@ -1845,7 +1845,7 @@ app-location-details-card {
   transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
 }
 .map-wrapper.navigating .locate-btn {
-  bottom: calc(68px + 14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--mobile-footer-total-height) + 14px);
 }
 .locate-btn:hover:not(.locate-loading) { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22); transform: scale(1.06); }
 .locate-btn:active:not(.locate-loading) { transform: scale(0.96); }

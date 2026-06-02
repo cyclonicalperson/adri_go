@@ -10,6 +10,8 @@ import { ThemeService } from '../services/theme.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 const FALLBACK_PROFILE_IMAGE = '/assets/default-profile.svg';
 type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' | 'generic' };
@@ -17,7 +19,7 @@ type HeroInterestBadge = { label: string; icon: string; kind: 'food' | 'nature' 
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent],
+  imports: [CommonModule, FormsModule, AppHeaderComponent, AuthRequiredModalComponent, MobileTouristNavComponent, DesktopFooterComponent],
   templateUrl: './account.html',
   styleUrls: ['./account.css']
 })
