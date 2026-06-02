@@ -10,7 +10,7 @@
   padding: 0 32px;
   position: sticky;
   top: 0;
-  z-index: 5000;
+  z-index: $z-topbar;
   flex-shrink: 0;
 }
 
@@ -149,7 +149,7 @@
   border: 1px solid $gray-200;
   border-radius: $radius-lg;
   box-shadow: 0 12px 40px rgba(0,0,0,.12);
-  z-index: 5020;
+  z-index: $z-dropdown;
   padding: 8px;
   display: grid;
   gap: 6px;
@@ -247,7 +247,7 @@
   border: 1px solid $gray-200;
   border-radius: $radius-lg;
   box-shadow: 0 12px 40px rgba(0,0,0,.12);
-  z-index: 5020;
+  z-index: $z-dropdown;
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -339,7 +339,7 @@
 .notif-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 5010;
+  z-index: $z-dropdown;
 }
 
 .notif-panel {
@@ -351,7 +351,7 @@
   border: 1px solid $gray-200;
   border-radius: $radius-lg;
   box-shadow: 0 12px 40px rgba(0,0,0,.12);
-  z-index: 5020;
+  z-index: $z-dropdown;
   overflow: hidden;
 }
 
@@ -668,7 +668,7 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 5000;
+    z-index: $z-topbar;
   }
 
   .header-title {
@@ -703,6 +703,7 @@
     right: 0;
     width: 100%;
     border-radius: 0 0 $radius-lg $radius-lg;
+    // Stays at z-dropdown (inherits) — modals will sit above it
   }
 
   .lang-btn {
@@ -715,6 +716,7 @@
     right: 16px;
     left: 16px;
     width: auto;
+    // z-dropdown inherited — modals sit above
   }
 
   .admin-search-panel {
@@ -723,5 +725,6 @@
     left: 12px;
     right: 12px;
     width: auto;
+    // z-dropdown inherited — modals sit above
   }
 }
