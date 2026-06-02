@@ -1015,5 +1015,10 @@
   "sati": "sati",
   "sata": "sata",
   "mesta": "mesta",
-  "mjesta": "mesta"
+  "mjesta": "mesta",
+  "Navigation": "Navigacija",
+  "destination": "destinacija",
+  "destinations": "destinacije",
+  "events": "događaja",
+  "routes": "rute"
 }

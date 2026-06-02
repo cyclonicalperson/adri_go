@@ -379,9 +379,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   /** Short month names for the picker grid (Jan, Feb, …). */
   get monthNames(): string[] {
-    return Array.from({ length: 12 }, (_, i) =>
-      new Date(2023, i, 1).toLocaleDateString('en-GB', { month: 'short' })
-    );
+    return Array.from({ length: 12 }, (_, i) => this.formatMonthPickerName(i));
   }
 
   togglePicker(): void {
@@ -517,11 +515,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   /** Human-readable breakdown, e.g. "6 destinations · 1 event · 1 route". */
   get itinerarySummary(): string {
     const parts: string[] = [];
-    const pluralize = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-    if (this.destinationCount > 0) parts.push(pluralize(this.destinationCount, 'destination'));
-    if (this.eventCount > 0) parts.push(pluralize(this.eventCount, 'event'));
-    if (this.routeCount > 0) parts.push(pluralize(this.routeCount, 'route'));
-    return parts.length ? parts.join(' · ') : 'No scheduled items yet';
+    if (this.destinationCount > 0) parts.push(this.formatCount(this.destinationCount, 'destination', 'destinations'));
+    if (this.eventCount > 0) parts.push(this.formatCount(this.eventCount, 'event', 'events'));
+    if (this.routeCount > 0) parts.push(this.formatCount(this.routeCount, 'route', 'routes'));
+    return parts.length ? parts.join(' · ') : this.translate.instant('No scheduled items yet');
   }
 
   isTomorrow(event: DisplayEvent): boolean {
@@ -536,13 +533,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
   formatShortDate(event: DisplayEvent): string {
     const d = this.eventDate(event);
     if (!d) return '';
-    return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }).toUpperCase();
+    return d.toLocaleDateString(this.locale, { month: 'short', day: 'numeric' }).toUpperCase();
   }
 
   formatShortDateMixed(event: DisplayEvent): string {
     const d = this.eventDate(event);
     if (!d) return '';
-    return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString(this.locale, { month: 'short', day: 'numeric' });
   }
 
   /** Deterministic palette color per event (used for sidebar accents and chip color). */
@@ -601,6 +598,17 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private get timeSeparator(): string {
     return this.translate.currentLanguage === 'sr' ? 'u' : 'at';
+  }
+
+  private formatCount(count: number, singularKey: string, pluralKey: string): string {
+    return `${count} ${this.translate.instant(count === 1 ? singularKey : pluralKey)}`;
+  }
+
+  private formatMonthPickerName(monthIndex: number): string {
+    const month = new Date(2023, monthIndex, 1)
+      .toLocaleDateString(this.locale, { month: 'short' })
+      .replace(/\.$/, '');
+    return month ? month.charAt(0).toLocaleUpperCase(this.locale) + month.slice(1) : month;
   }
 
   private buildCalendar(): void {

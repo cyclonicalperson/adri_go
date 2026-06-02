@@ -88,8 +88,8 @@
         @for (perm of allPermissions; track perm.code) {
         <div class="perm-toggle-row">
           <div>
-            <div class="perm-key">{{ perm.label }}</div>
-            <div class="perm-desc">{{ perm.description ?? perm.code }}</div>
+            <div class="perm-key">{{ permissionLabel(perm) }}</div>
+            <div class="perm-desc">{{ permissionDescription(perm) }}</div>
             <div class="perm-scope">{{ permissionScopeSummary(perm.code) }}</div>
           </div>
           <button class="toggle"

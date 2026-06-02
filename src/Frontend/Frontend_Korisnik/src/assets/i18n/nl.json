@@ -1015,5 +1015,10 @@
   "sati": "uur",
   "sata": "uur",
   "mesta": "plekken",
-  "mjesta": "plekken"
+  "mjesta": "plekken",
+  "Navigation": "Navigatie",
+  "destination": "bestemming",
+  "destinations": "bestemmingen",
+  "events": "evenementen",
+  "routes": "routes"
 }

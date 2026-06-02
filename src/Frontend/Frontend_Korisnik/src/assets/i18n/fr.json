@@ -1015,5 +1015,10 @@
   "sati": "h",
   "sata": "h",
   "mesta": "lieux",
-  "mjesta": "lieux"
+  "mjesta": "lieux",
+  "Navigation": "Navigation",
+  "destination": "destination",
+  "destinations": "destinations",
+  "events": "événements",
+  "routes": "itinéraires"
 }

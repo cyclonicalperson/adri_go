@@ -1015,5 +1015,10 @@
   "sati": "Std.",
   "sata": "Std.",
   "mesta": "Orte",
-  "mjesta": "Orte"
+  "mjesta": "Orte",
+  "Navigation": "Navigation",
+  "destination": "Ziel",
+  "destinations": "Ziele",
+  "events": "Veranstaltungen",
+  "routes": "Routen"
 }

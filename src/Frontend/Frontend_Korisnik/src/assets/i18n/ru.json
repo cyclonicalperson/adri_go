@@ -700,7 +700,7 @@
   "Add to calendar": "Добавить в календарь",
   "Adding…": "Добавление…",
   "Adding...": "Добавление...",
-  "No scheduled items yet": "Запланированных элементов пока нет",
+  "No scheduled items yet": "Пока нет запланированных элементов",
   "Next up": "Далее",
   "No upcoming destinations yet.": "Ближайших направлений пока нет.",
   "TOMORROW": "ЗАВТРА",
@@ -1015,5 +1015,10 @@
   "sati": "ч",
   "sata": "ч",
   "mesta": "мест",
-  "mjesta": "мест"
+  "mjesta": "мест",
+  "Navigation": "Навигация",
+  "destination": "направление",
+  "destinations": "направления",
+  "events": "события",
+  "routes": "маршруты"
 }

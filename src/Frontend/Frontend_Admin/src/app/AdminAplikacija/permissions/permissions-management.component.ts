@@ -5,6 +5,8 @@ import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/auth/auth.service';
 import { User, Permission, UserPermission, PermissionCode } from '@core/models/user.model';
 import { environment } from '@env/environment';
+import { SiteTranslateService } from '@core/services/site-translate.service';
+import { adminPermissionDescription, adminPermissionLabel } from '@core/utils/admin-permission-i18n';
 
 interface PermissionGroup {
   category: string;
@@ -166,6 +168,7 @@ export class PermissionsManagementComponent implements OnInit {
     private userService: UserService,
     private http: HttpClient,
     private authService: AuthService,
+    private translate: SiteTranslateService,
   ) { }
 
   ngOnInit(): void {
@@ -452,9 +455,17 @@ export class PermissionsManagementComponent implements OnInit {
   // ── Helpers ────────────────────────────────────────────────────────────
   permCount(u: User): number { return u.permissionCount ?? 0; }
 
+  permissionLabel(perm: Permission): string {
+    return this.translate.instant(adminPermissionLabel(perm));
+  }
+
+  permissionDescription(perm: Permission): string {
+    return this.translate.instant(adminPermissionDescription(perm));
+  }
+
   scopeLabel(regionId: number | null | undefined): string {
-    if (regionId == null) return 'Globalno';
-    return this.regions.find(region => region.regionId === regionId)?.name ?? `Region #${regionId}`;
+    if (regionId == null) return this.translate.instant('Globalno');
+    return this.regions.find(region => region.regionId === regionId)?.name ?? `${this.translate.instant('Region #')}${regionId}`;
   }
 
   permissionScopeSummary(code: PermissionCode): string {
@@ -462,7 +473,9 @@ export class PermissionsManagementComponent implements OnInit {
       .filter(up => up.permission.code === code)
       .map(up => this.scopeLabel(up.regionId));
 
-    return scopes.length ? `Aktivno u: ${Array.from(new Set(scopes)).join(', ')}` : 'Nije dodeljena';
+    return scopes.length
+      ? `${this.translate.instant('Aktivno u:')} ${Array.from(new Set(scopes)).join(', ')}`
+      : this.translate.instant('Nije dodeljena');
   }
 
   private refreshActivePermCodesForSelectedScope(): void {

@@ -1015,5 +1015,10 @@
   "sati": "ore",
   "sata": "ore",
   "mesta": "luoghi",
-  "mjesta": "luoghi"
+  "mjesta": "luoghi",
+  "Navigation": "Navigazione",
+  "destination": "destinazione",
+  "destinations": "destinazioni",
+  "events": "eventi",
+  "routes": "itinerari"
 }
