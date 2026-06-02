@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { AuthService } from './auth.service';
 
 export type TravelMode = 'driving' | 'walking' | 'cycling';
 
@@ -35,10 +36,19 @@ const DEFAULT_PREFERENCES: TouristAppPreferences = {
 
 @Injectable({ providedIn: 'root' })
 export class TouristPreferencesService {
-  private readonly storageKey = 'adrigo_user_preferences_v2';
-  private readonly stateSubject = new BehaviorSubject<TouristAppPreferences>(this.load());
+  private readonly baseStorageKey = 'adrigo_user_preferences_v2';
+  private activeStorageKey = this.baseStorageKey;
+  private scopeInitialized = false;
+  private readonly stateSubject = new BehaviorSubject<TouristAppPreferences>(this.normalize(DEFAULT_PREFERENCES));
 
   readonly preferences$ = this.stateSubject.asObservable();
+
+  constructor(private authService: AuthService) {
+    this.useAccountScope(this.authService.touristId);
+    this.authService.tourist$.subscribe(session => {
+      this.useAccountScope(session?.tourist?.id ?? null);
+    });
+  }
 
   get snapshot(): TouristAppPreferences {
     return this.stateSubject.value;
@@ -55,6 +65,19 @@ export class TouristPreferencesService {
     });
 
     this.persist(next);
+    this.stateSubject.next(next);
+    return next;
+  }
+
+  useAccountScope(touristId: number | null | undefined): TouristAppPreferences {
+    const nextStorageKey = touristId ? `${this.baseStorageKey}:${touristId}` : this.baseStorageKey;
+    if (this.scopeInitialized && nextStorageKey === this.activeStorageKey) {
+      return this.snapshot;
+    }
+
+    this.activeStorageKey = nextStorageKey;
+    this.scopeInitialized = true;
+    const next = this.loadScopedPreferences(nextStorageKey);
     this.stateSubject.next(next);
     return next;
   }
@@ -85,11 +108,29 @@ export class TouristPreferencesService {
     return next;
   }
 
-  private load(): TouristAppPreferences {
+  private loadScopedPreferences(storageKey: string): TouristAppPreferences {
+    const scoped = this.readStoredPreferences(storageKey);
+    if (scoped) {
+      return scoped;
+    }
+
+    const legacy = storageKey !== this.baseStorageKey
+      ? this.readStoredPreferences(this.baseStorageKey)
+      : null;
+
+    if (legacy) {
+      this.persist(legacy);
+      return legacy;
+    }
+
+    return this.normalize(DEFAULT_PREFERENCES);
+  }
+
+  private readStoredPreferences(storageKey: string): TouristAppPreferences | null {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = localStorage.getItem(storageKey);
       if (!raw) {
-        return this.normalize(DEFAULT_PREFERENCES);
+        return null;
       }
 
       return this.normalize({
@@ -97,12 +138,12 @@ export class TouristPreferencesService {
         ...JSON.parse(raw),
       } as Partial<TouristAppPreferences>);
     } catch {
-      return this.normalize(DEFAULT_PREFERENCES);
+      return null;
     }
   }
 
   private persist(state: TouristAppPreferences): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(state));
+    localStorage.setItem(this.activeStorageKey, JSON.stringify(state));
   }
 
   private normalize(input: Partial<TouristAppPreferences>): TouristAppPreferences {

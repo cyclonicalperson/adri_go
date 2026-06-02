@@ -158,7 +158,8 @@ export class PermissionsManagementComponent implements OnInit {
   ];
 
   get selectedPresetDescription(): string {
-    return this.permissionPresets.find(preset => preset.id === this.selectedPresetId)?.description ?? '';
+    const description = this.permissionPresets.find(preset => preset.id === this.selectedPresetId)?.description ?? '';
+    return this.translate.instant(description);
   }
 
   // ── Log izmjena — dinamički gradi se iz akcija ─────────────────────────
@@ -393,7 +394,7 @@ export class PermissionsManagementComponent implements OnInit {
       preset.codes.filter(code => allowedCodes.has(code as PermissionCode)) as PermissionCode[],
     );
     this.refreshPermCount(this.selectedUser.userId, null);
-    this.saveMsg = `Preset "${preset.label}" je primenjen. Sacuvajte da bi promene otisle na server.`;
+    this.saveMsg = `${this.translate.instant('Preset')} "${this.presetLabel(preset)}" ${this.translate.instant('je primenjen. Sacuvajte da bi promene otisle na server.')}`;
   }
 
   private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {
@@ -461,6 +462,10 @@ export class PermissionsManagementComponent implements OnInit {
 
   permissionDescription(perm: Permission): string {
     return this.translate.instant(adminPermissionDescription(perm));
+  }
+
+  presetLabel(preset: PermissionPreset): string {
+    return this.translate.instant(preset.label);
   }
 
   scopeLabel(regionId: number | null | undefined): string {

@@ -75,7 +75,7 @@
           <select class="preset-select" [(ngModel)]="selectedPresetId" (ngModelChange)="applyPreset($event)">
             <option value="">Izaberite najcesci tip admina</option>
             @for (preset of permissionPresets; track preset.id) {
-            <option [value]="preset.id">{{ preset.label }}</option>
+            <option [value]="preset.id">{{ presetLabel(preset) }}</option>
             }
           </select>
           @if (selectedPresetId) {

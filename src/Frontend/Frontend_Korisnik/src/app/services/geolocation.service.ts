@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { TouristPreferencesService } from './tourist-preferences.service';
 
 export interface UserPosition {
   lat: number;
@@ -9,19 +10,11 @@ type CachedUserPosition = UserPosition & {
   timestamp: number;
 };
 
-interface StoredUserSettings {
-  locationSharing?: boolean;
-}
-
-interface StoredTouristPreferences {
-  locationSharing?: boolean;
-}
-
 @Injectable({ providedIn: 'root' })
 export class GeolocationService {
-  private readonly SETTINGS_KEY = 'user_settings';
-  private readonly PREFERENCES_KEY = 'adrigo_user_preferences_v2';
   private lastKnownPosition: CachedUserPosition | null = null;
+
+  constructor(private preferences: TouristPreferencesService) {}
 
   isSupported(): boolean {
     return typeof navigator !== 'undefined' && 'geolocation' in navigator;
@@ -32,23 +25,7 @@ export class GeolocationService {
   }
 
   isLocationSharingEnabled(): boolean {
-    try {
-      const preferencesRaw = localStorage.getItem(this.PREFERENCES_KEY);
-      if (preferencesRaw) {
-        const preferences = JSON.parse(preferencesRaw) as StoredTouristPreferences;
-        if (typeof preferences.locationSharing === 'boolean') {
-          return preferences.locationSharing;
-        }
-      }
-
-      const raw = localStorage.getItem(this.SETTINGS_KEY);
-      if (!raw) return true;
-
-      const settings = JSON.parse(raw) as StoredUserSettings;
-      return settings.locationSharing ?? true;
-    } catch {
-      return true;
-    }
+    return this.preferences.snapshot.locationSharing;
   }
 
   getLastKnownPosition(maxAgeMs = 120000): UserPosition | null {

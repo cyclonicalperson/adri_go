@@ -72,7 +72,7 @@ export class SettingsComponent implements OnInit {
     private analytics: TouristAnalyticsService,
     private notifications: TouristNotificationService,
   ) {
-    this.settings = this.preferences.snapshot;
+    this.settings = this.preferences.useAccountScope(this.authService.touristId);
 
     if ('Notification' in window) {
       this.notifPermission = Notification.permission;
@@ -126,7 +126,7 @@ export class SettingsComponent implements OnInit {
 
   get isGoogleAccount(): boolean {
     return this.authService.currentTourist?.authProvider === 'google'
-      || this.settings.connectedAccounts.google;
+      || this.authService.isGoogleAccount;
   }
 
   get contentPreferencesSummary(): string {
