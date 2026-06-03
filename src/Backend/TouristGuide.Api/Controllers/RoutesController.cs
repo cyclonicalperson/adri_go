@@ -183,7 +183,13 @@ namespace TouristGuide.Api.Controllers
 
             var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
             if (!routeValidation.IsValid)
+            {
                 await NotifyRouteValidationFailedAsync(adminId.Value, dto.Name, routeValidation.Message);
+                return BadRequest(new
+                {
+                    message = routeValidation.Message ?? "Ruta nije routabilna. Pomerite tacke na kopno/put."
+                });
+            }
 
             var now = DateTime.UtcNow;
             var resolvedRegionId = statusValue == "published" && hasRegionProposal
@@ -282,7 +288,13 @@ namespace TouristGuide.Api.Controllers
             {
                 var routeValidation = await _routeSafetyService.ValidateWaypointsJsonAsync(dto.Waypoints, HttpContext.RequestAborted);
                 if (!routeValidation.IsValid)
+                {
                     await NotifyRouteValidationFailedAsync(route.AdminId, route.Name, routeValidation.Message);
+                    return BadRequest(new
+                    {
+                        message = routeValidation.Message ?? "Ruta nije routabilna. Pomerite tacke na kopno/put."
+                    });
+                }
 
                 route.Waypoints = dto.Waypoints;
             }

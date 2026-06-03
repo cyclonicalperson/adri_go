@@ -1683,7 +1683,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/Ä‘/g, 'dj')
+      .replace(/đ/g, 'dj')
       .replace(/[^a-z0-9]+/g, ' ')
       .trim();
   }
