@@ -129,7 +129,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showAuthPopup = false;
   routePolyline: L.Polyline | null = null;
-  private walkingDotMarkers: L.Layer[] = [];
+  private plannerWalkingDotMarkers: L.Layer[] = [];
+  private navWalkingDotMarkers: L.Layer[] = [];
   routeDestTitle = '';
   showRoutePanel = false;
   isRenderingRoute = false;
@@ -893,7 +894,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       const result = await this.routingService.computeRouteForNavigation(
         coordinates,
         mode,
-        { viewport: this.getRouteViewportMode() },
+        { viewport: this.getRouteViewportMode(), allowFallback: false },
       );
       this.navigationSteps = result.steps ?? [];
       this.navigationRouteGeometry = result.geometry;
@@ -1266,17 +1267,39 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private clearRouteVisuals(): void {
+    this.clearPlannerRouteOverlay();
+    this.clearNavigationRouteOverlay();
+    this.clearRouteStopMarkers();
+  }
+
+  private clearPlannerRouteOverlay(): void {
     this.plannerRouteGeometry = [];
     if (this.routePolyline) {
       this.map?.removeLayer(this.routePolyline);
       this.routePolyline = null;
     }
+    this.clearPlannerWalkingDots();
+  }
+
+  private clearNavigationRouteOverlay(): void {
     if (this.navRemainingPolyline) {
       this.map?.removeLayer(this.navRemainingPolyline);
       this.navRemainingPolyline = null;
     }
-    this.walkingDotMarkers.forEach(m => this.map?.removeLayer(m));
-    this.walkingDotMarkers = [];
+    this.clearNavigationWalkingDots();
+  }
+
+  private clearPlannerWalkingDots(): void {
+    this.plannerWalkingDotMarkers.forEach(m => this.map?.removeLayer(m));
+    this.plannerWalkingDotMarkers = [];
+  }
+
+  private clearNavigationWalkingDots(): void {
+    this.navWalkingDotMarkers.forEach(m => this.map?.removeLayer(m));
+    this.navWalkingDotMarkers = [];
+  }
+
+  private clearRouteStopMarkers(): void {
     this.routeStopMarkers.forEach(marker => this.map?.removeLayer(marker));
     this.routeStopMarkers = [];
   }
@@ -1464,12 +1487,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       );
       this.navigationSteps = result.steps ?? [];
       this.navigationRouteGeometry = result.geometry;
+      this.routeSummary = {
+        distanceKm: result.distanceKm,
+        durationMin: result.durationMin,
+        stopCount: this.plannerStops.length,
+      };
       this.isNavigating = true;
       this.plannerMode = false;
       this.routePlanner.setPlannerMode(false);
       this.showRoutePanel = false;
       this.selectedLocation = null;
       this.selectedPublicRoute = null;
+      this.clearPlannerRouteOverlay();
+      this.clearRouteStopMarkers();
+      this.replaceNavigationRouteOverlay(result.geometry);
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
       this.sheetExpanded = false;
@@ -1550,7 +1581,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onNavigationArrived(): void {
-    this.clearRoute();
+    this.clearNavigationRouteOverlay();
+    this.clearNavRefollowTimer();
+    this.navFollowMode = true;
+    this.navMapRotation = 0;
+    if (this.navUserMarkerEl) {
+      this.navUserMarkerEl.style.transition = '';
+    }
+    this.setNavigationMapLock(false);
+    void this.releaseScreenWakeLock();
+    this.applyMapRotation(0, '0.4s ease');
+    this.cdr.detectChanges();
   }
 
   private setNavigationMapLock(locked: boolean): void {
@@ -1677,16 +1718,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private replaceNavigationRouteOverlay(geometry: [number, number][]): void {
-    if (this.routePolyline && this.map) {
-      this.map.removeLayer(this.routePolyline);
-      this.routePolyline = null;
-    }
-    if (this.navRemainingPolyline && this.map) {
-      this.map.removeLayer(this.navRemainingPolyline);
-      this.navRemainingPolyline = null;
-    }
-    this.walkingDotMarkers.forEach(marker => this.map?.removeLayer(marker));
-    this.walkingDotMarkers = [];
+    this.clearPlannerRouteOverlay();
+    this.clearNavigationRouteOverlay();
     if (this.map && geometry.length >= 2) {
       if (this.travelMode === 'walking') {
         this.drawWalkingDots(geometry, true);
@@ -1729,9 +1762,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   onNavigationRouteTrailUpdated(remaining: [number, number][]): void {
     if (!this.map) return;
 
-    // Remove previous nav walking dots if any
-    this.walkingDotMarkers.forEach(m => this.map?.removeLayer(m));
-    this.walkingDotMarkers = [];
+    this.clearNavigationWalkingDots();
 
     if (remaining.length >= 2) {
       if (this.travelMode === 'walking') {
@@ -1923,7 +1954,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         opacity: 1,
         interactive: false,
       }).addTo(this.map!);
-      this.walkingDotMarkers.push(marker);
+      const targetMarkers = isNav ? this.navWalkingDotMarkers : this.plannerWalkingDotMarkers;
+      targetMarkers.push(marker);
     };
 
     // Always place a dot at the very start

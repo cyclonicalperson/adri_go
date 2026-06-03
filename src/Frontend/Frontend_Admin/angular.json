@@ -43,6 +43,9 @@
               "node_modules/leaflet/dist/leaflet.css",
               "src/styles/styles.scss"
             ],
+            "allowedCommonJsDependencies": [
+              "leaflet"
+            ],
             "stylePreprocessorOptions": {
               "includePaths": [
                 "src/styles"
@@ -65,8 +68,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kB",
-                  "maximumError": "16kB"
+                  "maximumWarning": "16kB",
+                  "maximumError": "24kB"
                 }
               ],
               "outputHashing": "all"

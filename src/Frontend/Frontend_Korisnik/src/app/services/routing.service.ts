@@ -211,12 +211,20 @@ export class RoutingService {
       return { geometry: [...coordinates], distanceKm: 0, durationMin: 0, usedFallback: false, steps: [] };
     }
 
+    let lastNavigationError: Error | null = null;
+
     for (const profile of this.resolveRoutingProfiles(travelMode)) {
       try {
         const data = await this.fetchJsonWithTimeout(this.buildOsrmUrl(coordinates, profile, true));
-        if (data?.code && data.code !== 'Ok') continue;
+        if (data?.code && data.code !== 'Ok') {
+          lastNavigationError = this.buildRouteFailure(data.code);
+          continue;
+        }
         const route = data?.routes?.[0];
-        if (!route?.geometry?.coordinates) continue;
+        if (!route?.geometry?.coordinates) {
+          lastNavigationError = new Error('No navigation route geometry returned from OSRM.');
+          continue;
+        }
 
         const geometry = route.geometry.coordinates.map(
           ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
@@ -249,9 +257,14 @@ export class RoutingService {
           usedFallback: false,
           steps,
         };
-      } catch {
+      } catch (error) {
+        lastNavigationError = error instanceof Error ? error : new Error('Failed to fetch navigation route.');
         // try next profile
       }
+    }
+
+    if (options.allowFallback !== true) {
+      throw lastNavigationError ?? new RouteNotRoutableError('No navigation routing profiles succeeded.');
     }
 
     // Fallback without steps
