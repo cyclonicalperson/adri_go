@@ -18,7 +18,7 @@
     <div class="card-body">
       <div class="title-row">
         <h2 class="location-title">{{ locationData?.title || 'Unknown Location' }}</h2>
-        <div class="rating-box" *ngIf="displayRating">
+        <div class="rating-box" *ngIf="displayRating != null">
           <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
           {{ displayRating | number:'1.1-1' }}
         </div>
