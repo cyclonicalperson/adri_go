@@ -410,12 +410,36 @@
 @media (max-width: 480px) {
   .bottom-sheet-overlay {
     bottom: 64px;
-    width: calc(100vw - 24px);
+    width: min(300px, calc(100vw - 32px));
   }
 
-  .image-container { height: 140px; }
+  .card-header { padding: 6px 10px 0; }
+  .category-label { font-size: 10px; padding: 3px 8px; }
+  .label-dot { width: 6px; height: 6px; }
+  .close-btn { width: 26px; height: 26px; }
+  .close-btn svg { width: 13px; height: 13px; }
 
-  .location-title { font-size: 16px; }
+  .image-container { margin: 6px 8px; height: 90px; }
+
+  .card-body { padding: 0 10px 8px; }
+  .title-row { margin-bottom: 6px; gap: 8px; }
+  .location-title { font-size: 14px; line-height: 1.2; }
+
+  .rating-box { padding: 3px 7px; font-size: 11px; }
+  .rating-box svg { width: 11px; height: 11px; }
+
+  .info-row { gap: 10px; margin-bottom: 6px; }
+  .info-item { font-size: 11px; }
+  .info-item svg { width: 12px; height: 12px; }
+
+  .reviews-text { font-size: 11px; margin: 0 0 8px; }
+
+  .card-actions { gap: 6px; }
+  .btn-calendar { width: 36px; height: 36px; }
+  .btn-calendar svg { width: 16px; height: 16px; }
+  .btn-route { height: 36px; padding: 0 10px; font-size: 11px; }
+  .btn-details { padding: 9px; font-size: 13px; }
+  .btn-details svg { width: 14px; height: 14px; }
 }
 
 /* ── Calendar scheduler popup ─────────────────────────────── */
