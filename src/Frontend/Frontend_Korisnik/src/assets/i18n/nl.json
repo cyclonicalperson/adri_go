@@ -315,11 +315,7 @@
   "Minimum Rating": "Minimale beoordeling",
   "Availability": "Beschikbaarheid",
   "Open Now": "Nu open",
-<<<<<<< HEAD
   "Show only places open right now": "Alleen nu open plekken tonen",
-=======
-  "Show only places open right now": "Toon alleen plekken die nu open zijn",
->>>>>>> master
   "Period (for Events)": "Periode (voor evenementen)",
   "FROM": "VAN",
   "TO": "TOT",
@@ -621,7 +617,6 @@
   "Proverite novi email i potvrdite link da bi promena bila prihvacena.": "Controleer de nieuwe e-mail en bevestig de link om de wijziging toe te passen.",
   "All categories": "Alle categorieën",
   "All countries": "Alle landen",
-<<<<<<< HEAD
   "All regions": "Alle regio's",
   "All activity categories": "Alle activiteitscategorieën",
   "All activity difficulties": "Alle moeilijkheidsgraden",
@@ -635,38 +630,15 @@
   "Linked Only": "Alleen gekoppeld",
   "Show destinations that have activities attached": "Bestemmingen tonen met gekoppelde activiteiten",
   "Route Difficulty": "Routemoeilijkheid",
-=======
-  "All regions": "Alle regio’s",
-  "All activity categories": "Alle activiteitscategorieën",
-  "All activity difficulties": "Alle moeilijkheden van activiteiten",
-  "All route difficulties": "Alle routemoeilijkheden",
-  "All route regions": "Alle routeregio’s",
-  "Any distance": "Elke afstand",
-  "Any duration": "Elke duur",
-  "Activity Categories": "Activiteitscategorieën",
-  "Activity Difficulty": "Moeilijkheid activiteit",
-  "Activity Links": "Activiteitskoppelingen",
-  "Linked Only": "Alleen gekoppeld",
-  "Show destinations that have activities attached": "Toon bestemmingen met gekoppelde activiteiten",
-  "Route Difficulty": "Moeilijkheid route",
->>>>>>> master
   "Route Region": "Routeregio",
   "Route Distance": "Routeafstand",
   "Route Duration": "Routeduur",
   "Up to 5 km": "Tot 5 km",
-<<<<<<< HEAD
   "5-15 km": "5–15 km",
   "15+ km": "15+ km",
   "Up to 1h": "Tot 1 uur",
   "1-4h": "1–4 uur",
   "4h+": "4+ uur",
-=======
-  "5-15 km": "5-15 km",
-  "15+ km": "15+ km",
-  "Up to 1h": "Tot 1 u",
-  "1-4h": "1-4 u",
-  "4h+": "4 u+",
->>>>>>> master
   "Already in calendar": "Al in kalender",
   "Added to calendar!": "Toegevoegd aan kalender!",
   "Saved locally!": "Lokaal opgeslagen!",
@@ -785,27 +757,6 @@
   "Go to Account": "Naar account",
   "Choose a future time.": "Kies een tijd in de toekomst.",
   "Create a free account or log in to plan trips and manage your calendar.": "Maak een gratis account aan of log in om reizen te plannen en je kalender te beheren.",
-<<<<<<< HEAD
-  "Sort": "Sorteren",
-  "Nearest": "Dichtste",
-  "Newest": "Nieuwste",
-  "Name A-Z": "Naam A-Z",
-  "No locations to show.": "Geen locaties om te tonen.",
-  "Search routes": "Routes zoeken",
-  "Search routes...": "Routes zoeken...",
-  "Shortest": "Kortste",
-  "Longest": "Langste",
-  "Quickest": "Snelste",
-  "No routes found.": "Geen routes gevonden.",
-  "Open on map": "Openen op kaart",
-  "m up": "m stijging",
-  "Difficulty": "Moeilijkheid",
-  "stops": "stops",
-  "Clear all": "Alles wissen",
-  "from your current location.": "van je locatie.",
-  "VIEW DESTINATIONS": "BEKIJK BESTEMMINGEN",
-  "OPEN ON MAP": "OPENEN OP KAART"
-=======
   "Other": "Overig",
   "Display only your ": "Toon alleen je ",
   " saved destinations": " opgeslagen bestemmingen",
@@ -1070,5 +1021,4 @@
   "destinations": "bestemmingen",
   "events": "evenementen",
   "routes": "routes"
->>>>>>> master
 }
