@@ -479,3 +479,43 @@ table.admin-table {
   border-color: #22c55e;
   box-shadow: 0 2px 8px rgba(34, 197, 94, .15);
 }
+
+:root {
+  --admin-z-topbar: 5000;
+  --admin-z-backdrop: 5100;
+  --admin-z-dropdown: 5200;
+  --admin-z-modal: 5300;
+  --admin-z-lightbox: 5400;
+  --admin-z-loader: 9000;
+}
+
+app-topbar {
+  position: relative;
+  z-index: var(--admin-z-topbar);
+}
+
+.notif-backdrop {
+  z-index: var(--admin-z-backdrop) !important;
+}
+
+.notif-panel,
+.admin-search-panel,
+.lang-menu {
+  z-index: var(--admin-z-dropdown) !important;
+}
+
+.detail-overlay,
+.modal-overlay,
+.reject-overlay,
+.picker-backdrop,
+.overlay {
+  z-index: var(--admin-z-modal) !important;
+}
+
+.lightbox-overlay {
+  z-index: var(--admin-z-lightbox) !important;
+}
+
+.spinner-overlay {
+  z-index: var(--admin-z-loader) !important;
+}

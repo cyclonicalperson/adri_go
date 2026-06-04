@@ -5,6 +5,8 @@ import { UserService } from '@core/services/user.service';
 import { AuthService } from '@core/auth/auth.service';
 import { User, Permission, UserPermission, PermissionCode } from '@core/models/user.model';
 import { environment } from '@env/environment';
+import { SiteTranslateService } from '@core/services/site-translate.service';
+import { adminPermissionDescription, adminPermissionLabel } from '@core/utils/admin-permission-i18n';
 
 interface PermissionGroup {
   category: string;
@@ -156,7 +158,8 @@ export class PermissionsManagementComponent implements OnInit {
   ];
 
   get selectedPresetDescription(): string {
-    return this.permissionPresets.find(preset => preset.id === this.selectedPresetId)?.description ?? '';
+    const description = this.permissionPresets.find(preset => preset.id === this.selectedPresetId)?.description ?? '';
+    return this.translate.instant(description);
   }
 
   // ── Log izmjena — dinamički gradi se iz akcija ─────────────────────────
@@ -166,6 +169,7 @@ export class PermissionsManagementComponent implements OnInit {
     private userService: UserService,
     private http: HttpClient,
     private authService: AuthService,
+    private translate: SiteTranslateService,
   ) { }
 
   ngOnInit(): void {
@@ -390,7 +394,7 @@ export class PermissionsManagementComponent implements OnInit {
       preset.codes.filter(code => allowedCodes.has(code as PermissionCode)) as PermissionCode[],
     );
     this.refreshPermCount(this.selectedUser.userId, null);
-    this.saveMsg = `Preset "${preset.label}" je primenjen. Sacuvajte da bi promene otisle na server.`;
+    this.saveMsg = `${this.translate.instant('Preset')} "${this.presetLabel(preset)}" ${this.translate.instant('je primenjen. Sacuvajte da bi promene otisle na server.')}`;
   }
 
   private addLog(type: 'grant' | 'revoke', permCode: string, targetName: string): void {
@@ -452,9 +456,21 @@ export class PermissionsManagementComponent implements OnInit {
   // ── Helpers ────────────────────────────────────────────────────────────
   permCount(u: User): number { return u.permissionCount ?? 0; }
 
+  permissionLabel(perm: Permission): string {
+    return this.translate.instant(adminPermissionLabel(perm));
+  }
+
+  permissionDescription(perm: Permission): string {
+    return this.translate.instant(adminPermissionDescription(perm));
+  }
+
+  presetLabel(preset: PermissionPreset): string {
+    return this.translate.instant(preset.label);
+  }
+
   scopeLabel(regionId: number | null | undefined): string {
-    if (regionId == null) return 'Globalno';
-    return this.regions.find(region => region.regionId === regionId)?.name ?? `Region #${regionId}`;
+    if (regionId == null) return this.translate.instant('Globalno');
+    return this.regions.find(region => region.regionId === regionId)?.name ?? `${this.translate.instant('Region #')}${regionId}`;
   }
 
   permissionScopeSummary(code: PermissionCode): string {
@@ -462,7 +478,9 @@ export class PermissionsManagementComponent implements OnInit {
       .filter(up => up.permission.code === code)
       .map(up => this.scopeLabel(up.regionId));
 
-    return scopes.length ? `Aktivno u: ${Array.from(new Set(scopes)).join(', ')}` : 'Nije dodeljena';
+    return scopes.length
+      ? `${this.translate.instant('Aktivno u:')} ${Array.from(new Set(scopes)).join(', ')}`
+      : this.translate.instant('Nije dodeljena');
   }
 
   private refreshActivePermCodesForSelectedScope(): void {

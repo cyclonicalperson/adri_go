@@ -61,6 +61,11 @@ export class SiteTranslateService implements OnDestroy {
     return this.languages.find(language => language.code === this.currentLanguage) ?? this.languages[0];
   }
 
+  instant(text: string | null | undefined): string {
+    if (!text) return text ?? '';
+    return this.translateText(text);
+  }
+
   init(): void {
     if (this.initialized) return;
 

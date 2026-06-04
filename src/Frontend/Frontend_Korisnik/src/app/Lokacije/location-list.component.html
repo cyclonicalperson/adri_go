@@ -23,7 +23,9 @@
   <div class="search-section">
     <div class="explore-intro" *ngIf="!activeSectionView">
       <span class="explore-kicker">Explore the unknown</span>
-      <h1>{{ discoverTitle }}</h1>
+      <h1>
+        <span>Discover</span><span *ngIf="allLocationCount > 0"> {{ allLocationCount }}</span><span> curated places</span>
+      </h1>
     </div>
 
     <div class="search-line">
@@ -111,7 +113,7 @@
           <button class="sort-option" *ngFor="let option of sortOptions"
             [class.sort-option-active]="sortOption === option.value"
             (click)="sortOption = option.value; onSortChanged(); sortMenuOpen = false">
-            {{ option.label }}
+            {{ translateLabel(option.label) }}
           </button>
         </div>
       </div>
@@ -127,7 +129,7 @@
       class="content-type-tab-bar"
       [class.active]="activeContentType === tab.value"
       (click)="setActiveContentType(tab.value)">
-      {{ tab.label }}
+      {{ translateLabel(tab.label) }}
     </button>
   </div><div class="feedback-toast" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
@@ -332,7 +334,7 @@
         <p>{{ activity.description || 'No description available.' }}</p>
         <div class="activity-meta">
           <span *ngIf="activity.locationName">{{ activity.locationName }}</span>
-          <span *ngIf="activity.difficulty">{{ activity.difficulty }}</span>
+          <span *ngIf="activity.difficulty">{{ formatRouteDifficulty(activity.difficulty) }}</span>
           <span *ngIf="activity.duration">{{ activity.duration }}</span>
           <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} places</span>
         </div>
@@ -569,7 +571,7 @@
               [class.active]="activityFilters.difficulties.includes(difficulty)"
               [style.--filter-color]="getDifficultyFilterColor(difficulty)"
               (click)="toggleActivityFilter('difficulties', difficulty)">
-              {{ difficulty }}
+              {{ formatRouteDifficulty(difficulty) }}
             </button>
           </div>
         </div>

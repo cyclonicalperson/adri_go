@@ -6,6 +6,7 @@ import { UserService, PendingSchedule } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 
 @Component({
   selector: 'app-location-details-card',
@@ -28,7 +29,8 @@ export class LocationDetailsCardComponent implements OnDestroy {
     private router: Router,
     private userService: UserService,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private siteTranslate: SiteTranslateService
   ) {}
   get displayImage(): string {
     if (this.locationData?.imageUrl) {
@@ -46,7 +48,7 @@ export class LocationDetailsCardComponent implements OnDestroy {
   }
 
   get displayCategory(): string {
-    return formatPostType(this.locationData?.postType || this.locationData?.category);
+    return this.siteTranslate.instant(formatPostType(this.locationData?.postType || this.locationData?.category));
   }
 
   get displayRating(): number | null {
