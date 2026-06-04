@@ -1020,5 +1020,18 @@
   "destination": "направление",
   "destinations": "направления",
   "events": "события",
+  "Create a free account or log in to explore personalized activities.": "Создайте бесплатный аккаунт или войдите, чтобы просматривать персональные активности.",
+  "Create a free account or log in to save and manage your favorite places.": "Создайте бесплатный аккаунт или войдите, чтобы сохранять и управлять избранными местами.",
+  "Create a free account or log in to view your notifications.": "Создайте бесплатный аккаунт или войдите, чтобы просматривать уведомления.",
+  "Create a free account or log in to manage your profile and travel preferences.": "Создайте бесплатный аккаунт или войдите, чтобы управлять профилем и туристическими предпочтениями.",
+  "Please log in to save locations, like places, and add items to your calendar.": "Войдите, чтобы сохранять места, ставить лайки и добавлять элементы в календарь.",
+  "Link copied to clipboard!": "Ссылка скопирована в буфер обмена!",
+  "Copy this link:": "Скопируйте эту ссылку:",
+  "Review submitted!": "Отзыв отправлен!",
+  "Error submitting review.": "Ошибка при отправке отзыва.",
+  "Location not found.": "Место не найдено.",
+  "View on map →": "Показать на карте →",
+  "View less": "Показать меньше",
+  "View more...": "Показать больше...",
   "routes": "маршруты"
 }

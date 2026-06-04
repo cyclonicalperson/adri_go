@@ -470,6 +470,10 @@
 }
 
 @media (max-width: 899px) {
+  .top-ui-layer:not(.sheet-expanded) > :not(.sheet-header) {
+    display: none !important;
+  }
+
   .map-wrapper.navigating .top-ui-layer {
     display: none;
   }
@@ -1636,9 +1640,59 @@ app-location-details-card {
   pointer-events: none;
 }
 
+.scenic-detour-map-popup {
+  position: fixed;
+  left: 50%;
+  top: 160px;
+  z-index: 2450;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  max-width: calc(100vw - 28px);
+  transform: translateX(-50%);
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #166534;
+  border: 1px solid rgba(34, 197, 94, 0.26);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  pointer-events: none;
+  animation: scenic-detour-popup 4.6s ease forwards;
+}
+.scenic-detour-map-popup svg {
+  flex-shrink: 0;
+  color: #22c55e;
+}
+
+@keyframes scenic-detour-popup {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.96);
+  }
+  10%, 78% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.96);
+  }
+}
+
 :host-context(html[data-theme='dark']) .planner-floating-toast {
   background: #020617;
   border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .scenic-detour-map-popup {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(34, 197, 94, 0.36);
+  color: #bbf7d0;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
 }
 
 @media (min-width: 900px) {
@@ -1653,6 +1707,13 @@ app-location-details-card {
     left: 190px;
     top: 156px;
     width: min(348px, calc(100vw - 32px));
+  }
+
+  .scenic-detour-map-popup {
+    left: calc(380px + ((100vw - 380px) / 2));
+    top: auto;
+    bottom: 26px;
+    max-width: 348px;
   }
 }
 
