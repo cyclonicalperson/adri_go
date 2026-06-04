@@ -62,3 +62,17 @@ $radius-xl: 16px;
 $shadow-sm: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1);
 $shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
 $shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+
+// Z-index scale
+// Leaflet map tiles sit at 400–499 by default.
+// Keep UI layers clearly above that, and modals above everything except mobile drawer.
+$z-base:          1;      // normal stacking
+$z-dropdown:      100;    // dropdowns, tooltips
+$z-sticky:        200;    // sticky table headers, etc.
+$z-topbar:        300;    // topbar (sticky, not fixed on desktop)
+$z-sidebar:       310;    // desktop sidebar
+$z-overlay:       400;    // page-level dim overlay (map panel, side-panel)
+$z-modal:         500;    // centred modal dialogs  ← above topbar
+$z-toast:         600;    // toast / snackbar notifications
+$z-mobile-back:   700;    // mobile sidebar backdrop
+$z-mobile-drawer: 710;    // mobile sidebar drawer
