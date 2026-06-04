@@ -383,7 +383,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private themeService: ThemeService,
     private touristActivitiesService: TouristActivitiesService,
     private touristRoutesService: TouristRoutesService,
-<<<<<<< HEAD
+    private siteTranslate: SiteTranslateService,
     private searchStateService: SearchStateService,
   ) {
     const persistedQuery = this.searchStateService.get();
@@ -391,10 +391,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchQuery = persistedQuery;
     }
   }
-=======
-    private siteTranslate: SiteTranslateService,
-  ) {}
->>>>>>> master
 
   ngOnInit(): void {
     this.isDarkMode = this.themeService.isDarkMode;
