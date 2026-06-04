@@ -276,6 +276,14 @@ namespace TouristGuide.Api.Services
                 await _db.SaveChangesAsync();
             }
 
+            var zabljakRegion = await _db.Regions
+                .FirstOrDefaultAsync(r => r.Name.ToLower() == "žabljak" || r.Name.ToLower() == "zabljak");
+            if (zabljakRegion is not null && zabljakRegion.Country != "Montenegro")
+            {
+                zabljakRegion.Country = "Montenegro";
+                await _db.SaveChangesAsync();
+            }
+
             var existingNames = await _db.Regions
                 .Select(r => r.Name.ToLower())
                 .ToListAsync();

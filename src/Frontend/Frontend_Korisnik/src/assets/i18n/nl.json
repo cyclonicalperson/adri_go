@@ -1020,5 +1020,18 @@
   "destination": "bestemming",
   "destinations": "bestemmingen",
   "events": "evenementen",
+  "Create a free account or log in to explore personalized activities.": "Maak een gratis account aan of log in om persoonlijke activiteiten te ontdekken.",
+  "Create a free account or log in to save and manage your favorite places.": "Maak een gratis account aan of log in om je favoriete plekken op te slaan en te beheren.",
+  "Create a free account or log in to view your notifications.": "Maak een gratis account aan of log in om je meldingen te bekijken.",
+  "Create a free account or log in to manage your profile and travel preferences.": "Maak een gratis account aan of log in om je profiel en reisvoorkeuren te beheren.",
+  "Please log in to save locations, like places, and add items to your calendar.": "Log in om locaties op te slaan, plekken te liken en items aan je kalender toe te voegen.",
+  "Link copied to clipboard!": "Link gekopieerd naar het klembord!",
+  "Copy this link:": "Kopieer deze link:",
+  "Review submitted!": "Beoordeling verzonden!",
+  "Error submitting review.": "Fout bij het verzenden van de beoordeling.",
+  "Location not found.": "Locatie niet gevonden.",
+  "View on map →": "Bekijk op kaart →",
+  "View less": "Minder tonen",
+  "View more...": "Meer tonen...",
   "routes": "routes"
 }

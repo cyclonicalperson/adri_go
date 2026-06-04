@@ -1020,5 +1020,18 @@
   "destination": "destino",
   "destinations": "destinos",
   "events": "eventos",
+  "Create a free account or log in to explore personalized activities.": "Crea una cuenta gratuita o inicia sesión para explorar actividades personalizadas.",
+  "Create a free account or log in to save and manage your favorite places.": "Crea una cuenta gratuita o inicia sesión para guardar y gestionar tus lugares favoritos.",
+  "Create a free account or log in to view your notifications.": "Crea una cuenta gratuita o inicia sesión para ver tus notificaciones.",
+  "Create a free account or log in to manage your profile and travel preferences.": "Crea una cuenta gratuita o inicia sesión para gestionar tu perfil y preferencias de viaje.",
+  "Please log in to save locations, like places, and add items to your calendar.": "Inicia sesión para guardar lugares, dar me gusta y añadir elementos a tu calendario.",
+  "Link copied to clipboard!": "Enlace copiado al portapapeles!",
+  "Copy this link:": "Copia este enlace:",
+  "Review submitted!": "Reseña enviada!",
+  "Error submitting review.": "Error al enviar la reseña.",
+  "Location not found.": "Lugar no encontrado.",
+  "View on map →": "Ver en el mapa →",
+  "View less": "Ver menos",
+  "View more...": "Ver más...",
   "routes": "rutas"
 }
