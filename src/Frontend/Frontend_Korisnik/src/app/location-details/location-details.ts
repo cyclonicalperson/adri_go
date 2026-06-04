@@ -580,6 +580,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     this.router.navigate(['/map-home'], {
       queryParams: {
         planner: '1',
+        focusRoute: '1',
         focusId: this.location.id,
       }
     });

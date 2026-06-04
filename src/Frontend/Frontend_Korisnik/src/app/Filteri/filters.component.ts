@@ -92,6 +92,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   savedPostIds: number[] = [];
   fromDate: string = '';
   toDate: string = '';
+  eventDateRangeMessage = '';
   readonly destinationCountryOptions = WORLD_COUNTRIES;
   private destinationRegionItems: DestinationRegionOption[] = [];
   private preloadedDestinationRegionItems: DestinationRegionOption[] = [];
@@ -385,6 +386,26 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.onAnyChange();
   }
 
+  get minEventToDate(): string {
+    return this.shiftDateOnly(this.fromDate, 1);
+  }
+
+  get maxEventFromDate(): string {
+    return this.shiftDateOnly(this.toDate, -1);
+  }
+
+  onFromDateChange(value: string): void {
+    this.fromDate = value;
+    this.ensureEventDateRange('from');
+    this.onAnyChange();
+  }
+
+  onToDateChange(value: string): void {
+    this.toDate = value;
+    this.ensureEventDateRange('to');
+    this.onAnyChange();
+  }
+
   formatActivityCategory(value?: string | null): string {
     if (!value) return this.translateLabel('Other');
     const readable = value
@@ -448,6 +469,7 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.savedPostIds  = [...this.availableSavedPostIdsInternal];
     this.fromDate      = '';
     this.toDate        = '';
+    this.eventDateRangeMessage = '';
     this.destinationFilters = { countries: [], regions: [] };
     this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
     this.routeFilters = { difficulties: [], countries: [], regions: [], distanceBand: '', durationBand: '' };
@@ -466,6 +488,7 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   /** Navigate-based close — used when component is opened as a route (map context, mobile) */
   private buildState(): FilterState {
+    this.ensureEventDateRange('to');
     const selected = this.categories.filter(c => c.selected).map(c => c.id);
     return {
       minRating:        this.minRating,
@@ -488,6 +511,49 @@ export class FiltersComponent implements OnInit, OnChanges {
       eventToDate: this.toDate,
       activeContentType: this.activeContentType,
     };
+  }
+
+  private ensureEventDateRange(changed: 'from' | 'to'): void {
+    if (!this.fromDate || !this.toDate) {
+      this.eventDateRangeMessage = '';
+      return;
+    }
+
+    if (this.compareDateOnly(this.fromDate, this.toDate) < 0) {
+      this.eventDateRangeMessage = '';
+      return;
+    }
+
+    if (changed === 'from') {
+      this.toDate = '';
+    } else {
+      this.fromDate = '';
+    }
+    this.eventDateRangeMessage = 'Start date must be before end date.';
+  }
+
+  private compareDateOnly(left: string, right: string): number {
+    const leftTime = this.parseDateOnly(left)?.getTime();
+    const rightTime = this.parseDateOnly(right)?.getTime();
+    if (leftTime == null || rightTime == null) return 0;
+    return leftTime - rightTime;
+  }
+
+  private shiftDateOnly(value: string, days: number): string {
+    const date = this.parseDateOnly(value);
+    if (!date) return '';
+    date.setDate(date.getDate() + days);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDateOnly(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
   }
 
   /** applyFilters kept for backward compat — now just saves and navigates */

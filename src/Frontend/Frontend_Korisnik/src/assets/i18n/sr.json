@@ -1020,5 +1020,18 @@
   "destination": "destinacija",
   "destinations": "destinacije",
   "events": "događaja",
+  "Create a free account or log in to explore personalized activities.": "Kreirajte besplatan nalog ili se prijavite da istražujete personalizovane aktivnosti.",
+  "Create a free account or log in to save and manage your favorite places.": "Kreirajte besplatan nalog ili se prijavite da sačuvate i upravljate omiljenim mestima.",
+  "Create a free account or log in to view your notifications.": "Kreirajte besplatan nalog ili se prijavite da vidite obaveštenja.",
+  "Create a free account or log in to manage your profile and travel preferences.": "Kreirajte besplatan nalog ili se prijavite da upravljate profilom i putnim preferencijama.",
+  "Please log in to save locations, like places, and add items to your calendar.": "Prijavite se da biste čuvali lokacije, lajkovali mesta i dodavali stavke u kalendar.",
+  "Link copied to clipboard!": "Link je kopiran u privremenu memoriju!",
+  "Copy this link:": "Kopirajte ovaj link:",
+  "Review submitted!": "Recenzija poslata!",
+  "Error submitting review.": "Greška pri slanju recenzije.",
+  "Location not found.": "Lokacija nije pronađena.",
+  "View on map →": "Pogledaj na mapi →",
+  "View less": "Prikaži manje",
+  "View more...": "Prikaži više...",
   "routes": "rute"
 }

@@ -120,6 +120,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private latestQueryParams: Record<string, string> = {};
   private lastHydratedQueryKey = '';
   private plannerRenderToken = 0;
+  private focusedRouteMode = false;
   private locationWatchId: number | null = null;
   private hasCenteredOnUserLocation = false;
   private plannerRouteGeometry: [number, number][] = [];
@@ -127,8 +128,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private themeSubscription?: Subscription;
   private authSubscription?: Subscription;
   private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
+  private scenicDetourPopupTimerId: ReturnType<typeof setTimeout> | null = null;
+  private lastScenicDetourPopupKey = '';
 
   showAuthPopup = false;
+  showScenicDetourMapPopup = false;
   routePolyline: L.Polyline | null = null;
   private plannerWalkingDotMarkers: L.Layer[] = [];
   private navWalkingDotMarkers: L.Layer[] = [];
@@ -286,6 +290,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return false;
   }
 
+  get showScenicDetourPinNotice(): boolean {
+    return this.showScenicDetourMapPopup && !this.isNavigating && this.scenicSuggestions.length > 0;
+  }
+
+  get scenicDetourPinCount(): number {
+    return this.scenicSuggestions.length;
+  }
+
   get mapDestinationRegionItems(): { name: string; country: string }[] {
     const seen = new Set<string>();
     return this.locationsList
@@ -441,6 +453,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearNavRefollowTimer();
     this.clearMapResizeTimer();
     this.clearChatHintTimer();
+    this.clearScenicDetourPopupTimer();
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     window.removeEventListener('resize', this.handleWindowResize);
     this.autoLocatePermissionStatus?.removeEventListener?.('change', this.handleAutoLocatePermissionChange);
@@ -490,6 +503,45 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.chatHintTimerId !== null) {
       clearTimeout(this.chatHintTimerId);
       this.chatHintTimerId = null;
+    }
+  }
+
+  private showScenicDetourPopupIfNeeded(): void {
+    if (!this.focusedRouteMode || this.isNavigating || this.scenicSuggestions.length === 0) {
+      this.dismissScenicDetourMapPopup();
+      return;
+    }
+
+    const nextKey = this.scenicSuggestions
+      .map(suggestion => suggestion.location.id)
+      .sort((a, b) => a - b)
+      .join(',');
+    if (nextKey === this.lastScenicDetourPopupKey) {
+      return;
+    }
+
+    this.lastScenicDetourPopupKey = nextKey;
+    this.showScenicDetourMapPopup = true;
+    this.clearScenicDetourPopupTimer();
+    this.scenicDetourPopupTimerId = setTimeout(() => {
+      this.showScenicDetourMapPopup = false;
+      this.scenicDetourPopupTimerId = null;
+      this.cdr.detectChanges();
+    }, 4600);
+  }
+
+  private dismissScenicDetourMapPopup(resetKey = false): void {
+    this.showScenicDetourMapPopup = false;
+    if (resetKey) {
+      this.lastScenicDetourPopupKey = '';
+    }
+    this.clearScenicDetourPopupTimer();
+  }
+
+  private clearScenicDetourPopupTimer(): void {
+    if (this.scenicDetourPopupTimerId !== null) {
+      clearTimeout(this.scenicDetourPopupTimerId);
+      this.scenicDetourPopupTimerId = null;
     }
   }
 
@@ -785,9 +837,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  addLocationToPlanner(location: Location, fromPin = false, insertAfterIndex?: number): void {
+  addLocationToPlanner(
+    location: Location,
+    fromPin = false,
+    insertAfterIndex?: number,
+    options: { preserveFocusedRouteMode?: boolean } = {}
+  ): void {
     try {
       this.dismissSearchMenu();
+      if (!options.preserveFocusedRouteMode) {
+        this.focusedRouteMode = false;
+        this.dismissScenicDetourMapPopup(true);
+      }
       const beforeCount = this.routePlanner.snapshot.stops.length;
       this.routePlanner.addStop(location, { insertAfterIndex });
       this.routePlanner.setPlannerMode(true);
@@ -818,12 +879,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   removePlannerStop(stopId: number): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     this.routePlanner.removeStop(stopId);
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
   }
 
   movePlannerStop(index: number, direction: 'up' | 'down'): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     const target = direction === 'up' ? index - 1 : index + 1;
     this.routePlanner.moveStop(index, target);
     this.syncPlannerStateFromServices();
@@ -831,6 +896,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   optimizePlannerStops(): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     const optimized = this.recommendationService.optimizeStopOrder(this.plannerStops, this.userPosition);
     this.routePlanner.replaceStops(optimized, {
       plannerMode: true,
@@ -849,6 +916,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleScenicMode(): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     this.scenicMode = !this.scenicMode;
     this.routePlanner.setScenicMode(this.scenicMode);
     this.renderPlannerRoute();
@@ -931,7 +1000,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   applyDetourSuggestion(suggestion: RouteDetourSuggestion): void {
-    this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex);
+    this.addLocationToPlanner(suggestion.location, false, suggestion.insertAfterIndex, {
+      preserveFocusedRouteMode: this.focusedRouteMode,
+    });
     this.scenicSuggestions = this.scenicSuggestions.filter(item => item.location.id !== suggestion.location.id);
     this.replenishScenicSuggestions();
     this.optimizeRouteSilently();
@@ -1012,6 +1083,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const directTo = this.latestQueryParams['directTo'];
     const focusId = Number(this.latestQueryParams['focusId']);
     const plannerFlag = this.latestQueryParams['planner'] === '1';
+    const focusRouteFlag = this.latestQueryParams['focusRoute'] === '1';
     const scenicFlag = this.latestQueryParams['scenic'];
     const modeParam = this.latestQueryParams['mode'];
 
@@ -1031,6 +1103,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         // When arriving from "Directions" (planner=1), only center the map
         // without opening the location card — the planner panel is the focus.
         if (plannerFlag) {
+          if (focusRouteFlag) {
+            this.focusedRouteMode = true;
+            this.routePlanner.replaceStops([matched], {
+              plannerMode: true,
+              scenicMode: this.scenicMode,
+              travelMode: this.travelMode,
+            });
+          }
           const coordinates = this.getLocationCoordinates(matched);
           if (this.map && coordinates) {
             this.map.flyTo([coordinates.lat, coordinates.lng], 15, { animate: true, duration: 1 });
@@ -1050,6 +1130,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         .map(id => this.locationsList.find(location => location.id === id))
         .filter((location): location is MapLocation => !!location);
       if (locations.length > 0) {
+        this.focusedRouteMode = false;
+        this.dismissScenicDetourMapPopup(true);
         this.routePlanner.replaceStops(locations, {
           plannerMode: true,
           scenicMode: scenicFlag !== '0',
@@ -1071,12 +1153,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         });
 
         if (matched) {
+          this.focusedRouteMode = true;
           this.routePlanner.replaceStops([matched], {
             plannerMode: true,
-            scenicMode: scenicFlag !== '0',
+            scenicMode: this.scenicMode,
             travelMode: this.travelMode,
           });
         } else {
+          this.focusedRouteMode = true;
           this.routePlanner.replaceStops([{
             id: -(Math.round(lat * 100000) + Math.round(lng * 100000)),
             title: this.latestQueryParams['destTitle'] || 'Destination',
@@ -1085,7 +1169,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
             lng,
           }], {
             plannerMode: true,
-            scenicMode: scenicFlag !== '0',
+            scenicMode: this.scenicMode,
             travelMode: this.travelMode,
           });
         }
@@ -1099,6 +1183,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hydratePlannerFromCuratedRoute(routeId: number): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     this.touristRoutesService.getRouteById(routeId).subscribe({
       next: (route) => {
         if (!route || route.waypoints.length === 0) {
@@ -1117,6 +1203,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hydratePlannerFromTouristRoute(touristRouteId: number): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     this.userService.getTouristRoute(touristRouteId).subscribe({
       next: (route) => {
         if (!route || route.waypoints.length === 0) {
@@ -1172,6 +1260,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       this.map.flyTo([onlyStop.lat, onlyStop.lng], 14, { animate: true, duration: 1 });
       this.scenicSuggestions = this.buildNearbyStopSuggestions(onlyStop);
+      this.applyMarkerFilter();
+      this.showScenicDetourPopupIfNeeded();
       this.cdr.detectChanges();
       return;
     }
@@ -1219,6 +1309,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
             this.scenicSuggestions = this.buildNearbyStopSuggestions(this.plannerStops[this.plannerStops.length - 1]).slice(0, 4);
           }
         }
+        this.applyMarkerFilter();
+        this.showScenicDetourPopupIfNeeded();
 
         if (route.usedFallback) {
           this.plannerMessage = 'Live routing is unavailable right now. We are showing a scenic stop sequence instead.';
@@ -1233,6 +1325,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.scenicSuggestions = lastStop
           ? this.buildNearbyStopSuggestions(lastStop).slice(0, 4)
           : [];
+        this.applyMarkerFilter();
+        this.showScenicDetourPopupIfNeeded();
         this.routeIsRoutable = false;
         this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
         this.plannerMessage = this.getRouteProblemMessage();
@@ -1426,6 +1520,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadSavedRoute(route: SavedRoute): void {
     this.showSavedRoutes = false;
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     this.routePlanner.replaceStops(route.stops, {
       plannerMode: true,
       scenicMode: route.scenicMode,
@@ -1565,6 +1661,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.plannerRenderToken++;
     this.routePlanner.clear();
     this.latestQueryParams = {};
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
     this.plannerStops = [];
     this.plannerMode = false;
     this.scenicMode = true;
@@ -2300,14 +2398,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const visiblePins: VisiblePin[] = [];
     const renderBounds = this.map.getBounds().pad(0.35);
+    const showOnlyPlannerStops = this.isNavigating || (this.focusedRouteMode && this.showRoutePanel);
+    const focusedSuggestionIds = this.focusedRouteMode
+      ? new Set(this.scenicSuggestions.map(suggestion => suggestion.location.id))
+      : new Set<number>();
 
     this.markers.forEach(({ loc, marker }) => {
       const latLng = marker.getLatLng();
 
-      // During navigation: only show pins that are part of the route
-      if (this.isNavigating) {
+      // During navigation or one-destination directions, keep the map focused on the route.
+      if (showOnlyPlannerStops) {
         const isRouteStop = this.plannerStops.some(stop => stop.id === loc.id);
-        if (isRouteStop && renderBounds.contains(latLng)) {
+        const isSuggestedDetour = !this.isNavigating && focusedSuggestionIds.has(loc.id);
+        if ((isRouteStop || isSuggestedDetour) && renderBounds.contains(latLng)) {
           visiblePins.push({ kind: 'location', id: loc.id, loc, marker, latLng });
         }
         return;
@@ -2320,7 +2423,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
-      const visible = !this.isNavigating
+      const visible = !showOnlyPlannerStops
         && this.routePassesRadiusFilter(route)
         && this.routeMatchesExploreFilters(route)
         && renderBounds.contains(latLng);
@@ -2339,7 +2442,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearRenderedPinLayers();
 
     const zoom = this.map.getZoom();
-    const shouldCluster = !this.isNavigating && !this.plannerMode && zoom < this.markerClusterMaxZoom;
+    const shouldCluster = !this.isNavigating && zoom < this.markerClusterMaxZoom;
     if (!shouldCluster) {
       pins.forEach(pin => pin.marker.addTo(this.map!));
       return;
@@ -2803,8 +2906,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           regionName: loc.regionName,
         });
         if (this.plannerMode) {
-          // U planner mode: samo dodaj stajaliste, ne otvara karticu
-          this.addLocationToPlanner(loc, true);
+          const focusedSuggestion = this.focusedRouteMode
+            ? this.scenicSuggestions.find(suggestion => suggestion.location.id === loc.id)
+            : undefined;
+          const isFocusedRouteStop = this.focusedRouteMode && this.plannerStops.some(stop => stop.id === loc.id);
+
+          if (focusedSuggestion) {
+            this.applyDetourSuggestion(focusedSuggestion);
+          } else if (isFocusedRouteStop) {
+            this.focusOnPlannerStop(this.plannerStops.find(stop => stop.id === loc.id)!);
+          } else {
+            // U planner mode: samo dodaj stajaliste, ne otvara karticu
+            this.addLocationToPlanner(loc, true);
+          }
         } else {
           // Van planner mode: otvori karticu objave i centriraj pin
           this.selectedPublicRoute = null;

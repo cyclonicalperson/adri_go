@@ -133,13 +133,22 @@
       <div class="date-picker-row">
         <div class="date-input" [class.active]="!!fromDate" style="--filter-color: #8b5cf6;">
           <label>FROM</label>
-          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onAnyChange()">
+          <input
+            type="date"
+            [ngModel]="fromDate"
+            [attr.max]="maxEventFromDate || null"
+            (ngModelChange)="onFromDateChange($event)">
         </div>
         <div class="date-input" [class.active]="!!toDate" style="--filter-color: #8b5cf6;">
           <label>TO</label>
-          <input type="date" [(ngModel)]="toDate" (ngModelChange)="onAnyChange()">
+          <input
+            type="date"
+            [ngModel]="toDate"
+            [attr.min]="minEventToDate || null"
+            (ngModelChange)="onToDateChange($event)">
         </div>
       </div>
+      <p class="date-range-error" *ngIf="eventDateRangeMessage">{{ translateLabel(eventDateRangeMessage) }}</p>
     </section>
 
     <!-- SAVED ONLY -->
