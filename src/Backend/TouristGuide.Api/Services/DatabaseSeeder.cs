@@ -1955,7 +1955,24 @@ namespace TouristGuide.Api.Services
             };
 
             var reviews = new List<Review>(LoadTestPostReviewCount + LoadTestRouteReviewCount);
-            var usedPostPairs = new HashSet<(uint TouristId, uint PostId)>();
+            var usedPostPairs = new HashSet<(uint? TouristId, uint PostId)>();
+            var usedRoutePairs = new HashSet<(uint? TouristId, uint RouteId)>();
+
+            // Učitaj već postojeće parove iz baze da ne bi došlo do duplikata pri ponovnom seed-u
+            var existingPostReviews = await _db.Reviews.AsNoTracking()
+                .Where(r => r.PostId != null)
+                .Select(r => new { r.TouristId, PostId = r.PostId!.Value })
+                .ToListAsync();
+            foreach (var r in existingPostReviews)
+                usedPostPairs.Add((r.TouristId, r.PostId));
+
+            var existingRouteReviews = await _db.Reviews.AsNoTracking()
+                .Where(r => r.RouteId != null)
+                .Select(r => new { r.TouristId, RouteId = r.RouteId!.Value })
+                .ToListAsync();
+            foreach (var r in existingRouteReviews)
+                usedRoutePairs.Add((r.TouristId, r.RouteId));
+
             var attempts = 0;
             while (reviews.Count < LoadTestPostReviewCount && attempts++ < LoadTestPostReviewCount * 8)
             {
@@ -1975,13 +1992,17 @@ namespace TouristGuide.Api.Services
                 });
             }
 
-            for (var i = 0; i < LoadTestRouteReviewCount; i++)
+            attempts = 0;
+            while (reviews.Count < LoadTestPostReviewCount + LoadTestRouteReviewCount && attempts++ < LoadTestRouteReviewCount * 8)
             {
+                var touristId = touristIds[random.Next(touristIds.Count)];
+                var routeId = routeIds[random.Next(routeIds.Count)];
+                if (!usedRoutePairs.Add((touristId, routeId))) continue;
                 var status = ReviewStatusFor(random);
                 reviews.Add(new Review
                 {
-                    TouristId = touristIds[random.Next(touristIds.Count)],
-                    RouteId = routeIds[random.Next(routeIds.Count)],
+                    TouristId = touristId,
+                    RouteId = routeId,
                     Rating = (byte)random.Next(3, 6),
                     Comment = comments[random.Next(comments.Length)],
                     Status = status,

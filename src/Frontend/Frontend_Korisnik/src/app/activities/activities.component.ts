@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
+import { SearchStateService } from '../services/search-state.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthService } from '../services/auth.service';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
@@ -33,16 +34,23 @@ export class ActivitiesComponent implements OnInit {
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef,
+    private searchStateService: SearchStateService,
     private siteTranslate: SiteTranslateService,
   ) {}
 
   ngOnInit(): void {
+    this.searchQuery = this.searchStateService.get();
+
     if (!this.authService.isLoggedIn) {
       this.showAuthPopup = true;
       return;
     }
 
     this.loadActivities();
+  }
+
+  onSearchQueryChange(query: string): void {
+    this.searchStateService.set(query);
   }
 
   get visibleActivities(): TouristActivityItem[] {

@@ -11,6 +11,7 @@ import { RecommendationService } from '../services/recommendation.service';
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
+import { SearchStateService } from '../services/search-state.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
@@ -349,12 +350,21 @@ export class LocationListComponent implements OnInit, OnDestroy {
     private routesService: TouristRoutesService,
     private routePlanner: RoutePlannerService,
     private preferences: TouristPreferencesService,
+    private searchStateService: SearchStateService,
     private siteTranslate: SiteTranslateService,
   ) { }
 
   ngOnInit(): void {
     this.readContentTypeFromRoute();
     this.readActivityFilterFromRoute();
+
+    const persistedQuery = this.searchStateService.get();
+    if (persistedQuery) {
+      this.searchQuery = persistedQuery;
+      this.submittedSearchQuery = persistedQuery;
+      this.isSearchActive = true;
+    }
+
     this.loadLocations();
     this.loadActivities();
     this.loadRoutes();
@@ -443,6 +453,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   onSearchInput(): void {
     const query = this.searchQuery.trim();
+    this.searchStateService.set(query);
     if (!query) {
       this.resetSearchState();
       this.refreshVisibleContent();
@@ -461,6 +472,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   /** Called when user clicks a dropdown suggestion */
   selectSearchResult(result: ExploreSearchResult): void {
     this.searchQuery = result.title || '';
+    this.searchStateService.set(this.searchQuery.trim());
     this.showDropdown = false;
     this.searchFocused = false;
     this.submittedSearchQuery = this.searchQuery.trim();
@@ -475,6 +487,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   executeSearch(rawQuery = this.searchQuery): void {
     this.searchQuery = rawQuery;
     const query = rawQuery.trim();
+    this.searchStateService.set(query);
     this.showDropdown = false;
     this.searchFocused = false;
     this.sortMenuOpen = false;
@@ -492,6 +505,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   clearSearch(): void {
     this.searchQuery = '';
+    this.searchStateService.clear();
     this.resetSearchState();
     this.clearActivityFilterState();
     this.refreshVisibleContent();
@@ -661,6 +675,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   openDestination(destination: PopularDestination): void {
     this.searchQuery = destination.name;
+    this.searchStateService.set(destination.name);
     this.submittedSearchQuery = destination.name;
     this.isSearchActive = true;
     this.isFilterActive = false;
@@ -991,8 +1006,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.isTypeFiltersOpen = false;
     this.sortMenuOpen = false;
     this.setPageScrollLock(false);
-    this.clearSearch();
     this.ensureSortForActiveType();
+    this.rebuildSearchResults();
     this.refreshVisibleContent();
     this.router.navigate([], {
       relativeTo: this.route,
