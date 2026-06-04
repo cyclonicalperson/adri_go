@@ -75,7 +75,7 @@
           <select class="preset-select" [(ngModel)]="selectedPresetId" (ngModelChange)="applyPreset($event)">
             <option value="">Izaberite najcesci tip admina</option>
             @for (preset of permissionPresets; track preset.id) {
-            <option [value]="preset.id">{{ preset.label }}</option>
+            <option [value]="preset.id">{{ presetLabel(preset) }}</option>
             }
           </select>
           @if (selectedPresetId) {
@@ -88,8 +88,8 @@
         @for (perm of allPermissions; track perm.code) {
         <div class="perm-toggle-row">
           <div>
-            <div class="perm-key">{{ perm.label }}</div>
-            <div class="perm-desc">{{ perm.description ?? perm.code }}</div>
+            <div class="perm-key">{{ permissionLabel(perm) }}</div>
+            <div class="perm-desc">{{ permissionDescription(perm) }}</div>
             <div class="perm-scope">{{ permissionScopeSummary(perm.code) }}</div>
           </div>
           <button class="toggle"

@@ -6,7 +6,7 @@
   background: var(--gray-50);
   min-height: 100dvh;
   font-family: var(--font-sans);
-  padding-bottom: 40px;
+  padding-bottom: var(--mobile-footer-space);
 }
 
 /* ── HERO ────────────────────────────────────────────────────── */
@@ -688,8 +688,9 @@
     box-shadow: none;
     display: grid;
     grid-template-columns: 55% 45%;
-    grid-template-rows: 100dvh;
-    overflow: hidden;
+    grid-template-rows: auto;
+    align-items: start;
+    overflow: visible;
     padding-bottom: 0;
   }
 
@@ -702,8 +703,8 @@
   .hero-section {
     grid-column: 1;
     grid-row: 1;
-    width: 55vw;
-    max-width: 55vw;
+    width: 100%;
+    max-width: none;
     height: 100dvh;
     max-height: 100dvh;
     min-height: 100dvh;
@@ -727,7 +728,10 @@
     display: block;
     grid-column: 1;
     grid-row: 1;
-    position: relative;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 0;
     pointer-events: none;
     z-index: 10;
   }
@@ -779,15 +783,16 @@
     max-width: calc(55vw - 40px);
   }
 
-  /* Content card — desni stupac, scrollable */
+  /* Content card — desni stupac, prati normalan page scroll */
   .content-card {
     grid-column: 2;
     grid-row: 1;
     margin-top: 0;
     border-radius: 0;
-    padding: 40px 40px 60px;
-    overflow-y: auto;
-    height: 100dvh;
+    padding: 40px 40px calc(var(--mobile-footer-space) + 24px);
+    overflow: visible;
+    height: auto;
+    min-height: 100dvh;
     background: #fff;
     box-shadow: -2px 0 24px rgba(0,0,0,0.07);
     position: relative;

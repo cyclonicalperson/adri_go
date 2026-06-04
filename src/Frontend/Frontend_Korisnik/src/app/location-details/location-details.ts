@@ -9,6 +9,8 @@ import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { SiteTranslateService } from '../services/site-translate.service';
+import { DesktopFooterComponent } from '../shared/desktop-footer.component';
+import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 import { formatPostType } from '../utils/post-type.utils';
 
 import * as L from 'leaflet';
@@ -16,7 +18,7 @@ import * as L from 'leaflet';
 @Component({
   selector: 'app-location-details',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, DesktopFooterComponent, MobileTouristNavComponent],
   templateUrl: './location-details.html',
   styleUrls: ['./location-details.css']
 })
@@ -446,7 +448,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.siteTranslate.instant(formatPostType(type));
   }
 
   get isEvent(): boolean {

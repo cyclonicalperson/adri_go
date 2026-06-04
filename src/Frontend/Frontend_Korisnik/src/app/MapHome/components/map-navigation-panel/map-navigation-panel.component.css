@@ -123,7 +123,7 @@
   font-weight: 800;
   color: #fff;
   line-height: 1;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 
 .nav-street-label {
@@ -408,7 +408,7 @@
     display: flex; flex-direction: column; align-items: center;
     flex: 1; gap: 2px;
   }
-  .nav-sum-kicker { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .nav-sum-kicker { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0; }
   .nav-panel-summary-item strong { font-size: 15px; font-weight: 800; color: #0f172a; }
   .nav-sum-divider { width: 1px; height: 28px; background: #e2e8f0; margin: 0 4px; }
   .nav-exit-panel {
@@ -488,4 +488,103 @@
   border-color: #22c55e;
   color: #dcfce7;
   box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .nav-arrived-card {
+  background: #111827;
+  border: 1px solid #334155;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+:host-context(html[data-theme='dark']) .nav-arrived-icon {
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+}
+
+:host-context(html[data-theme='dark']) .nav-arrived-text strong,
+:host-context(html[data-theme='dark']) .nav-panel-summary-item strong,
+:host-context(html[data-theme='dark']) .nav-bottom-eta,
+:host-context(html[data-theme='dark']) .nav-speed-val {
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .nav-arrived-text span,
+:host-context(html[data-theme='dark']) .nav-bottom-meta,
+:host-context(html[data-theme='dark']) .nav-speed-unit,
+:host-context(html[data-theme='dark']) .nav-sum-kicker {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .nav-done-btn {
+  background: #16a34a;
+  color: #f8fafc;
+}
+
+:host-context(html[data-theme='dark']) .nav-speed-badge,
+:host-context(html[data-theme='dark']) .nav-exit-mobile {
+  background: #111827;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .nav-exit-mobile:hover {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .nav-steps-list {
+  background: #0f172a;
+  scrollbar-color: #334155 transparent;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-row {
+  background: #0f172a;
+  border-bottom-color: #1f2937;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-arrow {
+  background: #1f2937;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-arrow svg {
+  fill: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-dist {
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-active {
+  background: #052e16;
+  border-left-color: #22c55e;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-active .nav-step-text {
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-active .nav-step-arrow {
+  background: rgba(34, 197, 94, 0.18);
+}
+
+:host-context(html[data-theme='dark']) .nav-step-active .nav-step-arrow svg {
+  fill: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .nav-step-done {
+  opacity: 0.45;
+}
+
+:host-context(html[data-theme='dark']) .nav-sum-divider {
+  background: #334155;
+}
+
+:host-context(html[data-theme='dark']) .nav-exit-panel {
+  background: rgba(127, 29, 29, 0.28);
+  border-color: rgba(248, 113, 113, 0.38);
+  color: #fecaca;
+}
+
+:host-context(html[data-theme='dark']) .nav-exit-panel:hover {
+  background: rgba(127, 29, 29, 0.42);
 }

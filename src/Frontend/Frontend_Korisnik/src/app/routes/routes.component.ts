@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { SearchStateService } from '../services/search-state.service';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 
 type RouteSort = 'created-desc' | 'distance-asc' | 'distance-desc' | 'duration-asc' | 'name-asc';
@@ -28,10 +29,16 @@ export class RoutesComponent implements OnInit {
     private routePlanner: RoutePlannerService,
     private router: Router,
     private cdr: ChangeDetectorRef,
+    private searchStateService: SearchStateService,
   ) {}
 
   ngOnInit(): void {
+    this.searchQuery = this.searchStateService.get();
     this.loadRoutes();
+  }
+
+  onSearchQueryChange(query: string): void {
+    this.searchStateService.set(query);
   }
 
   get visibleRoutes(): TouristRouteItem[] {

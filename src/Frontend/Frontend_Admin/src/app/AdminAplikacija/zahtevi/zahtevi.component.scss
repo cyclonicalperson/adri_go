@@ -22,6 +22,23 @@
   color: #374151;
 }
 
+.action-message {
+  margin: 0 0 14px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #15803d;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.action-message-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .author-cell {
   display: flex;
   align-items: center;

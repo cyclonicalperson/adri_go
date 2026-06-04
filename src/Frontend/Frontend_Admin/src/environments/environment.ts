@@ -1,6 +1,6 @@
 // src/environments/environment.ts
-// useMocks: false  → koristi pravi backend API (lokalni development)
 // useMocks: true   → koristi mock interceptore (rad bez backend-a)
+// useMocks: false -> koristi pravi backend API na portu 5125
 export const environment = {
   production: false,
   useMocks: false,
