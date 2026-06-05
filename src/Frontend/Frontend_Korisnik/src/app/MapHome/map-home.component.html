@@ -160,6 +160,7 @@
       </div>
 
       <div class="category-chips-row"
+                  *ngIf="!isNavigating"
                   appDragScroll axis="x"
                   #chipsContainer
                   (mousedown)="onChipsMouseDown($event)"
