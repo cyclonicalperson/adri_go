@@ -112,7 +112,10 @@ export class MyReviewsComponent implements OnInit {
     { value: 'activity', label: 'Activities' },
   ];
 
-  readonly reviewFilterCategories = REVIEW_FILTER_CATEGORIES;
+  readonly reviewFilterCategories = [
+    ...REVIEW_FILTER_CATEGORIES,
+    { id: 'other', label: 'Ostalo', color: '#64748b', icon: '•' },
+  ];
   readonly commentOptions: { value: ReviewCommentFilter; label: string }[] = [
     { value: 'all', label: 'All reviews' },
     { value: 'with-comment', label: 'With comment only' },
@@ -455,7 +458,19 @@ export class MyReviewsComponent implements OnInit {
 
     const normalizedType = (post?.postType || post?.category || '').toLowerCase().replace(/\s+/g, '_');
     if (normalizedType === 'activity') return 'sports_facility';
-    return normalizedType;
+    const knownTypes = new Set([
+      'attraction',
+      'restaurant',
+      'cultural_site',
+      'monument',
+      'club',
+      'sports_facility',
+      'event',
+      'accommodation',
+      'shop',
+      'other',
+    ]);
+    return knownTypes.has(normalizedType) ? normalizedType : 'other';
   }
 
   private resolveThumbnail(category: ReviewCategory, post: Location | null): string {

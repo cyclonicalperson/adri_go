@@ -42,11 +42,18 @@ namespace TouristGuide.Api.Models
         [Column("duration_min")]
         public uint? DurationMin { get; set; }
 
+        [Column("source_route_id")]
+        public uint? SourceRouteId { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
         // Navigation
         public Tourist Tourist { get; set; } = null!;
+        public Route? SourceRoute { get; set; }
         public ICollection<PlannerItem> PlannerItems { get; set; } = new List<PlannerItem>();
     }
 }

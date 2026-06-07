@@ -248,8 +248,21 @@
       <div class="saved-routes-toggle-row">
         <button class="saved-routes-toggle-btn" (click)="openSavedRoutes()">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-          Saved routes<span *ngIf="savedRouteCount > 0"> ({{ savedRouteCount }})</span>
+          <ng-container *ngIf="authService.isLoggedIn; else guestPlannerRoutesLabel">
+            Saved Routes
+          </ng-container>
+          <ng-template #guestPlannerRoutesLabel>
+            My Planner Routes<span *ngIf="savedRouteCount > 0"> ({{ savedRouteCount }})</span>
+          </ng-template>
         </button>
+        <p class="saved-routes-helper-text">
+          <ng-container *ngIf="authService.isLoggedIn; else guestPlannerRoutesHelper">
+            Planner routes you save are stored in your account and appear in Saved Routes.
+          </ng-container>
+          <ng-template #guestPlannerRoutesHelper>
+            Routes you created in the planner are stored only in this browser.
+          </ng-template>
+        </p>
       </div>
 
       <app-route-detours-panel
@@ -360,6 +373,13 @@
         <p>{{ route.description || 'Pregledajte detalje rute pre ucitavanja na mapu.' }}</p>
 
         <div class="rp-actions">
+          <button
+            class="rp-save"
+            type="button"
+            [class.is-saved]="route.isSaved"
+            (click)="toggleCuratedRouteSave(route, $event)">
+            {{ route.isSaved ? 'Saved' : 'Save to Saved' }}
+          </button>
           <button class="rp-load" type="button" (click)="loadPreviewRoute(route)">
             Load route
           </button>
@@ -451,7 +471,7 @@
       <div class="saved-routes-sheet-header">
         <div class="saved-routes-title">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-          Saved routes
+          My Planner Routes
         </div>
         <div class="saved-routes-header-actions">
           <button *ngIf="savedRoutes.length > 0" class="sheet-clear-btn" (click)="requestClearSavedRoutes()">
@@ -466,8 +486,8 @@
       <div class="saved-routes-body">
         <div class="saved-routes-empty" *ngIf="savedRoutes.length === 0">
           <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
-          <p>No saved routes yet.</p>
-          <span>Build a route and tap <strong>Save Route</strong> in the planner.</span>
+          <p>No planner routes yet.</p>
+          <span>Build a route and tap <strong>Save Route</strong> in the planner to store it in this browser.</span>
         </div>
 
         <div class="saved-route-card" *ngFor="let route of savedRoutes" (click)="loadSavedRoute(route); showSavedRoutes = false">
@@ -509,8 +529,8 @@
       <div class="modal-icon">
         <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
       </div>
-      <h3>Clear saved routes?</h3>
-      <p>This will remove all {{ savedRoutes.length }} saved route{{ savedRoutes.length !== 1 ? 's' : '' }} from this browser.</p>
+      <h3>Clear planner routes?</h3>
+      <p>This will remove all {{ savedRoutes.length }} planner route{{ savedRoutes.length !== 1 ? 's' : '' }} from this browser.</p>
       <div class="modal-actions">
         <button class="modal-btn-cancel" (click)="cancelClearSavedRoutes()">Keep routes</button>
         <button class="modal-btn-confirm" (click)="confirmClearSavedRoutes()">Clear all</button>

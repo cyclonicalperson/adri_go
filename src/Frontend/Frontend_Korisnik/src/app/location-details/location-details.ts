@@ -32,6 +32,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
   errorMessage = '';
   likeMessage  = '';
   saveMessage  = '';
+  actionErrorMessage = '';
   showAllHours       = false;
   showReviewForm     = false;
   showFullDescription = false;
@@ -298,29 +299,37 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     // Logged-in: use API — always update count locally to avoid stale-overwrite bug
     if (this.location.isLiked) {
       this.locationService.unlikeLocation(this.location.id).subscribe({
-        next: () => {
+        next: (res) => {
           if (this.location) {
             this.location.isLiked = false;
-            this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
+            this.location.likeCount = Math.max(0, res.likeCount ?? (this.location.likeCount || 0) - 1);
           }
           this.likeMessage = 'Like removed';
           this.clearToastAfter('likeMessage');
           this.cdr.markForCheck();
         },
-        error: (err) => console.error('unlike error:', err)
+        error: (err) => {
+          if (!this.handleAuthFailure(err)) {
+            this.showActionError('Could not update like right now.');
+          }
+        }
       });
     } else {
       this.locationService.likeLocation(this.location.id).subscribe({
-        next: () => {
+        next: (res) => {
           if (this.location) {
             this.location.isLiked = true;
-            this.location.likeCount = (this.location.likeCount || 0) + 1;
+            this.location.likeCount = res.likeCount ?? (this.location.likeCount || 0) + 1;
           }
           this.likeMessage = '❤️ Liked!';
           this.clearToastAfter('likeMessage');
           this.cdr.markForCheck();
         },
-        error: (err) => console.error('like error:', err)
+        error: (err) => {
+          if (!this.handleAuthFailure(err)) {
+            this.showActionError('Could not update like right now.');
+          }
+        }
       });
     }
   }
@@ -362,21 +371,19 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       next: (res) => {
         if (this.location) {
           (this.location as any).isSaved = res.isSaved;
-          if (res.isSaved) {
-            this.location.saveCount = (this.location.saveCount || 0) + 1;
-          } else {
-            this.location.saveCount = Math.max(0, (this.location.saveCount || 0) - 1);
-          }
+          this.location.saveCount =
+            res.saveCount ??
+            (res.isSaved
+              ? (this.location.saveCount || 0) + 1
+              : Math.max(0, (this.location.saveCount || 0) - 1));
         }
         this.saveMessage = res.isSaved ? '🔖 Saved!' : 'Removed from saved';
         this.clearToastAfter('saveMessage');
         this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Save error:', err);
-        if (err.status === 401) {
-          this.authService.logout();
-          this.router.navigate(['/login']);
+        if (!this.handleAuthFailure(err)) {
+          this.showActionError('Could not update saved state right now.');
         }
       }
     });
@@ -683,12 +690,25 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
-  private clearToastAfter(field: 'likeMessage' | 'saveMessage' | 'calendarMessage' | 'reviewSuccess', delayMs = 3000): void {
+  private clearToastAfter(field: 'likeMessage' | 'saveMessage' | 'actionErrorMessage' | 'calendarMessage' | 'reviewSuccess', delayMs = 3000): void {
     const timerId = setTimeout(() => {
       this[field] = '';
       this.cdr.detectChanges();
     }, delayMs);
     this.toastTimerIds.push(timerId);
+  }
+
+  private handleAuthFailure(err: any): boolean {
+    if (err?.status !== 401) return false;
+    this.authService.logout();
+    this.router.navigate(['/login']);
+    return true;
+  }
+
+  private showActionError(message: string): void {
+    this.actionErrorMessage = message;
+    this.clearToastAfter('actionErrorMessage');
+    this.cdr.markForCheck();
   }
 
   private setBodyScrollLock(locked: boolean): void {

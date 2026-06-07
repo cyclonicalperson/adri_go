@@ -88,6 +88,12 @@ namespace TouristGuide.Api.Data
                 .HasIndex(x => new { x.TouristId, x.PostId })
                 .IsUnique();
 
+            // TouristFavorite(route) — unique (tourist_id, route_id) for curated route saves
+            modelBuilder.Entity<TouristFavorite>()
+                .HasIndex(x => new { x.TouristId, x.RouteId })
+                .IsUnique()
+                .HasFilter("tourist_id IS NOT NULL AND route_id IS NOT NULL");
+
             // PostTranslation — unique (post_id, lang_code)
             modelBuilder.Entity<PostTranslation>()
                 .HasIndex(x => new { x.PostId, x.LangCode })
@@ -475,6 +481,12 @@ namespace TouristGuide.Api.Data
                 .WithMany()
                 .HasForeignKey(r => r.TouristId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TouristRoute>()
+                .HasOne(r => r.SourceRoute)
+                .WithMany()
+                .HasForeignKey(r => r.SourceRouteId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // ════════════════════════════════════════════════════════════════
             //  Notification relacije

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ namespace TouristGuide.Api.Controllers
         private readonly AdminPermissionService _permissionService;
         private readonly NotificationService _notifService;
         private readonly RouteSafetyService _routeSafetyService;
+        private readonly DatabaseTransactionRunner _transactionRunner;
 
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -29,12 +31,14 @@ namespace TouristGuide.Api.Controllers
             AppDbContext db,
             AdminPermissionService permissionService,
             NotificationService notifService,
-            RouteSafetyService routeSafetyService)
+            RouteSafetyService routeSafetyService,
+            DatabaseTransactionRunner transactionRunner)
         {
             _db = db;
             _permissionService = permissionService;
             _notifService = notifService;
             _routeSafetyService = routeSafetyService;
+            _transactionRunner = transactionRunner;
         }
 
         [HttpGet]
@@ -127,11 +131,11 @@ namespace TouristGuide.Api.Controllers
                 page,
                 pageSize,
                 totalPages = (int)Math.Ceiling((double)total / pageSize),
-                data = routes.Select(MapToDto)
+                data = routes.Select(route => MapToDto(route))
             });
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetById(uint id)
         {
@@ -148,6 +152,90 @@ namespace TouristGuide.Api.Controllers
                 return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
 
             return Ok(new { data = MapToDto(route), success = true });
+        }
+
+        [HttpGet("my-saved")]
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> GetMySaved()
+        {
+            var touristId = GetCurrentTouristId();
+            if (touristId is null)
+                return Unauthorized();
+
+            var favorites = await _db.TouristFavorites
+                .AsNoTracking()
+                .Where(f => f.TouristId == touristId.Value && f.RouteId != null)
+                .Include(f => f.Route!)
+                    .ThenInclude(r => r.Admin)
+                .Include(f => f.Route!)
+                    .ThenInclude(r => r.Region)
+                .Where(f => f.Route != null && f.Route.Status == "published")
+                .OrderByDescending(f => f.SavedAt)
+                .Select(f => f.Route!)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                total = favorites.Count,
+                data = favorites.Select(route => MapToDto(route, isSaved: true))
+            });
+        }
+
+        [HttpPost("{id:int}/toggle-save")]
+        [Authorize(Roles = "tourist")]
+        public async Task<IActionResult> ToggleSaveRoute(uint id)
+        {
+            var touristId = GetCurrentTouristId();
+            if (touristId is null)
+                return Unauthorized();
+
+            var route = await _db.Routes
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (route is null)
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
+
+            if (!await CanViewRouteAsync(route))
+                return NotFound(new { message = $"Ruta sa ID={id} nije pronadjena." });
+
+            var existingFavorite = await _db.TouristFavorites
+                .FirstOrDefaultAsync(f => f.TouristId == touristId.Value && f.RouteId == id);
+
+            if (existingFavorite != null)
+            {
+                var saveCount = await _transactionRunner.ExecuteAsync(async ct =>
+                {
+                    _db.TouristFavorites.Remove(existingFavorite);
+                    await _db.SaveChangesAsync(ct);
+                    return await RefreshRouteSaveCountAsync(id, ct);
+                }, IsolationLevel.ReadCommitted, HttpContext.RequestAborted);
+
+                return Ok(new
+                {
+                    isSaved = false,
+                    saveCount,
+                    message = "Ruta je uklonjena iz sacuvanih."
+                });
+            }
+
+            var nextSaveCount = await _transactionRunner.ExecuteAsync(async ct =>
+            {
+                _db.TouristFavorites.Add(new TouristFavorite
+                {
+                    TouristId = touristId.Value,
+                    RouteId = id,
+                    SavedAt = DateTime.UtcNow
+                });
+                await _db.SaveChangesAsync(ct);
+                return await RefreshRouteSaveCountAsync(id, ct);
+            }, IsolationLevel.ReadCommitted, HttpContext.RequestAborted);
+
+            return Ok(new
+            {
+                isSaved = true,
+                saveCount = nextSaveCount,
+                message = "Ruta je dodata u sacuvane."
+            });
         }
 
         [HttpPost]
@@ -234,7 +322,7 @@ namespace TouristGuide.Api.Controllers
                 new { data = MapToDto(route), success = true });
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Update(uint id, [FromBody] UpsertRouteDto dto)
         {
@@ -318,7 +406,7 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { data = MapToDto(route), success = true });
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         [Authorize(Roles = "admin,superadmin")]
         public async Task<IActionResult> Delete(uint id)
         {
@@ -335,7 +423,7 @@ namespace TouristGuide.Api.Controllers
             return Ok(new { success = true, message = $"Ruta '{route.Name}' je obrisana." });
         }
 
-        [HttpGet("{id}/reviews")]
+        [HttpGet("{id:int}/reviews")]
         [AllowAnonymous]
         public async Task<IActionResult> GetReviews(uint id)
         {
@@ -368,6 +456,13 @@ namespace TouristGuide.Api.Controllers
         }
 
         private uint? GetCurrentAdminId()
+        {
+            var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                   ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return uint.TryParse(val, out var id) ? id : null;
+        }
+
+        private uint? GetCurrentTouristId()
         {
             var val = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -516,7 +611,22 @@ namespace TouristGuide.Api.Controllers
             return AllowedStatuses.Contains(normalized) ? normalized : null;
         }
 
-        private static object MapToDto(RouteModel route) => new
+        private async Task<uint> RefreshRouteSaveCountAsync(uint routeId, CancellationToken cancellationToken)
+        {
+            var nextSaveCount = (uint)await _db.TouristFavorites
+                .CountAsync(f => f.RouteId == routeId, cancellationToken);
+            var now = DateTime.UtcNow;
+
+            await _db.Routes
+                .Where(r => r.Id == routeId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.SaveCount, nextSaveCount)
+                    .SetProperty(r => r.UpdatedAt, now), cancellationToken);
+
+            return nextSaveCount;
+        }
+
+        private static object MapToDto(RouteModel route, bool isSaved = false) => new
         {
             routeId = route.Id,
             adminId = route.AdminId,
@@ -536,6 +646,7 @@ namespace TouristGuide.Api.Controllers
             status = route.Status,
             viewCount = route.ViewCount,
             saveCount = route.SaveCount,
+            isSaved,
             createdAt = route.CreatedAt,
             updatedAt = route.UpdatedAt,
             region = route.Region == null ? null : new

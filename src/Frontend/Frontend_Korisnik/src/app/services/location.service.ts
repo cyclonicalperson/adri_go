@@ -78,6 +78,12 @@ export interface InteractionResponse {
   viewCount?: number;
 }
 
+export interface ToggleSaveResponse {
+  isSaved: boolean;
+  message: string;
+  saveCount?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LocationService {
 
@@ -183,8 +189,8 @@ export class LocationService {
     } catch { return []; }
   }
   // Dodaj ovo u location.service.ts ako već nisi:
-  toggleSaveLocation(postId: number): Observable<{ isSaved: boolean, message: string }> {
-    return this.http.post<{ isSaved: boolean, message: string }>(
+  toggleSaveLocation(postId: number): Observable<ToggleSaveResponse> {
+    return this.http.post<ToggleSaveResponse>(
       `${this.apiUrl}/posts/${postId}/toggle-save`, 
       {}
     );

@@ -23,6 +23,10 @@ export interface PlannerState {
   sourceRouteId: number | null;
   // Id of the private (localStorage SavedRoute) route this planner mirrors, or null.
   sourcePrivateRouteId: string | null;
+  // Id of the backend TouristRoute this planner mirrors, or null.
+  sourceTouristRouteId: number | null;
+  // Curated route this planner originally started from, even after user edits.
+  originRouteId: number | null;
 }
 
 const DEFAULT_STATE: PlannerState = {
@@ -32,6 +36,8 @@ const DEFAULT_STATE: PlannerState = {
   travelMode: 'driving',
   sourceRouteId: null,
   sourcePrivateRouteId: null,
+  sourceTouristRouteId: null,
+  originRouteId: null,
 };
 
 @Injectable({ providedIn: 'root' })
@@ -76,6 +82,8 @@ export class RoutePlannerService {
       stops,
       sourceRouteId: null,
       sourcePrivateRouteId: null,
+      sourceTouristRouteId: state.sourceTouristRouteId,
+      originRouteId: state.originRouteId,
     });
   }
 
@@ -87,6 +95,8 @@ export class RoutePlannerService {
       stops: stops.map(stop => this.normalizeStop(stop)),
       sourceRouteId: options.sourceRouteId ?? null,
       sourcePrivateRouteId: options.sourcePrivateRouteId ?? null,
+      sourceTouristRouteId: options.sourceTouristRouteId ?? null,
+      originRouteId: options.originRouteId ?? null,
     });
   }
 
@@ -97,6 +107,8 @@ export class RoutePlannerService {
       stops: state.stops.filter(stop => stop.id !== stopId),
       sourceRouteId: null,
       sourcePrivateRouteId: null,
+      sourceTouristRouteId: state.sourceTouristRouteId,
+      originRouteId: state.originRouteId,
     });
   }
 
@@ -109,7 +121,14 @@ export class RoutePlannerService {
 
     const [moved] = stops.splice(fromIndex, 1);
     stops.splice(toIndex, 0, moved);
-    return this.persist({ ...state, stops, sourceRouteId: null, sourcePrivateRouteId: null });
+    return this.persist({
+      ...state,
+      stops,
+      sourceRouteId: null,
+      sourcePrivateRouteId: null,
+      sourceTouristRouteId: state.sourceTouristRouteId,
+      originRouteId: state.originRouteId,
+    });
   }
 
   clear(): PlannerState {
@@ -164,6 +183,8 @@ export class RoutePlannerService {
           : [],
         sourceRouteId: typeof parsed.sourceRouteId === 'number' ? parsed.sourceRouteId : null,
         sourcePrivateRouteId: typeof parsed.sourcePrivateRouteId === 'string' ? parsed.sourcePrivateRouteId : null,
+        sourceTouristRouteId: typeof parsed.sourceTouristRouteId === 'number' ? parsed.sourceTouristRouteId : null,
+        originRouteId: typeof parsed.originRouteId === 'number' ? parsed.originRouteId : null,
       };
     } catch {
       return DEFAULT_STATE;

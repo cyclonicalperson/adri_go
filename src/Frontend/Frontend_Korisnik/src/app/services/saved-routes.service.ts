@@ -16,6 +16,8 @@ export interface SavedRoute {
 
 @Injectable({ providedIn: 'root' })
 export class SavedRoutesService {
+  // Planner routes are browser-local snapshots created from the trip planner.
+  // They stay separate from backend "Saved Routes", which are curated route favorites.
   private readonly storageKey = 'adrigo_saved_routes_v1';
   private readonly maxRoutes = 20;
 

@@ -29,6 +29,7 @@ export class ExploreSectionComponent implements OnInit {
   sortOpen = false;
   isLoading = false;
   feedbackMessage = '';
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
   showAuthPopup = false;
   authPopupMessage = 'Please log in to save locations, like places, and add items to your calendar.';
   private userPosition: UserPosition | null = null;
@@ -161,7 +162,11 @@ export class ExploreSectionComponent implements OnInit {
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
     action$.subscribe({
       next: (res) => { loc.isLiked = !loc.isLiked; if (res.likeCount !== undefined) loc.likeCount = res.likeCount; this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed'); this.cdr.markForCheck(); },
-      error: (err) => { if (err.status === 401) this.router.navigate(['/login']); }
+      error: (err) => {
+        if (this.handleAuthFailure(err)) return;
+        this.showFeedback('Could not update like right now.');
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -174,7 +179,11 @@ export class ExploreSectionComponent implements OnInit {
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
     action$.subscribe({
       next: (res) => { loc.isSaved = !loc.isSaved; if (res.saveCount !== undefined) loc.saveCount = res.saveCount; this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved'); this.cdr.markForCheck(); },
-      error: (err) => { if (err.status === 401) this.router.navigate(['/login']); }
+      error: (err) => {
+        if (this.handleAuthFailure(err)) return;
+        this.showFeedback('Could not update saved state right now.');
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -238,8 +247,22 @@ export class ExploreSectionComponent implements OnInit {
   }
 
   private showFeedback(msg: string): void {
+    if (this.feedbackTimer) {
+      clearTimeout(this.feedbackTimer);
+    }
     this.feedbackMessage = msg;
-    setTimeout(() => (this.feedbackMessage = ''), 2500);
+    this.feedbackTimer = setTimeout(() => {
+      this.feedbackMessage = '';
+      this.feedbackTimer = null;
+      this.cdr.markForCheck();
+    }, 2500);
+  }
+
+  private handleAuthFailure(err: any): boolean {
+    if (err?.status !== 401) return false;
+    this.authService.logout();
+    this.router.navigate(['/login']);
+    return true;
   }
 
   openAuthPopup(message = 'Please log in to continue.'): void {

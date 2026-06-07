@@ -1387,6 +1387,12 @@ app-location-details-card {
    SAVED ROUTES TOGGLE BUTTON
    ============================================================ */
 .saved-routes-toggle-row { padding: 0 14px; }
+.saved-routes-helper-text {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
 .saved-routes-toggle-btn {
   width: 100%;
   display: flex;
@@ -1578,6 +1584,48 @@ app-location-details-card {
 }
 .saved-route-card-delete:hover { color: #ef4444; background: #fef2f2; }
 .saved-route-card-delete svg { fill: currentColor; }
+
+.rp-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.rp-save,
+.rp-load {
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.rp-save {
+  border: 1px solid #dcfce7;
+  background: #f8fafc;
+  color: #166534;
+}
+
+.rp-save.is-saved {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.rp-load {
+  border: none;
+  background: #16a34a;
+  color: #fff;
+}
+
+.rp-load:hover {
+  background: #15803d;
+}
+
+.rp-save:hover {
+  background: #f0fdf4;
+}
 
 @media (min-width: 900px) {
   .saved-routes-sheet {
@@ -1998,6 +2046,21 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .route-mode-badge {
   background: rgba(59, 130, 246, 0.18) !important;
   color: #bfdbfe !important;
+}
+
+:host-context(html[data-theme='dark']) .saved-routes-helper-text {
+  color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .rp-save {
+  background: #0f172a;
+  border-color: #14532d;
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .rp-save.is-saved {
+  background: #052e16;
+  border-color: #166534;
 }
 
 /* Desktop sidebar collapse: hide the whole left rail and let the map fill the viewport. */

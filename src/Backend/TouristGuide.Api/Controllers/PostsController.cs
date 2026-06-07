@@ -277,6 +277,9 @@ namespace TouristGuide.Api.Controllers
                     .ThenInclude(p => p.Admin)
                 .Include(sp => sp.Post)
                     .ThenInclude(p => p.Region)
+                .Include(sp => sp.Post)
+                    .ThenInclude(p => p.PostTags)
+                        .ThenInclude(pt => pt.Tag)
                 .ToListAsync();
 
             // Get the set of post IDs that this tourist has liked, so we can mark each post correctly
@@ -469,17 +472,45 @@ namespace TouristGuide.Api.Controllers
 
             if (existingSave != null)
             {
-                _context.SavedPosts.Remove(existingSave);
-                await _context.SaveChangesAsync();
-                return Ok(new { isSaved = false, message = "Uklonjeno iz sačuvanih." });
+                var saveCount = await _transactionRunner.ExecuteAsync(async _ =>
+                {
+                    _context.SavedPosts.Remove(existingSave);
+                    await _context.SaveChangesAsync();
+
+                    var nextSaveCount = (uint)await _context.SavedPosts.CountAsync(sp => sp.PostId == id);
+                    var now = DateTime.UtcNow;
+
+                    await _context.Posts
+                        .Where(p => p.Id == id)
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(p => p.SaveCount, nextSaveCount)
+                            .SetProperty(p => p.UpdatedAt, now));
+
+                    return nextSaveCount;
+                });
+
+                return Ok(new { isSaved = false, saveCount, message = "Uklonjeno iz sačuvanih." });
             }
-            else
+
+            var savedCount = await _transactionRunner.ExecuteAsync(async _ =>
             {
                 var newSave = new SavedPost { TouristId = touristId, PostId = id };
                 _context.SavedPosts.Add(newSave);
                 await _context.SaveChangesAsync();
-                return Ok(new { isSaved = true, message = "Dodato u sačuvane." });
-            }
+
+                var nextSaveCount = (uint)await _context.SavedPosts.CountAsync(sp => sp.PostId == id);
+                var now = DateTime.UtcNow;
+
+                await _context.Posts
+                    .Where(p => p.Id == id)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(p => p.SaveCount, nextSaveCount)
+                        .SetProperty(p => p.UpdatedAt, now));
+
+                return nextSaveCount;
+            });
+
+            return Ok(new { isSaved = true, saveCount = savedCount, message = "Dodato u sačuvane." });
         }
 
         [HttpPut("{id}")]
@@ -948,8 +979,22 @@ namespace TouristGuide.Api.Controllers
                 .Take(pageSize)
                 .ToListAsync();
 
-            // Batch-fetch live counts for this page (3 queries instead of N*3)
             var postIds = posts.Select(p => p.Id).ToList();
+
+            // Personalize save/like state for the currently logged-in tourist even on public endpoints.
+            var touristId = GetAuthorizedTouristId();
+            var likedPostIds = touristId.HasValue
+                ? new HashSet<uint>(await _context.PostLikes
+                    .Where(l => l.TouristId == touristId.Value && postIds.Contains(l.PostId))
+                    .Select(l => l.PostId)
+                    .ToListAsync())
+                : null;
+            var savedPostIds = touristId.HasValue
+                ? new HashSet<uint>(await _context.SavedPosts
+                    .Where(s => s.TouristId == touristId.Value && postIds.Contains(s.PostId))
+                    .Select(s => s.PostId)
+                    .ToListAsync())
+                : null;
 
             var likeCounts = await _context.PostLikes
                 .Where(l => postIds.Contains(l.PostId))
@@ -972,6 +1017,8 @@ namespace TouristGuide.Api.Controllers
             var includePendingActivities = await CanSeePendingActivitiesAsync();
             var data = posts.Select(post => MapToDto(
                 post,
+                isLiked: likedPostIds?.Contains(post.Id),
+                isSaved: savedPostIds?.Contains(post.Id),
                 likeCountOverride:   likeCounts.TryGetValue(post.Id, out var lc) ? lc : 0u,
                 saveCountOverride:   saveCounts.TryGetValue(post.Id, out var sc) ? sc : 0u,
                 reviewCountOverride: reviewStats.TryGetValue(post.Id, out var rs) ? rs.Count : 0u,

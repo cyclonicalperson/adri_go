@@ -192,10 +192,19 @@
 
 .sort-dropdown {
   position: relative;
+  transition: opacity 0.18s ease;
+}
+
+.reviews-page.filters-open .sort-dropdown {
+  position: relative;
+  z-index: 0;
+  opacity: 0.38;
+  pointer-events: none;
 }
 
 .sort-btn {
   width: 100%;
+  height: 42px;
   min-height: 42px;
   border: 1.5px solid var(--gray-200);
   border-radius: 16px;
@@ -209,6 +218,15 @@
   color: var(--gray-800);
   font: 800 12px var(--font-sans);
   cursor: pointer;
+}
+
+.sort-btn span {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 .sort-btn svg {
@@ -232,7 +250,7 @@
   border-radius: 18px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
   overflow: hidden;
-  z-index: 30;
+  z-index: 140;
 }
 
 .filter-menu {
@@ -570,7 +588,7 @@
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.42);
-  z-index: 59;
+  z-index: 1300;
   animation: reviewsFilterBackdropIn 0.2s ease;
 }
 
@@ -582,7 +600,7 @@
 .reviews-filter-panel {
   position: fixed;
   inset: auto 0 0;
-  z-index: 60;
+  z-index: 1301;
   background: #fff;
   border-radius: 28px 28px 0 0;
   box-shadow: 0 -20px 44px rgba(15, 23, 42, 0.16);
@@ -962,7 +980,7 @@
 
 @media (min-width: 900px) {
   .reviews-page {
-    padding-bottom: var(--mobile-footer-space);
+    padding-bottom: var(--desktop-footer-space);
   }
 
   .topbar {
