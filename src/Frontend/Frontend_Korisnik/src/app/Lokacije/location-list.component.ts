@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ElementRef 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { FiltersComponent } from '../Filteri/filters.component';
 import { NotificationBadgeComponent } from '../notifications/notification-badge.component';
 import { AuthService } from '../services/auth.service';
@@ -16,6 +17,7 @@ import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { LocationStateService } from '../services/location-state.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
@@ -335,6 +337,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return this.applySort(items);
   }
 
+  // ✅ Subscription za sinhronizaciju like/save stanja između komponenti
+  private stateSub?: Subscription;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -352,6 +357,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     private preferences: TouristPreferencesService,
     private searchStateService: SearchStateService,
     private siteTranslate: SiteTranslateService,
+    private locationState: LocationStateService,
   ) { }
 
   ngOnInit(): void {
@@ -369,10 +375,23 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.loadActivities();
     this.loadRoutes();
     this.loadUserPosition();
+
+    // ✅ Slušaj promene like/save sa detalja i ažuriraj lokalni objekat odmah
+    this.stateSub = this.locationState.stateChanged$.subscribe(change => {
+      const loc = this.allLocations.find(l => l.id === change.id);
+      if (!loc) return;
+      if (change.isLiked !== undefined) loc.isLiked = change.isLiked;
+      if (change.isSaved !== undefined) (loc as any).isSaved = change.isSaved;
+      if (change.likeCount !== undefined) loc.likeCount = change.likeCount;
+      if (change.saveCount !== undefined) loc.saveCount = change.saveCount;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnDestroy(): void {
     this.setPageScrollLock(false);
+    // ✅ Otpisi subscription da ne bi curila memorija
+    this.stateSub?.unsubscribe();
   }
 
   loadLocations(): void {
@@ -380,7 +399,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.locationService.getLocations(1, 100).subscribe({
       next: (res) => {
         const decorated = this.decorateLocations(res.data);
-        this.allLocations = this.applyGuestState(decorated);
+        const withGuestState = this.applyGuestState(decorated);
+        // ✅ Primeni poznato stanje (ako je korisnik vec lajkovao/sacuvao pre nego sto se lista ucitala)
+        this.allLocations = this.locationState.applyKnownState(withGuestState);
         if (this.activeActivityFilter) {
           this.applyActivityFilter(this.activeActivityFilter);
         } else {
@@ -465,7 +486,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.clearActivityFilterState();
     this.rebuildSearchResults();
     this.refreshVisibleContent();
-    // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
     this.cdr.markForCheck();
   }
 
@@ -545,7 +565,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
     action$.subscribe({
-      next: (res) => { loc.isLiked = !loc.isLiked; if (res.likeCount !== undefined) loc.likeCount = res.likeCount; this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed'); this.cdr.markForCheck(); },
+      next: (res) => {
+        loc.isLiked = !loc.isLiked;
+        if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
+        // ✅ Emituj promenu da bi detalji i ostale komponente bili sinhronizovani
+        this.locationState.emit({ id: loc.id, isLiked: loc.isLiked, likeCount: loc.likeCount });
+        this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed');
+        this.cdr.markForCheck();
+      },
       error: (err) => { if (err.status === 401) this.router.navigate(['/login']); else console.error(err); }
     });
   }
@@ -560,7 +587,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
     action$.subscribe({
-      next: (res) => { loc.isSaved = !loc.isSaved; if (res.saveCount !== undefined) loc.saveCount = res.saveCount; this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved'); this.cdr.markForCheck(); },
+      next: (res) => {
+        loc.isSaved = !loc.isSaved;
+        if (res.saveCount !== undefined) loc.saveCount = res.saveCount;
+        // ✅ Emituj promenu da bi detalji i ostale komponente bili sinhronizovani
+        this.locationState.emit({ id: loc.id, isSaved: loc.isSaved, saveCount: loc.saveCount });
+        this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
+        this.cdr.markForCheck();
+      },
       error: (err) => { if (err.status === 401) this.router.navigate(['/login']); else console.error(err); }
     });
   }
@@ -587,8 +621,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   onFiltersApplied(state: FilterState): void {
-    // NE zatvaramo panel — korisnik sam zatvara sa X
-    // Odmah primeni filtere reaktivno
     this.activeFilterState = state;
     const hasActiveFilter =
       state.activeCategories.length > 0 ||
@@ -622,7 +654,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   private applyFiltersToLocations(locations: Location[], state: FilterState): Location[] {
     return this.applySort(locations.filter(loc => {
-      // Kategorija filter
       if (state.activeCategories.length > 0) {
         const key = (loc.postType || (loc as any).category || '').toLowerCase().replace(/\s+/g, '_');
         if (!state.activeCategories.includes(key)) return false;
@@ -633,11 +664,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if ((state.destinationRegions?.length ?? 0) > 0 && !state.destinationRegions!.includes(loc.regionName || '')) {
         return false;
       }
-      // Rating filter
       if (state.minRating > 0 && (loc.avgRating || 0) < state.minRating) return false;
       if (state.openNow && !this.isLocationOpen(loc)) return false;
       if (state.showOnlySaved && state.savedPostIds?.length && !state.savedPostIds.includes(loc.id)) return false;
-      // Radius filter
       if (state.radius > 0 && this.userPosition) {
         const coords = this.getLocationCoordinates(loc);
         if (coords) {
@@ -661,7 +690,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   openSection(section: 'near-you' | 'recommended' | 'top-rated'): void {
     this.activeSectionView = section;
-    this.isFilterActive = false; // zatvaramo filter view kad se otvara sekcija
+    this.isFilterActive = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     this.cdr.markForCheck();
   }
@@ -743,14 +772,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
       ? [this.userPosition.lat, this.userPosition.lng] as [number, number]
       : null;
 
-    // 1. Near You: sorted by distance
     const withDistance = [...this.allLocations]
       .filter(l => l.distanceKm != null)
       .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
     const withoutDistance = this.allLocations.filter(l => l.distanceKm == null);
     this.nearYouLocations = [...withDistance, ...withoutDistance].slice(0, SECTION_LIMIT);
 
-    // 2. Recommended for You: personalized recommendations
     try {
       const calendarItems: any[] = [];
       const analytics = this.analyticsService.getRecentEvents();
@@ -760,14 +787,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
       );
       this.recommendedLocations = recs.map(r => r.location).slice(0, SECTION_LIMIT);
     } catch {
-      // Fallback: show high-rated ones
       this.recommendedLocations = [...this.allLocations]
         .filter(l => l.avgRating != null)
         .sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0))
         .slice(0, SECTION_LIMIT);
     }
 
-    // 3. Top Rated: global recommendations by rating & engagement
     try {
       const global = this.recommendationService.buildGlobalRecommendations(
         this.allLocations, { userPosition: pos, limit: SECTION_LIMIT }
@@ -1791,42 +1816,34 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return { lat: Number(lat), lng: Number(lng) };
   }
 
-  // Povezujemo se sa HTML elementom koji ima #scrollContainer
   @ViewChild('scrollContainer') scrollContainer!: ElementRef;
 
   isDown = false;
   startY = 0;
   scrollTop = 0;
 
-  // Kada korisnik pritisne levi klik
   onMouseDown(e: MouseEvent) {
     this.isDown = true;
     const el = this.scrollContainer.nativeElement;
-    // Računamo početnu poziciju miša u odnosu na kontejner
     this.startY = e.pageY - el.offsetTop;
-    // Čuvamo trenutnu poziciju skrola
     this.scrollTop = el.scrollTop;
   }
 
-  // Kada korisnik pusti klik
   onMouseUp() {
     this.isDown = false;
   }
 
-  // Ako miš izađe izvan okvira kontejnera dok je kliknut
   onMouseLeave() {
     this.isDown = false;
   }
 
-  // Dok korisnik pomera miša
   onMouseMove(e: MouseEvent) {
-    if (!this.isDown) return; // Ako nije kliknuto, ne radi ništa
-    e.preventDefault(); // Sprečava selektovanje teksta dok vučeš
+    if (!this.isDown) return;
+    e.preventDefault();
 
     const el = this.scrollContainer.nativeElement;
     const y = e.pageY - el.offsetTop;
-    const walk = (y - this.startY) * 1.5; // Množimo sa 1.5 da ubrzamo skrol
+    const walk = (y - this.startY) * 1.5;
     el.scrollTop = this.scrollTop - walk;
   }
-
 }
