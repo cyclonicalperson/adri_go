@@ -1191,6 +1191,84 @@
   }
 }
 
+@media (max-width: 560px) {
+  .month-nav {
+    gap: 6px;
+  }
+
+  .month-picker-toggle {
+    gap: 5px;
+    padding: 6px 9px;
+  }
+
+  .month-picker-toggle h3 {
+    font-size: 15px;
+  }
+
+  .month-picker-toggle .cal-icon,
+  .month-picker-chevron svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .month-nav-controls {
+    gap: 3px;
+  }
+
+  .nav-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+  }
+
+  .nav-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .today-btn {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .month-picker-toggle {
+    padding: 5px 7px;
+  }
+
+  .month-picker-toggle h3 {
+    font-size: 14px;
+  }
+
+  .nav-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .today-btn {
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 320px) {
+  .month-nav {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .month-nav-text {
+    grid-column: 1;
+    justify-content: center;
+  }
+
+  .month-nav-controls {
+    grid-column: 1;
+    justify-self: center;
+  }
+}
+
 @media (max-width: 640px) {
   .calendar-scroll {
     padding: 14px 12px 24px;
