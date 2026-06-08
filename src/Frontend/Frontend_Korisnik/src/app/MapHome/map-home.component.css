@@ -1206,6 +1206,19 @@ app-location-details-card {
   fill: #cbd5e1;
 }
 
+:host-context(html[data-theme='dark']) .header-login-btn,
+:host-context(html[data-theme='dark']) .saved-routes-toggle-btn {
+  background: var(--green-500);
+  color: #fff;
+  box-shadow: none;
+}
+
+:host-context(html[data-theme='dark']) .header-login-btn:hover,
+:host-context(html[data-theme='dark']) .saved-routes-toggle-btn:hover {
+  background: var(--green-500);
+  opacity: 0.9;
+}
+
 :host-context(html[data-theme='dark']) .header-theme-btn svg {
   fill: none;
   stroke: #facc15;
@@ -1280,7 +1293,7 @@ app-location-details-card {
   background: var(--cat-color, #22c55e) !important;
   border-color: var(--cat-color, #22c55e);
   color: #fff;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--cat-color, #22c55e) 34%, transparent);
+  box-shadow: none;
 }
 
 :host-context(html[data-theme='dark']) .route-pill {
@@ -1357,13 +1370,22 @@ app-location-details-card {
 }
 
 :host-context(html[data-theme='dark']) .modal-btn-cancel {
-  background: #e2e8f0;
-  color: #334155;
+  background: #334155;
+  color: #e2e8f0;
+}
+
+:host-context(html[data-theme='dark']) .modal-btn-cancel:hover {
+  background: #475569;
+  color: #f8fafc;
 }
 
 :host-context(html[data-theme='dark']) .modal-btn-confirm {
-  background: #ef4444;
-  color: #fff;
+  background: #991b1b;
+  color: #fee2e2;
+}
+
+:host-context(html[data-theme='dark']) .modal-btn-confirm:hover {
+  background: #7f1d1d;
 }
 
 .route-calendar-input {
@@ -1959,10 +1981,11 @@ app-location-details-card {
 }
 
 :host-context(html[data-theme='dark']) .locate-btn.locate-refollow {
-  background: #22c55e;
+  background: var(--green-500);
   color: #fff;
-  border-color: rgba(134, 239, 172, 0.55);
-  box-shadow: 0 10px 30px rgba(34, 197, 94, 0.38);
+  border-color: transparent;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+  animation: none;
 }
 
 :host-context(html[data-theme='dark']) .locate-spinner {

@@ -1068,6 +1068,14 @@ namespace TouristGuide.Api.Controllers
             if (string.Equals(term, "beaches", StringComparison.OrdinalIgnoreCase))
                 return "pla\u017ee";
 
+            if (string.Equals(term, "srbija", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "srbiji", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "srbiju", StringComparison.OrdinalIgnoreCase))
+                return "serbia";
+
+            if (string.Equals(term, "serbian", StringComparison.OrdinalIgnoreCase))
+                return "serbia";
+
             if (term.Contains("dj", StringComparison.OrdinalIgnoreCase))
                 return term.Replace("dj", "đ", StringComparison.OrdinalIgnoreCase);
 

@@ -19,7 +19,7 @@ import { TouristPreferencesService } from '../services/tourist-preferences.servi
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
@@ -756,13 +756,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
 
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
-    if (!loc?.images) return 'assets/Budva.jpg';
+    if (!loc?.images) return DEFAULT_LOCATION_IMAGE;
     let firstImg = '';
     if (typeof loc.images === 'string') {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
-    if (!firstImg) return 'assets/Budva.jpg';
-    return resolveBackendAssetUrl(firstImg, 'assets/Budva.jpg');
+    if (!firstImg) return DEFAULT_LOCATION_IMAGE;
+    return resolveBackendAssetUrl(firstImg, DEFAULT_LOCATION_IMAGE);
   }
 
   getCategoryColor(postType?: string | null): string {

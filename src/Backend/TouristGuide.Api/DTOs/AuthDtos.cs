@@ -146,6 +146,8 @@ namespace TouristGuide.Api.DTOs
 
         [MaxLength(500)]
         public string? ProfileImage { get; set; }
+
+        public bool RemoveProfileImage { get; set; }
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ import { AuthService }           from '../services/auth.service';
 import { Location }              from '../services/location.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { RoutePlannerService }   from '../services/route-planner.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType }        from '../utils/post-type.utils';
 
 @Component({
@@ -193,7 +193,7 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
         first = Array.isArray(parsed) ? (parsed[0] || '') : images;
       } catch { first = images; }
     }
-    return resolveBackendAssetUrl(first, 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(first, DEFAULT_LOCATION_IMAGE);
   }
 
   getRouteDifficultyLabel(difficulty?: string): string {
@@ -214,7 +214,7 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
 
   getLocationImage(location: Location): string {
     const image = this.firstImage(location);
-    return resolveBackendAssetUrl(image, 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(image, DEFAULT_LOCATION_IMAGE);
   }
 
   getLocationCategory(location: Location): string {
@@ -222,7 +222,7 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
   }
 
   getCardImage(card: ChatCard): string {
-    return resolveBackendAssetUrl(card.imageUrl || '', 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(card.imageUrl || '', DEFAULT_LOCATION_IMAGE);
   }
 
   getCardCategory(card: ChatCard): string {

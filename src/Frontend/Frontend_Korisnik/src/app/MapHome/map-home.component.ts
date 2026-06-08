@@ -32,7 +32,7 @@ import { TouristActivitiesService, TouristActivityItem } from '../services/touri
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
@@ -149,6 +149,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchQuery = '';
   searchResults: SearchResult[] = [];
   searchIntentSummary = '';
+  searchFallbackActive = false;
   searchFocused = false;
   searchLoading = false;
   globalRecommendations: LocationRecommendation[] = [];
@@ -352,6 +353,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return Array.from(new Set(suggestions)).slice(0, 5);
+  }
+
+  get hasActiveSearch(): boolean {
+    return this.parseSearchIntent(this.searchQuery).normalizedQuery.length > 0;
+  }
+
+  get showSearchFallbackNotice(): boolean {
+    return this.hasActiveSearch
+      && !this.searchLoading
+      && this.searchResults.length === 0;
   }
 
   // ─── Category colors (used for map pins AND chip active state) ───────────
@@ -737,11 +748,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getFirstImage(loc: any): string {
     if (loc.imageUrl) {
-      return resolveBackendAssetUrl(loc.imageUrl, 'assets/Budva.jpg');
+      return resolveBackendAssetUrl(loc.imageUrl, DEFAULT_LOCATION_IMAGE);
     }
 
     const imagesValue = loc.images;
-    if (!imagesValue) return 'assets/Budva.jpg';
+    if (!imagesValue) return DEFAULT_LOCATION_IMAGE;
 
     let firstImg = '';
     if (typeof imagesValue === 'string') {
@@ -755,8 +766,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       firstImg = imagesValue[0];
     }
 
-    if (!firstImg) return 'assets/Budva.jpg';
-    return resolveBackendAssetUrl(firstImg, 'assets/Budva.jpg');
+    if (!firstImg) return DEFAULT_LOCATION_IMAGE;
+    return resolveBackendAssetUrl(firstImg, DEFAULT_LOCATION_IMAGE);
   }
 
   /**
@@ -2412,6 +2423,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const visiblePins: VisiblePin[] = [];
     const renderBounds = this.map.getBounds().pad(0.35);
     const showOnlyPlannerStops = this.isNavigating || (this.focusedRouteMode && this.showRoutePanel);
+    const hasActiveSearch = this.hasActiveSearch;
     const focusedSuggestionIds = this.focusedRouteMode
       ? new Set(this.scenicSuggestions.map(suggestion => suggestion.location.id))
       : new Set<number>();
@@ -2429,7 +2441,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      if (this.passesFilters(loc) && renderBounds.contains(latLng)) {
+      if (this.passesFilters(loc) && this.locationMatchesSearchMapState(loc, hasActiveSearch) && renderBounds.contains(latLng)) {
         visiblePins.push({ kind: 'location', id: loc.id, loc, marker, latLng });
       }
     });
@@ -2437,6 +2449,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
       const visible = !showOnlyPlannerStops
+        && !hasActiveSearch
         && this.routePassesRadiusFilter(route)
         && this.routeMatchesExploreFilters(route)
         && renderBounds.contains(latLng);
@@ -2447,6 +2460,51 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.renderVisiblePins(visiblePins);
+  }
+
+  private locationMatchesSearchMapState(loc: MapLocation, hasActiveSearch: boolean): boolean {
+    if (!hasActiveSearch || this.searchLoading) return true;
+
+    if (this.searchResults.length > 0) {
+      return this.searchResults.some(result => result.id === loc.id);
+    }
+
+    if (!this.searchFallbackActive) return true;
+
+    const fallbackIds = this.getSearchFallbackRecommendationIds();
+    return fallbackIds.size === 0 ? true : fallbackIds.has(loc.id);
+  }
+
+  private getSearchFallbackRecommendationIds(): Set<number> {
+    const recommendations = this.recommendationCards.length > 0
+      ? this.recommendationCards
+      : this.buildNearbyCards();
+
+    const ids = recommendations
+      .map(recommendation => recommendation.location.id)
+      .filter(id => Number.isFinite(id));
+
+    return new Set(ids);
+  }
+
+  private fitMapToSearchFallbackRecommendations(): void {
+    if (!this.map) return;
+
+    const fallbackIds = this.getSearchFallbackRecommendationIds();
+    if (fallbackIds.size === 0) return;
+
+    const points = this.locationsList
+      .filter(location => fallbackIds.has(location.id))
+      .map(location => this.getLocationCoordinates(location))
+      .filter((coordinates): coordinates is UserPosition => !!coordinates)
+      .map(coordinates => [coordinates.lat, coordinates.lng] as [number, number]);
+
+    if (points.length === 0) return;
+
+    const bounds = L.latLngBounds(points);
+    if (bounds.isValid()) {
+      this.map.fitBounds(bounds.pad(0.18), { animate: true, maxZoom: 10 });
+    }
   }
 
   private renderVisiblePins(pins: VisiblePin[]): void {
@@ -3104,7 +3162,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!intent.normalizedQuery) {
       this.searchResults = [];
       this.searchIntentSummary = '';
+      this.searchFallbackActive = false;
       this.searchLoading = false;
+      this.applyMarkerFilter();
       return;
     }
 
@@ -3147,7 +3207,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           searchBadges: item.badges,
         }))
         .slice(0, 8);
-      this.searchIntentSummary = this.describeSearchIntent(intent, this.searchResults.length);
+      this.searchFallbackActive = this.searchResults.length === 0;
+      this.searchIntentSummary = this.searchFallbackActive
+        ? ''
+        : this.describeSearchIntent(intent, this.searchResults.length);
+      if (this.searchResults.length === 0) {
+        this.fitMapToSearchFallbackRecommendations();
+      }
+      this.applyMarkerFilter();
       this.cdr.markForCheck();
     });
   }
@@ -3223,7 +3290,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildSearchMatch(loc: MapLocation, intent: SearchIntent): { loc: MapLocation; score: number; reason: string; badges: string[] } {
-    const terms = intent.terms;
+    const terms = this.expandSearchTerms(intent.terms);
     const fields = [
       loc.title,
       loc.regionName,
@@ -3346,7 +3413,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     };
 
-    addCategory('attraction', 'beach', 'plaza', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
+    addCategory('attraction', 'beach', 'beaches', 'plaza', 'plaze', 'kupaliste', 'kupanje', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
     addCategory('restaurant', 'restaurant', 'restoran', 'food', 'hrana', 'dinner', 'lunch', 'kafa', 'cafe');
     addCategory('cultural_site', 'culture', 'cultural', 'kultura', 'museum', 'muzej', 'history', 'istorija');
     addCategory('monument', 'monument', 'spomenik');
@@ -3424,7 +3491,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hasBeachIntent(intent: SearchIntent): boolean {
-    return intent.terms.some(term => ['plaza', 'plaze', 'beach', 'beaches'].includes(term));
+    return intent.terms.some(term => ['plaza', 'plaze', 'beach', 'beaches', 'kupaliste', 'kupanje'].includes(term));
   }
 
   private normalizeSearchText(value: string): string {
@@ -3457,8 +3524,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       food: ['restaurant', 'restoran', 'cafe'],
       eat: ['restaurant', 'food'],
       restoran: ['restaurant', 'food'],
-      plaza: ['beach', 'attraction'],
-      beach: ['plaza', 'attraction'],
+      plaza: ['beach', 'beaches', 'plaze', 'kupaliste', 'attraction'],
+      plaze: ['plaza', 'beach', 'beaches', 'kupaliste', 'attraction'],
+      beach: ['plaza', 'plaze', 'beaches', 'kupaliste', 'attraction'],
+      beaches: ['beach', 'plaza', 'plaze', 'kupaliste', 'attraction'],
+      kupaliste: ['plaza', 'beach', 'plaze', 'attraction'],
+      srbija: ['serbia'],
+      srbiji: ['serbia'],
+      serbia: ['srbija'],
       culture: ['cultural', 'monument'],
       kultura: ['cultural', 'monument'],
       history: ['cultural', 'monument'],
@@ -3489,8 +3562,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private dismissSearchMenu(): void {
-    this.searchResults = [];
-    this.searchIntentSummary = '';
     this.searchFocused = false;
   }
 
@@ -3516,7 +3587,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   clearSearch(): void {
     this.searchQuery = '';
     this.searchStateService.clear();
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.searchFallbackActive = false;
+    this.searchLoading = false;
     this.dismissSearchMenu();
+    this.applyMarkerFilter();
   }
 
   formatPostType(type?: string | null): string {

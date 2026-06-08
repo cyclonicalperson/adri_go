@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 import { UserService, CalendarItem, PendingSchedule } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService } from '../services/site-translate.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
@@ -354,7 +354,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   getEventImage(event: DisplayEvent): string {
-    return resolveBackendAssetUrl(event.imageUrl, 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(event.imageUrl, DEFAULT_LOCATION_IMAGE);
   }
 
   get dayNames(): string[] {

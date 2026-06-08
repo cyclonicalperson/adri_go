@@ -74,7 +74,7 @@
               [src]="result.image || 'assets/placeholder.jpg'"
               [alt]="result.title"
               class="search-result-img"
-              (error)="$any($event.target).src='assets/Budva.jpg'">
+              (error)="$any($event.target).src='assets/placeholder.jpg'">
             <span
               class="search-result-cat-dot"
               [style.background]="result.color"></span>
@@ -286,7 +286,7 @@
             class="destination-card"
             *ngFor="let destination of popularDestinations"
             (click)="openDestination(destination)">
-            <img [src]="destination.imageUrl" [alt]="destination.name" (error)="$any($event.target).src='assets/Budva.jpg'">
+            <img [src]="destination.imageUrl" [alt]="destination.name" (error)="$any($event.target).src='assets/placeholder.jpg'">
             <span class="destination-shade"></span>
             <span class="destination-content">
               <span class="destination-name">{{ destination.name }}</span>

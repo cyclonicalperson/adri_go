@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UserService, PendingSchedule } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
 
@@ -21,7 +21,7 @@ export class LocationDetailsCardComponent implements OnDestroy {
   @Output() onViewDetails = new EventEmitter<void>();
   @Output() onAddToRoute = new EventEmitter<void>();
 
-  defaultImage = 'assets/Budva.jpg';
+  defaultImage = DEFAULT_LOCATION_IMAGE;
   calendarMessage = '';
   showAuthModal = false;
 

@@ -126,7 +126,7 @@
           {{ searchIntentSummary }}
         </div>
 
-        <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
+        <div class="search-results-dropdown" *ngIf="searchFocused && searchResults.length > 0">
           <div
             *ngFor="let result of searchResults"
             class="search-result-item"
@@ -157,9 +157,9 @@
           </div>
         </div>
 
-        <div class="search-no-results" *ngIf="searchQuery && searchIntentSummary && searchResults.length === 0">
+        <div class="search-no-results" *ngIf="showSearchFallbackNotice">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          No results for "{{ searchQuery }}"
+          No results for "{{ searchQuery }}". Showing recommended destinations.
         </div>
       </div>
 
