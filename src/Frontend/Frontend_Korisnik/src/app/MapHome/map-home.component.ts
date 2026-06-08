@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChi
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of, Subscription } from 'rxjs';
+import { catchError, debounceTime, forkJoin, map as rxMap, of, Subject, Subscription, switchMap } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -129,6 +129,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
   private themeSubscription?: Subscription;
   private authSubscription?: Subscription;
+  private searchSubscription?: Subscription;
+  private readonly searchInput$ = new Subject<string>();
   private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
   private scenicDetourPopupTimerId: ReturnType<typeof setTimeout> | null = null;
   private lastScenicDetourPopupKey = '';
@@ -148,6 +150,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchResults: SearchResult[] = [];
   searchIntentSummary = '';
   searchFocused = false;
+  searchLoading = false;
   globalRecommendations: LocationRecommendation[] = [];
   personalizedRecommendations: LocationRecommendation[] = [];
   activeRecommendationTab: RecommendationTab = 'personalized';
@@ -409,6 +412,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.isDarkMode = this.themeService.isDarkMode;
+    this.setupSearchSubscription();
     this.themeSubscription = this.themeService.theme$.subscribe(theme => {
       this.isDarkMode = theme === 'dark';
     });
@@ -424,6 +428,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.syncPlannerStateFromServices();
     this.refreshSavedRoutes();
     this.showChatAssistantHint();
+    if (this.searchQuery.trim()) {
+      this.onSearchInput(this.searchQuery);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -463,6 +470,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.autoLocatePermissionStatus = null;
     this.themeSubscription?.unsubscribe();
     this.authSubscription?.unsubscribe();
+    this.searchSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
   }
 
@@ -549,9 +557,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadLocations(): void {
-    this.locationService.getLocations(1, 200).subscribe({
-      next: (res) => {
-        this.locationsList = res.data as MapLocation[];
+    this.locationService.getAllLocations().subscribe({
+      next: (locations) => {
+        this.locationsList = locations as MapLocation[];
         this.updateDistancesAndRecommendations();
         this.syncGuestSavedContext();
         this.syncAvailableSavedFilterIds();
@@ -3096,22 +3104,105 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!intent.normalizedQuery) {
       this.searchResults = [];
       this.searchIntentSummary = '';
+      this.searchLoading = false;
       return;
     }
 
-    const normalized = query.toLowerCase().trim();
+    this.searchLoading = true;
+    this.searchInput$.next(query.trim());
+  }
 
-    this.searchResults = this.locationsList
-      .map(loc => this.buildSearchMatch(loc, intent))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(item => ({
-        ...item.loc,
-        searchReason: item.reason,
-        searchBadges: item.badges,
-      }))
-      .slice(0, 8);
-    this.searchIntentSummary = this.describeSearchIntent(intent, this.searchResults.length);
+  private setupSearchSubscription(): void {
+    this.searchSubscription = this.searchInput$.pipe(
+      debounceTime(250),
+      switchMap(query => {
+        const intent = this.parseSearchIntent(query);
+        if (!intent.normalizedQuery) {
+          return of({ query, intent, locations: [] as MapLocation[] });
+        }
+
+        return this.locationService.searchAllLocations(
+          this.buildBackendSearchQuery(intent),
+          this.buildBackendSearchContext(intent)
+        ).pipe(
+          rxMap(locations => ({
+            query,
+            intent,
+            locations: locations.map(location => this.decorateSearchLocation(location)),
+          })),
+          catchError(() => of({ query, intent, locations: [] as MapLocation[] }))
+        );
+      })
+    ).subscribe(({ query, intent, locations }) => {
+      if (query !== this.searchQuery.trim()) return;
+
+      this.searchLoading = false;
+      this.searchResults = locations
+        .map(loc => this.buildSearchMatch(loc, intent))
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(item => ({
+          ...item.loc,
+          searchReason: item.reason,
+          searchBadges: item.badges,
+        }))
+        .slice(0, 8);
+      this.searchIntentSummary = this.describeSearchIntent(intent, this.searchResults.length);
+      this.cdr.markForCheck();
+    });
+  }
+
+  private buildBackendSearchContext(intent: SearchIntent): { lat?: number | null; lng?: number | null; type?: string } {
+    const context: { lat?: number | null; lng?: number | null; type?: string } = {};
+    if (intent.categoryKeys.length === 1 && !this.hasBeachIntent(intent)) {
+      context.type = intent.categoryKeys[0];
+    }
+
+    if (intent.nearMe && this.userPosition) {
+      context.lat = this.userPosition[0];
+      context.lng = this.userPosition[1];
+    }
+
+    return context;
+  }
+
+  private buildBackendSearchQuery(intent: SearchIntent): string {
+    return intent.terms
+      .filter(term => !this.isCategorySearchTerm(term, intent.categoryKeys))
+      .join(' ');
+  }
+
+  private isCategorySearchTerm(term: string, categoryKeys: string[]): boolean {
+    if (categoryKeys.length === 0) return false;
+
+    const categoryTerms: Record<string, string[]> = {
+      attraction: ['attraction'],
+      restaurant: ['restaurant', 'restaurants', 'restoran', 'restorani', 'food', 'hrana', 'dinner', 'lunch', 'cafe', 'kafa'],
+      cultural_site: ['culture', 'cultural', 'kultura', 'museum', 'museums', 'muzej', 'history', 'istorija'],
+      monument: ['monument', 'monuments', 'spomenik'],
+      club: ['nightlife', 'club', 'clubs', 'bar', 'party', 'nocni'],
+      sports_facility: ['sport', 'sports', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure'],
+      event: ['event', 'events', 'dogadjaj', 'festival', 'concert', 'koncert'],
+      accommodation: ['hotel', 'hotels', 'accommodation', 'smestaj', 'smjestaj', 'stay'],
+      shop: ['shop', 'shops', 'shopping', 'prodavnica', 'market'],
+      other: ['other', 'ostalo', 'misc', 'miscellaneous'],
+    };
+
+    return categoryKeys.some(key => (categoryTerms[key] ?? []).some(categoryTerm =>
+      term === categoryTerm || term.includes(categoryTerm) || categoryTerm.includes(term)
+    ));
+  }
+
+  private decorateSearchLocation(location: Location): MapLocation {
+    const mapLocation = { ...location } as MapLocation;
+    const coordinates = this.getLocationCoordinates(mapLocation);
+    if (this.userPosition && coordinates) {
+      mapLocation.distanceKm = this.geolocationService.haversineKm(
+        { lat: this.userPosition[0], lng: this.userPosition[1] },
+        coordinates
+      );
+    }
+    return mapLocation;
   }
 
   applySearchSuggestion(suggestion: string): void {
@@ -3320,6 +3411,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getSearchReason(loc: MapLocation, intent: SearchIntent, badges: string[]): string {
+    if (this.hasBeachIntent(intent)) return 'Matched beach terms in the destination data.';
     if (badges.includes('Very close') || badges.includes('Nearby')) {
       return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
     }
@@ -3329,6 +3421,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
     if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
     return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
+  }
+
+  private hasBeachIntent(intent: SearchIntent): boolean {
+    return intent.terms.some(term => ['plaza', 'plaze', 'beach', 'beaches'].includes(term));
   }
 
   private normalizeSearchText(value: string): string {
@@ -3402,7 +3498,19 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchQuery = loc.title;
     this.searchStateService.set(this.searchQuery);
     this.dismissSearchMenu();
+    this.ensureSearchLocationOnMap(loc);
     this.focusOnLocation(loc);
+  }
+
+  private ensureSearchLocationOnMap(loc: MapLocation): void {
+    if (this.locationsList.some(location => location.id === loc.id)) return;
+
+    this.locationsList = [...this.locationsList, loc];
+    this.updateDistancesAndRecommendations();
+    this.syncGuestSavedContext();
+    this.syncAvailableSavedFilterIds();
+    this.refreshRecommendations();
+    this.addMarkers();
   }
 
   clearSearch(): void {

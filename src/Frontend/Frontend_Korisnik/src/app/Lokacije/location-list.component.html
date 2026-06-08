@@ -116,7 +116,7 @@
 
     <div
       class="search-intent-summary"
-      *ngIf="activeContentType === 'destinations' && isSearchActive && searchQuery && locations.length === 0 && !isLoading && !isActivityFilterView">
+      *ngIf="activeContentType === 'destinations' && isSearchActive && searchQuery && locations.length === 0 && !isLoading && !destinationSearchLoading && !isActivityFilterView">
       No results found for "{{ submittedSearchQuery || searchQuery.trim() }}"
     </div>
 

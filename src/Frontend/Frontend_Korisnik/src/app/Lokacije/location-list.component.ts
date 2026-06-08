@@ -24,6 +24,7 @@ import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-r
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 import { DesktopFooterComponent } from '../shared/desktop-footer.component';
+import { catchError, debounceTime, map as rxMap, of, Subject, Subscription, switchMap } from 'rxjs';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
@@ -133,7 +134,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
   searchIntentSummary = '';
   searchFocused = false;
   showDropdown = false;
+  destinationSearchLoading = false;
   showBackToTop = false;
+  private destinationSearchSubscription?: Subscription;
+  private readonly destinationSearchInput$ = new Subject<string>();
 
   readonly contentTypeTabs: { value: ExploreContentType; label: string }[] = [
     { value: 'destinations', label: 'Destinations' },
@@ -357,6 +361,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
+    this.setupDestinationSearchSubscription();
     this.readContentTypeFromRoute();
     this.readActivityFilterFromRoute();
 
@@ -373,17 +378,21 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.loadActivities();
     this.loadRoutes();
     this.loadUserPosition();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim()) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    }
   }
 
   ngOnDestroy(): void {
+    this.destinationSearchSubscription?.unsubscribe();
     this.setPageScrollLock(false);
   }
 
   loadLocations(): void {
     this.isLoading = true;
-    this.locationService.getLocations(1, 100).subscribe({
-      next: (res) => {
-        const decorated = this.decorateLocations(res.data);
+    this.locationService.getAllLocations().subscribe({
+      next: (locations) => {
+        const decorated = this.decorateLocations(locations);
         this.allLocations = this.applyGuestState(decorated);
         if (this.activeActivityFilter) {
           this.applyActivityFilter(this.activeActivityFilter);
@@ -478,8 +487,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.isSearchActive = true;
     this.submittedSearchQuery = query;
     this.clearActivityFilterState();
-    this.rebuildSearchResults();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations') {
+      this.queueDestinationSearch(query);
+    } else {
+      this.rebuildSearchResults();
+      this.refreshVisibleContent();
+    }
     this.updateBackToTopVisibility();
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
     this.cdr.markForCheck();
@@ -494,7 +507,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.submittedSearchQuery = this.searchQuery.trim();
     this.isSearchActive = true;
     this.clearActivityFilterState();
-    this.rebuildSearchResults();
+    if (result.kind === 'destinations') {
+      this.destinationSearchLoading = false;
+      this.searchResults = [result];
+      this.searchIntentSummary = this.describeSearchForCurrentType(this.searchQuery.trim(), 1);
+    } else {
+      this.rebuildSearchResults();
+    }
     this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
@@ -522,8 +541,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.isSearchActive = true;
     this.clearActivityFilterState();
     this.submittedSearchQuery = query;
-    this.rebuildSearchResults();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations') {
+      this.queueDestinationSearch(query);
+    } else {
+      this.rebuildSearchResults();
+      this.refreshVisibleContent();
+    }
     this.updateBackToTopVisibility();
     this.cdr.markForCheck();
   }
@@ -550,7 +573,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
   /** Zatvaramo dropdown kad input izgubi fokus (malo kašnjenje zbog mousedown na stavci) */
   onSearchFocus(): void {
     this.searchFocused = true;
-    this.rebuildSearchResults();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim() && this.searchResults.length === 0) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    } else {
+      this.rebuildSearchResults();
+    }
   }
 
   onSearchBlur(): void {
@@ -651,7 +678,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.filteredLocations = [];
     this.activeFilterState = null;
     this.filterStateService.clear();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim()) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    } else {
+      this.refreshVisibleContent();
+    }
     this.cdr.markForCheck();
   }
 
@@ -930,8 +961,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
         this.refreshVisibleContent();
       }
       if (this.isSearchActive) {
-        this.rebuildSearchResults();
-        this.refreshVisibleContent();
+        if (this.activeContentType === 'destinations' && this.searchQuery.trim()) {
+          this.queueDestinationSearch(this.searchQuery.trim());
+        } else {
+          this.rebuildSearchResults();
+          this.refreshVisibleContent();
+        }
       }
       this.buildSections();
       this.cdr.markForCheck();
@@ -1042,8 +1077,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.sortMenuOpen = false;
     this.setPageScrollLock(false);
     this.ensureSortForActiveType();
-    this.rebuildSearchResults();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim()) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    } else {
+      this.rebuildSearchResults();
+      this.refreshVisibleContent();
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { type },
@@ -1239,6 +1278,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.searchResults = [];
     this.searchIntentSummary = '';
     this.showDropdown = false;
+    this.destinationSearchLoading = false;
   }
 
   private clearSearchResultsOnly(): void {
@@ -1247,6 +1287,133 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.searchResults = [];
     this.searchIntentSummary = '';
     this.showDropdown = false;
+    this.destinationSearchLoading = false;
+  }
+
+  private setupDestinationSearchSubscription(): void {
+    this.destinationSearchSubscription = this.destinationSearchInput$.pipe(
+      debounceTime(250),
+      switchMap(query => {
+        const intent = this.parseSearchIntent(query);
+        if (!intent.normalizedQuery || query.length < MIN_SEARCH_LENGTH) {
+          return of({ query, intent, results: [] as ExploreSearchResult[] });
+        }
+
+        return this.locationService.searchAllLocations(
+          this.buildDestinationBackendSearchQuery(intent),
+          this.buildDestinationBackendSearchContext(intent)
+        ).pipe(
+          rxMap(responseLocations => {
+            const locations = this.applyBackendDestinationFilters(this.applyGuestState(this.decorateLocations(responseLocations)));
+            return {
+              query,
+              intent,
+              results: this.mapBackendDestinationResults(locations, intent),
+            };
+          }),
+          catchError(() => of({ query, intent, results: [] as ExploreSearchResult[] }))
+        );
+      })
+    ).subscribe(({ query, results }) => {
+      if (query !== this.searchQuery.trim() || this.activeContentType !== 'destinations') return;
+
+      this.destinationSearchLoading = false;
+      this.searchResults = results;
+      this.searchIntentSummary = this.describeSearchForCurrentType(query, results.length);
+      this.showDropdown = this.searchFocused && results.length > 0;
+      this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
+      this.cdr.markForCheck();
+    });
+  }
+
+  private queueDestinationSearch(query: string): void {
+    this.destinationSearchLoading = true;
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.showDropdown = false;
+    this.locations = [];
+    this.destinationSearchInput$.next(query);
+  }
+
+  private buildDestinationBackendSearchContext(intent: SearchIntent): { lat?: number | null; lng?: number | null; type?: string; country?: string } {
+    const context: { lat?: number | null; lng?: number | null; type?: string; country?: string } = {};
+    const filterState = this.activeFilterState && this.isFilterActive ? this.activeFilterState : null;
+
+    if (intent.categoryKeys.length === 1 && !this.hasBeachIntent(intent)) {
+      context.type = intent.categoryKeys[0];
+    } else if (filterState?.activeCategories.length === 1) {
+      context.type = filterState.activeCategories[0];
+    }
+
+    if (filterState?.destinationCountries?.length === 1) {
+      context.country = filterState.destinationCountries[0];
+    }
+
+    if ((intent.nearMe || (filterState?.radius ?? 0) > 0) && this.userPosition) {
+      context.lat = this.userPosition.lat;
+      context.lng = this.userPosition.lng;
+    }
+
+    return context;
+  }
+
+  private applyBackendDestinationFilters(locations: Location[]): Location[] {
+    if (this.activeFilterState && this.isFilterActive) {
+      return this.applyFiltersToLocations(locations, this.activeFilterState);
+    }
+
+    return locations;
+  }
+
+  private buildDestinationBackendSearchQuery(intent: SearchIntent): string {
+    return intent.terms
+      .filter(term => !this.isCategorySearchTerm(term, intent.categoryKeys))
+      .join(' ');
+  }
+
+  private isCategorySearchTerm(term: string, categoryKeys: string[]): boolean {
+    if (categoryKeys.length === 0) return false;
+
+    const categoryTerms: Record<string, string[]> = {
+      attraction: ['attraction'],
+      restaurant: ['restaurant', 'restaurants', 'restoran', 'restorani', 'food', 'hrana', 'dinner', 'lunch', 'cafe', 'kafa'],
+      cultural_site: ['culture', 'cultural', 'kultura', 'museum', 'museums', 'muzej', 'history', 'istorija'],
+      monument: ['monument', 'monuments', 'spomenik'],
+      club: ['nightlife', 'club', 'clubs', 'bar', 'party', 'nocni'],
+      sports_facility: ['sport', 'sports', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure'],
+      event: ['event', 'events', 'dogadjaj', 'festival', 'concert', 'koncert'],
+      accommodation: ['hotel', 'hotels', 'accommodation', 'smestaj', 'smjestaj', 'stay'],
+      shop: ['shop', 'shops', 'shopping', 'prodavnica', 'market'],
+      other: ['other', 'ostalo', 'misc', 'miscellaneous'],
+    };
+
+    return categoryKeys.some(key => (categoryTerms[key] ?? []).some(categoryTerm =>
+      term === categoryTerm || term.includes(categoryTerm) || categoryTerm.includes(term)
+    ));
+  }
+
+  private mapBackendDestinationResults(locations: Location[], intent: SearchIntent): ExploreSearchResult[] {
+    return locations
+      .map(loc => this.buildDestinationSearchMatch(loc, intent))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => ({
+        kind: 'destinations',
+        id: item.loc.id,
+        title: item.loc.title,
+        subtitle: item.loc.regionName || this.formatPostType(item.loc.postType || item.loc.category),
+        meta: this.formatPostType(item.loc.postType || item.loc.category),
+        color: this.getCategoryColor(item.loc.postType || item.loc.category),
+        image: this.getFirstImage(item.loc),
+        rating: item.loc.avgRating || item.loc.rating || null,
+        reason: item.reason,
+        raw: {
+          ...item.loc,
+          searchReason: item.reason,
+          searchBadges: item.badges,
+        } as DestinationSearchResult,
+      }));
   }
 
   private updateBackToTopVisibility(): void {
@@ -1265,13 +1432,18 @@ export class LocationListComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.activeContentType === 'destinations') {
+      this.showDropdown = this.searchFocused && this.searchResults.length > 0;
+      return;
+    }
+
     this.searchResults = this.buildSearchResults(query);
     this.searchIntentSummary = this.describeSearchForCurrentType(query, this.searchResults.length);
     this.showDropdown = this.searchFocused && this.searchResults.length > 0;
   }
 
   private refreshVisibleContent(): void {
-    if (this.isSearchActive && this.searchQuery.trim()) {
+    if (this.isSearchActive && this.searchQuery.trim() && this.activeContentType !== 'destinations') {
       this.rebuildSearchResults();
     }
 
@@ -1678,6 +1850,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   private getSearchReason(loc: Location, intent: SearchIntent, badges: string[]): string {
+    if (this.hasBeachIntent(intent)) return 'Matched beach terms in the destination data.';
     if (badges.includes('Very close') || badges.includes('Nearby')) {
       return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
     }
@@ -1686,6 +1859,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
     if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
     if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
     return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
+  }
+
+  private hasBeachIntent(intent: SearchIntent): boolean {
+    return intent.terms.some(term => ['plaza', 'plaze', 'beach', 'beaches'].includes(term));
   }
 
   private scoreTextFields(terms: string[], fields: string[], title: string): number {
