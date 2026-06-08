@@ -52,7 +52,8 @@ export class LocationDetailsCardComponent implements OnDestroy {
   }
 
   get displayRating(): number | null {
-    return this.locationData?.avgRating ?? this.locationData?.rating ?? null;
+    const rating = this.locationData?.avgRating ?? this.locationData?.rating;
+    return rating != null ? rating : null;
   }
 
   get displayReviews(): number | null {

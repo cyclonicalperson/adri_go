@@ -1848,6 +1848,33 @@ app-location-details-card {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ── Desktop chat FAB overrides ─────────────────────────────── */
+@media (min-width: 900px) {
+  .chat-fab-wrap {
+    right: 24px;
+    bottom: calc(24px + 58px);
+  }
+
+  /* Kada je chat otvoren — potpuno sakrij FAB na desktopu */
+  .chat-fab-wrap.chat-fab-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: scale(0.75) !important;
+    visibility: hidden;
+  }
+
+  .chat-fab-hint {
+    width: 300px;
+  }
+
+  /* Tokom navigacije, ako je locate-hidden aktivan, i dalje sakrij */
+  .map-wrapper.navigating .chat-fab-wrap.chat-fab-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.75);
+  }
+}
+
 :host-context(html[data-theme='dark']) .chat-fab {
   background: #1f2937;
   color: #a78bfa;
@@ -1883,27 +1910,6 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .chat-hint-close:hover {
   background: #334155;
   color: #fff;
-}
-
-@media (min-width: 900px) {
-  .chat-fab-wrap {
-    right: 24px;
-    bottom: calc(24px + 58px);
-  }
-  .chat-fab-wrap.chat-fab-hidden {
-    opacity: 1;
-    pointer-events: auto;
-    transform: none;
-  }
-  .chat-fab-hint {
-    width: 300px;
-  }
-
-  .map-wrapper.navigating .chat-fab-wrap.chat-fab-hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.75);
-  }
 }
 
 /* ============================================================

@@ -77,23 +77,38 @@
       <div class="section-header">
         <h2>Distance from you</h2>
       </div>
-      <div class="slider-box" [class.active]="radius > 0" style="--filter-color: #0ea5e9;">
+
+      <!-- Unlimited toggle -->
+      <div class="toggle-card" [class.active]="!radiusActive" style="--filter-color: #0ea5e9; margin-bottom: 12px;">
+        <div class="toggle-text">
+          <h3>Unlimited</h3>
+          <p>Show locations at any distance</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" [checked]="!radiusActive" (change)="toggleRadiusActive()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <!-- Slider — prikazan samo kad je radius aktivan -->
+      <div *ngIf="radiusActive" class="slider-box active" style="--filter-color: #0ea5e9;">
         <div class="slider-labels">
           <span>Radius</span>
-          <span class="highlight">{{ radius === 0 ? '∞ Unlimited' : radius + ' km' }}</span>
+          <span class="highlight">{{ radiusLabel }}</span>
         </div>
         <input type="range" class="custom-slider"
                min="0" [max]="radiusSteps.length - 1"
                [(ngModel)]="radiusIndex"
-               (ngModelChange)="onAnyChange()"
+               (ngModelChange)="onRadiusSliderChange()"
                step="1">
         <div class="range-markers">
-          <span>0 (Unlimited)</span>
+          <span>&lt; 1 km</span>
           <span>10 km</span>
           <span>50 km</span>
-          <span>200 km</span>
+          <span>200+ km</span>
         </div>
       </div>
+
     </section>
 
     <!-- RATING -->

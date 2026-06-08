@@ -85,10 +85,55 @@ export class FiltersComponent implements OnInit, OnChanges {
     { id: 'other',           label: 'Other',         icon: '\u{1F4CD}', selected: false },
   ];
 
+  /**
+   * RADIUS LOGIKA:
+   * - radiusActive = false  →  filter nije aktivan, prikazuje se "Unlimited"
+   * - radiusActive = true   →  slider je aktivan, vrednosti su 0–200 km
+   *   gde 0 = "samo moja lokacija" i 200 = "200+ km"
+   *
+   * U buildState() šaljemo:
+   *   - radiusActive = false  →  radius: 0 (filter-state koristi 0 kao "bez filtera")
+   *   - radiusActive = true   →  radius: radiusKm (0–200, gde 200 = sve)
+   */
   readonly radiusSteps = [0, 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100, 150, 200];
-  radiusIndex: number = 0;
+  radiusIndex = 7; // default kad se slider aktivira = 10 km (index 6)
+  radiusActive = false; // da li je korisnik uopšte pipnuo slider
 
-  get radius(): number { return this.radiusSteps[this.radiusIndex]; }
+  get radiusKm(): number {
+    return this.radiusSteps[this.radiusIndex];
+  }
+
+  /** Tekst koji se prikazuje u UI */
+  get radiusLabel(): string {
+    if (!this.radiusActive) return '∞ Unlimited';
+    if (this.radiusKm === 0) return '< 1 km';
+    if (this.radiusKm === 200) return '200+ km';
+    return `${this.radiusKm} km`;
+  }
+
+  /** Vrednost koja se šalje u filter state — 0 znači "bez filtera" */
+  get radiusForFilter(): number {
+    if (!this.radiusActive) return 0;
+    // 200 = "200+ km" = praktično sve = bez filtera po distanci
+    if (this.radiusKm === 200) return 0;
+    return this.radiusKm;
+  }
+
+  /** Korisnik pomera slider — automatski aktivira radius */
+  onRadiusSliderChange(): void {
+    this.radiusActive = true;
+    this.onAnyChange();
+  }
+
+  /** Korisnik klikne "Unlimited" / toggle dugme */
+  toggleRadiusActive(): void {
+    this.radiusActive = !this.radiusActive;
+    if (!this.radiusActive) {
+      // Resetuj na default vrednost kad se deaktivira
+      this.radiusIndex = 6; // 10 km — sledeći put kad se aktivira
+    }
+    this.onAnyChange();
+  }
 
   minRating: number = 0;
   openNow: boolean = false;
@@ -149,15 +194,11 @@ export class FiltersComponent implements OnInit, OnChanges {
   ) {}
 
   ngOnInit(): void {
-    // Samo citamo returnTo ako smo otvoreni kao ruta (ne inline)
     try {
       this.returnTo = this.route.snapshot.queryParamMap.get('returnTo') || 'map-home';
     } catch {
       this.returnTo = 'map-home';
     }
-
-    // context @Input ima prednost — ne overrideujemo ga iz returnTo
-    // (returnTo se koristi samo za navigaciju kada je komponenta otvorena kao ruta)
 
     const state = this.filterState.get();
     this.minRating     = state.minRating;
@@ -183,20 +224,29 @@ export class FiltersComponent implements OnInit, OnChanges {
       distanceBand: state.routeDistanceBand ?? '',
       durationBand: state.routeDurationBand ?? '',
     };
+
+    // Obnovi radius stanje iz sačuvanog state-a
     const storedRadius = state.radius ?? 0;
-    const nearest = this.radiusSteps.reduce((prev, cur) =>
-      Math.abs(cur - storedRadius) < Math.abs(prev - storedRadius) ? cur : prev, 0);
-    this.radiusIndex = this.radiusSteps.indexOf(nearest);
+    if (storedRadius > 0) {
+      // Radius je bio aktivan — nađi najbliži step
+      this.radiusActive = true;
+      const nearest = this.radiusSteps.reduce((prev, cur) =>
+        Math.abs(cur - storedRadius) < Math.abs(prev - storedRadius) ? cur : prev, 0);
+      this.radiusIndex = this.radiusSteps.indexOf(nearest);
+    } else {
+      // Radius nije bio aktivan (Unlimited)
+      this.radiusActive = false;
+      this.radiusIndex = 6; // 10 km — default za sledeće aktiviranje
+    }
+
     if (state.activeCategories.length > 0) {
       this.categories.forEach(c => { c.selected = state.activeCategories.includes(c.id); });
     }
     this.loadDestinationFilterOptions();
     if (this.showContentFilters) {
-      // Vrati zapamćeni content type
       const savedType = state.activeContentType;
       if (savedType && savedType !== this.activeContentType) {
         this.activeContentType = savedType;
-        // Emitujemo da roditelj zna koji tab je aktivan
         Promise.resolve().then(() => this.activeContentTypeChange.emit(savedType));
       }
       this.ensureContentFilterOptions();
@@ -307,7 +357,6 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.onAnyChange();
   }
 
-  /** Called on every interactive change — saves state and emits immediately */
   toggleActivityFilter(group: 'categories' | 'difficulties', value: string): void {
     const list = this.activityFilters[group];
     this.activityFilters[group] = list.includes(value)
@@ -513,7 +562,8 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   clearAll(): void {
     this.categories.forEach(c => c.selected = false);
-    this.radiusIndex   = 0;
+    this.radiusActive  = false;
+    this.radiusIndex   = 6; // 10 km — default za sledeće aktiviranje
     this.minRating     = 0;
     this.openNow       = false;
     this.showOnlySaved = false;
@@ -541,14 +591,13 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.closed.emit();
   }
 
-  /** Navigate-based close — used when component is opened as a route (map context, mobile) */
   private buildState(): FilterState {
     this.ensureEventDateRange('to');
     const selected = this.categories.filter(c => c.selected).map(c => c.id);
     return {
       minRating:        this.minRating,
       openNow:          this.openNow,
-      radius:           this.radius,
+      radius:           this.radiusForFilter,
       activeCategories: selected,
       destinationCountries: this.destinationFilters.countries,
       destinationRegions: this.destinationFilters.regions,
@@ -611,7 +660,6 @@ export class FiltersComponent implements OnInit, OnChanges {
     return new Date(parts[0], parts[1] - 1, parts[2]);
   }
 
-  /** applyFilters kept for backward compat — now just saves and navigates */
   private ensureContentFilterOptions(): void {
     if (FiltersComponent.activityCategoryCache) {
       this.activityCategoryOptions = [...FiltersComponent.activityCategoryCache];
@@ -752,7 +800,6 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   private syncSavedPostIdsFromInput(): void {
     if (this.availableSavedPostIdsInternal.length === 0) return;
-
     this.savedPostIds = [...this.availableSavedPostIdsInternal];
   }
 
