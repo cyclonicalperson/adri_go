@@ -1624,8 +1624,8 @@ app-location-details-card {
 .planner-floating-toast {
   position: fixed;
   left: 50%;
-  top: 154px;
-  z-index: 2500;
+  top: 122px;
+  z-index: var(--z-toast, 11020);
   width: min(360px, calc(100vw - 28px));
   transform: translateX(-50%);
   padding: 11px 14px;
@@ -1704,9 +1704,9 @@ app-location-details-card {
   }
 
   .planner-floating-toast {
-    left: 190px;
-    top: 156px;
-    width: min(348px, calc(100vw - 32px));
+    left: calc(380px + ((100vw - 380px) / 2));
+    top: 96px;
+    width: clamp(280px, calc(100vw - 420px), 390px);
   }
 
   .scenic-detour-map-popup {

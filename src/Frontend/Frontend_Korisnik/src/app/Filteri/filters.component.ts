@@ -67,6 +67,10 @@ export class FiltersComponent implements OnInit, OnChanges {
   };
 
   categorySelectValue = '';
+  destinationCountrySelectValue = '';
+  destinationRegionSelectValue = '';
+  routeCountrySelectValue = '';
+  routeRegionSelectValue = '';
 
   categories = [
     { id: 'attraction',      label: 'Attractions',   icon: '🏖️', selected: false },
@@ -376,6 +380,53 @@ export class FiltersComponent implements OnInit, OnChanges {
     }
   }
 
+  onSelectToggle(
+    group: 'destinationCountries' | 'destinationRegions' | 'routeCountries' | 'routeRegions',
+    value: string
+  ): void {
+    if (!value) {
+      this.clearSelectGroup(group);
+      return;
+    }
+
+    this.onDropdownToggle(group, value);
+    Promise.resolve().then(() => {
+      if (group === 'destinationCountries') this.destinationCountrySelectValue = '';
+      if (group === 'destinationRegions') this.destinationRegionSelectValue = '';
+      if (group === 'routeCountries') this.routeCountrySelectValue = '';
+      if (group === 'routeRegions') this.routeRegionSelectValue = '';
+    });
+  }
+
+  private clearSelectGroup(
+    group: 'destinationCountries' | 'destinationRegions' | 'routeCountries' | 'routeRegions'
+  ): void {
+    let changed = false;
+
+    if (group === 'destinationCountries' && this.destinationFilters.countries.length > 0) {
+      this.destinationFilters = { ...this.destinationFilters, countries: [], regions: [] };
+      changed = true;
+    } else if (group === 'destinationRegions' && this.destinationFilters.regions.length > 0) {
+      this.destinationFilters = { ...this.destinationFilters, regions: [] };
+      changed = true;
+    } else if (group === 'routeCountries' && this.routeFilters.countries.length > 0) {
+      this.routeFilters = { ...this.routeFilters, countries: [], regions: [] };
+      changed = true;
+    } else if (group === 'routeRegions' && this.routeFilters.regions.length > 0) {
+      this.routeFilters = { ...this.routeFilters, regions: [] };
+      changed = true;
+    }
+
+    this.destinationCountrySelectValue = '';
+    this.destinationRegionSelectValue = '';
+    this.routeCountrySelectValue = '';
+    this.routeRegionSelectValue = '';
+
+    if (changed) {
+      this.onAnyChange();
+    }
+  }
+
   setRouteDistanceBand(value: string): void {
     this.routeFilters.distanceBand = this.routeFilters.distanceBand === value ? '' : value;
     this.onAnyChange();
@@ -443,7 +494,7 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   get filteredRouteRegionOptions(): string[] {
     if (this.routeFilters.countries.length === 0) {
-      return this.routeRegionOptions;
+      return [];
     }
 
     const selectedCountries = new Set(this.routeFilters.countries);
@@ -473,6 +524,10 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.destinationFilters = { countries: [], regions: [] };
     this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
     this.routeFilters = { difficulties: [], countries: [], regions: [], distanceBand: '', durationBand: '' };
+    this.destinationCountrySelectValue = '';
+    this.destinationRegionSelectValue = '';
+    this.routeCountrySelectValue = '';
+    this.routeRegionSelectValue = '';
     const defaultState = {
       ...this.filterState.getDefault(),
       savedPostIds: this.savedPostIds,
@@ -647,7 +702,7 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   get filteredDestinationRegionOptions(): string[] {
     if (this.destinationFilters.countries.length === 0) {
-      return this.destinationRegionOptions;
+      return [];
     }
 
     const selectedCountries = new Set(this.destinationFilters.countries);

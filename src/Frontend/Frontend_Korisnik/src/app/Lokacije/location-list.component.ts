@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -27,6 +27,7 @@ import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
+const MIN_SEARCH_LENGTH = 2;
 type ExploreContentType = 'destinations' | 'activities' | 'routes';
 type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
 type ActivitySortOption = 'activity-name-asc' | 'activity-popular' | 'activity-category' | 'activity-difficulty';
@@ -132,6 +133,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   searchIntentSummary = '';
   searchFocused = false;
   showDropdown = false;
+  showBackToTop = false;
 
   readonly contentTypeTabs: { value: ExploreContentType; label: string }[] = [
     { value: 'destinations', label: 'Destinations' },
@@ -247,7 +249,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get filteredRouteRegionOptions(): string[] {
     if (this.routeFilters.countries.length === 0) {
-      return this.routeRegionOptions;
+      return [];
     }
 
     const selectedCountries = new Set(this.routeFilters.countries);
@@ -359,10 +361,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.readActivityFilterFromRoute();
 
     const persistedQuery = this.searchStateService.get();
-    if (persistedQuery) {
+    if (persistedQuery && persistedQuery.trim().length >= MIN_SEARCH_LENGTH) {
       this.searchQuery = persistedQuery;
       this.submittedSearchQuery = persistedQuery;
       this.isSearchActive = true;
+    } else if (persistedQuery) {
+      this.searchStateService.clear();
     }
 
     this.loadLocations();
@@ -453,18 +457,30 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   onSearchInput(): void {
     const query = this.searchQuery.trim();
-    this.searchStateService.set(query);
     if (!query) {
+      this.searchStateService.clear();
       this.resetSearchState();
       this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
       this.cdr.markForCheck();
       return;
     }
+
+    if (query.length < MIN_SEARCH_LENGTH) {
+      this.searchStateService.clear();
+      this.clearSearchResultsOnly();
+      this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
+      this.cdr.markForCheck();
+      return;
+    }
+    this.searchStateService.set(query);
     this.isSearchActive = true;
     this.submittedSearchQuery = query;
     this.clearActivityFilterState();
     this.rebuildSearchResults();
     this.refreshVisibleContent();
+    this.updateBackToTopVisibility();
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
     this.cdr.markForCheck();
   }
@@ -487,7 +503,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   executeSearch(rawQuery = this.searchQuery): void {
     this.searchQuery = rawQuery;
     const query = rawQuery.trim();
-    this.searchStateService.set(query);
     this.showDropdown = false;
     this.searchFocused = false;
     this.sortMenuOpen = false;
@@ -495,11 +510,21 @@ export class LocationListComponent implements OnInit, OnDestroy {
       this.clearSearch();
       return;
     }
+    if (query.length < MIN_SEARCH_LENGTH) {
+      this.searchStateService.clear();
+      this.clearSearchResultsOnly();
+      this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
+      this.cdr.markForCheck();
+      return;
+    }
+    this.searchStateService.set(query);
     this.isSearchActive = true;
     this.clearActivityFilterState();
     this.submittedSearchQuery = query;
     this.rebuildSearchResults();
     this.refreshVisibleContent();
+    this.updateBackToTopVisibility();
     this.cdr.markForCheck();
   }
 
@@ -509,7 +534,17 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.resetSearchState();
     this.clearActivityFilterState();
     this.refreshVisibleContent();
+    this.updateBackToTopVisibility();
     this.cdr.markForCheck();
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    this.updateBackToTopVisibility();
+  }
+
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /** Zatvaramo dropdown kad input izgubi fokus (malo kašnjenje zbog mousedown na stavci) */
@@ -1206,10 +1241,27 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.showDropdown = false;
   }
 
+  private clearSearchResultsOnly(): void {
+    this.submittedSearchQuery = '';
+    this.isSearchActive = false;
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.showDropdown = false;
+  }
+
+  private updateBackToTopVisibility(): void {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+    this.showBackToTop = this.isSearchActive && this.activeResultCount > 0 && scrollTop > 260;
+  }
+
   private rebuildSearchResults(): void {
     const query = this.searchQuery.trim();
     if (!query) {
       this.resetSearchState();
+      return;
+    }
+    if (query.length < MIN_SEARCH_LENGTH) {
+      this.clearSearchResultsOnly();
       return;
     }
 
@@ -1226,6 +1278,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     if (this.activeContentType === 'destinations') {
       if (this.activeActivityFilter) {
         this.locations = this.applySort(this.allLocations.filter(loc => this.matchesActivityFilter(loc, this.activeActivityFilter!)));
+        this.updateBackToTopVisibility();
         return;
       }
 
@@ -1235,6 +1288,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
             .filter(result => result.kind === 'destinations')
             .map(result => result.raw as Location))
         : this.applySort(base);
+      this.updateBackToTopVisibility();
       return;
     }
 
@@ -1245,6 +1299,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
             .filter(result => result.kind === 'activities')
             .map(result => result.raw as TouristActivityItem))
         : this.sortActivities(base);
+      this.updateBackToTopVisibility();
       return;
     }
 
@@ -1254,6 +1309,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
           .filter(result => result.kind === 'routes')
           .map(result => result.raw as TouristRouteItem))
       : this.sortRoutes(base);
+    this.updateBackToTopVisibility();
   }
 
   private getDestinationFilterBase(): Location[] {

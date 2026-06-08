@@ -45,7 +45,10 @@
       <div class="section-header">
         <h2>Countries</h2>
       </div>
-      <select class="filter-dropdown" #countryDropdown (change)="onDropdownToggle('destinationCountries', countryDropdown.value); countryDropdown.value = ''">
+      <select
+        class="filter-dropdown"
+        [(ngModel)]="destinationCountrySelectValue"
+        (ngModelChange)="onSelectToggle('destinationCountries', $event)">
         <option value="">{{ selectedSummary(destinationFilters.countries, 'All countries') }}</option>
         <option *ngFor="let country of destinationCountryOptions" [value]="country">
           {{ destinationFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
@@ -53,15 +56,15 @@
       </select>
     </section>
 
-    <section>
+    <section *ngIf="destinationFilters.countries.length > 0">
       <div class="section-header">
         <h2>Regions</h2>
       </div>
       <select
         class="filter-dropdown"
-        #regionDropdown
+        [(ngModel)]="destinationRegionSelectValue"
         [disabled]="destinationRegionsLoading && filteredDestinationRegionOptions.length === 0"
-        (change)="onDropdownToggle('destinationRegions', regionDropdown.value); regionDropdown.value = ''">
+        (ngModelChange)="onSelectToggle('destinationRegions', $event)">
         <option value="">{{ destinationRegionsLoading ? 'Loading regions...' : selectedSummary(destinationFilters.regions, 'All regions') }}</option>
         <option *ngFor="let region of filteredDestinationRegionOptions" [value]="region">
           {{ destinationFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}
@@ -246,7 +249,10 @@
         <div class="section-header">
           <h2>Route Country</h2>
         </div>
-        <select class="filter-dropdown" #routeCountryDropdown (change)="onDropdownToggle('routeCountries', routeCountryDropdown.value); routeCountryDropdown.value = ''">
+        <select
+          class="filter-dropdown"
+          [(ngModel)]="routeCountrySelectValue"
+          (ngModelChange)="onSelectToggle('routeCountries', $event)">
           <option value="">{{ selectedSummary(routeFilters.countries, 'All countries') }}</option>
           <option *ngFor="let country of routeCountryOptions" [value]="country">
             {{ routeFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
@@ -254,11 +260,14 @@
         </select>
       </section>
 
-      <section *ngIf="filteredRouteRegionOptions.length > 0">
+      <section *ngIf="routeFilters.countries.length > 0">
         <div class="section-header">
           <h2>Route Region</h2>
         </div>
-        <select class="filter-dropdown" #routeRegionDropdown (change)="onDropdownToggle('routeRegions', routeRegionDropdown.value); routeRegionDropdown.value = ''">
+        <select
+          class="filter-dropdown"
+          [(ngModel)]="routeRegionSelectValue"
+          (ngModelChange)="onSelectToggle('routeRegions', $event)">
           <option value="">{{ selectedSummary(routeFilters.regions, 'All regions') }}</option>
           <option *ngFor="let region of filteredRouteRegionOptions" [value]="region">
             {{ routeFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}

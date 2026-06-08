@@ -15,6 +15,7 @@ import { CommonModule } from '@angular/common';
 import { NavigationStep } from '../../../services/routing.service';
 import { RoutingService } from '../../../services/routing.service';
 import { TravelMode } from '../../../services/tourist-preferences.service';
+import { SiteTranslateService } from '../../../services/site-translate.service';
 
 @Component({
   selector: 'app-map-navigation-panel',
@@ -107,7 +108,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   }
 
   get modeLabel(): string {
-    return this.travelModes.find(option => option.mode === this.travelMode)?.label ?? 'Car';
+    return this.t(this.travelModes.find(option => option.mode === this.travelMode)?.label ?? 'Car');
   }
 
   /** CSS rotation (degrees) for the arrow SVG based on the current maneuver. */
@@ -132,20 +133,29 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     if (!step) return '';
     const m = step.maneuverModifier;
     const t = step.maneuverType;
-    if (t === 'arrive') return 'Arrive';
-    if (!m || m === 'straight') return 'Continue straight';
-    if (m === 'right')        return 'Turn right';
-    if (m === 'sharp right')  return 'Turn sharp right';
-    if (m === 'slight right') return 'Bear right';
-    if (m === 'left')         return 'Turn left';
-    if (m === 'sharp left')   return 'Turn sharp left';
-    if (m === 'slight left')  return 'Bear left';
-    if (m === 'uturn')        return 'U-turn';
-    if (t === 'roundabout' || t === 'rotary') return 'Enter roundabout';
-    return 'Continue';
+    if (t === 'arrive') return this.t('Arrive');
+    if (!m || m === 'straight') return this.t('Continue straight');
+    if (m === 'right')        return this.t('Turn right');
+    if (m === 'sharp right')  return this.t('Turn sharp right');
+    if (m === 'slight right') return this.t('Bear right');
+    if (m === 'left')         return this.t('Turn left');
+    if (m === 'sharp left')   return this.t('Turn sharp left');
+    if (m === 'slight left')  return this.t('Bear left');
+    if (m === 'uturn')        return this.t('U-turn');
+    if (t === 'roundabout' || t === 'rotary') return this.t('Enter roundabout');
+    return this.t('Continue');
   }
 
-  constructor(private cdr: ChangeDetectorRef, private zone: NgZone, private routingService: RoutingService) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone,
+    private routingService: RoutingService,
+    private translate: SiteTranslateService,
+  ) {}
+
+  t(value: string): string {
+    return this.translate.instant(value);
+  }
 
   ngOnInit(): void {
     this.remainingDistanceKm = this.totalDistanceKm;

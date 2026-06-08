@@ -48,10 +48,6 @@ export class DesktopFooterComponent {
   }
 
   goToAccount(): void {
-    if (!this.authService.isLoggedIn) {
-      this.openAuthPopup('Create a free account or log in to manage your profile and travel preferences.');
-      return;
-    }
     this.router.navigate(['/account']);
   }
 

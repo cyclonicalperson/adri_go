@@ -44,6 +44,10 @@
     <span>{{ scenicDetourPinCount }} scenic detour pin{{ scenicDetourPinCount === 1 ? '' : 's' }} shown on map</span>
   </div>
 
+  <div class="planner-floating-toast" *ngIf="plannerMessage && !isNavigating">
+    {{ plannerMessage }}
+  </div>
+
   <!-- Desktop-only sidebar collapse button (outside sidebar so it's always visible) -->
   <button
     class="sidebar-collapse-btn-desktop"
@@ -222,10 +226,6 @@
       <div class="save-route-toast" *ngIf="saveRouteMessage">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
         {{ saveRouteMessage }}
-      </div>
-
-      <div class="planner-floating-toast" *ngIf="plannerMessage && !isNavigating">
-        {{ plannerMessage }}
       </div>
 
       <app-trip-planner-panel

@@ -115,6 +115,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private routeMarkers: { route: TouristRouteItem; marker: L.Marker }[] = [];
   private markerClusterMarkers: L.Marker[] = [];
   private readonly markerClusterMaxZoom = 15;
+  private readonly defaultMapCenter: L.LatLngExpression = [42.2784, 18.8372];
+  private readonly defaultMapZoom = 10;
   private userMarker: L.Marker<any> | null = null;
   private routeStopMarkers: L.Marker[] = [];
   private latestQueryParams: Record<string, string> = {};
@@ -130,6 +132,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
   private scenicDetourPopupTimerId: ReturnType<typeof setTimeout> | null = null;
   private lastScenicDetourPopupKey = '';
+  private lastFilterFitKey = '';
 
   showAuthPopup = false;
   showScenicDetourMapPopup = false;
@@ -554,6 +557,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.syncAvailableSavedFilterIds();
         this.refreshRecommendations();
         this.addMarkers();
+        this.fitMapToSelectedFilterArea();
         this.tryHydratePlannerFromQuery();
         this.hydratePlannerFromStorage();
         this.cdr.detectChanges();
@@ -579,6 +583,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       next: routes => {
         this.publicRoutes = routes.filter(route => route.waypoints.length > 0);
         this.addRouteMarkers();
+        this.fitMapToSelectedFilterArea();
         this.cdr.detectChanges();
       },
       error: err => console.error('Failed to load public routes:', err),
@@ -2606,7 +2611,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private initMap(): void {
-    this.map = L.map('map', { zoomControl: false }).setView([42.2784, 18.8372], 10);
+    this.map = L.map('map', { zoomControl: false }).setView(this.defaultMapCenter, this.defaultMapZoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
@@ -3019,6 +3024,62 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return { lat: Number(lat), lng: Number(lng) };
   }
 
+  private fitMapToSelectedFilterArea(): void {
+    if (!this.map || this.isNavigating || this.focusedRouteMode) return;
+
+    const countries = this.mapFilterContentType === 'routes'
+      ? this.filterRouteCountries
+      : this.filterDestinationCountries;
+    const regions = this.mapFilterContentType === 'routes'
+      ? this.filterRouteRegions
+      : this.filterDestinationRegions;
+    const key = `${this.mapFilterContentType}:${[...countries].sort().join('|')}:${[...regions].sort().join('|')}`;
+
+    if (countries.length === 0 && regions.length === 0) {
+      if (this.lastFilterFitKey) {
+        this.resetMapToDefaultView();
+      }
+      this.lastFilterFitKey = '';
+      return;
+    }
+    if (key === this.lastFilterFitKey) return;
+
+    const points: L.LatLngExpression[] = [];
+
+    if (this.mapFilterContentType === 'routes') {
+      this.publicRoutes
+        .filter(route => this.routeMatchesExploreFilters(route))
+        .forEach(route => {
+          route.waypoints.forEach(point => {
+            if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) {
+              points.push([point.lat, point.lng]);
+            }
+          });
+        });
+    } else {
+      this.locationsList
+        .filter(location => this.passesFilters(location))
+        .forEach(location => {
+          const coordinates = this.getLocationCoordinates(location);
+          if (coordinates) points.push([coordinates.lat, coordinates.lng]);
+        });
+    }
+
+    if (points.length === 0) return;
+
+    this.lastFilterFitKey = key;
+    const bounds = L.latLngBounds(points);
+    if (bounds.isValid()) {
+      this.map.fitBounds(bounds.pad(0.18), { animate: true, maxZoom: regions.length > 0 ? 12 : 9 });
+    }
+  }
+
+  private resetMapToDefaultView(): void {
+    if (!this.map) return;
+
+    this.map.flyTo(this.defaultMapCenter, this.defaultMapZoom, { animate: true, duration: 0.45 });
+  }
+
   closeLocationDetails(): void {
     this.selectedLocation = null;
   }
@@ -3420,6 +3481,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Reactive: called on every filter change while panel is open — panel stays open
     this.applyFilterState();
     this.applyMarkerFilter();
+    this.fitMapToSelectedFilterArea();
     this.refreshRecommendations();
     if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
     this.cdr.detectChanges();
@@ -3433,6 +3495,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedLocation = null;
     this.selectedPublicRoute = null;
     this.applyMarkerFilter();
+    this.fitMapToSelectedFilterArea();
     this.refreshRecommendations();
     if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
     this.cdr.detectChanges();
