@@ -195,6 +195,23 @@
       border-color: $danger;
     }
   }
+
+  &.btn-remove-photo {
+    color: $danger;
+    border-color: rgba(239,68,68,.3);
+    font-size: 12px;
+    padding: 7px 14px;
+
+    &:hover {
+      background: $danger-soft;
+      border-color: $danger;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
 }
 
 // ── Info rows ─────────────────────────────────────────────────────────────
