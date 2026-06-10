@@ -44,6 +44,10 @@
     <span>{{ scenicDetourPinCount }} scenic detour pin{{ scenicDetourPinCount === 1 ? '' : 's' }} shown on map</span>
   </div>
 
+  <div class="planner-floating-toast" *ngIf="plannerMessage && !isNavigating">
+    {{ plannerMessage }}
+  </div>
+
   <!-- Desktop-only sidebar collapse button (outside sidebar so it's always visible) -->
   <button
     class="sidebar-collapse-btn-desktop"
@@ -122,7 +126,7 @@
           {{ searchIntentSummary }}
         </div>
 
-        <div class="search-results-dropdown" *ngIf="searchResults.length > 0">
+        <div class="search-results-dropdown" *ngIf="searchFocused && searchResults.length > 0">
           <div
             *ngFor="let result of searchResults"
             class="search-result-item"
@@ -153,9 +157,9 @@
           </div>
         </div>
 
-        <div class="search-no-results" *ngIf="searchQuery && searchIntentSummary && searchResults.length === 0">
+        <div class="search-no-results" *ngIf="showSearchFallbackNotice">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          No results for "{{ searchQuery }}"
+          No results for "{{ searchQuery }}". Showing recommended destinations.
         </div>
       </div>
 
@@ -223,10 +227,6 @@
       <div class="save-route-toast" *ngIf="saveRouteMessage">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
         {{ saveRouteMessage }}
-      </div>
-
-      <div class="planner-floating-toast" *ngIf="plannerMessage && !isNavigating">
-        {{ plannerMessage }}
       </div>
 
       <app-trip-planner-panel

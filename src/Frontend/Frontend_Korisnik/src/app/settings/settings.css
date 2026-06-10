@@ -146,11 +146,13 @@ input:checked + .slider:before { transform: translateX(21px); }
 
 .saved-toast {
   position: fixed;
-  left: 50%;
-  bottom: calc(24px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 1300;
+  left: 0;
+  right: 0;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  z-index: var(--z-toast, 11020);
   width: min(420px, calc(100vw - 32px));
+  margin-inline: auto;
   background: var(--gray-900);
   color: #fff;
   padding: 10px 20px;
@@ -160,6 +162,7 @@ input:checked + .slider:before { transform: translateX(21px); }
   text-align: center;
   margin-bottom: 0;
   animation: fadeIn 0.2s ease;
+  pointer-events: none;
 }
 
 .save-btn {
@@ -235,7 +238,7 @@ input:checked + .slider:before { transform: translateX(21px); }
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  z-index: 1100;
+  z-index: var(--z-popup-backdrop, 11000);
   padding: 20px;
 }
 
@@ -255,6 +258,13 @@ input:checked + .slider:before { transform: translateX(21px); }
   gap: 12px;
   padding: 22px 22px 16px;
   border-bottom: 1px solid var(--gray-100);
+}
+
+.sheet-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .sheet-kicker {
@@ -390,13 +400,14 @@ input:checked + .slider:before { transform: translateX(21px); }
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .pref-chip.active {
-  background: var(--green-500);
-  border-color: var(--green-500);
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(34,197,94,0.22);
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px rgba(34,197,94,0.28);
 }
 
 .sheet-footer {
@@ -548,8 +559,14 @@ input:checked + .slider:before { transform: translateX(21px); }
   .logout-link:hover { background: #fef2f2; opacity: 1; }
 
   /* Sheet (popup dijalozi) — centriran, ne pri dnu */
-  .settings-sheet-overlay { align-items: center; }
-  .settings-sheet { border-radius: 8px; }
+  .settings-sheet-overlay {
+    align-items: center;
+    padding: 20px;
+  }
+  .settings-sheet {
+    max-height: calc(100dvh - 40px);
+    border-radius: 8px;
+  }
 }
 
 :host-context(html[data-theme='dark']) .settings-container {
@@ -644,9 +661,9 @@ input:checked + .slider:before { transform: translateX(21px); }
 :host-context(html[data-theme='dark']) .pref-chip.active,
 :host-context(html[data-theme='dark']) .sheet-primary,
 :host-context(html[data-theme='dark']) .save-btn {
-  background: #22c55e;
-  border-color: #22c55e;
-  color: #fff;
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+  color: #fff !important;
 }
 
 .field-error {

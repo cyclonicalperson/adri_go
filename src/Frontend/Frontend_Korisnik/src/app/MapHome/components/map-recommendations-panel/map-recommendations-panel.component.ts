@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Location } from '../../../services/location.service';
+import { DEFAULT_LOCATION_IMAGE } from '../../../utils/backend-url.utils';
 import { LocationRecommendation } from '../../../services/recommendation.service';
 import { formatPostType } from '../../../utils/post-type.utils';
 import { SiteTranslateService } from '../../../services/site-translate.service';
@@ -18,7 +19,7 @@ export class MapRecommendationsPanelComponent {
   @Input() recommendationCards: LocationRecommendation[] = [];
   @Input() hasPersonalizedRecommendations = false;
   @Input() activeRecommendationTab: RecommendationTab = 'personalized';
-  @Input() resolveImage: (location: Location) => string = () => 'assets/Budva.jpg';
+  @Input() resolveImage: (location: Location) => string = () => DEFAULT_LOCATION_IMAGE;
 
   @Output() tabSelected = new EventEmitter<RecommendationTab>();
   @Output() locationSelected = new EventEmitter<Location>();
@@ -31,7 +32,7 @@ export class MapRecommendationsPanelComponent {
 
   onImgError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    img.src = 'assets/Budva.jpg';
+    img.src = DEFAULT_LOCATION_IMAGE;
     img.onerror = null;
   }
 

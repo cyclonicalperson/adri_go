@@ -393,7 +393,7 @@
 }
 
 :host-context(html[data-theme='dark']) .planner-toggle.active {
-  background: #22c55e;
+  background: var(--green-500);
   color: #fff;
 }
 
@@ -414,13 +414,13 @@
 }
 
 :host-context(html[data-theme='dark']) .scenic-toggle {
-  background: #1e3a8a;
+  background: #172554;
   color: #dbeafe;
 }
 
 :host-context(html[data-theme='dark']) .scenic-toggle.active {
-  background: #2563eb;
-  color: #fff;
+  background: #1e3a8a;
+  color: #dbeafe;
 }
 
 :host-context(html[data-theme='dark']) .summary-card,
@@ -436,7 +436,7 @@
 }
 
 :host-context(html[data-theme='dark']) .stop-order {
-  background: #22c55e;
+  background: var(--green-500);
   color: #fff;
 }
 
@@ -458,15 +458,15 @@
 }
 
 :host-context(html[data-theme='dark']) .action-secondary {
-  background: #123222;
-  border-color: #166534;
-  color: #bbf7d0;
+  background: color-mix(in srgb, var(--green-500, #22c55e) 16%, #111827);
+  border-color: color-mix(in srgb, var(--green-500, #22c55e) 42%, #334155);
+  color: var(--green-500, #22c55e);
 }
 
 :host-context(html[data-theme='dark']) .action-save {
-  background: #14532d;
-  border-color: #22c55e;
-  color: #dcfce7;
+  background: color-mix(in srgb, var(--green-500, #22c55e) 22%, #111827);
+  border-color: color-mix(in srgb, var(--green-500, #22c55e) 58%, #334155);
+  color: #fff;
 }
 
 :host-context(html[data-theme='dark']) .action-tertiary {
@@ -479,4 +479,15 @@
   background: #451a1a;
   border-color: #7f1d1d;
   color: #fecaca;
+}
+
+:host-context(html[data-theme='dark']) .action-navigate {
+  background: var(--green-500, #22c55e);
+  color: #fff;
+  filter: none;
+}
+
+:host-context(html[data-theme='dark']) .action-navigate:hover {
+  background: var(--green-500, #22c55e);
+  opacity: 0.9;
 }
