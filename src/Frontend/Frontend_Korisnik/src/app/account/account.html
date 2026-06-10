@@ -212,47 +212,28 @@
         </div>
       </section>
 
-      <section class="account-section account-section-logout" *ngIf="!isGuest">
+      <section class="account-section account-section-logout">
         <div class="section-heading">
           <h3 class="section-title">Account</h3>
         </div>
 
-        <div class="account-list logout-list">
-          <button class="account-link-card logout-row" type="button" (click)="logout()">
+        <div class="account-list logout-list account-actions-list">
+          <button class="account-link-card logout-row" type="button" (click)="isGuest ? goToLogin() : logout()">
             <span class="account-link-icon logout-tone">
-              <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+              <svg *ngIf="!isGuest" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+              <svg *ngIf="isGuest" viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
             </span>
             <span class="account-link-copy">
-              <span class="account-link-title">Logout</span>
-              <span class="account-link-subtitle">Sign out of your AdriGo account.</span>
+              <span class="account-link-title">{{ isGuest ? 'Log in / Register' : 'Logout' }}</span>
+              <span class="account-link-subtitle">{{ isGuest ? 'Access your AdriGo account or create a new one.' : 'Sign out of your AdriGo account.' }}</span>
             </span>
             <span class="account-link-arrow">
               <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
             </span>
           </button>
-        </div>
-      </section>
 
-      <section class="account-section account-section-logout" *ngIf="isGuest">
-        <div class="section-heading">
-          <h3 class="section-title">Account</h3>
-        </div>
-
-        <div class="account-list logout-list">
-          <button class="account-link-card logout-row" type="button" (click)="goToLogin()">
-            <span class="account-link-icon logout-tone">
-              <svg viewBox="0 0 24 24"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
-            </span>
-            <span class="account-link-copy">
-              <span class="account-link-title">Log in / Register</span>
-              <span class="account-link-subtitle">Access your AdriGo account or create a new one.</span>
-            </span>
-            <span class="account-link-arrow">
-              <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
-            </span>
-          </button>
           <button class="account-link-card logout-row admin-register-row" type="button" (click)="goToAdminRegister()">
-            <span class="account-link-icon green-tone">
+            <span class="account-link-icon logout-tone">
               <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
             </span>
             <span class="account-link-copy">

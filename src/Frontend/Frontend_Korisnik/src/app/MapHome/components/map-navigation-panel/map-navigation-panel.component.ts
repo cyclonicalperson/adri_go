@@ -225,8 +225,12 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
       }
       if (heading !== null) {
         this.zone.run(() => {
-          this.lastHeading = heading;
-          this.mapRotationUpdated.emit(heading!);
+          // Emit samo ako se heading promenio za vise od 2 stepena — sprecava sekutanje
+          const prev = this.lastHeading;
+          if (prev === null || Math.abs(heading! - prev) > 2) {
+            this.lastHeading = heading;
+            this.mapRotationUpdated.emit(heading!);
+          }
         });
       }
     };
@@ -312,7 +316,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     this.watchId = navigator.geolocation.watchPosition(
       onPosition,
       onError,
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
     );
   }
 

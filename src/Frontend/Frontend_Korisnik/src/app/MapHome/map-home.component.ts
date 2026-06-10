@@ -484,6 +484,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.authSubscription?.unsubscribe();
     this.searchSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
+    if (this._headingDebounceTimer) clearTimeout(this._headingDebounceTimer);
   }
 
   get savedRouteCount(): number {
@@ -789,6 +790,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.flyToVisibleMapCenter([coordinates.lat, coordinates.lng], 16);
       this.selectedPublicRoute = null;
       this.selectedLocation = loc;
+      // Zatvori explore-nearby sheet sa animacijom kad se otvori kartica
+      if (this.sheetExpanded) {
+        setTimeout(() => {
+          this.sheetExpanded = false;
+          this.cdr.detectChanges();
+        }, 80);
+      }
       this.analytics.track('location_opened', {
         postId: loc.id,
         postType: loc.postType,
@@ -1958,7 +1966,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private centerNavigationOnUser(animate: boolean): void {
     if (!this.map || !this.userPosition) return;
-    this.map.setView(this.userPosition, this.map.getZoom(), { animate });
+    this.map.setView(this.userPosition, this.map.getZoom(), { animate: true, duration: 0.25, noMoveStart: true });
   }
 
   /** Move user marker by updating LatLng directly — no DOM remove/add = no flicker */
@@ -2030,7 +2038,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Apply compass rotation to the map element with a smooth transition.
    *  deg=0 resets back to North. */
-  private applyMapRotation(deg: number, transition = '0.6s ease-out'): void {
+  private applyMapRotation(deg: number, transition = '0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)'): void {
     const el = this.getMapEl();
     if (!el) return;
     el.style.transformOrigin = '50% 50%';
@@ -2038,11 +2046,21 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     el.style.transform = deg === 0 ? '' : `rotate(${deg}deg)`;
   }
 
+  private _lastEmittedHeading: number | null = null;
+  private _headingDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Called when the navigation panel emits a new compass heading */
   onNavigationMapRotation(heading: number): void {
     this.navMapRotation = heading;
     if (!this.navFollowMode || !this.map) return;
-    this.applyMapRotation(-heading);
+    // Debounce rapid heading changes — apply only if diff > 1.5 degrees
+    if (this._lastEmittedHeading !== null && Math.abs(heading - this._lastEmittedHeading) < 1.5) return;
+    if (this._headingDebounceTimer) clearTimeout(this._headingDebounceTimer);
+    this._headingDebounceTimer = setTimeout(() => {
+      this._lastEmittedHeading = heading;
+      this.applyMapRotation(-heading);
+      this._headingDebounceTimer = null;
+    }, 50);
   }
 
   /** Called when the navigation panel emits the remaining route geometry */

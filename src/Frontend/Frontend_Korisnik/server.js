@@ -4,9 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// DEV INSTANCE — za povratak na testnu instancu, zameni vrednosti sa zakomentarisanim ispod
-const HTTPS_PORT = 10190; // TESTNA: 10187
-const HTTP_PORT = 10183;  // TESTNA: 10183 (nepromenjeno)
+const HTTPS_PORT = 10187;
+const HTTP_PORT = 10183;
 const DIST_PATH = path.join(__dirname, 'dist/Frontend_Korisnik/browser');
 
 const mimeTypes = {
@@ -63,10 +62,9 @@ try {
   console.warn('Dev sertifikat nije pronadjen, pokrecemo samo HTTP:', e.message);
 }
 
-// HTTP server — ZAKOMENTARISANO za dev instancu (port 10183 zauzet testnom instancom)
-// http.createServer(handleRequest).listen(HTTP_PORT, '0.0.0.0', () => {
-//   console.log(`Frontend Korisnik HTTP running on http://0.0.0.0:${HTTP_PORT}`);
-// });
+http.createServer(handleRequest).listen(HTTP_PORT, '0.0.0.0', () => {
+  console.log(`Frontend Korisnik HTTP running on http://0.0.0.0:${HTTP_PORT}`);
+});
 
 // HTTPS server (samo ako postoji sertifikat)
 if (sslOptions) {

@@ -1050,6 +1050,21 @@ html[data-theme='dark'] .link-text {
   border: 1px solid color-mix(in srgb, var(--green-500) 22%, transparent);
 }
 
+.account-actions-list {
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.account-actions-list .account-link-card {
+  border: 1px solid color-mix(in srgb, var(--green-500) 22%, transparent);
+  border-radius: var(--radius-lg);
+  background: var(--account-surface);
+  box-shadow: var(--shadow-sm);
+}
+
 .logout-row .account-link-title {
   color: var(--green-600);
 }
@@ -1330,7 +1345,20 @@ html[data-theme='dark'] .link-text {
 
   .account-section-logout {
     grid-column: 1 / -1;
-    max-width: 440px;
+    max-width: none;
+  }
+
+  .account-actions-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .account-actions-list .account-link-card {
+    min-height: 86px;
+  }
+
+  .account-actions-list .account-link-card + .account-link-card {
+    border-top: 1px solid color-mix(in srgb, var(--green-500) 22%, transparent);
   }
 }
 

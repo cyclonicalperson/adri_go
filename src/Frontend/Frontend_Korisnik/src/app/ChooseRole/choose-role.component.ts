@@ -19,6 +19,10 @@ export class ChooseRoleComponent {
     this.selectedRole = role;
   }
 
+  goBack(): void {
+    window.history.back();
+  }
+
   onContinue(): void {
     if (this.selectedRole === 'admin') {
       window.location.assign(`${environment.adminAppUrl}/register`);

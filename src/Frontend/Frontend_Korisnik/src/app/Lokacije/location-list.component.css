@@ -344,45 +344,64 @@
 
 .back-to-top-btn {
   position: fixed;
-  left: 50%;
-  right: auto;
-  bottom: calc(var(--mobile-footer-total-height) + 18px);
+  right: 16px;
+  bottom: calc(var(--mobile-footer-total-height) + 14px);
+  left: auto;
   z-index: var(--z-toast, 11020);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 16px;
-  border: 1px solid rgba(34, 197, 94, 0.28);
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.9);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--green-500, #22c55e);
   color: #fff;
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.26);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.45);
   cursor: pointer;
-  transform: translateX(-50%);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  transform: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+@media (min-width: 600px) {
+  .back-to-top-btn {
+    right: 20px;
+    width: 46px;
+    height: 46px;
+  }
 }
 
 @media (min-width: 900px) {
   .back-to-top-btn {
-    bottom: calc(var(--desktop-footer-height) + 22px);
+    right: 24px;
+    bottom: calc(var(--desktop-footer-height) + 20px);
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .back-to-top-btn {
+    right: 32px;
   }
 }
 
 .back-to-top-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   fill: currentColor;
   flex-shrink: 0;
 }
 
 .back-to-top-btn:hover {
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateY(-3px);
   background: #16a34a;
-  box-shadow: 0 20px 40px rgba(22, 163, 74, 0.28);
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.5);
+}
+
+.back-to-top-btn:active {
+  transform: scale(0.93);
 }
 
 .list-container.filters-open .sort-dropdown {
@@ -2105,61 +2124,4 @@
 }
 
 /* ── Back to top dugme ──────────────────────────────────────────── */
-.back-to-top-btn {
-  position: fixed;
-  bottom: 88px;         /* iznad mobile nav bara */
-  right: 20px;
-  z-index: 900;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: #22c55e;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.35);
-  transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
-  animation: btt-in 0.22s ease;
-}
-
-.back-to-top-btn:hover {
-  background: #16a34a;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
-}
-
-.back-to-top-btn:active {
-  transform: translateY(0);
-}
-
-.back-to-top-btn svg {
-  width: 22px;
-  height: 22px;
-  fill: #fff;
-}
-
-@keyframes btt-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.85); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
-}
-
-/* Na desktopu pomeri dugme iznad fixed footera */
-@media (min-width: 900px) {
-  .back-to-top-btn {
-    bottom: calc(var(--desktop-footer-height) + 16px);
-    right: 32px;
-  }
-}
-
-/* Dark mode */
-:host-context(html[data-theme='dark']) .back-to-top-btn {
-  background: #22c55e;
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.25);
-}
-
-:host-context(html[data-theme='dark']) .back-to-top-btn:hover {
-  background: #16a34a;
-}
+/* Stari back-to-top kružni stil uklonjen — koristi se novi pill stil iznad */

@@ -3,12 +3,48 @@
    ============================================================ */
 
 .role-container {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   font-family: var(--font-sans);
   background: linear-gradient(180deg, #fff 60%, rgba(134, 239, 172, 0.4) 100%);
   padding: 0 20px 40px;
+}
+
+.role-back-btn {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top, 0px) + 12px);
+  left: 20px;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--gray-700);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+  z-index: 2;
+}
+
+.role-back-btn:hover {
+  background: #fff;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.role-back-btn:active {
+  transform: scale(0.96);
+}
+
+.role-back-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
 }
 
 .header-area {
@@ -183,6 +219,15 @@
   color: #e5edf6;
 }
 
+:host-context(html[data-theme='dark']) .role-back-btn {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+:host-context(html[data-theme='dark']) .role-back-btn:hover {
+  background: #273449;
+}
+
 @media (min-width: 900px) {
   /* Full-screen layout — bez bočnih pruga */
   .role-container {
@@ -195,7 +240,14 @@
   }
 
   /* Unutrašnji wrapper — centriran sadržaj */
-  .role-container > * {
+  .role-back-btn {
+    top: 32px;
+    left: 40px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .role-container > :not(.role-back-btn) {
     width: min(600px, calc(100vw - 80px));
   }
 

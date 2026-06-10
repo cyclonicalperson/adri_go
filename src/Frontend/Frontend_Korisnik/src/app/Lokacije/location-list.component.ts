@@ -142,7 +142,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   searchFocused = false;
   showDropdown = false;
   destinationSearchLoading = false;
-  showBackToTop = false;
   private destinationSearchSubscription?: Subscription;
   private readonly destinationSearchInput$ = new Subject<string>();
 
@@ -603,10 +602,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   @HostListener('window:scroll')
   onWindowScroll(): void {
     this.updateBackToTopVisibility();
-  }
-
-  scrollToTop(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /** Zatvaramo dropdown kad input izgubi fokus (malo kašnjenje zbog mousedown na stavci) */

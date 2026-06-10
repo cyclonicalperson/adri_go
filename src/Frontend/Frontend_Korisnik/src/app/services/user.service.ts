@@ -72,6 +72,7 @@ export interface TouristRouteDetails {
   waypoints: TouristRouteWaypoint[];
   travelMode: string;
   scenicMode: boolean;
+  sourceRouteId?: number | null;
 }
 
 export interface PrivateRouteCalendarPayload {
