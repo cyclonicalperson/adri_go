@@ -23,6 +23,18 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const isPublicAuthRequest = PUBLIC_AUTH_REQUEST_PATHS.some(p => req.url.includes(p));
       const isOnPublicPage = PUBLIC_PAGE_PREFIXES.some(p => router.url.startsWith(p));
 
+      if (err.status === 429) {
+        return throwError(() => new HttpErrorResponse({
+          error: {
+            message: err.error?.message || 'Too many requests. Please wait a moment and try again.',
+          },
+          headers: err.headers,
+          status: err.status,
+          statusText: err.statusText || 'Too Many Requests',
+          url: err.url ?? undefined,
+        }));
+      }
+
       if (err.status === 401) {
         // KRITIČNO: javni auth endpointi (login, register, verify-email) i stranice bez
         // prijave ne smeju biti preusmerjeni — komponente obrađuju te greške same.

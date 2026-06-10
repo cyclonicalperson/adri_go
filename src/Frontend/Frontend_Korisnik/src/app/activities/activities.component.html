@@ -4,7 +4,7 @@
   <section class="controls">
     <div class="search-box">
       <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/></svg>
-      <input [(ngModel)]="searchQuery" placeholder="Search activities">
+      <input [(ngModel)]="searchQuery" (ngModelChange)="onSearchQueryChange($event)" placeholder="Search activities">
     </div>
     <select [(ngModel)]="sortOption">
       <option value="name-asc">Name A-Z</option>
@@ -52,14 +52,14 @@
         </span>
         <div>
           <h2>{{ activity.name }}</h2>
-          <p>{{ activity.locationName || activity.category }}</p>
+          <p>{{ activity.locationName || formatDynamicTag(activity.category) }}</p>
         </div>
       </div>
       <p class="description">{{ activity.description || 'No description available.' }}</p>
       <div class="tags">
-        <span *ngIf="activity.duration">{{ activity.duration }}</span>
-        <span *ngIf="activity.difficulty">{{ activity.difficulty }}</span>
-        <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} places</span>
+        <span *ngIf="activity.duration">{{ formatDynamicTag(activity.duration) }}</span>
+        <span *ngIf="activity.difficulty">{{ formatDynamicTag(activity.difficulty) }}</span>
+        <span *ngIf="activity.linkedPosts">{{ activity.linkedPosts }} {{ translateLabel('places') }}</span>
         <span class="activity-tag" *ngFor="let tag of getTagList(activity.tags)">{{ tag }}</span>
       </div>
       <button class="primary-btn" (click)="openActivity(activity)">

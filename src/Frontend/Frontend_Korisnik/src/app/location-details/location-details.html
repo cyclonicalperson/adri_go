@@ -24,7 +24,7 @@
         style="cursor:pointer;">
         <img
           *ngIf="!images.length"
-          src="assets/Budva.jpg"
+          src="assets/placeholder.jpg"
           alt=""
           class="hero-image active">
         <img
@@ -97,7 +97,7 @@
         </span>
         <span class="badge rating">
           <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-          {{ location.avgRating ? (location.avgRating | number:'1.1-1') : 'N/A' }}
+          {{ location.avgRating != null ? (location.avgRating | number:'1.1-1') : '0.0' }}
           <span class="review-count">({{ location.reviewCount }})</span>
         </span>
       </div>
@@ -114,9 +114,10 @@
       <!-- Address -->
       <p class="address" *ngIf="location.address || location.regionName">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-        {{ location.address || location.regionName }}
-        <span *ngIf="distanceKm !== null" style="margin-left:10px;background:#f0fdf4;color:#15803d;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;">
-          📍 {{ distanceKm }} km away
+        <span class="address-text">{{ location.address || location.regionName }}</span>
+        <span *ngIf="distanceKm !== null" class="distance-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.55 9.92 6.25 11.84a1 1 0 0 0 1.5 0C14.45 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+          <span>{{ distanceKm }} km away</span>
         </span>
       </p>
 

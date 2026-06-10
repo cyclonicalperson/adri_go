@@ -7,7 +7,7 @@ import { FormsModule }           from '@angular/forms';
 import { Router }                from '@angular/router';
 import { ChatCard, ChatService, ChatMessage } from '../services/chat.service';
 import { AuthService }           from '../services/auth.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType }        from '../utils/post-type.utils';
 
 @Component({
@@ -37,10 +37,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   readonly touristName = computed(() => this.auth.currentTourist?.name ?? null);
 
   readonly suggestions = [
-    'Šta da posetim u Budvi?',
-    'Preporuči mi hiking rute za početnike',
-    'Koji su popularni restorani u Kotoru?',
-    'Šta je novo u Durmitoru?',
+    'What should I visit in Budva?',
+    'Recommend beginner hiking routes',
+    'Which restaurants are popular in Kotor?',
+    'What is new in Durmitor?',
   ];
 
   ngOnInit(): void {
@@ -133,7 +133,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
   getCardImage(card: ChatCard): string {
     const image = card.imageUrl || '';
-    return resolveBackendAssetUrl(image, 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(image, DEFAULT_LOCATION_IMAGE);
   }
 
   getCardCategory(card: ChatCard): string {

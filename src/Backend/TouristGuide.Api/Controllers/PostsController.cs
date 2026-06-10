@@ -137,6 +137,12 @@ namespace TouristGuide.Api.Controllers
                 if (publicError is not null)
                     return publicError;
 
+                if (lat.HasValue && lng.HasValue)
+                {
+                    publicQuery = ApplyDistanceFilterAndOrdering(publicQuery!, lat.Value, lng.Value);
+                    return Ok(await BuildPagedPostsResponse(publicQuery, page, pageSize, sortBy: "distance"));
+                }
+
                 return Ok(await BuildPagedPostsResponse(publicQuery!, page, pageSize));
             }
 
@@ -194,24 +200,7 @@ namespace TouristGuide.Api.Controllers
 
             if (!isRegionSearch && lat.HasValue && lng.HasValue)
             {
-                // Za obicnu tekstualnu pretragu zadrzavamo rezultate blizu korisnika/centra mape.
-                // Koristimo aproksimaciju za mali radius koju SQL moze da filtrira i sortira.
-                const double radiusKm = 10;
-                var lngKmFactor = 111.32m * (decimal)Math.Cos(ToRadians((double)lat.Value));
-                var radiusSquared = (decimal)(radiusKm * radiusKm);
-
-                query = query
-                    .Where(p => p.Lat != null && p.Lng != null)
-                    .Where(p =>
-                        ((p.Lat!.Value - lat.Value) * 111.32m * (p.Lat.Value - lat.Value) * 111.32m) +
-                        ((p.Lng!.Value - lng.Value) * lngKmFactor * (p.Lng.Value - lng.Value) * lngKmFactor) <= radiusSquared);
-
-                query = query
-                    .OrderBy(p =>
-                        ((p.Lat!.Value - lat.Value) * 111.32m * (p.Lat.Value - lat.Value) * 111.32m) +
-                        ((p.Lng!.Value - lng.Value) * lngKmFactor * (p.Lng.Value - lng.Value) * lngKmFactor))
-                    .ThenByDescending(p => p.AvgRating ?? 0);
-
+                query = ApplyDistanceFilterAndOrdering(query!, lat.Value, lng.Value);
                 return Ok(await BuildPagedPostsResponse(query, page, pageSize, sortBy: "distance"));
             }
 
@@ -616,6 +605,16 @@ namespace TouristGuide.Api.Controllers
                     post.PublishedAt = DateTime.UtcNow;
 
                 post.Status = statusLower;
+            }
+
+            if (string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) &&
+                post.ProposedRegionName is not null)
+            {
+                if (!IsSuperAdmin())
+                    return Forbid();
+
+                post.RegionId = await ResolveRegionProposalAsync(post.ProposedRegionName, post.Country);
+                post.ProposedRegionName = null;
             }
 
             // Ažuriranje tag veza
@@ -1041,6 +1040,25 @@ namespace TouristGuide.Api.Controllers
 
         private static double ToRadians(double value) => value * Math.PI / 180;
 
+        private static IQueryable<Post> ApplyDistanceFilterAndOrdering(IQueryable<Post> query, decimal lat, decimal lng)
+        {
+            // Za "near me" pretrage zadrzavamo rezultate blizu korisnika/centra mape.
+            // Koristimo aproksimaciju za mali radius koju SQL moze da filtrira i sortira.
+            const double radiusKm = 10;
+            var lngKmFactor = 111.32m * (decimal)Math.Cos(ToRadians((double)lat));
+            var radiusSquared = (decimal)(radiusKm * radiusKm);
+
+            return query
+                .Where(p => p.Lat != null && p.Lng != null)
+                .Where(p =>
+                    ((p.Lat!.Value - lat) * 111.32m * (p.Lat.Value - lat) * 111.32m) +
+                    ((p.Lng!.Value - lng) * lngKmFactor * (p.Lng.Value - lng) * lngKmFactor) <= radiusSquared)
+                .OrderBy(p =>
+                    ((p.Lat!.Value - lat) * 111.32m * (p.Lat.Value - lat) * 111.32m) +
+                    ((p.Lng!.Value - lng) * lngKmFactor * (p.Lng.Value - lng) * lngKmFactor))
+                .ThenByDescending(p => p.AvgRating ?? 0);
+        }
+
         private static IQueryable<Post> ApplyPostSearchTerms(IQueryable<Post> query, IReadOnlyCollection<string> terms)
         {
             foreach (var term in terms)
@@ -1056,6 +1074,7 @@ namespace TouristGuide.Api.Controllers
                         (p.Address != null && p.Address.ToLower().Contains(term)) ||
                         p.PostType.ToLower().Contains(term) ||
                         p.Country.ToLower().Contains(term) ||
+                        p.PostTags.Any(pt => pt.Tag != null && pt.Tag.Name.ToLower().Contains(term)) ||
                         (p.Region != null && (
                             p.Region.Name.ToLower().Contains(term) ||
                             p.Region.Country.ToLower().Contains(term))))
@@ -1068,6 +1087,9 @@ namespace TouristGuide.Api.Controllers
                         p.PostType.ToLower().Contains(alternateTerm) ||
                         p.Country.ToLower().Contains(term) ||
                         p.Country.ToLower().Contains(alternateTerm) ||
+                        p.PostTags.Any(pt => pt.Tag != null && (
+                            pt.Tag.Name.ToLower().Contains(term) ||
+                            pt.Tag.Name.ToLower().Contains(alternateTerm))) ||
                         (p.Region != null && (
                             p.Region.Name.ToLower().Contains(term) ||
                             p.Region.Name.ToLower().Contains(alternateTerm) ||
@@ -1081,6 +1103,26 @@ namespace TouristGuide.Api.Controllers
         private static string? GetAlternateSearchTerm(string term)
         {
             // Podrzavamo jednostavne varijante pisanja bez izlaska iz EF query-ja.
+            if (string.Equals(term, "plaza", StringComparison.OrdinalIgnoreCase))
+                return "pla\u017ea";
+
+            if (string.Equals(term, "plaze", StringComparison.OrdinalIgnoreCase))
+                return "pla\u017ee";
+
+            if (string.Equals(term, "beach", StringComparison.OrdinalIgnoreCase))
+                return "pla\u017ea";
+
+            if (string.Equals(term, "beaches", StringComparison.OrdinalIgnoreCase))
+                return "pla\u017ee";
+
+            if (string.Equals(term, "srbija", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "srbiji", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "srbiju", StringComparison.OrdinalIgnoreCase))
+                return "serbia";
+
+            if (string.Equals(term, "serbian", StringComparison.OrdinalIgnoreCase))
+                return "serbia";
+
             if (term.Contains("dj", StringComparison.OrdinalIgnoreCase))
                 return term.Replace("dj", "đ", StringComparison.OrdinalIgnoreCase);
 

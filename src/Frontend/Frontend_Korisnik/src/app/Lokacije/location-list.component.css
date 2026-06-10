@@ -8,7 +8,8 @@
   flex-direction: column;
   background: var(--gray-50);
   font-family: var(--font-sans);
-  padding-bottom: var(--mobile-footer-space);
+  padding-bottom: var(--mobile-footer-total-height);
+  overflow-x: hidden;
 }
 
 /* ── STICKY TOP WRAPPER ─────────────────────────────────────── */
@@ -324,8 +325,11 @@
 .feedback-toast {
   position: fixed;
   bottom: var(--mobile-footer-space);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  margin-inline: auto;
   background: var(--gray-900);
   color: #fff;
   padding: 12px 22px;
@@ -336,6 +340,53 @@
   pointer-events: none;
   white-space: nowrap;
   box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+.back-to-top-btn {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: calc(var(--mobile-footer-total-height) + 18px);
+  z-index: var(--z-toast, 11020);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.26);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+@media (min-width: 900px) {
+  .back-to-top-btn {
+    bottom: calc(var(--desktop-footer-height) + 22px);
+  }
+}
+
+.back-to-top-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.back-to-top-btn:hover {
+  transform: translateX(-50%) translateY(-2px);
+  background: #16a34a;
+  box-shadow: 0 20px 40px rgba(22, 163, 74, 0.28);
+}
+
+.list-container.filters-open .sort-dropdown {
+  display: none;
 }
 
 .auth-modal-overlay {
@@ -1058,7 +1109,7 @@
 .type-filter-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: var(--z-popup-backdrop, 11000);
   background: rgba(15,23,42,0.48);
   display: flex;
   align-items: flex-end;
@@ -1067,6 +1118,8 @@
 }
 
 .type-filter-panel {
+  position: relative;
+  z-index: var(--z-popup-panel, 11010);
   width: 100%;
   max-width: 560px;
   max-height: min(78vh, 680px);
@@ -1272,7 +1325,7 @@
 /* ── DESKTOP adjustments ─────────────────────────────────────── */
 @media (min-width: 900px) {
   .list-container {
-    padding-bottom: var(--mobile-footer-space);
+    padding-bottom: var(--desktop-footer-height);
   }
 
   .section-header { padding: 14px 32px 8px; }
@@ -1602,13 +1655,18 @@
 .search-line {
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
 .search-line .search-row-wrapper {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.search-line .search-intent-summary {
+  flex: 0 0 100%;
+  width: 100%;
 }
 
 .search-input-wrapper {
@@ -1857,6 +1915,14 @@
     padding: 0 13px;
   }
 
+  .search-line .search-row-wrapper {
+    flex-basis: 0;
+  }
+
+  .search-actions-row {
+    flex: 0 0 auto;
+  }
+
   .search-input-wrapper .main-search-btn {
     min-width: 42px;
     width: 42px;
@@ -2036,4 +2102,64 @@
 
 .moja-skrol-lista:active {
   cursor: grabbing; /* Kad klikneš, šaka se zatvori */
+}
+
+/* ── Back to top dugme ──────────────────────────────────────────── */
+.back-to-top-btn {
+  position: fixed;
+  bottom: 88px;         /* iznad mobile nav bara */
+  right: 20px;
+  z-index: 900;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #22c55e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.35);
+  transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
+  animation: btt-in 0.22s ease;
+}
+
+.back-to-top-btn:hover {
+  background: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
+}
+
+.back-to-top-btn:active {
+  transform: translateY(0);
+}
+
+.back-to-top-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: #fff;
+}
+
+@keyframes btt-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Na desktopu pomeri dugme iznad fixed footera */
+@media (min-width: 900px) {
+  .back-to-top-btn {
+    bottom: calc(var(--desktop-footer-height) + 16px);
+    right: 32px;
+  }
+}
+
+/* Dark mode */
+:host-context(html[data-theme='dark']) .back-to-top-btn {
+  background: #22c55e;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.25);
+}
+
+:host-context(html[data-theme='dark']) .back-to-top-btn:hover {
+  background: #16a34a;
 }

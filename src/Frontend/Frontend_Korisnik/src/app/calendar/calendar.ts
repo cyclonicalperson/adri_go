@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 import { UserService, CalendarItem, PendingSchedule } from '../services/user.service';
 import { AuthService } from '../services/auth.service';
 import { SiteTranslateService } from '../services/site-translate.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
@@ -108,7 +108,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   /** Human label describing the date window an event can be scheduled in. */
   get schedulingRangeLabel(): string {
     if (!this.eventStartFull && !this.eventEndFull) return '';
-    const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const fmt = (d: Date) => d.toLocaleDateString(this.locale, { day: 'numeric', month: 'short' });
     if (this.eventStartFull && this.eventEndFull) {
       return this.sameDay(this.eventStartFull, this.eventEndFull)
         ? fmt(this.eventStartFull)
@@ -195,7 +195,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   get scheduleDayLabel(): string {
-    return this.scheduleDay?.toLocaleDateString('en-GB', {
+    return this.scheduleDay?.toLocaleDateString(this.locale, {
       weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
     }) ?? '';
   }
@@ -226,22 +226,22 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   confirmSchedule(): void {
     if (this.isSavingSchedule || !this.schedulingItem || !this.scheduleDay) return;
-    if (!this.scheduleTime) { this.scheduleError = 'Choose a time.'; return; }
+    if (!this.scheduleTime) { this.scheduleError = this.t('Choose a time.'); return; }
 
     const [h, m] = this.scheduleTime.split(':').map(Number);
     const dt = new Date(this.scheduleDay);
     dt.setHours(h || 0, m || 0, 0, 0);
 
     if (dt < new Date()) {
-      this.scheduleError = 'Choose a future time.';
+      this.scheduleError = this.t('Choose a future time.');
       return;
     }
     if (this.eventStartFull && dt < this.eventStartFull) {
-      this.scheduleError = 'This is before the event starts.';
+      this.scheduleError = this.t('This is before the event starts.');
       return;
     }
     if (this.eventEndFull && dt > this.eventEndFull) {
-      this.scheduleError = 'This is after the event ends.';
+      this.scheduleError = this.t('This is after the event ends.');
       return;
     }
 
@@ -269,8 +269,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
         this.eventEndFull     = null;
         this.setBodyScrollLock(false);
         this.addedEventTitle = res?.alreadyAdded
-          ? `"${item.title}" is already in your calendar`
-          : `"${item.title}" added to your calendar!`;
+          ? `"${item.title}" ${this.t('is already in your calendar')}`
+          : `"${item.title}" ${this.t('added to your calendar!')}`;
         setTimeout(() => { this.addedEventTitle = ''; this.cdr.detectChanges(); }, 4000);
         this.loadCalendar();
         this.cdr.detectChanges();
@@ -354,7 +354,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   getEventImage(event: DisplayEvent): string {
-    return resolveBackendAssetUrl(event.imageUrl, 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(event.imageUrl, DEFAULT_LOCATION_IMAGE);
   }
 
   get dayNames(): string[] {
@@ -380,9 +380,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   /** Short month names for the picker grid (Jan, Feb, …). */
   get monthNames(): string[] {
-    return Array.from({ length: 12 }, (_, i) =>
-      new Date(2023, i, 1).toLocaleDateString('en-GB', { month: 'short' })
-    );
+    return Array.from({ length: 12 }, (_, i) => this.formatMonthPickerName(i));
   }
 
   togglePicker(): void {
@@ -518,11 +516,10 @@ export class CalendarComponent implements OnInit, OnDestroy {
   /** Human-readable breakdown, e.g. "6 destinations · 1 event · 1 route". */
   get itinerarySummary(): string {
     const parts: string[] = [];
-    const pluralize = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-    if (this.destinationCount > 0) parts.push(pluralize(this.destinationCount, 'destination'));
-    if (this.eventCount > 0) parts.push(pluralize(this.eventCount, 'event'));
-    if (this.routeCount > 0) parts.push(pluralize(this.routeCount, 'route'));
-    return parts.length ? parts.join(' · ') : 'No scheduled items yet';
+    if (this.destinationCount > 0) parts.push(this.formatCount(this.destinationCount, 'destination', 'destinations'));
+    if (this.eventCount > 0) parts.push(this.formatCount(this.eventCount, 'event', 'events'));
+    if (this.routeCount > 0) parts.push(this.formatCount(this.routeCount, 'route', 'routes'));
+    return parts.length ? parts.join(' · ') : this.translate.instant('No scheduled items yet');
   }
 
   isTomorrow(event: DisplayEvent): boolean {
@@ -537,13 +534,13 @@ export class CalendarComponent implements OnInit, OnDestroy {
   formatShortDate(event: DisplayEvent): string {
     const d = this.eventDate(event);
     if (!d) return '';
-    return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }).toUpperCase();
+    return d.toLocaleDateString(this.locale, { month: 'short', day: 'numeric' }).toUpperCase();
   }
 
   formatShortDateMixed(event: DisplayEvent): string {
     const d = this.eventDate(event);
     if (!d) return '';
-    return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString(this.locale, { month: 'short', day: 'numeric' });
   }
 
   /** Deterministic palette color per event (used for sidebar accents and chip color). */
@@ -572,7 +569,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const date = this.eventDate(event);
     const dateLabel = date
       ? date.toLocaleDateString(this.locale, { day: '2-digit', month: '2-digit' })
-      : 'No date';
+      : this.t('No date');
 
     return event.time ? `${dateLabel} - ${event.time}` : dateLabel;
   }
@@ -581,7 +578,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const date = this.eventDate(event);
     const dateLabel = date
       ? date.toLocaleDateString(this.locale, { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })
-      : 'No date';
+      : this.t('No date');
 
     return event.time ? `${dateLabel} ${this.timeSeparator} ${event.time}` : dateLabel;
   }
@@ -601,7 +598,22 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   private get timeSeparator(): string {
-    return this.translate.currentLanguage === 'sr' ? 'u' : 'at';
+    return this.t('at');
+  }
+
+  t(value: string): string {
+    return this.translate.instant(value);
+  }
+
+  private formatCount(count: number, singularKey: string, pluralKey: string): string {
+    return `${count} ${this.translate.instant(count === 1 ? singularKey : pluralKey)}`;
+  }
+
+  private formatMonthPickerName(monthIndex: number): string {
+    const month = new Date(2023, monthIndex, 1)
+      .toLocaleDateString(this.locale, { month: 'short' })
+      .replace(/\.$/, '');
+    return month ? month.charAt(0).toLocaleUpperCase(this.locale) + month.slice(1) : month;
   }
 
   private buildCalendar(): void {

@@ -184,6 +184,14 @@ builder.Services.Configure<GzipCompressionProviderOptions>(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            message = "Too many requests. Please wait a moment and try again."
+        }, cancellationToken);
+    };
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetSlidingWindowLimiter(
             GetRateLimitPartitionKey(context),

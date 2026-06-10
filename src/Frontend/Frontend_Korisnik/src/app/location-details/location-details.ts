@@ -9,6 +9,7 @@ import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { SiteTranslateService } from '../services/site-translate.service';
+import { LocationStateService } from '../services/location-state.service';
 import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 import { formatPostType } from '../utils/post-type.utils';
@@ -126,6 +127,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     private analytics: TouristAnalyticsService,
     private preferences: TouristPreferencesService,
     private siteTranslate: SiteTranslateService,
+    private locationState: LocationStateService,
     private cdr: ChangeDetectorRef
   ) { }
 
@@ -159,7 +161,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       attribution: '\u00a9 OpenStreetMap'
     }).addTo(this.detailMap);
 
-    // Isti tip pina kao na map-home
     const category = (this.location?.postType || this.location?.category || 'default').toLowerCase().replace(/\s+/g, '_');
     const catStyle = this.categoryColors[category] ?? this.categoryColors['other'];
     const iconPath = this.svgIcons[catStyle.icon] ?? this.svgIcons['default'];
@@ -168,7 +169,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     const icon = L.divIcon({ html: pinHtml, className: '', iconSize: [36, 36], iconAnchor: [18, 36] });
     L.marker([this.locationLat, this.locationLng], { icon }).addTo(this.detailMap);
 
-    // Klik na mapu otvara map-home sa selektovanom objavom
     el.addEventListener('click', () => this.openOnMap());
     el.style.cursor = 'pointer';
   }
@@ -184,8 +184,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) { this.router.navigate(['/location-list']); return; }
 
-    // One view per page navigation — update the displayed count from the response
-    // so the user sees the correct post-visit tally (not the pre-visit snapshot).
     this.locationService.registerView(id).subscribe({
       next: (res) => {
         if (res.viewCount !== undefined && this.location) {
@@ -196,7 +194,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       error: () => {},
     });
 
-    // Request user geolocation for distance display
     if (this.preferences.snapshot.locationSharing && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -207,7 +204,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
             const lng = (this.location as any).lng ?? (this.location as any).longitude;
             if (lat && lng) this.distanceKm = this.haversineKm(userLat, userLng, lat, lng);
           } else {
-            // Save for later when location loads
             (this as any)._userPos = [userLat, userLng];
           }
           this.cdr.markForCheck();
@@ -222,7 +218,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         this.images   = this.locationService.parseImages(loc.images);
         this.currentImageIndex = 0;
 
-        // Izvuci koordinate za mini mapu
         this.locationLat = (loc as any).lat ?? (loc as any).latitude ?? null;
         this.locationLng = (loc as any).lng ?? (loc as any).longitude ?? null;
         if (this.locationLat && this.locationLng) {
@@ -233,9 +228,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
           this.location.isLiked = false;
           (this.location as any).isSaved = false;
         } else {
-          // Logged-in: API returns isLiked and isSaved from DB
-          // isLiked is already on Location interface
-          // isSaved comes from API as well — normalize to boolean
           if ((loc as any).isSaved !== undefined) {
             (this.location as any).isSaved = !!(loc as any).isSaved;
           } else {
@@ -246,7 +238,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
           }
         }
 
-        // If geolocation came first, calculate distance now
         const savedPos = (this as any)._userPos as [number, number] | undefined;
         if (savedPos) {
           const lat = (loc as any).lat ?? (loc as any).latitude;
@@ -268,7 +259,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     this.locationService.getReviews(id).subscribe({
       next: (res) => {
         this.reviews = res.data ?? [];
-        // Sync reviewCount with the actual count returned by the API
         if (this.location && res.total !== undefined) {
           this.location.reviewCount = res.total;
         }
@@ -280,7 +270,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       },
       error: (err) => console.error('getReviews error:', err)
     });
-
   }
 
   openAuthModal(): void  { this.showAuthModal = true; }
@@ -296,13 +285,14 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
-    // Logged-in: use API — always update count locally to avoid stale-overwrite bug
     if (this.location.isLiked) {
       this.locationService.unlikeLocation(this.location.id).subscribe({
         next: (res) => {
           if (this.location) {
             this.location.isLiked = false;
-            this.location.likeCount = Math.max(0, res.likeCount ?? (this.location.likeCount || 0) - 1);
+            this.location.likeCount = Math.max(0, (this.location.likeCount || 0) - 1);
+            // ✅ Obavesti ostale komponente o promeni
+            this.locationState.emit({ id: this.location.id, isLiked: false, likeCount: this.location.likeCount });
           }
           this.likeMessage = 'Like removed';
           this.clearToastAfter('likeMessage');
@@ -319,7 +309,9 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         next: (res) => {
           if (this.location) {
             this.location.isLiked = true;
-            this.location.likeCount = res.likeCount ?? (this.location.likeCount || 0) + 1;
+            this.location.likeCount = (this.location.likeCount || 0) + 1;
+            // ✅ Obavesti ostale komponente o promeni
+            this.locationState.emit({ id: this.location.id, isLiked: true, likeCount: this.location.likeCount });
           }
           this.likeMessage = '❤️ Liked!';
           this.clearToastAfter('likeMessage');
@@ -366,16 +358,17 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
-    // Logged-in: toggle via API — update saveCount locally (API doesn't return it)
     this.locationService.toggleSaveLocation(this.location.id).subscribe({
       next: (res) => {
         if (this.location) {
           (this.location as any).isSaved = res.isSaved;
-          this.location.saveCount =
-            res.saveCount ??
-            (res.isSaved
-              ? (this.location.saveCount || 0) + 1
-              : Math.max(0, (this.location.saveCount || 0) - 1));
+          if (res.isSaved) {
+            this.location.saveCount = (this.location.saveCount || 0) + 1;
+          } else {
+            this.location.saveCount = Math.max(0, (this.location.saveCount || 0) - 1);
+          }
+          // ✅ Obavesti ostale komponente o promeni
+          this.locationState.emit({ id: this.location.id, isSaved: res.isSaved, saveCount: this.location.saveCount });
         }
         this.saveMessage = res.isSaved ? '🔖 Saved!' : 'Removed from saved';
         this.clearToastAfter('saveMessage');
@@ -426,7 +419,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         hours: String(v)
       }));
     } catch {
-      // Not JSON — return raw string as-is
       return [{ day: '', hours: raw }];
     }
   }
@@ -446,7 +438,6 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       const nowMins = now.getHours() * 60 + now.getMinutes();
       const openMins = toMins(openStr);
       const closeMins = toMins(closeStr);
-      // Handle overnight hours (e.g. 22:00–06:00): closeMins < openMins
       if (closeMins <= openMins) {
         return nowMins >= openMins || nowMins < closeMins;
       }
@@ -455,7 +446,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.siteTranslate.instant(formatPostType(type));
   }
 
   get isEvent(): boolean {
@@ -479,6 +470,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
     if (dx < 0) this.nextImage(); else this.prevImage();
   }
+
   get eventHasPassed(): boolean {
     const eventRange = this.getEventRange();
     return this.isEvent && !!eventRange?.end && eventRange.end < new Date();
@@ -587,6 +579,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     this.router.navigate(['/map-home'], {
       queryParams: {
         planner: '1',
+        focusRoute: '1',
         focusId: this.location.id,
       }
     });
@@ -638,17 +631,11 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         this.clearToastAfter('saveMessage');
         this.cdr.markForCheck();
       }).catch(() => {
-        // Last resort: prompt
         prompt('Copy this link:', url);
       });
     }
   }
 
-  /**
-   * Starts the calendar-scheduling flow: navigates to the Calendar page where
-   * the user picks the day/time. Events carry their date window so the calendar
-   * only allows days while the event is running.
-   */
   openCalendarScheduler(): void {
     if (!this.location) return;
     if (!this.authService.isLoggedIn) {

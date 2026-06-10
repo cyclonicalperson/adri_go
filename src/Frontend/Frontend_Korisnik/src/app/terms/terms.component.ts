@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
@@ -9,7 +9,10 @@ import { Router } from '@angular/router';
   templateUrl: './terms.component.html',
   styleUrls: ['./terms.component.css']
 })
-export class TermsComponent {
+export class TermsComponent implements OnInit {
   constructor(private router: Router) {}
+  ngOnInit(): void {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }
   goBack() { window.history.back(); }
 }

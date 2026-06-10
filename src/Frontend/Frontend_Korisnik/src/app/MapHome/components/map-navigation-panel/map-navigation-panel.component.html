@@ -14,10 +14,10 @@
         </svg>
       </div>
       <div class="nav-arrived-text">
-        <strong>You have arrived</strong>
-        <span>At your destination</span>
+        <strong>{{ t('You have arrived') }}</strong>
+        <span>{{ t('At your destination') }}</span>
       </div>
-      <button class="nav-done-btn" (click)="exitNavigation.emit()">Done</button>
+      <button class="nav-done-btn" (click)="exitNavigation.emit()">{{ t('Done') }}</button>
     </div>
   </div>
 </ng-container>
@@ -28,8 +28,8 @@
     <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
     </svg>
-    <span>Location denied — enable GPS to navigate.</span>
-    <button class="nav-exit-small" (click)="exitNavigation.emit()">Exit</button>
+    <span>{{ t('Location denied - enable GPS to navigate.') }}</span>
+    <button class="nav-exit-small" (click)="exitNavigation.emit()">{{ t('Exit') }}</button>
   </div>
 </ng-container>
 
@@ -57,8 +57,8 @@
       </div>
       <div class="nav-street-label">
         {{ nextLabel(nextStep) }}
-        <ng-container *ngIf="nextStep?.streetName"> onto {{ nextStep!.streetName }}</ng-container>
-        <ng-container *ngIf="!nextStep">Follow the route</ng-container>
+        <ng-container *ngIf="nextStep?.streetName"> {{ t('onto') }} {{ nextStep!.streetName }}</ng-container>
+        <ng-container *ngIf="!nextStep">{{ t('Follow the route') }}</ng-container>
       </div>
     </div>
 
@@ -80,8 +80,8 @@
       [style.transform]="'rotate(' + maneuverRotation(nextNextStep) + 'deg)'">
       <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
     </svg>
-    <span class="nav-then-label">Then {{ nextLabel(nextNextStep) }}
-      <ng-container *ngIf="nextNextStep.streetName"> onto <strong>{{ nextNextStep.streetName }}</strong></ng-container>
+    <span class="nav-then-label">{{ t('Then') }} {{ nextLabel(nextNextStep) }}
+      <ng-container *ngIf="nextNextStep.streetName"> {{ t('onto') }} <strong>{{ nextNextStep.streetName }}</strong></ng-container>
     </span>
   </div>
 
@@ -95,19 +95,19 @@
       [style.transform]="'rotate(' + maneuverRotation(currentStep) + 'deg)'">
       <path d="M12 2.5 L19 21 L12 17 L5 21 Z"/>
     </svg>
-    <span class="nav-then-label">Now: {{ currentStep.streetName || currentStep.instruction || 'Follow the route' }}</span>
+    <span class="nav-then-label">{{ t('Now:') }} {{ currentStep.streetName || currentStep.instruction || t('Follow the route') }}</span>
   </div>
 
   <!-- GPS acquiring indicator (shown instead of "then" while waiting) -->
   <div class="nav-acquiring" *ngIf="!userPosition">
     <div class="nav-acquiring-spinner"></div>
-    <span>Acquiring GPS signal…</span>
+    <span>{{ t('Acquiring GPS signal...') }}</span>
   </div>
 
   <!-- REROUTING indicator -->
   <div class="nav-rerouting" *ngIf="isRerouting">
     <div class="nav-acquiring-spinner"></div>
-    <span>Recalculating route…</span>
+    <span>{{ t('Recalculating route...') }}</span>
   </div>
 
   <!-- DESKTOP-ONLY: scrollable step list -->
@@ -134,7 +134,7 @@
   <!-- DESKTOP-ONLY: summary inside panel -->
   <div class="nav-panel-summary nav-desktop-only">
     <div class="nav-panel-summary-item">
-      <span class="nav-sum-kicker">Remaining</span>
+      <span class="nav-sum-kicker">{{ t('Remaining') }}</span>
       <strong>{{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : '–' }}</strong>
     </div>
     <div class="nav-sum-divider"></div>
@@ -144,13 +144,13 @@
     </div>
     <div class="nav-sum-divider"></div>
     <div class="nav-panel-summary-item">
-      <span class="nav-sum-kicker">Mode</span>
+      <span class="nav-sum-kicker">{{ t('Mode') }}</span>
       <strong>{{ modeLabel }}</strong>
     </div>
-    <button class="nav-exit-panel" (click)="exitNavigation.emit()">Exit</button>
+    <button class="nav-exit-panel" (click)="exitNavigation.emit()">{{ t('Exit') }}</button>
   </div>
 
-  <div class="nav-mode-switch nav-desktop-only" aria-label="Navigation mode">
+  <div class="nav-mode-switch nav-desktop-only" [attr.aria-label]="t('Navigation mode')">
     <button
       type="button"
       *ngFor="let option of travelModes"
@@ -158,7 +158,7 @@
       [class.active]="travelMode === option.mode"
       [attr.aria-pressed]="travelMode === option.mode"
       (click)="selectTravelMode(option.mode)">
-      {{ option.label }}
+      {{ t(option.label) }}
     </button>
   </div>
 
@@ -182,7 +182,7 @@
         <ng-container *ngIf="remainingMin > 0"> · {{ formatDuration(remainingMin) }}</ng-container>
       </span>
     </div>
-    <div class="nav-bottom-mode-switch" aria-label="Navigation mode">
+    <div class="nav-bottom-mode-switch" [attr.aria-label]="t('Navigation mode')">
       <button
         type="button"
         *ngFor="let option of travelModes"
@@ -190,7 +190,7 @@
         [class.active]="travelMode === option.mode"
         [attr.aria-pressed]="travelMode === option.mode"
         (click)="selectTravelMode(option.mode)">
-        {{ option.label }}
+        {{ t(option.label) }}
       </button>
     </div>
   </div>

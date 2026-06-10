@@ -77,6 +77,8 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
   private heatLayer!: L.LayerGroup;
   private selectedPin: L.Marker | null = null;
   private markerRefs = new Map<number, L.Marker>();
+  private popupToOpenMarkerId: number | null = null;
+  private lastSelectedMarkerId: number | null = null;
   private readonly clusterMaxZoom = 15;
   private readonly clusterGridSize = 72;
 
@@ -99,6 +101,11 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.map) return;
+
+    if (changes['selectedMarkerId'] && this.selectedMarkerId !== this.lastSelectedMarkerId) {
+      this.popupToOpenMarkerId = this.selectedMarkerId;
+      this.lastSelectedMarkerId = this.selectedMarkerId;
+    }
 
     if (changes['markers'] || changes['selectedMarkerId']) this.zone.runOutsideAngular(() => this.renderMarkers());
     if (changes['paths']) this.zone.runOutsideAngular(() => this.renderPaths());
@@ -137,6 +144,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
     if (!marker && !markerData) return;
 
     this.selectedMarkerId = markerId;
+    this.popupToOpenMarkerId = markerId;
     this.renderMarkers();
     const nextMarker = this.markerRefs.get(markerId);
     const target = nextMarker?.getLatLng() ?? L.latLng(markerData!.lat, markerData!.lng);
@@ -145,6 +153,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
       duration: 0.8,
     });
     nextMarker?.openPopup();
+    this.popupToOpenMarkerId = null;
   }
 
   private initMap(): void {
@@ -279,8 +288,9 @@ export class MapComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy
       this.markerLayer.addLayer(marker);
       this.markerRefs.set(m.id, marker);
 
-      if (isSelected) {
+      if (isSelected && this.popupToOpenMarkerId === m.id) {
         setTimeout(() => marker.openPopup(), 0);
+        this.popupToOpenMarkerId = null;
       }
   }
 

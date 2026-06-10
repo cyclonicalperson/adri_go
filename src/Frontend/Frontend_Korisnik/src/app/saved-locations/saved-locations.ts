@@ -6,14 +6,15 @@ import { AuthService } from '../services/auth.service';
 import { FilterStateService } from '../services/filter-state.service';
 import { Location, LocationService } from '../services/location.service';
 import { RoutingService } from '../services/routing.service';
-import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { SavedRouteLibraryItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
-import { formatPostType } from '../utils/post-type.utils';
 
 type SavedFilter = 'All' | 'Places' | 'Routes';
 type SavedSectionKey = 'places' | 'routes';
@@ -243,6 +244,7 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
     private touristRoutesService: TouristRoutesService,
     private routingService: RoutingService,
     private cdr: ChangeDetectorRef,
+    private siteTranslate: SiteTranslateService
   ) {}
 
   ngOnInit(): void {
@@ -324,7 +326,7 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
   }
 
   formatPostType(type?: string | null): string {
-    return formatPostType(type);
+    return this.translateLabel(formatPostType(type));
   }
 
   getCategoryColor(postType?: string | null): string {
@@ -345,6 +347,38 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
 
   setFilter(filter: SavedFilter): void {
     this.activeFilter = filter;
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
+  }
+
+  formatDynamicTag(value: string | null | undefined): string {
+    const raw = (value ?? '').toString().trim();
+    if (!raw) return '';
+    const normalizedRaw = raw.replace(/_/g, ' ').replace(/\s+/g, ' ');
+    const translatedRaw = this.translateLabel(normalizedRaw);
+    if (translatedRaw !== normalizedRaw) return translatedRaw;
+
+    const readable = raw
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/(^|[\s-])\p{L}/gu, match => match.toUpperCase());
+    return this.translateLabel(readable);
+  }
+
+  getActiveFilterLabel(): string {
+    return this.translateLabel(this.filters.find(filter => filter.id === this.activeFilter)?.label ?? this.activeFilter);
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
   }
 
   onSavedSearchChanged(query: string): void {

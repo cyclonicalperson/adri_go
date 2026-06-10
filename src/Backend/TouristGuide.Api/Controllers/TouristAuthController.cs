@@ -404,7 +404,9 @@ namespace TouristGuide.Api.Controllers
             if (dto.Interests is not null)
                 tourist.Interests = System.Text.Json.JsonSerializer.Serialize(dto.Interests);
 
-            if (dto.ProfileImage is not null)
+            if (dto.RemoveProfileImage)
+                tourist.ProfileImage = null;
+            else if (dto.ProfileImage is not null)
                 tourist.ProfileImage = string.IsNullOrWhiteSpace(dto.ProfileImage) ? null : dto.ProfileImage.Trim();
 
             tourist.UpdatedAt = DateTime.UtcNow;

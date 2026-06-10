@@ -10,6 +10,7 @@ import { TouristActivitiesService } from '../services/tourist-activities.service
 import { TouristRoutesService } from '../services/tourist-routes.service';
 import { environment } from '../../environments/environment';
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
+import { SiteTranslateService } from '../services/site-translate.service';
 
 interface DestinationRegionOption {
   name: string;
@@ -66,6 +67,10 @@ export class FiltersComponent implements OnInit, OnChanges {
   };
 
   categorySelectValue = '';
+  destinationCountrySelectValue = '';
+  destinationRegionSelectValue = '';
+  routeCountrySelectValue = '';
+  routeRegionSelectValue = '';
 
   categories = [
     { id: 'attraction',      label: 'Attractions',   icon: '🏖️', selected: false },
@@ -77,13 +82,58 @@ export class FiltersComponent implements OnInit, OnChanges {
     { id: 'event',           label: 'Events',        icon: '📅', selected: false },
     { id: 'accommodation',   label: 'Accommodation', icon: '🏨', selected: false },
     { id: 'shop',            label: 'Shopping',      icon: '🛍️', selected: false },
-    { id: 'other',           label: 'Ostalo',        icon: '\u{1F4CD}', selected: false },
+    { id: 'other',           label: 'Other',         icon: '\u{1F4CD}', selected: false },
   ];
 
+  /**
+   * RADIUS LOGIKA:
+   * - radiusActive = false  →  filter nije aktivan, prikazuje se "Unlimited"
+   * - radiusActive = true   →  slider je aktivan, vrednosti su 0–200 km
+   *   gde 0 = "samo moja lokacija" i 200 = "200+ km"
+   *
+   * U buildState() šaljemo:
+   *   - radiusActive = false  →  radius: 0 (filter-state koristi 0 kao "bez filtera")
+   *   - radiusActive = true   →  radius: radiusKm (0–200, gde 200 = sve)
+   */
   readonly radiusSteps = [0, 1, 2, 3, 5, 7, 10, 15, 20, 30, 50, 75, 100, 150, 200];
-  radiusIndex: number = 0;
+  radiusIndex = 7; // default kad se slider aktivira = 10 km (index 6)
+  radiusActive = false; // da li je korisnik uopšte pipnuo slider
 
-  get radius(): number { return this.radiusSteps[this.radiusIndex]; }
+  get radiusKm(): number {
+    return this.radiusSteps[this.radiusIndex];
+  }
+
+  /** Tekst koji se prikazuje u UI */
+  get radiusLabel(): string {
+    if (!this.radiusActive) return '∞ Unlimited';
+    if (this.radiusKm === 0) return '< 1 km';
+    if (this.radiusKm === 200) return '200+ km';
+    return `${this.radiusKm} km`;
+  }
+
+  /** Vrednost koja se šalje u filter state — 0 znači "bez filtera" */
+  get radiusForFilter(): number {
+    if (!this.radiusActive) return 0;
+    // 200 = "200+ km" = praktično sve = bez filtera po distanci
+    if (this.radiusKm === 200) return 0;
+    return this.radiusKm;
+  }
+
+  /** Korisnik pomera slider — automatski aktivira radius */
+  onRadiusSliderChange(): void {
+    this.radiusActive = true;
+    this.onAnyChange();
+  }
+
+  /** Korisnik klikne "Unlimited" / toggle dugme */
+  toggleRadiusActive(): void {
+    this.radiusActive = !this.radiusActive;
+    if (!this.radiusActive) {
+      // Resetuj na default vrednost kad se deaktivira
+      this.radiusIndex = 6; // 10 km — sledeći put kad se aktivira
+    }
+    this.onAnyChange();
+  }
 
   minRating: number = 0;
   openNow: boolean = false;
@@ -91,6 +141,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   savedPostIds: number[] = [];
   fromDate: string = '';
   toDate: string = '';
+  eventDateRangeMessage = '';
   readonly destinationCountryOptions = WORLD_COUNTRIES;
   private destinationRegionItems: DestinationRegionOption[] = [];
   private preloadedDestinationRegionItems: DestinationRegionOption[] = [];
@@ -138,19 +189,16 @@ export class FiltersComponent implements OnInit, OnChanges {
     private filterState: FilterStateService,
     private activitiesService: TouristActivitiesService,
     private routesService: TouristRoutesService,
-    private http: HttpClient
+    private http: HttpClient,
+    private siteTranslate: SiteTranslateService
   ) {}
 
   ngOnInit(): void {
-    // Samo citamo returnTo ako smo otvoreni kao ruta (ne inline)
     try {
       this.returnTo = this.route.snapshot.queryParamMap.get('returnTo') || 'map-home';
     } catch {
       this.returnTo = 'map-home';
     }
-
-    // context @Input ima prednost — ne overrideujemo ga iz returnTo
-    // (returnTo se koristi samo za navigaciju kada je komponenta otvorena kao ruta)
 
     const state = this.filterState.get();
     this.minRating     = state.minRating;
@@ -176,20 +224,29 @@ export class FiltersComponent implements OnInit, OnChanges {
       distanceBand: state.routeDistanceBand ?? '',
       durationBand: state.routeDurationBand ?? '',
     };
+
+    // Obnovi radius stanje iz sačuvanog state-a
     const storedRadius = state.radius ?? 0;
-    const nearest = this.radiusSteps.reduce((prev, cur) =>
-      Math.abs(cur - storedRadius) < Math.abs(prev - storedRadius) ? cur : prev, 0);
-    this.radiusIndex = this.radiusSteps.indexOf(nearest);
+    if (storedRadius > 0) {
+      // Radius je bio aktivan — nađi najbliži step
+      this.radiusActive = true;
+      const nearest = this.radiusSteps.reduce((prev, cur) =>
+        Math.abs(cur - storedRadius) < Math.abs(prev - storedRadius) ? cur : prev, 0);
+      this.radiusIndex = this.radiusSteps.indexOf(nearest);
+    } else {
+      // Radius nije bio aktivan (Unlimited)
+      this.radiusActive = false;
+      this.radiusIndex = 6; // 10 km — default za sledeće aktiviranje
+    }
+
     if (state.activeCategories.length > 0) {
       this.categories.forEach(c => { c.selected = state.activeCategories.includes(c.id); });
     }
     this.loadDestinationFilterOptions();
     if (this.showContentFilters) {
-      // Vrati zapamćeni content type
       const savedType = state.activeContentType;
       if (savedType && savedType !== this.activeContentType) {
         this.activeContentType = savedType;
-        // Emitujemo da roditelj zna koji tab je aktivan
         Promise.resolve().then(() => this.activeContentTypeChange.emit(savedType));
       }
       this.ensureContentFilterOptions();
@@ -300,7 +357,6 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.onAnyChange();
   }
 
-  /** Called on every interactive change — saves state and emits immediately */
   toggleActivityFilter(group: 'categories' | 'difficulties', value: string): void {
     const list = this.activityFilters[group];
     this.activityFilters[group] = list.includes(value)
@@ -373,6 +429,53 @@ export class FiltersComponent implements OnInit, OnChanges {
     }
   }
 
+  onSelectToggle(
+    group: 'destinationCountries' | 'destinationRegions' | 'routeCountries' | 'routeRegions',
+    value: string
+  ): void {
+    if (!value) {
+      this.clearSelectGroup(group);
+      return;
+    }
+
+    this.onDropdownToggle(group, value);
+    Promise.resolve().then(() => {
+      if (group === 'destinationCountries') this.destinationCountrySelectValue = '';
+      if (group === 'destinationRegions') this.destinationRegionSelectValue = '';
+      if (group === 'routeCountries') this.routeCountrySelectValue = '';
+      if (group === 'routeRegions') this.routeRegionSelectValue = '';
+    });
+  }
+
+  private clearSelectGroup(
+    group: 'destinationCountries' | 'destinationRegions' | 'routeCountries' | 'routeRegions'
+  ): void {
+    let changed = false;
+
+    if (group === 'destinationCountries' && this.destinationFilters.countries.length > 0) {
+      this.destinationFilters = { ...this.destinationFilters, countries: [], regions: [] };
+      changed = true;
+    } else if (group === 'destinationRegions' && this.destinationFilters.regions.length > 0) {
+      this.destinationFilters = { ...this.destinationFilters, regions: [] };
+      changed = true;
+    } else if (group === 'routeCountries' && this.routeFilters.countries.length > 0) {
+      this.routeFilters = { ...this.routeFilters, countries: [], regions: [] };
+      changed = true;
+    } else if (group === 'routeRegions' && this.routeFilters.regions.length > 0) {
+      this.routeFilters = { ...this.routeFilters, regions: [] };
+      changed = true;
+    }
+
+    this.destinationCountrySelectValue = '';
+    this.destinationRegionSelectValue = '';
+    this.routeCountrySelectValue = '';
+    this.routeRegionSelectValue = '';
+
+    if (changed) {
+      this.onAnyChange();
+    }
+  }
+
   setRouteDistanceBand(value: string): void {
     this.routeFilters.distanceBand = this.routeFilters.distanceBand === value ? '' : value;
     this.onAnyChange();
@@ -383,17 +486,38 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.onAnyChange();
   }
 
+  get minEventToDate(): string {
+    return this.shiftDateOnly(this.fromDate, 1);
+  }
+
+  get maxEventFromDate(): string {
+    return this.shiftDateOnly(this.toDate, -1);
+  }
+
+  onFromDateChange(value: string): void {
+    this.fromDate = value;
+    this.ensureEventDateRange('from');
+    this.onAnyChange();
+  }
+
+  onToDateChange(value: string): void {
+    this.toDate = value;
+    this.ensureEventDateRange('to');
+    this.onAnyChange();
+  }
+
   formatActivityCategory(value?: string | null): string {
-    if (!value) return 'Other';
-    return value
+    if (!value) return this.translateLabel('Other');
+    const readable = value
       .toString()
       .toLowerCase()
       .replace(/[_-]+/g, ' ')
       .replace(/\b\w/g, letter => letter.toUpperCase());
+    return this.translateLabel(readable);
   }
 
   formatRouteDifficulty(value?: string | null): string {
-    if (!value) return 'Standard';
+    if (!value) return this.translateLabel('Standard');
     const normalized = value.toString().toLowerCase();
     const labels: Record<string, string> = {
       easy: 'Easy',
@@ -401,21 +525,25 @@ export class FiltersComponent implements OnInit, OnChanges {
       hard: 'Hard',
       expert: 'Expert',
     };
-    return labels[normalized] ?? this.formatActivityCategory(value);
+    return this.translateLabel(labels[normalized] ?? this.formatActivityCategory(value));
   }
 
   selectedCategorySummary(): string {
-    const selected = this.categories.filter(category => category.selected).map(category => category.label);
-    return selected.length ? selected.join(', ') : 'All categories';
+    const selected = this.categories.filter(category => category.selected).map(category => this.translateLabel(category.label));
+    return selected.length ? selected.join(', ') : this.translateLabel('All categories');
   }
 
   selectedSummary(values: string[], fallback: string, formatter: (value: string) => string = value => value): string {
-    return values.length ? values.map(formatter).join(', ') : fallback;
+    return values.length ? values.map(value => this.translateLabel(formatter(value))).join(', ') : this.translateLabel(fallback);
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
   }
 
   get filteredRouteRegionOptions(): string[] {
     if (this.routeFilters.countries.length === 0) {
-      return this.routeRegionOptions;
+      return [];
     }
 
     const selectedCountries = new Set(this.routeFilters.countries);
@@ -434,16 +562,22 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   clearAll(): void {
     this.categories.forEach(c => c.selected = false);
-    this.radiusIndex   = 0;
+    this.radiusActive  = false;
+    this.radiusIndex   = 6; // 10 km — default za sledeće aktiviranje
     this.minRating     = 0;
     this.openNow       = false;
     this.showOnlySaved = false;
     this.savedPostIds  = [...this.availableSavedPostIdsInternal];
     this.fromDate      = '';
     this.toDate        = '';
+    this.eventDateRangeMessage = '';
     this.destinationFilters = { countries: [], regions: [] };
     this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
     this.routeFilters = { difficulties: [], countries: [], regions: [], distanceBand: '', durationBand: '' };
+    this.destinationCountrySelectValue = '';
+    this.destinationRegionSelectValue = '';
+    this.routeCountrySelectValue = '';
+    this.routeRegionSelectValue = '';
     const defaultState = {
       ...this.filterState.getDefault(),
       savedPostIds: this.savedPostIds,
@@ -457,13 +591,13 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.closed.emit();
   }
 
-  /** Navigate-based close — used when component is opened as a route (map context, mobile) */
   private buildState(): FilterState {
+    this.ensureEventDateRange('to');
     const selected = this.categories.filter(c => c.selected).map(c => c.id);
     return {
       minRating:        this.minRating,
       openNow:          this.openNow,
-      radius:           this.radius,
+      radius:           this.radiusForFilter,
       activeCategories: selected,
       destinationCountries: this.destinationFilters.countries,
       destinationRegions: this.destinationFilters.regions,
@@ -483,7 +617,49 @@ export class FiltersComponent implements OnInit, OnChanges {
     };
   }
 
-  /** applyFilters kept for backward compat — now just saves and navigates */
+  private ensureEventDateRange(changed: 'from' | 'to'): void {
+    if (!this.fromDate || !this.toDate) {
+      this.eventDateRangeMessage = '';
+      return;
+    }
+
+    if (this.compareDateOnly(this.fromDate, this.toDate) < 0) {
+      this.eventDateRangeMessage = '';
+      return;
+    }
+
+    if (changed === 'from') {
+      this.toDate = '';
+    } else {
+      this.fromDate = '';
+    }
+    this.eventDateRangeMessage = 'Start date must be before end date.';
+  }
+
+  private compareDateOnly(left: string, right: string): number {
+    const leftTime = this.parseDateOnly(left)?.getTime();
+    const rightTime = this.parseDateOnly(right)?.getTime();
+    if (leftTime == null || rightTime == null) return 0;
+    return leftTime - rightTime;
+  }
+
+  private shiftDateOnly(value: string, days: number): string {
+    const date = this.parseDateOnly(value);
+    if (!date) return '';
+    date.setDate(date.getDate() + days);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDateOnly(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(part => !Number.isFinite(part))) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
   private ensureContentFilterOptions(): void {
     if (FiltersComponent.activityCategoryCache) {
       this.activityCategoryOptions = [...FiltersComponent.activityCategoryCache];
@@ -574,7 +750,7 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   get filteredDestinationRegionOptions(): string[] {
     if (this.destinationFilters.countries.length === 0) {
-      return this.destinationRegionOptions;
+      return [];
     }
 
     const selectedCountries = new Set(this.destinationFilters.countries);
@@ -624,7 +800,6 @@ export class FiltersComponent implements OnInit, OnChanges {
 
   private syncSavedPostIdsFromInput(): void {
     if (this.availableSavedPostIdsInternal.length === 0) return;
-
     this.savedPostIds = [...this.availableSavedPostIdsInternal];
   }
 

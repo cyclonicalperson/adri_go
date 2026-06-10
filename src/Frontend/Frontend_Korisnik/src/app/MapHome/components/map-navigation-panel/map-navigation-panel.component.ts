@@ -15,6 +15,7 @@ import { CommonModule } from '@angular/common';
 import { NavigationStep } from '../../../services/routing.service';
 import { RoutingService } from '../../../services/routing.service';
 import { TravelMode } from '../../../services/tourist-preferences.service';
+import { SiteTranslateService } from '../../../services/site-translate.service';
 
 @Component({
   selector: 'app-map-navigation-panel',
@@ -79,6 +80,8 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   private lastRerouteAt = 0;
   /** Last route segment already reached; prevents GPS jitter from restoring passed trail. */
   private lastRemainingSegmentIndex = 0;
+  /** Fractional polyline progress (segment index + projection t) used to trim smoothly. */
+  private lastRemainingRouteProgress = 0;
 
   get currentStep(): NavigationStep | null {
     return this.steps[this.currentStepIndex] ?? null;
@@ -105,7 +108,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   }
 
   get modeLabel(): string {
-    return this.travelModes.find(option => option.mode === this.travelMode)?.label ?? 'Car';
+    return this.t(this.travelModes.find(option => option.mode === this.travelMode)?.label ?? 'Car');
   }
 
   /** CSS rotation (degrees) for the arrow SVG based on the current maneuver. */
@@ -130,20 +133,29 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     if (!step) return '';
     const m = step.maneuverModifier;
     const t = step.maneuverType;
-    if (t === 'arrive') return 'Arrive';
-    if (!m || m === 'straight') return 'Continue straight';
-    if (m === 'right')        return 'Turn right';
-    if (m === 'sharp right')  return 'Turn sharp right';
-    if (m === 'slight right') return 'Bear right';
-    if (m === 'left')         return 'Turn left';
-    if (m === 'sharp left')   return 'Turn sharp left';
-    if (m === 'slight left')  return 'Bear left';
-    if (m === 'uturn')        return 'U-turn';
-    if (t === 'roundabout' || t === 'rotary') return 'Enter roundabout';
-    return 'Continue';
+    if (t === 'arrive') return this.t('Arrive');
+    if (!m || m === 'straight') return this.t('Continue straight');
+    if (m === 'right')        return this.t('Turn right');
+    if (m === 'sharp right')  return this.t('Turn sharp right');
+    if (m === 'slight right') return this.t('Bear right');
+    if (m === 'left')         return this.t('Turn left');
+    if (m === 'sharp left')   return this.t('Turn sharp left');
+    if (m === 'slight left')  return this.t('Bear left');
+    if (m === 'uturn')        return this.t('U-turn');
+    if (t === 'roundabout' || t === 'rotary') return this.t('Enter roundabout');
+    return this.t('Continue');
   }
 
-  constructor(private cdr: ChangeDetectorRef, private zone: NgZone, private routingService: RoutingService) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone,
+    private routingService: RoutingService,
+    private translate: SiteTranslateService,
+  ) {}
+
+  t(value: string): string {
+    return this.translate.instant(value);
+  }
 
   ngOnInit(): void {
     this.remainingDistanceKm = this.totalDistanceKm;
@@ -268,10 +280,12 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
         }
         this.positionUpdated.emit([lat, lng]);
         this.updateProgress(lat, lng);
-        // Emit the remaining geometry so map can trim the trail
-        this.emitRemainingGeometry(lat, lng);
-        // Check if user has gone off-route and recalculate if needed
-        this.checkOffRoute(lat, lng);
+        if (!this.arrived) {
+          // Emit the remaining geometry so map can trim the trail
+          this.emitRemainingGeometry(lat, lng);
+          // Check if user has gone off-route and recalculate if needed
+          this.checkOffRoute(lat, lng);
+        }
         this.cdr.markForCheck();
       });
     };
@@ -310,34 +324,40 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   }
 
   private emitRemainingGeometry(lat: number, lng: number): void {
+    if (this.arrived) return;
     if (!this.routeGeometry || this.routeGeometry.length < 2) return;
 
-    // Find the closest SEGMENT (not just closest node) so we never
-    // snap backward to a point the user already passed.
-    let bestSegIdx = 0;
+    let bestProjection: RouteSegmentProjection | null = null;
     let bestDist = Infinity;
 
     for (let i = this.lastRemainingSegmentIndex; i < this.routeGeometry.length - 1; i++) {
-      const d = this.pointToSegmentM(
+      const projection = this.projectPointToSegment(
         lat, lng,
         this.routeGeometry[i][0],   this.routeGeometry[i][1],
         this.routeGeometry[i + 1][0], this.routeGeometry[i + 1][1],
       );
-      if (d < bestDist) {
-        bestDist = d;
-        bestSegIdx = i;
+      if (projection.distanceM < bestDist) {
+        bestDist = projection.distanceM;
+        bestProjection = { ...projection, segmentIndex: i };
       }
     }
 
-    bestSegIdx = Math.max(bestSegIdx, this.lastRemainingSegmentIndex);
-    this.lastRemainingSegmentIndex = bestSegIdx;
+    if (!bestProjection) return;
 
-    // Emit from the END of the matched segment onward so the already-
-    // travelled part of that segment is also removed from the overlay.
-    const remaining = this.routeGeometry.slice(bestSegIdx + 1);
-    // Always keep at least the current position as first point so the
-    // polyline starts exactly where the user is.
-    this.routeTrailUpdated.emit([[lat, lng], ...remaining]);
+    const rawProgress = bestProjection.segmentIndex + bestProjection.t;
+    const progress = Math.max(rawProgress, this.lastRemainingRouteProgress);
+    this.lastRemainingRouteProgress = progress;
+
+    const segmentIndex = Math.min(
+      Math.floor(progress),
+      this.routeGeometry.length - 2,
+    );
+    const segmentProgress = Math.min(1, Math.max(0, progress - segmentIndex));
+    this.lastRemainingSegmentIndex = segmentIndex;
+
+    const startPoint = this.interpolateRoutePoint(segmentIndex, segmentProgress);
+    const remaining = this.routeGeometry.slice(segmentIndex + 1);
+    this.routeTrailUpdated.emit([startPoint, ...remaining]);
   }
 
   /**
@@ -393,11 +413,27 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     aLat: number, aLng: number,
     bLat: number, bLng: number,
   ): number {
+    return this.projectPointToSegment(pLat, pLng, aLat, aLng, bLat, bLng).distanceM;
+  }
+
+  private projectPointToSegment(
+    pLat: number, pLng: number,
+    aLat: number, aLng: number,
+    bLat: number, bLng: number,
+  ): RouteSegmentProjection {
     const dLat = bLat - aLat;
     const dLng = bLng - aLng;
     const lenSq = dLat * dLat + dLng * dLng;
 
-    if (lenSq === 0) return this.haversineM(pLat, pLng, aLat, aLng);
+    if (lenSq === 0) {
+      return {
+        lat: aLat,
+        lng: aLng,
+        t: 0,
+        distanceM: this.haversineM(pLat, pLng, aLat, aLng),
+        segmentIndex: 0,
+      };
+    }
 
     // Parameter t: projection of P onto segment AB, clamped to [0,1]
     const t = Math.max(0, Math.min(1,
@@ -406,7 +442,24 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
 
     const closestLat = aLat + t * dLat;
     const closestLng = aLng + t * dLng;
-    return this.haversineM(pLat, pLng, closestLat, closestLng);
+    return {
+      lat: closestLat,
+      lng: closestLng,
+      t,
+      distanceM: this.haversineM(pLat, pLng, closestLat, closestLng),
+      segmentIndex: 0,
+    };
+  }
+
+  private interpolateRoutePoint(segmentIndex: number, t: number): [number, number] {
+    const start = this.routeGeometry[segmentIndex];
+    const end = this.routeGeometry[segmentIndex + 1];
+    if (!start || !end) return this.routeGeometry[this.routeGeometry.length - 1];
+
+    return [
+      start[0] + (end[0] - start[0]) * t,
+      start[1] + (end[1] - start[1]) * t,
+    ];
   }
 
   /** Fires an async reroute request from the user’s current position to the final destination. */
@@ -435,7 +488,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     this.isRerouting = true;
     this.cdr.markForCheck();
 
-    this.routingService.computeRouteForNavigation(waypoints, this.travelMode)
+    this.routingService.computeRouteForNavigation(waypoints, this.travelMode, { allowFallback: false })
       .then(result => {
         this.zone.run(() => {
           if (result.steps && result.steps.length > 0) {
@@ -463,17 +516,26 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   }
 
   private updateProgress(lat: number, lng: number): void {
-    if (this.arrived || this.steps.length === 0) return;
+    if (this.arrived) return;
 
-    const destination = this.steps[this.steps.length - 1].position;
+    const destination = this.steps.length > 0
+      ? this.steps[this.steps.length - 1].position
+      : this.routeGeometry[this.routeGeometry.length - 1];
+    if (!destination) return;
+
     const distToDest = this.haversineM(lat, lng, destination[0], destination[1]);
     if (distToDest < this.ARRIVE_THRESHOLD_M) {
       this.arrived = true;
       this.remainingDistanceKm = 0;
       this.remainingMin = 0;
+      this.routeTrailUpdated.emit([]);
+      this.stopWatching();
+      this.stopHeadingWatch();
       this.navigationArrived.emit();
       return;
     }
+
+    if (this.steps.length === 0) return;
 
     // Advance steps when the user is within threshold of the NEXT step's maneuver point
     while (this.currentStepIndex < this.steps.length - 1) {
@@ -523,6 +585,15 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     this.arrived = false;
     this.offRouteTicks = 0;
     this.lastRemainingSegmentIndex = 0;
+    this.lastRemainingRouteProgress = 0;
     this.cdr.markForCheck();
   }
 }
+
+type RouteSegmentProjection = {
+  lat: number;
+  lng: number;
+  t: number;
+  distanceM: number;
+  segmentIndex: number;
+};

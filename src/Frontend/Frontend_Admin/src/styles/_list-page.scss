@@ -597,6 +597,31 @@ tbody tr:hover td {
   }
 }
 
+// ── Modal overlay (shared across all list pages) ─────────────────────────
+// Used by aktivnosti, events, routes... Centralized here so z-index is
+// always consistent with the $z-modal token.
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: $z-modal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+// Side-panel / map overlay (slides in from right)
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: $z-overlay;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
 // ── Empty & loading states ────────────────────────────────────────────────
 .state-msg {
   padding: 60px;

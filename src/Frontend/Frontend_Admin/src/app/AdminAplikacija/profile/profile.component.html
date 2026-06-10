@@ -21,6 +21,11 @@
         <button class="btn-sec" type="button" (click)="adminProfilePhoto.click()" [disabled]="photoUploading">
           {{ photoUploading ? 'Upload...' : 'Promeni sliku' }}
         </button>
+        @if (hasCustomProfileImage) {
+        <button class="btn-sec btn-remove-photo" type="button" (click)="removeProfileImage()" [disabled]="photoUploading">
+          🗑 Ukloni sliku
+        </button>
+        }
         <div class="identity-name">{{ user?.fullName }}</div>
         <div class="identity-role">
           <span class="role-badge" [class]="roleBadgeClass">{{ roleLabel }}</span>
@@ -115,8 +120,8 @@
             </div>
             <div class="perm-chips">
               @for (up of group.perms; track up.id) {
-              <span class="perm-chip" [title]="up.permission.description ?? ''">
-                {{ up.permission.label }}
+              <span class="perm-chip" [title]="permissionDescription(up.permission)">
+                {{ permissionLabel(up.permission) }}
                 @if (up.regionId) {
                 <span class="perm-region">🗺 Scope</span>
                 }

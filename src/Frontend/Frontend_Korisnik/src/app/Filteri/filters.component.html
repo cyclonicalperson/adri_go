@@ -17,7 +17,7 @@
       class="content-type-tab"
       [class.active]="activeContentType === tab.value"
       (click)="setActiveContentType(tab.value)">
-      {{ tab.label }}
+      {{ translateLabel(tab.label) }}
     </button>
   </div>
 
@@ -36,7 +36,7 @@
                 [class.active]="cat.selected"
                 [style.--cat-color]="getCategoryColor(cat.id)"
                 (click)="toggleCategory(cat)">
-          <span class="chip-icon">{{ cat.icon }}</span> {{ cat.label }}
+          <span class="chip-icon">{{ cat.icon }}</span> {{ translateLabel(cat.label) }}
         </button>
       </div>
     </section>
@@ -45,7 +45,10 @@
       <div class="section-header">
         <h2>Countries</h2>
       </div>
-      <select class="filter-dropdown" #countryDropdown (change)="onDropdownToggle('destinationCountries', countryDropdown.value); countryDropdown.value = ''">
+      <select
+        class="filter-dropdown"
+        [(ngModel)]="destinationCountrySelectValue"
+        (ngModelChange)="onSelectToggle('destinationCountries', $event)">
         <option value="">{{ selectedSummary(destinationFilters.countries, 'All countries') }}</option>
         <option *ngFor="let country of destinationCountryOptions" [value]="country">
           {{ destinationFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
@@ -53,15 +56,15 @@
       </select>
     </section>
 
-    <section>
+    <section *ngIf="destinationFilters.countries.length > 0">
       <div class="section-header">
         <h2>Regions</h2>
       </div>
       <select
         class="filter-dropdown"
-        #regionDropdown
+        [(ngModel)]="destinationRegionSelectValue"
         [disabled]="destinationRegionsLoading && filteredDestinationRegionOptions.length === 0"
-        (change)="onDropdownToggle('destinationRegions', regionDropdown.value); regionDropdown.value = ''">
+        (ngModelChange)="onSelectToggle('destinationRegions', $event)">
         <option value="">{{ destinationRegionsLoading ? 'Loading regions...' : selectedSummary(destinationFilters.regions, 'All regions') }}</option>
         <option *ngFor="let region of filteredDestinationRegionOptions" [value]="region">
           {{ destinationFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}
@@ -74,23 +77,38 @@
       <div class="section-header">
         <h2>Distance from you</h2>
       </div>
-      <div class="slider-box" [class.active]="radius > 0" style="--filter-color: #0ea5e9;">
+
+      <!-- Unlimited toggle -->
+      <div class="toggle-card" [class.active]="!radiusActive" style="--filter-color: #0ea5e9; margin-bottom: 12px;">
+        <div class="toggle-text">
+          <h3>Unlimited</h3>
+          <p>Show locations at any distance</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" [checked]="!radiusActive" (change)="toggleRadiusActive()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <!-- Slider — prikazan samo kad je radius aktivan -->
+      <div *ngIf="radiusActive" class="slider-box active" style="--filter-color: #0ea5e9;">
         <div class="slider-labels">
           <span>Radius</span>
-          <span class="highlight">{{ radius === 0 ? '∞ Unlimited' : radius + ' km' }}</span>
+          <span class="highlight">{{ radiusLabel }}</span>
         </div>
         <input type="range" class="custom-slider"
                min="0" [max]="radiusSteps.length - 1"
                [(ngModel)]="radiusIndex"
-               (ngModelChange)="onAnyChange()"
+               (ngModelChange)="onRadiusSliderChange()"
                step="1">
         <div class="range-markers">
-          <span>0 (Unlimited)</span>
+          <span>&lt; 1 km</span>
           <span>10 km</span>
           <span>50 km</span>
-          <span>200 km</span>
+          <span>200+ km</span>
         </div>
       </div>
+
     </section>
 
     <!-- RATING -->
@@ -133,13 +151,22 @@
       <div class="date-picker-row">
         <div class="date-input" [class.active]="!!fromDate" style="--filter-color: #8b5cf6;">
           <label>FROM</label>
-          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="onAnyChange()">
+          <input
+            type="date"
+            [ngModel]="fromDate"
+            [attr.max]="maxEventFromDate || null"
+            (ngModelChange)="onFromDateChange($event)">
         </div>
         <div class="date-input" [class.active]="!!toDate" style="--filter-color: #8b5cf6;">
           <label>TO</label>
-          <input type="date" [(ngModel)]="toDate" (ngModelChange)="onAnyChange()">
+          <input
+            type="date"
+            [ngModel]="toDate"
+            [attr.min]="minEventToDate || null"
+            (ngModelChange)="onToDateChange($event)">
         </div>
       </div>
+      <p class="date-range-error" *ngIf="eventDateRangeMessage">{{ translateLabel(eventDateRangeMessage) }}</p>
     </section>
 
     <!-- SAVED ONLY -->
@@ -191,7 +218,7 @@
               [class.active]="activityFilters.difficulties.includes(difficulty)"
               [style.--filter-color]="getDifficultyFilterColor(difficulty)"
               (click)="toggleActivityFilter('difficulties', difficulty)">
-              {{ difficulty }}
+              {{ formatRouteDifficulty(difficulty) }}
             </button>
         </div>
       </section>
@@ -237,7 +264,10 @@
         <div class="section-header">
           <h2>Route Country</h2>
         </div>
-        <select class="filter-dropdown" #routeCountryDropdown (change)="onDropdownToggle('routeCountries', routeCountryDropdown.value); routeCountryDropdown.value = ''">
+        <select
+          class="filter-dropdown"
+          [(ngModel)]="routeCountrySelectValue"
+          (ngModelChange)="onSelectToggle('routeCountries', $event)">
           <option value="">{{ selectedSummary(routeFilters.countries, 'All countries') }}</option>
           <option *ngFor="let country of routeCountryOptions" [value]="country">
             {{ routeFilters.countries.includes(country) ? '✓ ' : '' }}{{ country }}
@@ -245,11 +275,14 @@
         </select>
       </section>
 
-      <section *ngIf="filteredRouteRegionOptions.length > 0">
+      <section *ngIf="routeFilters.countries.length > 0">
         <div class="section-header">
           <h2>Route Region</h2>
         </div>
-        <select class="filter-dropdown" #routeRegionDropdown (change)="onDropdownToggle('routeRegions', routeRegionDropdown.value); routeRegionDropdown.value = ''">
+        <select
+          class="filter-dropdown"
+          [(ngModel)]="routeRegionSelectValue"
+          (ngModelChange)="onSelectToggle('routeRegions', $event)">
           <option value="">{{ selectedSummary(routeFilters.regions, 'All regions') }}</option>
           <option *ngFor="let region of filteredRouteRegionOptions" [value]="region">
             {{ routeFilters.regions.includes(region) ? '✓ ' : '' }}{{ region }}

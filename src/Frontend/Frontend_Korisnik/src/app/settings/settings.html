@@ -167,54 +167,56 @@
           {{ activeSheetTitle }}
         </h2>
       </div>
-      <button class="sheet-close" (click)="closeSheet()">✕</button>
+      <div class="sheet-header-actions">
+        <button class="sheet-close" (click)="closeSheet()" [attr.aria-label]="t('Close')">x</button>
+      </div>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'accounts'">
-      <p class="sheet-copy">Choose which sign-in providers AdriGo should prioritize for this device.</p>
+      <p class="sheet-copy">{{ t('Choose which sign-in providers AdriGo should prioritize for this device.') }}</p>
 
       <!-- Google: if logged in via Google, show as read-only Enabled -->
       <div class="sheet-option" *ngIf="isGoogleAccount" style="cursor:default;opacity:1;">
         <div>
           <strong>Google</strong>
-          <span>Your account is connected via Google sign-in.</span>
+          <span>{{ t('Your account is connected via Google sign-in.') }}</span>
         </div>
-        <span class="sheet-pill active" style="pointer-events:none;">Connected</span>
+        <span class="sheet-pill active" style="pointer-events:none;">{{ t('Connected') }}</span>
       </div>
 
       <!-- Google: if NOT logged in via Google, allow toggle -->
       <button class="sheet-option" *ngIf="!isGoogleAccount" (click)="toggleConnectedAccount('google')">
         <div>
           <strong>Google</strong>
-          <span>Use Google as your preferred sign-in method.</span>
+          <span>{{ t('Use Google as your preferred sign-in method.') }}</span>
         </div>
         <span class="sheet-pill" [class.active]="settings.connectedAccounts['google']">
-          {{ settings.connectedAccounts['google'] ? 'Enabled' : 'Disabled' }}
+          {{ settings.connectedAccounts['google'] ? t('Enabled') : t('Disabled') }}
         </span>
       </button>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'content'">
-      <p class="sheet-copy">These interests shape the recommender, scenic detours and discovery order across the app.</p>
+      <p class="sheet-copy">{{ t('These interests shape the recommender, scenic detours and discovery order across the app.') }}</p>
       <div class="chip-grid">
         <button
           *ngFor="let option of contentOptions"
           class="pref-chip"
           [class.active]="isContentPreferenceSelected(option.id)"
           (click)="toggleContentPreference(option.id)">
-          <span>{{ option.icon }}</span> {{ option.label }}
+          <span>{{ option.icon }}</span> {{ t(option.label) }}
         </button>
       </div>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'notifications'">
-      <p class="sheet-copy" *ngIf="notificationPreferencesLoading">Loading notification preferences...</p>
+      <p class="sheet-copy" *ngIf="notificationPreferencesLoading">{{ t('Loading notification preferences...') }}</p>
       <p class="sheet-copy sheet-warning" *ngIf="!notificationPreferencesLoading && notificationPreferencesError">
-        {{ notificationPreferencesError }}
+        {{ t(notificationPreferencesError) }}
       </p>
       <div class="sheet-option" *ngFor="let pref of notificationPreferences">
         <div>
-          <strong>{{ pref.label }}</strong>
+          <strong>{{ t(pref.label) }}</strong>
           <span>{{ notificationPreferenceStatus(pref) }}</span>
         </div>
         <div class="notification-pref-actions">
@@ -223,36 +225,36 @@
             [class.active]="pref.inAppEnabled"
             [disabled]="!pref.canMute"
             (click)="toggleNotificationPreference(pref, 'inAppEnabled')">
-            In-app
+            {{ t('In-app') }}
           </button>
           <button
             class="sheet-pill"
             [class.active]="pref.pushEnabled"
             (click)="toggleNotificationPreference(pref, 'pushEnabled')">
-            Push
+            {{ t('Push') }}
           </button>
           <button
             class="sheet-pill"
             *ngIf="pref.emailAvailable"
             [class.active]="pref.emailEnabled"
             (click)="toggleNotificationPreference(pref, 'emailEnabled')">
-            Email
+            {{ t('Email') }}
           </button>
         </div>
       </div>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'support'">
-      <p class="sheet-copy">Jump to help, contact support directly or clear your recommendation history.</p>
+      <p class="sheet-copy">{{ t('Jump to help, contact support directly or clear your recommendation history.') }}</p>
       <div class="support-actions">
-        <button class="support-action" (click)="goToHelp()">Open Help Center</button>
-        <button class="support-action" (click)="openSupportEmail()">Email Support</button>
-        <button class="support-action danger" (click)="resetPersonalization()">Reset Personalization</button>
+        <button class="support-action" (click)="goToHelp()">{{ t('Open Help Center') }}</button>
+        <button class="support-action" (click)="openSupportEmail()">{{ t('Email Support') }}</button>
+        <button class="support-action danger" (click)="resetPersonalization()">{{ t('Reset Personalization') }}</button>
       </div>
     </div>
 
     <div class="sheet-body" *ngIf="activeSheet === 'language'" data-no-translate="true">
-      <p class="sheet-copy">Interface language</p>
+      <p class="sheet-copy">{{ t('Interface language') }}</p>
       <button
         class="sheet-option lang-option-row"
         *ngFor="let lang of languages"
@@ -265,10 +267,6 @@
       </button>
     </div>
 
-    <div class="sheet-footer" *ngIf="activeSheet !== 'support' && activeSheet !== 'language' && activeSheet !== 'accounts'">
-      <button class="sheet-secondary" (click)="closeSheet()">Cancel</button>
-      <button class="sheet-primary" (click)="saveSheet()">Save</button>
-    </div>
   </div>
 </div>
 

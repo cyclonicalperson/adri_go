@@ -31,6 +31,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
+      if (error.status === 429) {
+        return throwError(() => new HttpErrorResponse({
+          error: {
+            message: error.error?.message || 'Too many requests. Please wait a moment and try again.',
+          },
+          headers: error.headers,
+          status: error.status,
+          statusText: error.statusText || 'Too Many Requests',
+          url: error.url ?? undefined,
+        }));
+      }
+
       // Ako backend vrati 401, token je nevažeći (istekao, Google šifra promijenjena, itd.)
       // Brišemo lokalnu sesiju i šaljemo korisnika na login.
       // Javne rute (forgot-password, reset-password itd.) preskačemo — tamo korisnik

@@ -7,6 +7,8 @@ import { AnalyticsService } from '@core/services/analytics.service';
 import { UserPermission } from '@core/models/user.model';
 import { DateLocalPipe } from '@shared/pipes/date-local.pipe';
 import { DecimalPipe } from '@angular/common';
+import { SiteTranslateService } from '@core/services/site-translate.service';
+import { adminPermissionDescription, adminPermissionLabel } from '@core/utils/admin-permission-i18n';
 
 function passwordMatchValidator(g: AbstractControl): ValidationErrors | null {
   const pw = g.get('newPassword')?.value;
@@ -93,6 +95,7 @@ export class ProfileComponent implements OnInit {
     private analytics: AnalyticsService,
     private fb: FormBuilder,
     private router: Router,
+    private translate: SiteTranslateService,
   ) {
     this.user = this.authService.currentUser as ExtendedUser | null;
   }
@@ -291,6 +294,14 @@ export class ProfileComponent implements OnInit {
     }));
   }
 
+  permissionLabel(permission: UserPermission['permission']): string {
+    return this.translate.instant(adminPermissionLabel(permission));
+  }
+
+  permissionDescription(permission: UserPermission['permission']): string {
+    return this.translate.instant(adminPermissionDescription(permission));
+  }
+
   // ── Profile edit ──────────────────────────────────────────────────────
   saveProfile(): void {
     if (this.editForm.invalid) return;
@@ -356,6 +367,33 @@ export class ProfileComponent implements OnInit {
         this.saveError = 'Greška pri uploadu slike profila.';
       }
     });
+  }
+
+  removeProfileImage(): void {
+    if (this.photoUploading) return;
+    this.photoUploading = true;
+    this.saveError = null;
+
+    this.userService.updateSelf({ profileImage: null }).subscribe({
+      next: () => {
+        if (this.user) this.user = { ...this.user, profileImage: null };
+        const current = this.authService.currentUser;
+        if (current) {
+          const updated = { ...current, profileImage: null };
+          (this.authService as any)['_currentUser$']?.next(updated);
+          try { localStorage.setItem('tg_user', JSON.stringify(updated)); } catch { /* ignore */ }
+        }
+        this.photoUploading = false;
+      },
+      error: () => {
+        this.photoUploading = false;
+        this.saveError = 'Greška pri uklanjanju slike profila.';
+      },
+    });
+  }
+
+  get hasCustomProfileImage(): boolean {
+    return !!this.user?.profileImage;
   }
 
   // ── Password change ───────────────────────────────────────────────────

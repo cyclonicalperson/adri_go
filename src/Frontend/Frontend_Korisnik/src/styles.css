@@ -61,16 +61,23 @@
   --z-popup-backdrop: 11000;
   --z-popup-panel: 11010;
   --z-toast: 11020;
+  --z-footer: 10900;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  height: 100dvh;
+  min-height: 100dvh;
   font-family: var(--font-sans);
   background: var(--gray-100);
   color: var(--gray-900);
   -webkit-font-smoothing: antialiased;
+}
+
+app-root {
+  display: block;
+  min-height: 100dvh;
+  background: var(--gray-100);
 }
 
 button { font-family: inherit; cursor: pointer; }
@@ -297,7 +304,7 @@ html[data-theme='dark'] .rp-load { box-shadow: 0 8px 22px rgba(34,197,94,0.22); 
   left: 0;
   width: 100%;
   height: var(--mobile-footer-total-height);
-  z-index: 9999;
+  z-index: var(--z-footer, 10900);
   margin: 0;
   padding-bottom: var(--mobile-footer-safe-bottom);
 }
@@ -329,7 +336,8 @@ html[data-theme='dark'] {
   --shadow-green: 0 8px 22px rgba(34,197,94,0.22);
 }
 
-html[data-theme='dark'] body {
+html[data-theme='dark'] body,
+html[data-theme='dark'] app-root {
   background: #111827;
   color: var(--gray-900);
 }
@@ -564,7 +572,7 @@ html[data-theme='dark'] select,
 html[data-theme='dark'] textarea {
   background: #111827 !important;
   border-color: #334155 !important;
-  color: var(--gray-900) !important;
+  color: #e2e8f0 !important;
 }
 
 html[data-theme='dark'] input:focus,
@@ -573,6 +581,7 @@ html[data-theme='dark'] textarea:focus {
   background: #0f172a !important;
   border-color: var(--green-500) !important;
   box-shadow: 0 0 0 3px rgba(34,197,94,0.16) !important;
+  color: #f0f6fc !important;
 }
 
 html[data-theme='dark'] .search-container .search-input,
@@ -603,7 +612,7 @@ html[data-theme='dark'] .date-picker-row .date-input,
 html[data-theme='dark'] .search-box {
   background: #111827 !important;
   border-color: #334155 !important;
-  color: var(--gray-900) !important;
+  color: #e2e8f0 !important;
 }
 
 html[data-theme='dark'] .input-wrapper:focus-within,
@@ -618,6 +627,8 @@ html[data-theme='dark'] .card-scheduler-input-wrap:focus-within {
 html[data-theme='dark'] input::placeholder,
 html[data-theme='dark'] textarea::placeholder {
   color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+  opacity: 1;
 }
 
 html[data-theme='dark'] .back-btn,

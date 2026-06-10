@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -11,20 +11,25 @@ import { RecommendationService } from '../services/recommendation.service';
 import { UserService } from '../services/user.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
 import { FilterStateService, FilterState } from '../services/filter-state.service';
+import { SearchStateService } from '../services/search-state.service';
 import { RoutePlannerService } from '../services/route-planner.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
+import { LocationStateService } from '../services/location-state.service';
 import { formatPostType } from '../utils/post-type.utils';
+import { SiteTranslateService } from '../services/site-translate.service';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
 import { WORLD_COUNTRIES } from '../shared/data/world-countries';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 import { DesktopFooterComponent } from '../shared/desktop-footer.component';
+import { catchError, debounceTime, map as rxMap, of, Subject, Subscription, switchMap } from 'rxjs';
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
+const MIN_SEARCH_LENGTH = 2;
 type ExploreContentType = 'destinations' | 'activities' | 'routes';
 type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
 type ActivitySortOption = 'activity-name-asc' | 'activity-popular' | 'activity-category' | 'activity-difficulty';
@@ -79,6 +84,12 @@ interface PopularDestination {
   styleUrls: ['./location-list.component.css']
 })
 export class LocationListComponent implements OnInit, OnDestroy {
+  // ── Back to top ──────────────────────────────────────────
+  showBackToTop = false;
+  private scrollListener!: () => void;
+  @ViewChild('scrollContainer') scrollContainerRef!: ElementRef<HTMLElement>;
+  // ─────────────────────────────────────────────────────────
+
   isMenuOpen = false;
   sortMenuOpen = false;
   isFiltersOpen = false;
@@ -130,6 +141,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
   searchIntentSummary = '';
   searchFocused = false;
   showDropdown = false;
+  destinationSearchLoading = false;
+  showBackToTop = false;
+  private destinationSearchSubscription?: Subscription;
+  private readonly destinationSearchInput$ = new Subject<string>();
 
   readonly contentTypeTabs: { value: ExploreContentType; label: string }[] = [
     { value: 'destinations', label: 'Destinations' },
@@ -184,14 +199,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get activeContentLabel(): string {
-    return this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinations';
+    return this.translateLabel(this.contentTypeTabs.find(tab => tab.value === this.activeContentType)?.label ?? 'Destinations');
   }
 
   get activeSearchPlaceholder(): string {
     switch (this.activeContentType) {
-      case 'activities': return 'Search activities...';
-      case 'routes': return 'Search routes...';
-      default: return 'Search locations...';
+      case 'activities': return this.translateLabel('Search activities...');
+      case 'routes': return this.translateLabel('Search routes...');
+      default: return this.translateLabel('Search locations...');
     }
   }
 
@@ -232,7 +247,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get selectedSortLabel(): string {
-    return this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Sort';
+    return this.translateLabel(this.sortOptions.find(option => option.value === this.sortOption)?.label ?? 'Sort');
   }
 
   get routeCountryOptions(): string[] {
@@ -245,7 +260,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get filteredRouteRegionOptions(): string[] {
     if (this.routeFilters.countries.length === 0) {
-      return this.routeRegionOptions;
+      return [];
     }
 
     const selectedCountries = new Set(this.routeFilters.countries);
@@ -314,9 +329,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get activeSectionLabel(): string {
     switch (this.activeSectionView) {
-      case 'near-you': return 'Near you';
-      case 'recommended': return 'Recommended for you';
-      case 'top-rated': return 'Top rated';
+      case 'near-you': return this.translateLabel('Near you');
+      case 'recommended': return this.translateLabel('Recommended for you');
+      case 'top-rated': return this.translateLabel('Top rated');
       default: return '';
     }
   }
@@ -333,6 +348,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return this.applySort(items);
   }
 
+  // ✅ Subscription za sinhronizaciju like/save stanja između komponenti
+  private stateSub?: Subscription;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -348,27 +366,73 @@ export class LocationListComponent implements OnInit, OnDestroy {
     private routesService: TouristRoutesService,
     private routePlanner: RoutePlannerService,
     private preferences: TouristPreferencesService,
+    private searchStateService: SearchStateService,
+    private siteTranslate: SiteTranslateService,
+    private locationState: LocationStateService,
   ) { }
 
   ngOnInit(): void {
+    this.setupDestinationSearchSubscription();
     this.readContentTypeFromRoute();
     this.readActivityFilterFromRoute();
+
+    // Back-to-top: slušaj scroll na window-u (stranica skroluje window, ne inner div)
+    this.scrollListener = () => {
+      this.showBackToTop = window.scrollY > 300;
+      this.cdr.markForCheck();
+    };
+    window.addEventListener('scroll', this.scrollListener, { passive: true });
+
+    const persistedQuery = this.searchStateService.get();
+    if (persistedQuery && persistedQuery.trim().length >= MIN_SEARCH_LENGTH) {
+      this.searchQuery = persistedQuery;
+      this.submittedSearchQuery = persistedQuery;
+      this.isSearchActive = true;
+    } else if (persistedQuery) {
+      this.searchStateService.clear();
+    }
+
     this.loadLocations();
     this.loadActivities();
     this.loadRoutes();
     this.loadUserPosition();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim()) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    }
+
+    // ✅ Slušaj promene like/save sa detalja i ažuriraj lokalni objekat odmah
+    this.stateSub = this.locationState.stateChanged$.subscribe(change => {
+      const loc = this.allLocations.find(l => l.id === change.id);
+      if (!loc) return;
+      if (change.isLiked !== undefined) loc.isLiked = change.isLiked;
+      if (change.isSaved !== undefined) loc.isSaved = change.isSaved;
+      if (change.likeCount !== undefined) loc.likeCount = change.likeCount;
+      if (change.saveCount !== undefined) loc.saveCount = change.saveCount;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnDestroy(): void {
+    this.destinationSearchSubscription?.unsubscribe();
     this.setPageScrollLock(false);
+    // ✅ Otpisi subscription da ne bi curila memorija
+    this.stateSub?.unsubscribe();
+    // Back-to-top cleanup
+    window.removeEventListener('scroll', this.scrollListener);
+  }
+
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   loadLocations(): void {
     this.isLoading = true;
-    this.locationService.getLocations(1, 100).subscribe({
-      next: (res) => {
-        const decorated = this.decorateLocations(res.data);
-        this.allLocations = this.applyGuestState(decorated);
+    this.locationService.getAllLocations().subscribe({
+      next: (locations) => {
+        const decorated = this.decorateLocations(locations);
+        const withGuestState = this.applyGuestState(decorated);
+        // ✅ Primeni poznato stanje (ako je korisnik vec lajkovao/sacuvao pre nego sto se lista ucitala)
+        this.allLocations = this.locationState.applyKnownState(withGuestState);
         if (this.activeActivityFilter) {
           this.applyActivityFilter(this.activeActivityFilter);
         } else {
@@ -442,16 +506,33 @@ export class LocationListComponent implements OnInit, OnDestroy {
   onSearchInput(): void {
     const query = this.searchQuery.trim();
     if (!query) {
+      this.searchStateService.clear();
       this.resetSearchState();
       this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
       this.cdr.markForCheck();
       return;
     }
+
+    if (query.length < MIN_SEARCH_LENGTH) {
+      this.searchStateService.clear();
+      this.clearSearchResultsOnly();
+      this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
+      this.cdr.markForCheck();
+      return;
+    }
+    this.searchStateService.set(query);
     this.isSearchActive = true;
     this.submittedSearchQuery = query;
     this.clearActivityFilterState();
-    this.rebuildSearchResults();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations') {
+      this.queueDestinationSearch(query);
+    } else {
+      this.rebuildSearchResults();
+      this.refreshVisibleContent();
+    }
+    this.updateBackToTopVisibility();
     // Odmah filtriramo i listu ispod dropdowna — bez klikanja Search
     this.cdr.markForCheck();
   }
@@ -459,12 +540,19 @@ export class LocationListComponent implements OnInit, OnDestroy {
   /** Called when user clicks a dropdown suggestion */
   selectSearchResult(result: ExploreSearchResult): void {
     this.searchQuery = result.title || '';
+    this.searchStateService.set(this.searchQuery.trim());
     this.showDropdown = false;
     this.searchFocused = false;
     this.submittedSearchQuery = this.searchQuery.trim();
     this.isSearchActive = true;
     this.clearActivityFilterState();
-    this.rebuildSearchResults();
+    if (result.kind === 'destinations') {
+      this.destinationSearchLoading = false;
+      this.searchResults = [result];
+      this.searchIntentSummary = this.describeSearchForCurrentType(this.searchQuery.trim(), 1);
+    } else {
+      this.rebuildSearchResults();
+    }
     this.refreshVisibleContent();
     this.cdr.markForCheck();
   }
@@ -480,26 +568,55 @@ export class LocationListComponent implements OnInit, OnDestroy {
       this.clearSearch();
       return;
     }
+    if (query.length < MIN_SEARCH_LENGTH) {
+      this.searchStateService.clear();
+      this.clearSearchResultsOnly();
+      this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
+      this.cdr.markForCheck();
+      return;
+    }
+    this.searchStateService.set(query);
     this.isSearchActive = true;
     this.clearActivityFilterState();
     this.submittedSearchQuery = query;
-    this.rebuildSearchResults();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations') {
+      this.queueDestinationSearch(query);
+    } else {
+      this.rebuildSearchResults();
+      this.refreshVisibleContent();
+    }
+    this.updateBackToTopVisibility();
     this.cdr.markForCheck();
   }
 
   clearSearch(): void {
     this.searchQuery = '';
+    this.searchStateService.clear();
     this.resetSearchState();
     this.clearActivityFilterState();
     this.refreshVisibleContent();
+    this.updateBackToTopVisibility();
     this.cdr.markForCheck();
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    this.updateBackToTopVisibility();
+  }
+
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /** Zatvaramo dropdown kad input izgubi fokus (malo kašnjenje zbog mousedown na stavci) */
   onSearchFocus(): void {
     this.searchFocused = true;
-    this.rebuildSearchResults();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim() && this.searchResults.length === 0) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    } else {
+      this.rebuildSearchResults();
+    }
   }
 
   onSearchBlur(): void {
@@ -529,7 +646,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     const action$ = loc.isLiked ? this.locationService.unlikeLocation(loc.id) : this.locationService.likeLocation(loc.id);
     action$.subscribe({
-      next: (res) => { loc.isLiked = !loc.isLiked; if (res.likeCount !== undefined) loc.likeCount = res.likeCount; this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed'); this.cdr.markForCheck(); },
+      next: (res) => {
+        loc.isLiked = !loc.isLiked;
+        if (res.likeCount !== undefined) loc.likeCount = res.likeCount;
+        // ✅ Emituj promenu da bi detalji i ostale komponente bili sinhronizovani
+        this.locationState.emit({ id: loc.id, isLiked: loc.isLiked, likeCount: loc.likeCount });
+        this.showFeedback(loc.isLiked ? '❤️ Liked!' : 'Like removed');
+        this.cdr.markForCheck();
+      },
       error: (err) => { if (err.status === 401) this.router.navigate(['/login']); else console.error(err); }
     });
   }
@@ -544,7 +668,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     const action$ = loc.isSaved ? this.locationService.unsaveLocation(loc.id) : this.locationService.saveLocation(loc.id);
     action$.subscribe({
-      next: (res) => { loc.isSaved = !loc.isSaved; if (res.saveCount !== undefined) loc.saveCount = res.saveCount; this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved'); this.cdr.markForCheck(); },
+      next: (res) => {
+        loc.isSaved = !loc.isSaved;
+        if (res.saveCount !== undefined) loc.saveCount = res.saveCount;
+        // ✅ Emituj promenu da bi detalji i ostale komponente bili sinhronizovani
+        this.locationState.emit({ id: loc.id, isSaved: loc.isSaved, saveCount: loc.saveCount });
+        this.showFeedback(loc.isSaved ? '🔖 Saved!' : 'Removed from saved');
+        this.cdr.markForCheck();
+      },
       error: (err) => { if (err.status === 401) this.router.navigate(['/login']); else console.error(err); }
     });
   }
@@ -571,8 +702,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   onFiltersApplied(state: FilterState): void {
-    // NE zatvaramo panel — korisnik sam zatvara sa X
-    // Odmah primeni filtere reaktivno
     this.activeFilterState = state;
     const hasActiveFilter =
       state.activeCategories.length > 0 ||
@@ -600,13 +729,16 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.filteredLocations = [];
     this.activeFilterState = null;
     this.filterStateService.clear();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim()) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    } else {
+      this.refreshVisibleContent();
+    }
     this.cdr.markForCheck();
   }
 
   private applyFiltersToLocations(locations: Location[], state: FilterState): Location[] {
     return this.applySort(locations.filter(loc => {
-      // Kategorija filter
       if (state.activeCategories.length > 0) {
         const key = (loc.postType || (loc as any).category || '').toLowerCase().replace(/\s+/g, '_');
         if (!state.activeCategories.includes(key)) return false;
@@ -617,11 +749,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if ((state.destinationRegions?.length ?? 0) > 0 && !state.destinationRegions!.includes(loc.regionName || '')) {
         return false;
       }
-      // Rating filter
       if (state.minRating > 0 && (loc.avgRating || 0) < state.minRating) return false;
       if (state.openNow && !this.isLocationOpen(loc)) return false;
       if (state.showOnlySaved && state.savedPostIds?.length && !state.savedPostIds.includes(loc.id)) return false;
-      // Radius filter
       if (state.radius > 0 && this.userPosition) {
         const coords = this.getLocationCoordinates(loc);
         if (coords) {
@@ -636,16 +766,16 @@ export class LocationListComponent implements OnInit, OnDestroy {
   onSortChanged(): void {
     this.ensureSortForActiveType();
     this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations') {
+      this.buildSections();
+    }
     this.filteredLocations = this.applySort(this.filteredLocations);
-    this.nearYouLocations = this.applySort(this.nearYouLocations).slice(0, SECTION_LIMIT);
-    this.recommendedLocations = this.applySort(this.recommendedLocations).slice(0, SECTION_LIMIT);
-    this.topRatedLocations = this.applySort(this.topRatedLocations).slice(0, SECTION_LIMIT);
     this.cdr.markForCheck();
   }
 
   openSection(section: 'near-you' | 'recommended' | 'top-rated'): void {
     this.activeSectionView = section;
-    this.isFilterActive = false; // zatvaramo filter view kad se otvara sekcija
+    this.isFilterActive = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     this.cdr.markForCheck();
   }
@@ -659,6 +789,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   openDestination(destination: PopularDestination): void {
     this.searchQuery = destination.name;
+    this.searchStateService.set(destination.name);
     this.submittedSearchQuery = destination.name;
     this.isSearchActive = true;
     this.isFilterActive = false;
@@ -673,13 +804,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
   formatDistance(distanceKm?: number | null): string { return this.geolocationService.formatDistanceKm(distanceKm); }
 
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
-    if (!loc?.images) return 'assets/Budva.jpg';
+    if (!loc?.images) return DEFAULT_LOCATION_IMAGE;
     let firstImg = '';
     if (typeof loc.images === 'string') {
       try { const p = JSON.parse(loc.images) as string[]; firstImg = p[0] || ''; } catch { firstImg = loc.images; }
     } else if (Array.isArray(loc.images) && loc.images.length > 0) { firstImg = loc.images[0]; }
-    if (!firstImg) return 'assets/Budva.jpg';
-    return resolveBackendAssetUrl(firstImg, 'assets/Budva.jpg');
+    if (!firstImg) return DEFAULT_LOCATION_IMAGE;
+    return resolveBackendAssetUrl(firstImg, DEFAULT_LOCATION_IMAGE);
   }
 
   getCategoryColor(postType?: string | null): string {
@@ -691,7 +822,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return colors[(postType || '').toLowerCase().replace(/\s+/g, '_')] || '#6b7280';
   }
 
-  formatPostType(type?: string | null): string { return formatPostType(type); }
+  formatPostType(type?: string | null): string { return this.translateLabel(formatPostType(type)); }
 
   getActivityTags(loc: Partial<Location>, limit = 3): string[] {
     const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? [];
@@ -702,6 +833,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return Array.from(new Set(tags
       .map(tag => String(tag).trim())
       .filter(Boolean)))
+      .map(tag => this.formatDynamicTag(tag))
       .slice(0, limit);
   }
 
@@ -711,6 +843,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       .split(/[;,]/)
       .map(tag => tag.trim())
       .filter(Boolean)
+      .map(tag => this.formatDynamicTag(tag))
       .slice(0, 4);
   }
 
@@ -724,14 +857,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
       ? [this.userPosition.lat, this.userPosition.lng] as [number, number]
       : null;
 
-    // 1. Near You: sorted by distance
     const withDistance = [...this.allLocations]
       .filter(l => l.distanceKm != null)
       .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
     const withoutDistance = this.allLocations.filter(l => l.distanceKm == null);
     this.nearYouLocations = [...withDistance, ...withoutDistance].slice(0, SECTION_LIMIT);
 
-    // 2. Recommended for You: personalized recommendations
     try {
       const calendarItems: any[] = [];
       const analytics = this.analyticsService.getRecentEvents();
@@ -741,14 +872,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
       );
       this.recommendedLocations = recs.map(r => r.location).slice(0, SECTION_LIMIT);
     } catch {
-      // Fallback: show high-rated ones
       this.recommendedLocations = [...this.allLocations]
         .filter(l => l.avgRating != null)
         .sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0))
         .slice(0, SECTION_LIMIT);
     }
 
-    // 3. Top Rated: global recommendations by rating & engagement
     try {
       const global = this.recommendationService.buildGlobalRecommendations(
         this.allLocations, { userPosition: pos, limit: SECTION_LIMIT }
@@ -876,8 +1005,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
         this.refreshVisibleContent();
       }
       if (this.isSearchActive) {
-        this.rebuildSearchResults();
-        this.refreshVisibleContent();
+        if (this.activeContentType === 'destinations' && this.searchQuery.trim()) {
+          this.queueDestinationSearch(this.searchQuery.trim());
+        } else {
+          this.rebuildSearchResults();
+          this.refreshVisibleContent();
+        }
       }
       this.buildSections();
       this.cdr.markForCheck();
@@ -987,9 +1120,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.isTypeFiltersOpen = false;
     this.sortMenuOpen = false;
     this.setPageScrollLock(false);
-    this.clearSearch();
     this.ensureSortForActiveType();
-    this.refreshVisibleContent();
+    if (this.activeContentType === 'destinations' && this.isSearchActive && this.searchQuery.trim()) {
+      this.queueDestinationSearch(this.searchQuery.trim());
+    } else {
+      this.rebuildSearchResults();
+      this.refreshVisibleContent();
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { type },
@@ -1129,7 +1266,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   selectedSummary(values: string[], fallback: string, formatter: (value: string) => string = value => value): string {
-    return values.length ? values.map(formatter).join(', ') : fallback;
+    return values.length ? values.map(value => this.translateLabel(formatter(value))).join(', ') : this.translateLabel(fallback);
   }
 
   private normalizeFilterColorKey(value: string): string {
@@ -1137,16 +1274,32 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   formatRouteDifficulty(value?: string | null): string {
-    if (!value) return 'Route';
-    return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    if (!value) return this.translateLabel('Route');
+    return this.formatDynamicTag(value);
   }
 
   formatActivityCategory(value?: string | null): string {
-    if (!value) return 'Activity';
-    return value
-      .toLowerCase()
+    if (!value) return this.translateLabel('Activity');
+    return this.formatDynamicTag(value);
+  }
+
+  translateLabel(value: string | null | undefined): string {
+    return this.siteTranslate.instant(value ?? '');
+  }
+
+  formatDynamicTag(value: string | null | undefined): string {
+    const raw = (value ?? '').toString().trim();
+    if (!raw) return '';
+    const normalizedRaw = raw.replace(/_/g, ' ').replace(/\s+/g, ' ');
+    const translatedRaw = this.translateLabel(normalizedRaw);
+    if (translatedRaw !== normalizedRaw) return translatedRaw;
+
+    const readable = raw
       .replace(/_/g, ' ')
-      .replace(/\b\w/g, char => char.toUpperCase());
+      .replace(/\s+/g, ' ')
+      .toLowerCase()
+      .replace(/(^|[\s-])\p{L}/gu, match => match.toUpperCase());
+    return this.translateLabel(readable);
   }
 
   private readContentTypeFromRoute(): void {
@@ -1174,12 +1327,162 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.searchResults = [];
     this.searchIntentSummary = '';
     this.showDropdown = false;
+    this.destinationSearchLoading = false;
+  }
+
+  private clearSearchResultsOnly(): void {
+    this.submittedSearchQuery = '';
+    this.isSearchActive = false;
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.showDropdown = false;
+    this.destinationSearchLoading = false;
+  }
+
+  private setupDestinationSearchSubscription(): void {
+    this.destinationSearchSubscription = this.destinationSearchInput$.pipe(
+      debounceTime(250),
+      switchMap(query => {
+        const intent = this.parseSearchIntent(query);
+        if (!intent.normalizedQuery || query.length < MIN_SEARCH_LENGTH) {
+          return of({ query, intent, results: [] as ExploreSearchResult[] });
+        }
+
+        return this.locationService.searchAllLocations(
+          this.buildDestinationBackendSearchQuery(intent),
+          this.buildDestinationBackendSearchContext(intent)
+        ).pipe(
+          rxMap(responseLocations => {
+            const locations = this.applyBackendDestinationFilters(this.applyGuestState(this.decorateLocations(responseLocations)));
+            return {
+              query,
+              intent,
+              results: this.mapBackendDestinationResults(locations, intent),
+            };
+          }),
+          catchError(() => of({ query, intent, results: [] as ExploreSearchResult[] }))
+        );
+      })
+    ).subscribe(({ query, results }) => {
+      if (query !== this.searchQuery.trim() || this.activeContentType !== 'destinations') return;
+
+      this.destinationSearchLoading = false;
+      this.searchResults = results;
+      this.searchIntentSummary = this.describeSearchForCurrentType(query, results.length);
+      this.showDropdown = this.searchFocused && results.length > 0;
+      this.refreshVisibleContent();
+      this.updateBackToTopVisibility();
+      this.cdr.markForCheck();
+    });
+  }
+
+  private queueDestinationSearch(query: string): void {
+    this.destinationSearchLoading = true;
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.showDropdown = false;
+    this.locations = [];
+    this.destinationSearchInput$.next(query);
+  }
+
+  private buildDestinationBackendSearchContext(intent: SearchIntent): { lat?: number | null; lng?: number | null; type?: string; country?: string } {
+    const context: { lat?: number | null; lng?: number | null; type?: string; country?: string } = {};
+    const filterState = this.activeFilterState && this.isFilterActive ? this.activeFilterState : null;
+
+    if (intent.categoryKeys.length === 1 && !this.hasBeachIntent(intent)) {
+      context.type = intent.categoryKeys[0];
+    } else if (filterState?.activeCategories.length === 1) {
+      context.type = filterState.activeCategories[0];
+    }
+
+    if (filterState?.destinationCountries?.length === 1) {
+      context.country = filterState.destinationCountries[0];
+    }
+
+    if ((intent.nearMe || (filterState?.radius ?? 0) > 0) && this.userPosition) {
+      context.lat = this.userPosition.lat;
+      context.lng = this.userPosition.lng;
+    }
+
+    return context;
+  }
+
+  private applyBackendDestinationFilters(locations: Location[]): Location[] {
+    if (this.activeFilterState && this.isFilterActive) {
+      return this.applyFiltersToLocations(locations, this.activeFilterState);
+    }
+
+    return locations;
+  }
+
+  private buildDestinationBackendSearchQuery(intent: SearchIntent): string {
+    return intent.terms
+      .filter(term => !this.isCategorySearchTerm(term, intent.categoryKeys))
+      .join(' ');
+  }
+
+  private isCategorySearchTerm(term: string, categoryKeys: string[]): boolean {
+    if (categoryKeys.length === 0) return false;
+
+    const categoryTerms: Record<string, string[]> = {
+      attraction: ['attraction'],
+      restaurant: ['restaurant', 'restaurants', 'restoran', 'restorani', 'food', 'hrana', 'dinner', 'lunch', 'cafe', 'kafa'],
+      cultural_site: ['culture', 'cultural', 'kultura', 'museum', 'museums', 'muzej', 'history', 'istorija'],
+      monument: ['monument', 'monuments', 'spomenik'],
+      club: ['nightlife', 'club', 'clubs', 'bar', 'party', 'nocni'],
+      sports_facility: ['sport', 'sports', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure'],
+      event: ['event', 'events', 'dogadjaj', 'festival', 'concert', 'koncert'],
+      accommodation: ['hotel', 'hotels', 'accommodation', 'smestaj', 'smjestaj', 'stay'],
+      shop: ['shop', 'shops', 'shopping', 'prodavnica', 'market'],
+      other: ['other', 'ostalo', 'misc', 'miscellaneous'],
+    };
+
+    return categoryKeys.some(key => (categoryTerms[key] ?? []).some(categoryTerm =>
+      term === categoryTerm || term.includes(categoryTerm) || categoryTerm.includes(term)
+    ));
+  }
+
+  private mapBackendDestinationResults(locations: Location[], intent: SearchIntent): ExploreSearchResult[] {
+    return locations
+      .map(loc => this.buildDestinationSearchMatch(loc, intent))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => ({
+        kind: 'destinations',
+        id: item.loc.id,
+        title: item.loc.title,
+        subtitle: item.loc.regionName || this.formatPostType(item.loc.postType || item.loc.category),
+        meta: this.formatPostType(item.loc.postType || item.loc.category),
+        color: this.getCategoryColor(item.loc.postType || item.loc.category),
+        image: this.getFirstImage(item.loc),
+        rating: item.loc.avgRating || item.loc.rating || null,
+        reason: item.reason,
+        raw: {
+          ...item.loc,
+          searchReason: item.reason,
+          searchBadges: item.badges,
+        } as DestinationSearchResult,
+      }));
+  }
+
+  private updateBackToTopVisibility(): void {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+    this.showBackToTop = this.isSearchActive && this.activeResultCount > 0 && scrollTop > 260;
   }
 
   private rebuildSearchResults(): void {
     const query = this.searchQuery.trim();
     if (!query) {
       this.resetSearchState();
+      return;
+    }
+    if (query.length < MIN_SEARCH_LENGTH) {
+      this.clearSearchResultsOnly();
+      return;
+    }
+
+    if (this.activeContentType === 'destinations') {
+      this.showDropdown = this.searchFocused && this.searchResults.length > 0;
       return;
     }
 
@@ -1189,13 +1492,14 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   private refreshVisibleContent(): void {
-    if (this.isSearchActive && this.searchQuery.trim()) {
+    if (this.isSearchActive && this.searchQuery.trim() && this.activeContentType !== 'destinations') {
       this.rebuildSearchResults();
     }
 
     if (this.activeContentType === 'destinations') {
       if (this.activeActivityFilter) {
         this.locations = this.applySort(this.allLocations.filter(loc => this.matchesActivityFilter(loc, this.activeActivityFilter!)));
+        this.updateBackToTopVisibility();
         return;
       }
 
@@ -1205,6 +1509,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
             .filter(result => result.kind === 'destinations')
             .map(result => result.raw as Location))
         : this.applySort(base);
+      this.updateBackToTopVisibility();
       return;
     }
 
@@ -1215,6 +1520,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
             .filter(result => result.kind === 'activities')
             .map(result => result.raw as TouristActivityItem))
         : this.sortActivities(base);
+      this.updateBackToTopVisibility();
       return;
     }
 
@@ -1224,6 +1530,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
           .filter(result => result.kind === 'routes')
           .map(result => result.raw as TouristRouteItem))
       : this.sortRoutes(base);
+    this.updateBackToTopVisibility();
   }
 
   private getDestinationFilterBase(): Location[] {
@@ -1592,6 +1899,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   private getSearchReason(loc: Location, intent: SearchIntent, badges: string[]): string {
+    if (this.hasBeachIntent(intent)) return 'Matched beach terms in the destination data.';
     if (badges.includes('Very close') || badges.includes('Nearby')) {
       return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
     }
@@ -1600,6 +1908,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
     if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
     if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
     return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
+  }
+
+  private hasBeachIntent(intent: SearchIntent): boolean {
+    return intent.terms.some(term => ['plaza', 'plaze', 'beach', 'beaches'].includes(term));
   }
 
   private scoreTextFields(terms: string[], fields: string[], title: string): number {
@@ -1668,7 +1980,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/Ä‘/g, 'dj')
+      .replace(/đ/g, 'dj')
       .replace(/[^a-z0-9]+/g, ' ')
       .trim();
   }
@@ -1761,42 +2073,34 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return { lat: Number(lat), lng: Number(lng) };
   }
 
-  // Povezujemo se sa HTML elementom koji ima #scrollContainer
   @ViewChild('scrollContainer') scrollContainer!: ElementRef;
 
   isDown = false;
   startY = 0;
   scrollTop = 0;
 
-  // Kada korisnik pritisne levi klik
   onMouseDown(e: MouseEvent) {
     this.isDown = true;
     const el = this.scrollContainer.nativeElement;
-    // Računamo početnu poziciju miša u odnosu na kontejner
     this.startY = e.pageY - el.offsetTop;
-    // Čuvamo trenutnu poziciju skrola
     this.scrollTop = el.scrollTop;
   }
 
-  // Kada korisnik pusti klik
   onMouseUp() {
     this.isDown = false;
   }
 
-  // Ako miš izađe izvan okvira kontejnera dok je kliknut
   onMouseLeave() {
     this.isDown = false;
   }
 
-  // Dok korisnik pomera miša
   onMouseMove(e: MouseEvent) {
-    if (!this.isDown) return; // Ako nije kliknuto, ne radi ništa
-    e.preventDefault(); // Sprečava selektovanje teksta dok vučeš
+    if (!this.isDown) return;
+    e.preventDefault();
 
     const el = this.scrollContainer.nativeElement;
     const y = e.pageY - el.offsetTop;
-    const walk = (y - this.startY) * 1.5; // Množimo sa 1.5 da ubrzamo skrol
+    const walk = (y - this.startY) * 1.5;
     el.scrollTop = this.scrollTop - walk;
   }
-
 }

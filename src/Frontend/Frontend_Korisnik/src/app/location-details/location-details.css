@@ -358,15 +358,55 @@
 .directions-btn svg { width: 16px; height: 16px; fill: #fff; }
 
 .address {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: start;
   gap: 6px;
   font-size: 13px;
   color: var(--gray-500);
   font-weight: 500;
   margin: 0 0 24px;
 }
-.address svg { width: 14px; height: 14px; fill: var(--gray-400); flex-shrink: 0; }
+.address > svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--gray-400);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.address-text {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.distance-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 78px;
+  min-height: 36px;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.distance-pill svg {
+  width: 13px;
+  height: 13px;
+  fill: #15803d;
+  flex-shrink: 0;
+}
 
 /* ── SECTION DIVIDER ─────────────────────────────────────────── */
 .section-divider {
