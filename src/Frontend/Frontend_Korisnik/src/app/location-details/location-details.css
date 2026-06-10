@@ -669,6 +669,12 @@
   border-color: #e9d5ff;
 }
 
+.toast-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
 :host-context(html[data-theme='dark']) .detail-toast {
   background: #111827;
   color: #f8fafc;
@@ -688,6 +694,11 @@
 :host-context(html[data-theme='dark']) .toast-calendar {
   color: #d8b4fe;
   border-color: rgba(168, 85, 247, 0.35);
+}
+
+:host-context(html[data-theme='dark']) .toast-error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 /* ── NEARBY ──────────────────────────────────────────────────── */

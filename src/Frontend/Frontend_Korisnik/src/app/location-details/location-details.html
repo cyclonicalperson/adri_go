@@ -186,6 +186,7 @@
       <!-- Feedback toasts -->
       <div *ngIf="likeMessage" class="detail-toast toast-success">{{ likeMessage }}</div>
       <div *ngIf="saveMessage" class="detail-toast toast-info">{{ saveMessage }}</div>
+      <div *ngIf="actionErrorMessage" class="detail-toast toast-error">{{ actionErrorMessage }}</div>
       <div *ngIf="calendarMessage" class="detail-toast toast-calendar">{{ calendarMessage }}</div>
       <div *ngIf="reviewSuccess" class="detail-toast toast-success">{{ reviewSuccess }}</div>
 

@@ -17,6 +17,7 @@
 
   <div class="state" *ngIf="isLoading">Loading routes...</div>
   <div class="state error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="route-feedback" *ngIf="feedbackMessage">{{ feedbackMessage }}</div>
 
   <main class="route-grid" *ngIf="!isLoading && !errorMessage">
     <article class="route-card" *ngFor="let route of visibleRoutes">
@@ -33,11 +34,25 @@
         <span>{{ route.durationMin }} min</span>
         <span *ngIf="route.elevationGainM">{{ route.elevationGainM }} m up</span>
       </div>
-      <button class="primary-btn" (click)="openOnMap(route)" [disabled]="route.waypoints.length === 0">
-        Open on map
-      </button>
+      <div class="route-actions">
+        <button
+          class="secondary-btn route-save-btn"
+          [class.is-saved]="route.isSaved"
+          (click)="toggleSavedRoute(route, $event)">
+          {{ route.isSaved ? 'Saved' : 'Save to Saved' }}
+        </button>
+        <button class="primary-btn" (click)="openOnMap(route)" [disabled]="route.waypoints.length === 0">
+          Open on map
+        </button>
+      </div>
     </article>
 
     <div class="state" *ngIf="visibleRoutes.length === 0">No routes found.</div>
   </main>
+
+  <app-auth-required-modal
+    *ngIf="showAuthPopup"
+    (closed)="showAuthPopup = false"
+    (login)="goToLogin()">
+  </app-auth-required-modal>
 </div>

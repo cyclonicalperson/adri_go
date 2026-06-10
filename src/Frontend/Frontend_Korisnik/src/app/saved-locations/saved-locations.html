@@ -1,106 +1,408 @@
-<div class="saved-container">
-
+<div class="saved-container" [class.filters-open]="savedFiltersOpen">
   <app-header title="Saved"></app-header>
 
-  <div class="filter-scroll" *ngIf="!isLoading || savedItems.length > 0">
-    <div class="chips-row">
-      <button *ngFor="let f of filters"
-        class="chip" [class.active]="activeFilter === f.id" [style.--chip-accent]="f.color" (click)="setFilter(f.id)">
-        <span class="chip-icon" aria-hidden="true">{{ f.icon }}</span>
-        <span class="chip-label">{{ translateLabel(f.label) }}</span>
-      </button>
-    </div>
-  </div>
+  <div class="saved-scroll">
+    <div class="saved-page">
+      <section class="saved-top">
+        <div class="saved-hero">
+          <section class="saved-intro">
+            <div class="saved-title-row">
+              <span class="saved-title-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15-5-2.18L7 18V5h10v13z"/></svg>
+              </span>
+              <div>
+                <h1 class="saved-page-title">Saved</h1>
+                <p class="saved-subtitle">All the places, routes and experiences you've saved.</p>
+              </div>
+            </div>
+          </section>
 
-  <!-- Guest info banner -->
-  <div *ngIf="isGuest && !isLoading" class="guest-banner">
-    <svg viewBox="0 0 24 24" class="guest-banner-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-    <span>You're browsing as a guest. Saves are stored locally. <strong><a (click)="router.navigate(['/login'])" class="guest-banner-link">Log in</a></strong> to sync across devices.</span>
-  </div>
-
-  <div class="scroll-content" [class.empty-scroll]="isEmptyStateVisible">
-
-    <div class="loader-box" *ngIf="isLoading">
-      <div class="spinner"></div>
-      <p>Discovering your gems...</p>
-    </div>
-
-    <ng-container *ngIf="!isLoading">
-      
-      <p class="section-label" *ngIf="filteredItems.length > 0">
-        {{ getActiveFilterLabel() }} COLLECTIONS ({{ filteredItems.length }})
-      </p>
-
-      <div class="card" *ngFor="let item of filteredItems" (click)="viewDetails(item.id)">
-        <div class="image-box">
-          <img [src]="item.imageUrl || defaultImage" 
-               (error)="item.imageUrl = defaultImage" 
-               [alt]="item.title" 
-               class="main-image">
-          <div class="image-overlay"></div>
-
-          <span class="badge" [ngClass]="item.category.toLowerCase()">
-            <span class="dot"></span>
-            {{ formatPostType(item.category) }}
-          </span>
-
-          <!-- Like button -->
-          <button class="heart-btn like-btn" (click)="toggleLike(item, $event)" [class.liked]="item.isLiked">
-            <svg viewBox="0 0 24 24">
-              <path *ngIf="item.isLiked" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              <path *ngIf="!item.isLiked" d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"/>
-            </svg>
-          </button>
-          <!-- Unsave button (bookmark) -->
-          <button class="heart-btn unsave-btn" (click)="removeSaved(item.id, $event)" title="Remove from saved">
-            <svg viewBox="0 0 24 24">
-              <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
-            </svg>
-          </button>
+          <div class="saved-toolbar">
+            <div class="saved-search-wrap">
+              <span class="saved-search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z"/></svg>
+              </span>
+              <input
+                type="text"
+                class="saved-search-input"
+                placeholder="Search your saved items..."
+                [ngModel]="savedSearchQuery"
+                (ngModelChange)="onSavedSearchChanged($event)">
+              <div class="saved-search-divider"></div>
+              <button
+                class="saved-toolbar-filter-btn"
+                type="button"
+                [class.active]="hasActiveSavedFilters"
+                (click)="openSavedFilters($event)"
+                aria-label="Filter saved items">
+                <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zm-7-8v2h18v-2H3zm3-6v2h12V4H6z"/></svg>
+                <span class="filter-active-dot" *ngIf="hasActiveSavedFilters" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="card-body">
-          <div class="title-row">
-            <h3>{{item.title}}</h3>
-            <span class="rating">
-              <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-              {{ item.rating != null ? (item.rating | number:'1.1-1') : '0.0' }}
-            </span>
-          </div>
-
-          <div class="meta-row">
-            <span class="info-pill" *ngIf="item.distance !== null">
-              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              {{item.distance}} km away
-            </span>
-            <span class="info-pill" [class.open]="item.isOpen" [class.closed]="!item.isOpen">
-              <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-              {{item.status}}
-            </span>
-            <span class="reviews">({{item.reviews}} reviews)</span>
-          </div>
-
-          <div class="activity-tags-row" *ngIf="getActivityTags(item).length > 0">
-            <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(item)">{{ tag }}</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <button class="view-link" (click)="viewDetails(item.id); $event.stopPropagation()">
-            View details
-            <span class="arrow-icon">
-              <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-            </span>
-          </button>
+        <div *ngIf="isGuest && !isLoading" class="guest-banner">
+          <svg viewBox="0 0 24 24" class="guest-banner-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          <span>You're browsing as a guest. <strong><a class="guest-banner-link" (click)="router.navigate(['/login'])">Log in</a></strong> to sync saved places across devices.</span>
         </div>
-      </div>
 
-      <div class="empty-state" *ngIf="filteredItems.length === 0">
-        <svg class="empty-icon" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/></svg>
-        <p>No saved items in <b>{{activeFilter}}</b> category.</p>
-      </div>
+        <div class="saved-tabs-shell">
+          <nav class="saved-tabs" aria-label="Saved categories">
+            <button
+              *ngFor="let filter of filters"
+              type="button"
+              class="tab-btn"
+              [class.active]="activeFilter === filter.id"
+              (click)="setFilter(filter.id)">
+              <span class="tab-icon" [ngSwitch]="filter.id" aria-hidden="true">
+                <svg *ngSwitchCase="'All'" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15-5-2.18L7 18V5h10v13z"/></svg>
+                <svg *ngSwitchCase="'Places'" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 0 1 9.5 9 2.5 2.5 0 0 1 12 6.5 2.5 2.5 0 0 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>
+                <svg *ngSwitchCase="'Routes'" viewBox="0 0 24 24"><path d="M9 20.42 3 18.31V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39 4-1.4V7.14l-4 1.4v9.49zm-5-1.13 3 1.06V8.54L5 7.48v9.42zm11-.27 3 1.06V8.27l-3-1.06v9.42z"/></svg>
+              </span>
+              <span>{{ filter.label }}</span>
+            </button>
+          </nav>
+        </div>
+      </section>
 
-    </ng-container>
+      <div class="saved-shell">
+        <main class="saved-main">
+          <div class="loader-box" *ngIf="isLoading">
+            <div class="spinner"></div>
+            <p>Discovering your saved places...</p>
+          </div>
+
+          <ng-container *ngIf="!isLoading">
+            <div *ngIf="loadErrorMessage" class="saved-status-note">{{ loadErrorMessage }}</div>
+
+            <section class="saved-section" *ngFor="let section of visibleSections">
+              <div class="section-header">
+                <div class="section-title-wrap">
+                  <span class="section-icon" [ngClass]="'section-' + section.key" aria-hidden="true">
+                    <svg *ngIf="section.key === 'places'" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 0 1 9.5 9 2.5 2.5 0 0 1 12 6.5 2.5 2.5 0 0 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>
+                    <svg *ngIf="section.key === 'routes'" viewBox="0 0 24 24"><path d="M9 20.42 3 18.31V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39 4-1.4V7.14l-4 1.4v9.49zm-5-1.13 3 1.06V8.54L5 7.48v9.42zm11-.27 3 1.06V8.27l-3-1.06v9.42z"/></svg>
+                  </span>
+                  <h2>{{ section.title }}</h2>
+                  <span class="section-count">{{ getSectionCount(section.key) }}</span>
+                </div>
+
+                <button
+                  *ngIf="shouldShowViewAll(section)"
+                  class="view-all-btn"
+                  type="button"
+                  (click)="viewAll(section.key)">
+                  View all
+                </button>
+              </div>
+
+              <ng-container [ngSwitch]="section.key">
+                <div
+                  *ngSwitchCase="'places'"
+                  class="section-rail"
+                  [class.section-rail-empty]="getSectionCount('places') === 0"
+                  [class.section-rail-listing]="activeFilter === 'Places'">
+                  <p class="section-helper-text">Places and experiences saved from across the app.</p>
+                  <ng-container *ngIf="filteredPlaceItems.length > 0; else placesEmpty">
+                    <div class="rail-frame" [class.rail-frame-listing]="activeFilter === 'Places'">
+                      <button
+                        *ngIf="activeFilter !== 'Places' && filteredPlaceItems.length > 3"
+                        class="rail-arrow rail-arrow-left"
+                        type="button"
+                        aria-label="Scroll saved places left"
+                        (click)="scrollRail('places', -1)">
+                        <svg viewBox="0 0 24 24"><path d="m15.41 7.41-1.41-1.41L8 12l6 6 1.41-1.41L10.83 12z"/></svg>
+                      </button>
+                      <button
+                        *ngIf="activeFilter !== 'Places' && filteredPlaceItems.length > 3"
+                        class="rail-arrow rail-arrow-right"
+                        type="button"
+                        aria-label="Scroll saved places right"
+                        (click)="scrollRail('places', 1)">
+                        <svg viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                      </button>
+
+                      <div
+                        class="card-row"
+                        [class.scroll-row]="activeFilter !== 'Places'"
+                        [class.place-list-grid]="activeFilter === 'Places'"
+                        data-section="places"
+                        #sectionRail>
+                        <article class="saved-card" *ngFor="let item of filteredPlaceItems; trackBy: trackByItem" (click)="viewDetails(item.id)">
+                          <div class="image-wrapper">
+                            <img [src]="item.imageUrl || defaultImage" [alt]="item.title" data-no-translate="true" (error)="item.imageUrl = defaultImage">
+                            <div class="image-gradient"></div>
+                            <span class="category-badge">
+                              <span class="cat-dot" [style.background]="getCategoryColor(item.category)"></span>
+                              {{ formatPostType(item.category) }}
+                            </span>
+                            <div class="action-btns">
+                              <button class="action-btn" type="button" (click)="toggleLike(item, $event)" title="Like">
+                                <svg viewBox="0 0 24 24" [attr.fill]="item.isLiked ? '#ef4444' : 'none'" [attr.stroke]="item.isLiked ? '#ef4444' : 'currentColor'" stroke-width="2">
+                                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
+                              </button>
+                              <button class="action-btn" type="button" (click)="removeSaved(item.id, $event)" title="Remove from saved">
+                                <svg viewBox="0 0 24 24" fill="#22c55e"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                              </button>
+                            </div>
+                            <div class="image-rating-badge">
+                              <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                              {{ item.rating ? (item.rating | number:'1.1-1') : 'N/A' }}
+                            </div>
+                          </div>
+
+                          <div class="card-content">
+                            <div class="title-row">
+                              <h3 data-no-translate="true">{{ item.title }}</h3>
+                            </div>
+
+                            <div class="activity-tags-row" *ngIf="getActivityTags(item, 2).length > 0">
+                              <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(item, 2)" data-no-translate="true">{{ tag }}</span>
+                            </div>
+
+                            <div class="info-row">
+                              <span class="info-item info-item-primary">
+                                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/></svg>
+                                <span data-no-translate="true">{{ item.regionName || getItemLocation(item) }}</span>
+                              </span>
+                              <span class="info-dot" *ngIf="item.distance !== null">·</span>
+                              <span class="info-item" *ngIf="item.distance !== null">
+                                {{ item.distance }} km
+                              </span>
+                            </div>
+                          </div>
+                        </article>
+                      </div>
+                    </div>
+                  </ng-container>
+                </div>
+
+                <div *ngSwitchCase="'routes'" class="route-list" [class.route-list-embedded]="activeFilter === 'All'">
+                  <p class="section-helper-text">Curated favorites and planner routes saved to your account.</p>
+                  <ng-container *ngIf="filteredRouteItems.length > 0; else routesEmpty">
+                    <div class="route-stack">
+                      <article class="route-card" *ngFor="let route of filteredRouteItems; trackBy: trackByRoute" (click)="viewRoute(route)">
+                        <img class="route-card-image" [src]="getRouteFirstImage(route)" [alt]="route.title" data-no-translate="true" (error)="$any($event.target).src = defaultImage">
+                        <div class="route-card-body">
+                          <div class="route-card-head">
+                            <ng-container *ngIf="isEditingRoute(route); else routeTitleView">
+                              <div class="route-inline-rename" (click)="$event.stopPropagation()">
+                                <input
+                                  class="route-rename-input"
+                                  type="text"
+                                  [(ngModel)]="editingRouteTitle"
+                                  maxlength="120"
+                                  data-no-translate="true"
+                                  aria-label="Route name"
+                                  (click)="$event.stopPropagation()"
+                                  (keydown.enter)="saveRouteRename(route, $event)"
+                                  (keydown.escape)="cancelRouteRename($event)">
+                                <button class="route-rename-save" type="button" (click)="saveRouteRename(route, $event)">Save</button>
+                                <button class="route-rename-cancel" type="button" (click)="cancelRouteRename($event)">Cancel</button>
+                              </div>
+                            </ng-container>
+                            <ng-template #routeTitleView>
+                              <div class="route-title-row">
+                                <span class="route-mode-icon" [attr.data-mode]="route.travelMode || 'driving'" aria-hidden="true">
+                                  <svg *ngIf="(route.travelMode || 'driving') === 'driving'" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM6.5 16A1.5 1.5 0 1 1 8 14.5 1.5 1.5 0 0 1 6.5 16zm11 0a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5z"/></svg>
+                                  <svg *ngIf="(route.travelMode || 'driving') === 'cycling'" viewBox="0 0 24 24"><path d="M18.5 5c-1.93 0-3.5 1.57-3.5 3.5S16.57 12 18.5 12 22 10.43 22 8.5 20.43 5 18.5 5zM5.5 12C3.57 12 2 13.57 2 15.5S3.57 19 5.5 19 9 17.43 9 15.5 7.43 12 5.5 12zm13 1c-1.35 0-2.5 1.15-2.5 2.5S17.15 18 18.5 18s2.5-1.15 2.5-2.5S19.85 13 18.5 13zM14.8 7H12l-1.1 2.5h2.3l-1.8 3.3A3.46 3.46 0 0 0 9.5 12c-.73 0-1.41.22-1.98.59L9.2 9.5H7V7h3.5c.4 0 .77.24.92.61l.58 1.39h1.5c.72 0 1.3-.58 1.3-1.3 0-.39-.17-.75-.45-1z"/></svg>
+                                  <svg *ngIf="(route.travelMode || 'driving') === 'walking'" viewBox="0 0 24 24"><path d="M13.5 5.5A2.5 2.5 0 1 0 11 3a2.5 2.5 0 0 0 2.5 2.5zm-3.64 15.3 1.23-5.13 2.35 2.23V22h2v-5.27l-2.27-2.18.63-3.06a5.94 5.94 0 0 0 4.7 2.28v-2a3.97 3.97 0 0 1-3.37-1.87l-1-1.58a2 2 0 0 0-2.47-.78L7 9.5V14h2v-3.14l1.54-.56-1.48 6.17L4.8 15.6l-.4 1.96 5.46 1.24z"/></svg>
+                                </span>
+                                <h3 data-no-translate="true">{{ route.title }}</h3>
+                                <button
+                                  *ngIf="route.kind === 'touristRoute'"
+                                  class="route-title-edit-btn"
+                                  type="button"
+                                  aria-label="Rename route"
+                                  title="Rename route"
+                                  (click)="beginRouteRename(route, $event)">
+                                  <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.33H5v-.92l8.06-8.06.92.92L5.92 19.58zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
+                                </button>
+                              </div>
+                            </ng-template>
+                          </div>
+                          <div class="route-meta">
+                            <span class="info-item route-meta-item">
+                              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 0 1 9.5 9 2.5 2.5 0 0 1 12 6.5 2.5 2.5 0 0 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>
+                              <span data-no-translate="true">{{ getRouteLocation(route) }}</span>
+                            </span>
+                            <span class="info-item route-meta-item">{{ getRouteMetaLabel(route) }}</span>
+                            <span class="info-item route-meta-item" *ngIf="route.distanceKm > 0">{{ route.distanceKm | number:'1.0-1' }} km</span>
+                            <span class="info-item route-meta-item" *ngIf="route.durationMin > 0">{{ route.durationMin }} min</span>
+                            <span class="info-item route-meta-item" *ngIf="route.elevationGainM">{{ route.elevationGainM }} m up</span>
+                          </div>
+                        </div>
+                        <div class="route-actions" (click)="$event.stopPropagation()">
+                          <button class="route-view-btn" type="button" (click)="viewRoute(route, $event)">View</button>
+                          <button class="route-start-btn" type="button" (click)="startRoute(route, $event)">Start Route</button>
+                          <button class="route-menu-btn route-remove-btn" type="button" aria-label="Remove route from saved" title="Remove from Saved Routes" (click)="removeSavedRoute(route, $event)">
+                            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                          </button>
+                        </div>
+                      </article>
+                    </div>
+                  </ng-container>
+                </div>
+              </ng-container>
+            </section>
+
+            <section class="summary-card summary-card-mobile">
+              <div class="summary-header">
+                <span class="summary-icon">
+                  <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                </span>
+                <div>
+                  <h3>Saved Summary</h3>
+                </div>
+              </div>
+
+              <div class="summary-block-list">
+                <section class="summary-feature summary-feature-places">
+                  <div class="summary-feature-head">
+                    <span class="summary-feature-icon">
+                      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 0 1 9.5 9 2.5 2.5 0 0 1 12 6.5 2.5 2.5 0 0 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>
+                    </span>
+                    <div class="summary-feature-copy">
+                      <h4>Saved Places</h4>
+                      <p>Your saved locations</p>
+                    </div>
+                    <strong>{{ placeItems.length }}</strong>
+                  </div>
+                  <button class="summary-action-btn summary-action-places" type="button" (click)="showOnMap()">
+                    <span class="summary-action-label">
+                      <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                      <span>View on Map</span>
+                    </span>
+                    <svg class="summary-action-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                  </button>
+                </section>
+
+                <section class="summary-feature summary-feature-routes">
+                  <div class="summary-feature-head">
+                    <span class="summary-feature-icon">
+                      <svg viewBox="0 0 24 24"><path d="M9 20.42 3 18.31V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39 4-1.4V7.14l-4 1.4v9.49zm-5-1.13 3 1.06V8.54L5 7.48v9.42zm11-.27 3 1.06V8.27l-3-1.06v9.42z"/></svg>
+                    </span>
+                    <div class="summary-feature-copy">
+                      <h4>Saved Routes</h4>
+                      <p>Your saved routes</p>
+                    </div>
+                    <strong>{{ routeItems.length }}</strong>
+                  </div>
+                  <button class="summary-action-btn summary-action-routes" type="button" (click)="exploreSavedRoutes()">
+                    <span class="summary-action-label">
+                      <svg viewBox="0 0 24 24"><path d="M14 6h5v5h-2V9.41l-4.29 4.3-1.42-1.42L15.59 8H14V6zM6 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c2.21 0 4 1.79 4 4v1H8v-1a2 2 0 1 0-4 0v1H2v-1c0-2.21 1.79-4 4-4zm12 1a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+                      <span>Explore Routes</span>
+                    </span>
+                    <svg class="summary-action-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                  </button>
+                </section>
+              </div>
+
+              <div class="summary-total-row summary-total-row-card">
+                <span>Total Saved</span>
+                <strong>{{ totalSavedCount }}</strong>
+              </div>
+            </section>
+
+            <section class="summary-quote-box summary-quote-box-mobile">
+              <span class="summary-quote-mark">“</span>
+              <p class="summary-footer-note">Collect moments that inspire your next adventure.</p>
+            </section>
+          </ng-container>
+
+          <ng-template #placesEmpty>
+            <div class="section-empty">
+              <span class="empty-icon">
+                <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15-5-2.18L7 18V5h10v13z"/></svg>
+              </span>
+              <div>
+                <h4>{{ placeItems.length > 0 && hasSavedSearchOrFilters ? 'No saved places match your search' : 'No saved places yet' }}</h4>
+                <p>{{ placeItems.length > 0 && hasSavedSearchOrFilters ? 'Try a different search term and your saved places will appear here.' : 'Places you save from Explore or location pages will show up here.' }}</p>
+              </div>
+            </div>
+          </ng-template>
+
+          <ng-template #routesEmpty>
+            <div class="section-empty section-empty-wide">
+              <span class="empty-icon route-empty-icon">
+                <svg viewBox="0 0 24 24"><path d="M9 20.42 3 18.31V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39 4-1.4V7.14l-4 1.4v9.49z"/></svg>
+              </span>
+              <div>
+                <h4>{{ routeItems.length > 0 && hasSavedSearchOrFilters ? 'No saved routes match your filters' : 'No saved routes yet' }}</h4>
+                <p>{{ routeItems.length > 0 && hasSavedSearchOrFilters ? 'Try another search or switch the route filter back to All Routes.' : 'Curated route favorites and planner routes saved to your account will appear here.' }}</p>
+              </div>
+            </div>
+          </ng-template>
+        </main>
+
+        <aside class="saved-sidebar" *ngIf="!isLoading">
+          <section class="summary-card">
+            <div class="summary-header">
+              <span class="summary-icon">
+                <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+              </span>
+              <div>
+                <h3>Saved Summary</h3>
+              </div>
+            </div>
+
+            <div class="summary-block-list">
+              <section class="summary-feature summary-feature-places">
+                <div class="summary-feature-head">
+                  <span class="summary-feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 0 1 9.5 9 2.5 2.5 0 0 1 12 6.5 2.5 2.5 0 0 1 14.5 9 2.5 2.5 0 0 1 12 11.5z"/></svg>
+                  </span>
+                  <div class="summary-feature-copy">
+                    <h4>Saved Places</h4>
+                    <p>Your saved locations</p>
+                  </div>
+                  <strong>{{ placeItems.length }}</strong>
+                </div>
+                <button class="summary-action-btn summary-action-places" type="button" (click)="showOnMap()">
+                  <span class="summary-action-label">
+                    <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                    <span>View on Map</span>
+                  </span>
+                  <svg class="summary-action-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </button>
+              </section>
+
+              <section class="summary-feature summary-feature-routes">
+                <div class="summary-feature-head">
+                  <span class="summary-feature-icon">
+                    <svg viewBox="0 0 24 24"><path d="M9 20.42 3 18.31V4.75l6 2.11 6-2.11 6 2.11v13.56l-6-2.11-6 2.11zm1-2.39 4-1.4V7.14l-4 1.4v9.49zm-5-1.13 3 1.06V8.54L5 7.48v9.42zm11-.27 3 1.06V8.27l-3-1.06v9.42z"/></svg>
+                  </span>
+                  <div class="summary-feature-copy">
+                    <h4>Saved Routes</h4>
+                    <p>Your saved routes</p>
+                  </div>
+                  <strong>{{ routeItems.length }}</strong>
+                </div>
+                <button class="summary-action-btn summary-action-routes" type="button" (click)="exploreSavedRoutes()">
+                  <span class="summary-action-label">
+                    <svg viewBox="0 0 24 24"><path d="M14 6h5v5h-2V9.41l-4.29 4.3-1.42-1.42L15.59 8H14V6zM6 7a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c2.21 0 4 1.79 4 4v1H8v-1a2 2 0 1 0-4 0v1H2v-1c0-2.21 1.79-4 4-4zm12 1a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+                    <span>Explore Routes</span>
+                  </span>
+                  <svg class="summary-action-arrow" viewBox="0 0 24 24"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                </button>
+              </section>
+            </div>
+
+            <div class="summary-total-row summary-total-row-card">
+              <span>Total Saved</span>
+              <strong>{{ totalSavedCount }}</strong>
+            </div>
+          </section>
+
+          <section class="summary-quote-box summary-quote-box-sidebar">
+            <span class="summary-quote-mark">“</span>
+            <p class="summary-footer-note">Collect moments that inspire your next adventure.</p>
+          </section>
+
+        </aside>
+      </div>
+    </div>
   </div>
 
   <app-auth-required-modal
@@ -110,7 +412,160 @@
     (login)="goToLogin()">
   </app-auth-required-modal>
 
+  <div class="saved-filters-backdrop" *ngIf="savedFiltersOpen" (click)="closeSavedFilters()"></div>
+  <div class="saved-filters-panel" *ngIf="savedFiltersOpen" (click)="$event.stopPropagation()">
+    <div class="saved-filters-header">
+      <button class="saved-filters-close-btn" type="button" (click)="closeSavedFilters()" aria-label="Close filters">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2>Filters</h2>
+      <button class="saved-filters-clear-btn" type="button" (click)="clearSavedFilters()">Clear All</button>
+    </div>
+
+    <div class="saved-filters-scroll" #savedFiltersScroll>
+      <section class="saved-filters-section" *ngIf="shouldShowPlaceFilters">
+        <div class="saved-filters-section-head">
+          <div>
+            <h3>Categories</h3>
+            <p>Filter saved places and experiences by type.</p>
+          </div>
+        </div>
+
+        <div class="saved-place-category-grid">
+          <button
+            *ngFor="let category of savedPlaceCategoryOptionsExtended"
+            type="button"
+            class="saved-place-category-chip"
+            [class.active]="isDraftPlaceCategorySelected(category.id)"
+            [style.--cat-color]="category.color"
+            (click)="toggleDraftPlaceCategory(category.id)">
+            <span class="saved-place-category-icon" aria-hidden="true">{{ category.icon }}</span>
+            {{ category.label }}
+          </button>
+        </div>
+      </section>
+
+      <section class="saved-filters-section" *ngIf="shouldShowPlaceFilters">
+        <div class="saved-filters-section-head">
+          <div>
+            <h3>Minimum Rating</h3>
+          </div>
+        </div>
+
+        <div class="saved-rating-grid">
+          <button
+            *ngFor="let rating of [1,2,3,4,5]"
+            type="button"
+            class="saved-rating-card"
+            [class.active]="draftSavedFilters.placeMinRating === rating"
+            (click)="setDraftPlaceMinRating(rating)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            {{ rating }}+
+          </button>
+        </div>
+      </section>
+
+      <section class="saved-filters-section" *ngIf="shouldShowRouteFilters">
+        <div class="saved-filters-section-head">
+          <div>
+            <h3>Route stops</h3>
+            <p>Filter saved routes by the number of saved stops.</p>
+          </div>
+        </div>
+
+        <div class="saved-route-compact-grid saved-route-stops-grid">
+          <button
+            *ngFor="let option of routeStopOptions"
+            type="button"
+            class="saved-route-compact-card"
+            [class.active]="draftSavedFilters.routeStopBucket === option.value"
+            (click)="setDraftRouteStopBucket(option.value)">
+            {{ option.label }}
+          </button>
+        </div>
+      </section>
+
+      <section class="saved-filters-section" *ngIf="shouldShowRouteFilters">
+        <div class="saved-filters-section-head">
+          <div>
+            <h3>Route mode</h3>
+          </div>
+        </div>
+
+        <div class="saved-route-compact-grid saved-route-mode-grid">
+          <button
+            *ngFor="let mode of routeModeOptions"
+            type="button"
+            class="saved-route-compact-card"
+            [class.active]="isDraftRouteModeSelected(mode)"
+            (click)="toggleDraftRouteMode(mode)">
+            {{ formatRouteModeLabel(mode) }}
+          </button>
+        </div>
+      </section>
+
+      <section class="saved-filters-section" *ngIf="shouldShowRouteFilters">
+        <div class="saved-filters-section-head">
+          <div>
+            <h3>Distance</h3>
+            <p>Filter route results by total kilometers.</p>
+          </div>
+        </div>
+
+        <div class="saved-distance-controls">
+          <div class="saved-distance-block">
+            <span class="saved-distance-block-label">Sort order</span>
+            <div class="saved-route-compact-grid saved-route-distance-grid">
+              <button
+                *ngFor="let option of routeDistanceSortOptions"
+                type="button"
+                class="saved-route-compact-card"
+                [class.active]="draftSavedFilters.routeDistanceSort === option.value"
+                (click)="setDraftRouteDistanceSort(option.value)">
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+
+          <div class="saved-distance-block">
+            <span class="saved-distance-block-label">Distance range</span>
+            <div class="saved-distance-input-grid">
+              <label class="saved-distance-field">
+                <span>Min km</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  inputmode="decimal"
+                  [ngModel]="draftSavedFilters.routeDistanceMin"
+                  (ngModelChange)="setDraftRouteDistanceMin($event)"
+                  placeholder="0">
+              </label>
+
+              <label class="saved-distance-field">
+                <span>Max km</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  inputmode="decimal"
+                  [ngModel]="draftSavedFilters.routeDistanceMax"
+                  (ngModelChange)="setDraftRouteDistanceMax($event)"
+                  placeholder="Any">
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="saved-filters-footer">
+      <button class="saved-filters-apply-btn" type="button" (click)="applySavedFilters()">Apply filters</button>
+    </div>
+  </div>
+
+  <div *ngIf="feedbackMessage" class="feedback-toast">{{ feedbackMessage }}</div>
+
   <app-desktop-footer active="saved"></app-desktop-footer>
   <app-mobile-tourist-nav active="saved"></app-mobile-tourist-nav>
-
 </div>

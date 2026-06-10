@@ -166,7 +166,12 @@ export class ChatPopupComponent implements OnInit, AfterViewChecked {
   private loadRouteOnMap(route: TouristRouteItem): void {
     this.routePlanner.replaceStops(
       this.routesService.routeToPlannerStops(route),
-      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+      {
+        plannerMode: true,
+        scenicMode: false,
+        travelMode: this.routePlanner.snapshot.travelMode || 'driving',
+        sourceRouteId: route.id,
+      },
     );
     this.closePopup.emit();
     // Navigiramo sa query parametrom koji prisiljava mapu da refreshuje planner state

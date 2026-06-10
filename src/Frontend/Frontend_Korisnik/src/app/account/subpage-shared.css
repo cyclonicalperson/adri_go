@@ -267,6 +267,7 @@ textarea.field-input { resize: none; line-height: 1.5; }
   background: #fff;
   border-top: 1px solid var(--gray-100);
   flex-shrink: 0;
+  margin-bottom: var(--mobile-footer-space);
 }
 
 .save-btn {
@@ -649,7 +650,7 @@ textarea.field-input { resize: none; line-height: 1.5; }
     font-size: 22px !important;
   }
   .scroll-content {
-    padding: 0 !important;
+    padding: 0 0 calc(var(--desktop-footer-space) + 18px) !important;
   }
   .scroll-content > * {
     width: min(880px, calc(100vw - 80px));

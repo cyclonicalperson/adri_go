@@ -29,7 +29,7 @@ import {
 import { SavedRoute, SavedRoutesService } from '../services/saved-routes.service';
 import { ThemeService } from '../services/theme.service';
 import { TouristActivitiesService, TouristActivityItem } from '../services/tourist-activities.service';
-import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
+import { TouristOwnedRouteItem, TouristRouteDraftPayload, TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
 import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
@@ -209,7 +209,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   showClearRouteConfirm = false;
   showClearSavedRoutesConfirm = false;
 
-  // ─── Saved routes ────────────────────────────────────────────────────────
+  // ─── Planner routes (browser-local planner snapshots) ───────────────────
   savedRoutes: SavedRoute[] = [];
   showSavedRoutes = false;
   saveRouteMessage = '';
@@ -429,6 +429,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
     this.authSubscription = this.authService.tourist$.subscribe(session => {
       this.savedRoutes = session ? this.savedRoutesService.getAll() : [];
+      this.refreshCuratedRouteSavedState();
       if (!session) {
         this.showSavedRoutes = false;
       }
@@ -601,6 +602,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.touristRoutesService.getRoutes().subscribe({
       next: routes => {
         this.publicRoutes = routes.filter(route => route.waypoints.length > 0);
+        this.refreshCuratedRouteSavedState();
         this.addRouteMarkers();
         this.fitMapToSelectedFilterArea();
         this.cdr.detectChanges();
@@ -1214,9 +1216,17 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!route || route.waypoints.length === 0) {
           return;
         }
+        const preferredMode = this.routePlanner.snapshot.travelMode || this.travelMode || this.preferences.snapshot.preferredTravelMode || 'driving';
         this.routePlanner.replaceStops(
           this.touristRoutesService.routeToPlannerStops(route),
-          { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+          {
+            plannerMode: true,
+            scenicMode: false,
+            travelMode: preferredMode,
+            sourceRouteId: route.id,
+            sourceTouristRouteId: null,
+            originRouteId: route.id,
+          },
         );
         this.syncPlannerStateFromServices();
         this.renderPlannerRoute();
@@ -1245,6 +1255,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           plannerMode: true,
           scenicMode: route.scenicMode,
           travelMode: (route.travelMode as TravelMode) || 'walking',
+          sourceTouristRouteId: route.id,
+          originRouteId: route.sourceRouteId,
         });
         this.syncPlannerStateFromServices();
         this.renderPlannerRoute();
@@ -1502,10 +1514,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   saveCurrentRoute(): void {
-    if (!this.authService.isLoggedIn) {
-      this.showAuthPopup = true;
-      return;
-    }
     if (this.plannerStops.length === 0) return;
     if (this.plannerStops.length > 1 && !this.routeIsRoutable) {
       this.plannerMessage = this.getRouteProblemMessage();
@@ -1517,29 +1525,113 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     const title = this.routeDestTitle || this.getRouteTitle();
-    const saved = this.savedRoutesService.save(
-      this.plannerStops,
-      this.travelMode,
-      this.scenicMode,
-      title,
-      this.routeSummary,
-    );
-    this.refreshSavedRoutes();
-    this.saveRouteMessage = `Route "${saved.title}" saved!`;
-    setTimeout(() => {
-      this.saveRouteMessage = '';
+    if (!this.authService.isLoggedIn) {
+      const saved = this.savedRoutesService.save(
+        this.plannerStops,
+        this.travelMode,
+        this.scenicMode,
+        title,
+        this.routeSummary,
+      );
+      this.refreshSavedRoutes();
+      this.showSaveRouteToast('Saved in this browser.');
       this.cdr.detectChanges();
-    }, 2500);
-    this.cdr.detectChanges();
+      return;
+    }
+
+    void this.persistPlannerRouteForTourist(title);
+  }
+
+  private async persistPlannerRouteForTourist(title: string): Promise<void> {
+    const snapshot = this.routePlanner.snapshot;
+    const stableMetrics = await this.buildStableSavedRouteMetrics();
+    const payload: TouristRouteDraftPayload = {
+      title,
+      waypoints: JSON.stringify(this.plannerStops.map(stop => ({
+        id: stop.id,
+        lat: stop.lat,
+        lng: stop.lng,
+        name: stop.title,
+      }))),
+      travelMode: this.travelMode,
+      scenicMode: this.scenicMode,
+      distanceKm: stableMetrics.distanceKm,
+      durationMin: stableMetrics.durationMin,
+      sourceRouteId: snapshot.sourceRouteId ?? snapshot.originRouteId ?? null,
+    };
+
+    const request$ = snapshot.sourceTouristRouteId != null
+      ? this.touristRoutesService.updateTouristRoute(snapshot.sourceTouristRouteId, payload)
+      : this.touristRoutesService.createTouristRoute(payload);
+
+    request$.subscribe({
+      next: route => {
+        if (!route) {
+          this.showSaveRouteToast('Couldn\'t save route.');
+          this.cdr.detectChanges();
+          return;
+        }
+        this.persistPlannerTouristRouteState(route);
+        this.showSaveRouteToast(
+          snapshot.sourceTouristRouteId != null ? 'Route updated.' : 'Route saved.'
+        );
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        if (err?.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
+          return;
+        }
+        this.showSaveRouteToast(this.getPlannerRouteSaveErrorMessage(err));
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private async buildStableSavedRouteMetrics(): Promise<{ distanceKm?: number; durationMin?: number }> {
+    const stableCoordinates = this.plannerStops.map(stop => [stop.lat, stop.lng] as [number, number]);
+    if (stableCoordinates.length < 2) {
+      return {};
+    }
+
+    try {
+      const route = await this.routingService.computeRoute(stableCoordinates, this.travelMode, {
+        allowFallback: true,
+      });
+      return {
+        distanceKm: route.distanceKm > 0 ? route.distanceKm : undefined,
+        durationMin: route.durationMin > 0 ? Math.round(route.durationMin) : undefined,
+      };
+    } catch {
+      return {
+        distanceKm: this.routeSummary.distanceKm > 0 ? this.routeSummary.distanceKm : undefined,
+        durationMin: this.routeSummary.durationMin > 0 ? Math.round(this.routeSummary.durationMin) : undefined,
+      };
+    }
+  }
+
+  private persistPlannerTouristRouteState(route: TouristOwnedRouteItem): void {
+    const snapshot = this.routePlanner.snapshot;
+    this.routePlanner.replaceStops(this.plannerStops, {
+      plannerMode: true,
+      scenicMode: this.scenicMode,
+      travelMode: this.travelMode,
+      sourceRouteId: null,
+      sourcePrivateRouteId: null,
+      sourceTouristRouteId: route.id,
+      originRouteId: route.sourceRouteId ?? snapshot.originRouteId ?? snapshot.sourceRouteId ?? null,
+    });
   }
 
   openSavedRoutes(): void {
     if (!this.authService.isLoggedIn) {
-      this.showAuthPopup = true;
+      this.refreshSavedRoutes();
+      this.showSavedRoutes = true;
       return;
     }
-    this.refreshSavedRoutes();
-    this.showSavedRoutes = true;
+
+    this.router.navigate(['/saved']);
   }
 
   loadSavedRoute(route: SavedRoute): void {
@@ -1551,6 +1643,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       scenicMode: route.scenicMode,
       travelMode: route.travelMode,
       sourcePrivateRouteId: route.id,
+      sourceTouristRouteId: null,
+      originRouteId: null,
     });
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
@@ -1566,6 +1660,70 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.savedRoutesService.delete(id);
     this.refreshSavedRoutes();
     this.cdr.detectChanges();
+  }
+
+  toggleCuratedRouteSave(route: TouristRouteItem, event?: Event): void {
+    event?.stopPropagation();
+
+    if (!this.authService.isLoggedIn) {
+      this.showAuthPopup = true;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.touristRoutesService.toggleSaveRoute(route.id).subscribe({
+      next: res => {
+        this.patchCuratedRouteSavedState(route.id, {
+          isSaved: res.isSaved,
+          saveCount: res.saveCount ?? route.saveCount,
+        });
+        this.showSaveRouteToast(res.isSaved ? 'Added to Saved Routes.' : 'Removed from Saved Routes.');
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        if (err?.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
+          return;
+        }
+        this.showSaveRouteToast('Couldn\'t update saved route.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private showSaveRouteToast(message: string, durationMs = 2400): void {
+    this.saveRouteMessage = message;
+    setTimeout(() => {
+      this.saveRouteMessage = '';
+      this.cdr.detectChanges();
+    }, durationMs);
+  }
+
+  private getPlannerRouteSaveErrorMessage(err: any): string {
+    const backendMessage = String(err?.error?.message || '').trim();
+
+    if (!backendMessage) {
+      return 'Couldn\'t save route.';
+    }
+
+    if (backendMessage.includes('Ruta nije routabilna')) {
+      return 'Adjust the stops, then save again.';
+    }
+
+    if (backendMessage.includes('Route title is required')) {
+      return 'Add a route name first.';
+    }
+
+    if (backendMessage.includes('Source route not found')) {
+      return 'Original route is no longer available.';
+    }
+
+    if (backendMessage.includes('Waypoint') || backendMessage.includes('Koordinate')) {
+      return 'Route points are invalid.';
+    }
+
+    return backendMessage.length > 64 ? 'Couldn\'t save route.' : backendMessage;
   }
 
   requestClearSavedRoutes(): void {
@@ -2190,6 +2348,22 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         imageUrl: null,
         address: null,
       };
+    } else if (snapshot.sourceTouristRouteId != null) {
+      pending = {
+        kind: 'privateRoute',
+        title: routeTitle,
+        imageUrl: null,
+        address: null,
+        privateRoute: {
+          touristRouteId: snapshot.sourceTouristRouteId,
+          title: routeTitle,
+          waypoints: JSON.stringify(this.plannerStops.map(stop => ({ id: stop.id, lat: stop.lat, lng: stop.lng, name: stop.title }))),
+          travelMode: this.travelMode,
+          scenicMode: this.scenicMode,
+          distanceKm: this.routeSummary.distanceKm || undefined,
+          durationMin: Math.round(this.routeSummary.durationMin) || undefined,
+        },
+      };
     } else if (snapshot.sourcePrivateRouteId != null) {
       const saved = this.savedRoutesService.getById(snapshot.sourcePrivateRouteId);
       if (!saved) {
@@ -2448,8 +2622,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
-      const visible = !showOnlyPlannerStops
-        && !hasActiveSearch
+      const visible = !this.isNavigating
+        && this.mapFilterContentType === 'routes'
         && this.routePassesRadiusFilter(route)
         && this.routeMatchesExploreFilters(route)
         && renderBounds.contains(latLng);
@@ -3042,7 +3216,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedPublicRoute = null;
     this.routePlanner.replaceStops(
       this.touristRoutesService.routeToPlannerStops(route),
-      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+      {
+        plannerMode: true,
+        scenicMode: false,
+        travelMode: this.routePlanner.snapshot.travelMode || this.travelMode || this.preferences.snapshot.preferredTravelMode || 'driving',
+        sourceRouteId: route.id,
+      },
     );
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
@@ -3077,6 +3256,57 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       expert: 'Expert',
     };
     return labels[normalized] ?? value.replace(/[_-]+/g, ' ');
+  }
+
+  private refreshCuratedRouteSavedState(): void {
+    if (!this.authService.isLoggedIn) {
+      this.patchCuratedRouteSavedCollection([]);
+      return;
+    }
+
+    this.touristRoutesService.getMySavedRoutes().subscribe({
+      next: savedRoutes => {
+        this.patchCuratedRouteSavedCollection(savedRoutes);
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        if (err?.status === 401) {
+          this.authService.logout();
+          this.router.navigate(['/login']);
+          return;
+        }
+        this.patchCuratedRouteSavedCollection([]);
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private patchCuratedRouteSavedCollection(savedRoutes: TouristRouteItem[]): void {
+    const savedMap = new Map(savedRoutes.map(route => [route.id, route]));
+
+    this.publicRoutes.forEach(route => {
+      const saved = savedMap.get(route.id);
+      route.isSaved = !!saved;
+      route.saveCount = saved?.saveCount ?? route.saveCount ?? 0;
+    });
+
+    if (this.selectedPublicRoute) {
+      const saved = savedMap.get(this.selectedPublicRoute.id);
+      this.selectedPublicRoute.isSaved = !!saved;
+      this.selectedPublicRoute.saveCount = saved?.saveCount ?? this.selectedPublicRoute.saveCount ?? 0;
+    }
+  }
+
+  private patchCuratedRouteSavedState(routeId: number, patch: Partial<TouristRouteItem>): void {
+    this.publicRoutes.forEach(route => {
+      if (route.id === routeId) {
+        Object.assign(route, patch);
+      }
+    });
+
+    if (this.selectedPublicRoute?.id === routeId) {
+      Object.assign(this.selectedPublicRoute, patch);
+    }
   }
 
   private getLocationCoordinates(loc: Partial<Location>): UserPosition | null {

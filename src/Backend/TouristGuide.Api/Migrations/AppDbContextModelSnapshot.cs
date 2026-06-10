@@ -1475,6 +1475,10 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasIndex("TouristId");
 
+                    b.HasIndex("TouristId", "RouteId")
+                        .IsUnique()
+                        .HasFilter("tourist_id IS NOT NULL AND route_id IS NOT NULL");
+
                     b.ToTable("tourist_favorite");
                 });
 
@@ -1554,6 +1558,10 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("scenic_mode");
 
+                    b.Property<long?>("SourceRouteId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_route_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1570,11 +1578,17 @@ namespace TouristGuide.Api.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("travel_mode");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.Property<string>("Waypoints")
                         .HasColumnType("text")
                         .HasColumnName("waypoints");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SourceRouteId");
 
                     b.HasIndex("TouristId");
 
@@ -2088,12 +2102,18 @@ namespace TouristGuide.Api.Migrations
 
             modelBuilder.Entity("TouristGuide.Api.Models.TouristRoute", b =>
                 {
+                    b.HasOne("TouristGuide.Api.Models.Route", "SourceRoute")
+                        .WithMany()
+                        .HasForeignKey("SourceRouteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("TouristGuide.Api.Models.Tourist", "Tourist")
                         .WithMany()
                         .HasForeignKey("TouristId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("SourceRoute");
                     b.Navigation("Tourist");
                 });
 

@@ -1207,7 +1207,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     this.routePlanner.replaceStops(
       this.routesService.routeToPlannerStops(route),
-      { plannerMode: true, scenicMode: false, travelMode: 'walking', sourceRouteId: route.id },
+      {
+        plannerMode: true,
+        scenicMode: false,
+        travelMode: this.routePlanner.snapshot.travelMode || this.preferences.snapshot.preferredTravelMode || 'driving',
+        sourceRouteId: route.id,
+      },
     );
     this.router.navigate(['/map-home']);
   }

@@ -1,1 +1,63 @@
+.route-feedback {
+  margin: 0 20px 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 700;
+}
 
+.route-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.secondary-btn.route-save-btn {
+  border: 1px solid #dcfce7;
+  background: #f8fafc;
+  color: #166534;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.secondary-btn.route-save-btn:hover {
+  background: #f0fdf4;
+}
+
+.secondary-btn.route-save-btn.is-saved {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.route-actions .primary-btn {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .route-actions {
+    flex-direction: column;
+  }
+}
+
+:host-context(html[data-theme='dark']) .route-feedback {
+  background: #052e16;
+  color: #bbf7d0;
+}
+
+:host-context(html[data-theme='dark']) .secondary-btn.route-save-btn {
+  background: #0f172a;
+  border-color: #14532d;
+  color: #86efac;
+}
+
+:host-context(html[data-theme='dark']) .secondary-btn.route-save-btn.is-saved {
+  background: #052e16;
+  border-color: #166534;
+}
