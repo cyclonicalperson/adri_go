@@ -84,6 +84,12 @@ interface PopularDestination {
   styleUrls: ['./location-list.component.css']
 })
 export class LocationListComponent implements OnInit, OnDestroy {
+  // ── Back to top ──────────────────────────────────────────
+  showBackToTop = false;
+  private scrollListener!: () => void;
+  @ViewChild('scrollContainer') scrollContainerRef!: ElementRef<HTMLElement>;
+  // ─────────────────────────────────────────────────────────
+
   isMenuOpen = false;
   sortMenuOpen = false;
   isFiltersOpen = false;
@@ -370,6 +376,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.readContentTypeFromRoute();
     this.readActivityFilterFromRoute();
 
+    // Back-to-top: slušaj scroll na window-u (stranica skroluje window, ne inner div)
+    this.scrollListener = () => {
+      this.showBackToTop = window.scrollY > 300;
+      this.cdr.markForCheck();
+    };
+    window.addEventListener('scroll', this.scrollListener, { passive: true });
+
     const persistedQuery = this.searchStateService.get();
     if (persistedQuery && persistedQuery.trim().length >= MIN_SEARCH_LENGTH) {
       this.searchQuery = persistedQuery;
@@ -404,6 +417,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.setPageScrollLock(false);
     // ✅ Otpisi subscription da ne bi curila memorija
     this.stateSub?.unsubscribe();
+    // Back-to-top cleanup
+    window.removeEventListener('scroll', this.scrollListener);
+  }
+
+  scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   loadLocations(): void {
