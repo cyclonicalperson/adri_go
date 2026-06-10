@@ -531,6 +531,11 @@ namespace TouristGuide.Api.Controllers
                 var regionExists = await _context.Regions.AnyAsync(r => r.Id == dto.RegionId.Value);
                 if (!regionExists)
                     return BadRequest(new { message = $"Region sa ID={dto.RegionId} ne postoji." });
+
+                if (!IsSuperAdmin() &&
+                    !await _permissionService.HasPermissionAsync("manage_own_posts", dto.RegionId.Value))
+                    return Forbid();
+
                 post.RegionId = dto.RegionId.Value;
                 post.ProposedRegionName = null;
                 post.Country = await ResolveCountryForPostAsync(dto.Country, dto.RegionId.Value);

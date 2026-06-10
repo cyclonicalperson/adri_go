@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TouristGuide.Api.Data;
 using TouristGuide.Api.Models;
+using TouristGuide.Api.Services;
 
 namespace TouristGuide.Api.Controllers
 {
@@ -18,10 +19,12 @@ namespace TouristGuide.Api.Controllers
     public class AdminTouristsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly AdminPermissionService _permissionService;
 
-        public AdminTouristsController(AppDbContext db)
+        public AdminTouristsController(AppDbContext db, AdminPermissionService permissionService)
         {
             _db = db;
+            _permissionService = permissionService;
         }
 
         // ── GET /api/tourists ─────────────────────────────────────────────────
@@ -35,6 +38,9 @@ namespace TouristGuide.Api.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
+            if (!await _permissionService.CanViewTouristsAsync())
+                return Forbid();
+
             var query = _db.Tourists.AsNoTracking().AsQueryable();
 
             // ── Filteri ───────────────────────────────────────────────────────
@@ -103,6 +109,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(uint id)
         {
+            if (!await _permissionService.CanViewTouristsAsync())
+                return Forbid();
+
             var tourist = await _db.Tourists
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == id);
@@ -152,6 +161,9 @@ namespace TouristGuide.Api.Controllers
         [HttpGet("{id}/activity")]
         public async Task<IActionResult> GetActivity(uint id)
         {
+            if (!await _permissionService.CanViewTouristsAsync())
+                return Forbid();
+
             var exists = await _db.Tourists.AsNoTracking().AnyAsync(t => t.Id == id);
             if (!exists)
                 return NotFound(new { message = $"Turista sa ID={id} nije pronađen." });
