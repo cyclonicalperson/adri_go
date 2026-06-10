@@ -21,6 +21,11 @@
         <button class="btn-sec" type="button" (click)="adminProfilePhoto.click()" [disabled]="photoUploading">
           {{ photoUploading ? 'Upload...' : 'Promeni sliku' }}
         </button>
+        @if (hasCustomProfileImage) {
+        <button class="btn-sec btn-remove-photo" type="button" (click)="removeProfileImage()" [disabled]="photoUploading">
+          🗑 Ukloni sliku
+        </button>
+        }
         <div class="identity-name">{{ user?.fullName }}</div>
         <div class="identity-role">
           <span class="role-badge" [class]="roleBadgeClass">{{ roleLabel }}</span>

@@ -369,6 +369,33 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  removeProfileImage(): void {
+    if (this.photoUploading) return;
+    this.photoUploading = true;
+    this.saveError = null;
+
+    this.userService.updateSelf({ profileImage: null }).subscribe({
+      next: () => {
+        if (this.user) this.user = { ...this.user, profileImage: null };
+        const current = this.authService.currentUser;
+        if (current) {
+          const updated = { ...current, profileImage: null };
+          (this.authService as any)['_currentUser$']?.next(updated);
+          try { localStorage.setItem('tg_user', JSON.stringify(updated)); } catch { /* ignore */ }
+        }
+        this.photoUploading = false;
+      },
+      error: () => {
+        this.photoUploading = false;
+        this.saveError = 'Greška pri uklanjanju slike profila.';
+      },
+    });
+  }
+
+  get hasCustomProfileImage(): boolean {
+    return !!this.user?.profileImage;
+  }
+
   // ── Password change ───────────────────────────────────────────────────
   openPwMode(): void {
     this.pwMode = true;
