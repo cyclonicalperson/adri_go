@@ -147,6 +147,7 @@ export class AccountComponent implements OnInit, OnDestroy {
   goToMyReviews(): void    { if (this.isGuest) { this.showLoginPopup = true; return; } this.router.navigate(['/account/reviews']); }
   goToCalendar(): void     { if (this.isGuest) { this.showLoginPopup = true; return; } this.router.navigate(['/calendar']); }
   goToLogin(): void        { this.router.navigate(['/login']); }
+  goToAdminRegister(): void { this.router.navigate(['/choose-role']); }
   closeLoginPopup(): void  { this.showLoginPopup = false; }
   showGuestPopup(): void   { this.showLoginPopup = true; }
   goToReviews(): void      { this.router.navigate(['/location-list']); }

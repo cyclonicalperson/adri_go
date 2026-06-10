@@ -7,7 +7,7 @@ import { FormsModule }           from '@angular/forms';
 import { Router }                from '@angular/router';
 import { ChatCard, ChatService, ChatMessage } from '../services/chat.service';
 import { AuthService }           from '../services/auth.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { formatPostType }        from '../utils/post-type.utils';
 
 @Component({
@@ -133,7 +133,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
   getCardImage(card: ChatCard): string {
     const image = card.imageUrl || '';
-    return resolveBackendAssetUrl(image, 'assets/Budva.jpg');
+    return resolveBackendAssetUrl(image, DEFAULT_LOCATION_IMAGE);
   }
 
   getCardCategory(card: ChatCard): string {

@@ -19,7 +19,7 @@
   box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  z-index: 120;
+  z-index: var(--z-footer, 10900);
 }
 
 .desktop-footer-link {
@@ -77,24 +77,24 @@
 }
 
 :host-context(html[data-theme='dark']) .desktop-footer {
-  background: rgba(15, 23, 42, 0.94);
-  border-top-color: rgba(71, 85, 105, 0.48);
-  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.32);
+  background: rgba(2, 6, 23, 0.96);
+  border-top-color: rgba(51, 65, 85, 0.9);
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.45);
 }
 
 :host-context(html[data-theme='dark']) .desktop-footer-link {
-  color: #cbd5e1;
+  color: #94a3b8;
 }
 
 :host-context(html[data-theme='dark']) .desktop-footer-link:hover {
-  background: rgba(30, 41, 59, 0.92);
+  background: rgba(30, 41, 59, 0.98);
   color: #f8fafc;
 }
 
 :host-context(html[data-theme='dark']) .desktop-footer-link.active {
-  background: rgba(34, 197, 94, 0.14);
-  color: #86efac;
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.22);
+  background: rgba(34, 197, 94, 0.18);
+  color: #bbf7d0;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.36);
 }
 
 @media (min-width: 900px) {

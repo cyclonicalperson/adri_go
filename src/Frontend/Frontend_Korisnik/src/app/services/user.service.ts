@@ -12,7 +12,7 @@ export interface UserProfile {
   fullName: string;
   emailOrPhone: string;
   pendingEmail?: string | null;
-  profilePic?: string;
+  profilePic?: string | null;
   language: string;
   bio?: string;
   location?: string;
@@ -33,6 +33,7 @@ export interface UpdateProfilePayload {
   location?: string;
   interests?: string[];
   profileImage?: string | null;
+  removeProfileImage?: boolean;
 }
 
 export interface CalendarItem {
@@ -373,7 +374,7 @@ export class UserService {
       fullName: profile?.name ?? '',
       emailOrPhone: profile?.email ?? '',
       pendingEmail: profile?.pendingEmail ?? null,
-      profilePic: profile?.profileImage ?? undefined,
+      profilePic: profile?.profileImage ?? null,
       language: profile?.language ?? 'en',
       createdAt: profile?.createdAt ?? undefined,
       bio: profile?.bio ?? '',

@@ -136,7 +136,7 @@ export class PersonalInfoComponent implements OnInit {
           this.userData.bio        = updated.bio;
           this.userData.location   = updated.location;
           this.userData.interests  = updated.interests ?? [...this.selectedInterests];
-          this.userData.profilePic = updated.profilePic ?? this.userData.profilePic;
+          this.userData.profilePic = updated.profilePic ?? null;
         }
         const emailChangedImmediately = updated.emailOrPhone &&
           updated.emailOrPhone.toLowerCase() === this.form.emailOrPhone.trim().toLowerCase();
@@ -166,6 +166,10 @@ export class PersonalInfoComponent implements OnInit {
   getInitials(): string {
     if (!this.userData?.fullName) return '?';
     return this.userData.fullName.trim().charAt(0).toUpperCase();
+  }
+
+  get hasProfilePhoto(): boolean {
+    return !!this.userData?.profilePic;
   }
 
   onProfilePhotoSelected(event: Event): void {
@@ -208,6 +212,36 @@ export class PersonalInfoComponent implements OnInit {
         this.isUploadingPhoto = false;
         input.value = '';
         this.saveError = 'Could not upload profile photo. Please try another image.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  removeProfilePhoto(): void {
+    if (!this.userData?.profilePic || this.isUploadingPhoto) return;
+
+    const previousProfilePic = this.userData.profilePic;
+    this.isUploadingPhoto = true;
+    this.saveError = '';
+    this.saveInfo = '';
+
+    this.userService.updateProfile({ removeProfileImage: true }).subscribe({
+      next: (updated) => {
+        if (this.userData) {
+          this.userData.profilePic = updated.profilePic ?? null;
+        }
+        this.authService.updateCurrentTourist({ profileImage: null });
+        this.isUploadingPhoto = false;
+        this.saveSuccess = true;
+        setTimeout(() => (this.saveSuccess = false), 2500);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        if (this.userData) {
+          this.userData.profilePic = previousProfilePic;
+        }
+        this.isUploadingPhoto = false;
+        this.saveError = err?.error?.message || 'Could not remove profile photo. Please try again.';
         this.cdr.detectChanges();
       }
     });
