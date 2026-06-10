@@ -49,6 +49,7 @@ namespace TouristGuide.Api.Services
             await SeedTouristsAsync();
             await SeedPostsAsync();
             await SeedPostTagsAsync();
+            await EnsureSearchAndSerbiaSeedDataAsync();
             await SeedRoutesAsync();
             await EnsureCoreSeedRouteWaypointConsistencyAsync();
             await SeedInteractionsAsync();
@@ -900,6 +901,485 @@ namespace TouristGuide.Api.Services
                 }
             }
             await _db.SaveChangesAsync();
+        }
+
+        private async Task EnsureSearchAndSerbiaSeedDataAsync()
+        {
+            await EnsureSkadarSeedCoordinatesAsync();
+            await EnsureSerbiaSeedRegionsAsync();
+            await EnsureSeedImageFallbacksAsync();
+            await EnsureExpandedDestinationSeedPostsAsync();
+            await EnsureExpandedSeedPostTagsAsync();
+        }
+
+        private async Task EnsureSeedImageFallbacksAsync()
+        {
+            var posts = await _db.Posts
+                .Where(p => p.Images != null && p.Images.Contains("assets/placeholder.jpg"))
+                .ToListAsync();
+
+            if (posts.Count == 0)
+                return;
+
+            foreach (var post in posts)
+                post.Images = post.Images!.Replace("assets/placeholder.jpg", "assets/plaza.jpg");
+
+            await _db.SaveChangesAsync();
+        }
+
+        private async Task EnsureSkadarSeedCoordinatesAsync()
+        {
+            var skadar = await _db.Regions
+                .FirstOrDefaultAsync(r => r.Name.ToLower() == "skadarsko jezero");
+
+            if (skadar is null)
+                return;
+
+            var changed = false;
+            const decimal virpazarLat = 42.2469m;
+            const decimal virpazarLng = 19.0919m;
+
+            if (skadar.Lat != virpazarLat || skadar.Lng != virpazarLng)
+            {
+                skadar.Lat = virpazarLat;
+                skadar.Lng = virpazarLng;
+                skadar.Description = "Najvece jezero na Balkanu, sa kopnenim polazistem oko Virpazara za lakse rutiranje.";
+                changed = true;
+            }
+
+            var seedPosts = await _db.Posts
+                .Where(p =>
+                    p.RegionId == skadar.Id &&
+                    (p.Address != null && p.Address.EndsWith(", Skadarsko jezero")))
+                .OrderBy(p => p.Id)
+                .ToListAsync();
+
+            var skadarRoadAnchors = new (decimal Lat, decimal Lng, string Address)[]
+            {
+                (42.2469m, 19.0919m, "Virpazar centar, Skadarsko jezero"),
+                (42.2792m, 19.1322m, "Vranjina, Skadarsko jezero"),
+                (42.2506m, 19.1028m, "Besac, Virpazar"),
+                (42.2368m, 19.0976m, "Godinje put, Skadarsko jezero"),
+                (42.3036m, 19.1548m, "Plavnica pristup, Skadarsko jezero")
+            };
+
+            for (var index = 0; index < seedPosts.Count; index++)
+            {
+                var post = seedPosts[index];
+                var anchor = skadarRoadAnchors[index % skadarRoadAnchors.Length];
+                var offsetStep = index / skadarRoadAnchors.Length;
+                var nextLat = DecimalRound(anchor.Lat + NextSmallRouteOffset(offsetStep + 1, 2));
+                var nextLng = DecimalRound(anchor.Lng + NextSmallRouteOffset(offsetStep + 1, 4));
+
+                if (post.Lat != nextLat || post.Lng != nextLng || post.Address != anchor.Address)
+                {
+                    post.Lat = nextLat;
+                    post.Lng = nextLng;
+                    post.Address = anchor.Address;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+                await _db.SaveChangesAsync();
+        }
+
+        private async Task EnsureSerbiaSeedRegionsAsync()
+        {
+            var existingNames = (await _db.Regions
+                .Select(r => r.Name.ToLower())
+                .ToListAsync())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var serbiaRegions = new[]
+            {
+                new Region { Name = "Kragujevac", Type = "city", Description = "Centar Sumadije, poznat po istoriji, parkovima i industrijskom nasledju.", Country = "Serbia", Lat = 44.0128m, Lng = 20.9114m },
+                new Region { Name = "Beograd", Type = "city", Description = "Glavni grad Srbije na uscu Save u Dunav.", Country = "Serbia", Lat = 44.8125m, Lng = 20.4612m },
+                new Region { Name = "Novi Sad", Type = "city", Description = "Grad kulture na Dunavu, dom Petrovaradinske tvrdjave i Stranda.", Country = "Serbia", Lat = 45.2671m, Lng = 19.8335m },
+                new Region { Name = "Nis", Type = "city", Description = "Najveci grad juga Srbije, sa tvrdjavom i bogatom istorijom.", Country = "Serbia", Lat = 43.3209m, Lng = 21.8958m },
+                new Region { Name = "Zlatibor", Type = "mountain", Description = "Planinska destinacija sa setalistima, vidikovcima i seoskim turizmom.", Country = "Serbia", Lat = 43.7291m, Lng = 19.7003m },
+                new Region { Name = "Tara Srbija", Type = "national_park", Description = "Nacionalni park Tara sa vidikovcima iznad Drine.", Country = "Serbia", Lat = 43.9536m, Lng = 19.4269m },
+                new Region { Name = "Kopaonik", Type = "mountain", Description = "Najpoznatiji ski centar Srbije i planinski nacionalni park.", Country = "Serbia", Lat = 43.2856m, Lng = 20.8092m },
+                new Region { Name = "Vrnjacka Banja", Type = "spa", Description = "Najpoznatija banja Srbije sa parkovima i termalnim izvorima.", Country = "Serbia", Lat = 43.6225m, Lng = 20.8956m },
+                new Region { Name = "Srebrno jezero", Type = "lake", Description = "Popularna letnja destinacija i kupaliste kod Velikog Gradista.", Country = "Serbia", Lat = 44.7631m, Lng = 21.4756m }
+            };
+
+            var missingRegions = serbiaRegions
+                .Where(region => !existingNames.Contains(region.Name.ToLower()))
+                .ToList();
+
+            if (missingRegions.Count == 0)
+                return;
+
+            _db.Regions.AddRange(missingRegions);
+            await _db.SaveChangesAsync();
+        }
+
+        private async Task EnsureExpandedDestinationSeedPostsAsync()
+        {
+            var existingTitles = await _db.Posts
+                .Select(p => p.Title.ToLower())
+                .ToListAsync();
+            var regions = await _db.Regions
+                .GroupBy(r => r.Name.ToLower())
+                .Select(g => new { Name = g.Key, Id = g.OrderBy(r => r.Id).Select(r => r.Id).First() })
+                .ToDictionaryAsync(r => r.Name, r => r.Id);
+            var adminId = await _db.AdminUsers
+                .OrderBy(a => a.Id)
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync();
+
+            if (adminId == 0)
+                return;
+
+            uint? ResolveRegionId(string name) => regions.TryGetValue(name.ToLower(), out var id) ? id : null;
+
+            var posts = new List<Post>
+            {
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Kragujevac"),
+                    Country = "Serbia",
+                    Title = "Kragujevac centar i Knezev arsenal",
+                    PostType = "cultural_site",
+                    Description = "Urbana setnja kroz srce Sumadije, od centra Kragujevca do industrijskog nasledja Knezevog arsenala.",
+                    Lat = 44.0128m,
+                    Lng = 20.9114m,
+                    Address = "Trg kod Krsta, Kragujevac",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"entrance_fee":0,"currency":"RSD","recommended_duration_h":2}""",
+                    Status = "published",
+                    ViewCount = 168,
+                    LikeCount = 32,
+                    SaveCount = 18,
+                    ReviewCount = 2,
+                    AvgRating = 4.50m,
+                    PublishedAt = new DateTime(2024, 7, 1, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Kragujevac"),
+                    Country = "Serbia",
+                    Title = "Spomen park Sumarice",
+                    PostType = "monument",
+                    Description = "Memorijalni park u Kragujevcu sa muzejom i prostranim zelenim stazama za mirnu posetu.",
+                    Lat = 44.0191m,
+                    Lng = 20.8737m,
+                    Address = "Desankin venac, Kragujevac",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"entrance_fee":0,"currency":"RSD","family_friendly":true}""",
+                    Status = "published",
+                    ViewCount = 241,
+                    LikeCount = 56,
+                    SaveCount = 34,
+                    ReviewCount = 4,
+                    AvgRating = 4.75m,
+                    PublishedAt = new DateTime(2024, 7, 2, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Beograd"),
+                    Country = "Serbia",
+                    Title = "Kalemegdan i Beogradska tvrdjava",
+                    PostType = "monument",
+                    Description = "Najpoznatiji beogradski vidikovac iznad usca Save i Dunava, sa parkovima, zidinama i muzejima.",
+                    Lat = 44.8230m,
+                    Lng = 20.4503m,
+                    Address = "Kalemegdan, Beograd",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"entrance_fee":0,"currency":"RSD","open_air":true}""",
+                    Status = "published",
+                    ViewCount = 520,
+                    LikeCount = 124,
+                    SaveCount = 78,
+                    ReviewCount = 7,
+                    AvgRating = 4.86m,
+                    PublishedAt = new DateTime(2024, 7, 3, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Novi Sad"),
+                    Country = "Serbia",
+                    Title = "Petrovaradinska tvrdjava",
+                    PostType = "monument",
+                    Description = "Tvrdjava iznad Dunava sa poznatim satom, galerijama i pogledom na Novi Sad.",
+                    Lat = 45.2523m,
+                    Lng = 19.8627m,
+                    Address = "Petrovaradin, Novi Sad",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"entrance_fee":0,"currency":"RSD","viewpoint":true}""",
+                    Status = "published",
+                    ViewCount = 430,
+                    LikeCount = 96,
+                    SaveCount = 61,
+                    ReviewCount = 5,
+                    AvgRating = 4.80m,
+                    PublishedAt = new DateTime(2024, 7, 4, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Nis"),
+                    Country = "Serbia",
+                    Title = "Niska tvrdjava",
+                    PostType = "cultural_site",
+                    Description = "Prostrana tvrdjava u centru Nisa, pogodna za setnju, dogadjaje i upoznavanje istorije juga Srbije.",
+                    Lat = 43.3247m,
+                    Lng = 21.8958m,
+                    Address = "Tvrdjava, Nis",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"entrance_fee":0,"currency":"RSD","open_air":true}""",
+                    Status = "published",
+                    ViewCount = 350,
+                    LikeCount = 74,
+                    SaveCount = 46,
+                    ReviewCount = 4,
+                    AvgRating = 4.60m,
+                    PublishedAt = new DateTime(2024, 7, 5, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Zlatibor"),
+                    Country = "Serbia",
+                    Title = "Zlatibor Gold Gondola",
+                    PostType = "attraction",
+                    Description = "Panoramska voznja preko zlatiborskih pejzaza do Tornika, dobra za porodice i fotografiju.",
+                    Lat = 43.7272m,
+                    Lng = 19.6961m,
+                    Address = "Polazna stanica Gold Gondola, Zlatibor",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"ticket_required":true,"currency":"RSD","scenic":true}""",
+                    Status = "published",
+                    ViewCount = 390,
+                    LikeCount = 88,
+                    SaveCount = 53,
+                    ReviewCount = 4,
+                    AvgRating = 4.70m,
+                    PublishedAt = new DateTime(2024, 7, 6, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Tara Srbija"),
+                    Country = "Serbia",
+                    Title = "Vidikovac Banjska stena",
+                    PostType = "attraction",
+                    Description = "Jedan od najlepsih vidikovaca u Srbiji, sa pogledom na kanjon Drine i jezero Perucac.",
+                    Lat = 43.9512m,
+                    Lng = 19.3957m,
+                    Address = "Nacionalni park Tara, Bajina Basta",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"entrance_fee":0,"currency":"RSD","scenic":true}""",
+                    Status = "published",
+                    ViewCount = 465,
+                    LikeCount = 115,
+                    SaveCount = 82,
+                    ReviewCount = 6,
+                    AvgRating = 4.90m,
+                    PublishedAt = new DateTime(2024, 7, 7, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Beograd"),
+                    Country = "Serbia",
+                    Title = "Ada Ciganlija plaza",
+                    PostType = "attraction",
+                    Description = "Najpoznatija gradska plaza i kupaliste u Beogradu, sa setalistima, kaficima i sportskim terenima.",
+                    Lat = 44.7856m,
+                    Lng = 20.4053m,
+                    Address = "Ada Ciganlija, Beograd",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"beach":true,"swimming":true,"family_friendly":true}""",
+                    Status = "published",
+                    ViewCount = 610,
+                    LikeCount = 132,
+                    SaveCount = 85,
+                    ReviewCount = 7,
+                    AvgRating = 4.57m,
+                    PublishedAt = new DateTime(2024, 7, 8, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Novi Sad"),
+                    Country = "Serbia",
+                    Title = "Strand Novi Sad plaza",
+                    PostType = "attraction",
+                    Description = "Dunavska plaza Strand, popularno novosadsko kupaliste sa hladom, sportom i letnjim dogadjajima.",
+                    Lat = 45.2389m,
+                    Lng = 19.8427m,
+                    Address = "SunCani kej, Novi Sad",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"beach":true,"swimming":true,"river":"Danube"}""",
+                    Status = "published",
+                    ViewCount = 455,
+                    LikeCount = 97,
+                    SaveCount = 64,
+                    ReviewCount = 5,
+                    AvgRating = 4.64m,
+                    PublishedAt = new DateTime(2024, 7, 9, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Srebrno jezero"),
+                    Country = "Serbia",
+                    Title = "Srebrno jezero glavna plaza",
+                    PostType = "attraction",
+                    Description = "Uredjena jezerska plaza kod Velikog Gradista, pogodna za kupanje, porodice i vikend odmor.",
+                    Lat = 44.7631m,
+                    Lng = 21.4756m,
+                    Address = "Setaliste Srebrno jezero, Veliko Gradiste",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"beach":true,"swimming":true,"lake":"Srebrno jezero"}""",
+                    Status = "published",
+                    ViewCount = 380,
+                    LikeCount = 83,
+                    SaveCount = 58,
+                    ReviewCount = 4,
+                    AvgRating = 4.55m,
+                    PublishedAt = new DateTime(2024, 7, 10, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Tara Srbija"),
+                    Country = "Serbia",
+                    Title = "Perucac plaza",
+                    PostType = "attraction",
+                    Description = "Plaza i kupaliste na jezeru Perucac, blizu Tare i Drine, dobra za letnji predah.",
+                    Lat = 43.9659m,
+                    Lng = 19.4073m,
+                    Address = "Jezero Perucac, Bajina Basta",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"beach":true,"swimming":true,"lake":"Perucac"}""",
+                    Status = "published",
+                    ViewCount = 332,
+                    LikeCount = 71,
+                    SaveCount = 49,
+                    ReviewCount = 3,
+                    AvgRating = 4.50m,
+                    PublishedAt = new DateTime(2024, 7, 11, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Ulcinj"),
+                    Country = "Montenegro",
+                    Title = "Velika plaza Ulcinj",
+                    PostType = "attraction",
+                    Description = "Duga pescana plaza kod Ulcinja, poznata po prostoru, vetru za kitesurf i plitkom ulazu u more.",
+                    Lat = 41.8982m,
+                    Lng = 19.2751m,
+                    Address = "Velika plaza, Ulcinj",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"beach":true,"swimming":true,"sea":"Adriatic"}""",
+                    Status = "published",
+                    ViewCount = 590,
+                    LikeCount = 128,
+                    SaveCount = 88,
+                    ReviewCount = 6,
+                    AvgRating = 4.72m,
+                    PublishedAt = new DateTime(2024, 7, 12, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    AdminId = adminId,
+                    RegionId = ResolveRegionId("Budva"),
+                    Country = "Montenegro",
+                    Title = "Mogren plaza",
+                    PostType = "attraction",
+                    Description = "Mala slikovita plaza pored Starog grada Budve, dostupna pesackom stazom uz obalu.",
+                    Lat = 42.2775m,
+                    Lng = 18.8325m,
+                    Address = "Mogren, Budva",
+                    Images = """["assets/plaza.jpg"]""",
+                    Details = """{"beach":true,"swimming":true,"sea":"Adriatic"}""",
+                    Status = "published",
+                    ViewCount = 540,
+                    LikeCount = 119,
+                    SaveCount = 76,
+                    ReviewCount = 6,
+                    AvgRating = 4.68m,
+                    PublishedAt = new DateTime(2024, 7, 13, 10, 0, 0, DateTimeKind.Utc)
+                }
+            };
+
+            var missingPosts = posts
+                .Where(post => !existingTitles.Contains(post.Title.ToLower()))
+                .ToList();
+
+            if (missingPosts.Count == 0)
+                return;
+
+            _db.Posts.AddRange(missingPosts);
+            await _db.SaveChangesAsync();
+        }
+
+        private async Task EnsureExpandedSeedPostTagsAsync()
+        {
+            var tags = await _db.Tags.ToDictionaryAsync(t => t.Name, t => t.Id);
+            var titlesToTags = new Dictionary<string, string[]>
+            {
+                ["Kragujevac centar i Knezev arsenal"] = ["Kultura", "Historijsko", "Razgledanje"],
+                ["Spomen park Sumarice"] = ["Historijsko", "Besplatno", "Porodično"],
+                ["Kalemegdan i Beogradska tvrdjava"] = ["Historijsko", "Razgledanje", "Fotografija"],
+                ["Petrovaradinska tvrdjava"] = ["Historijsko", "Razgledanje", "Fotografija"],
+                ["Niska tvrdjava"] = ["Historijsko", "Razgledanje"],
+                ["Zlatibor Gold Gondola"] = ["Priroda", "Fotografija", "Porodično"],
+                ["Vidikovac Banjska stena"] = ["Priroda", "Outdoor", "Fotografija"],
+                ["Ada Ciganlija plaza"] = ["Plivanje", "Sport", "Porodično"],
+                ["Strand Novi Sad plaza"] = ["Plivanje", "Sport", "Porodično"],
+                ["Srebrno jezero glavna plaza"] = ["Plivanje", "Porodično", "Besplatno"],
+                ["Perucac plaza"] = ["Plivanje", "Priroda", "Fotografija"],
+                ["Velika plaza Ulcinj"] = ["Plivanje", "Sport", "Porodično"],
+                ["Mogren plaza"] = ["Plivanje", "Romantično", "Fotografija"]
+            };
+
+            var titles = titlesToTags.Keys.ToList();
+            var posts = await _db.Posts
+                .Where(post => titles.Contains(post.Title))
+                .Select(post => new { post.Id, post.Title })
+                .ToListAsync();
+
+            var postIds = posts.Select(post => post.Id).ToList();
+            var existing = await _db.PostTags
+                .Where(postTag => postIds.Contains(postTag.PostId))
+                .Select(postTag => new { postTag.PostId, postTag.TagId })
+                .ToListAsync();
+            var existingPairs = existing
+                .Select(postTag => $"{postTag.PostId}:{postTag.TagId}")
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var changed = false;
+            foreach (var post in posts)
+            {
+                if (!titlesToTags.TryGetValue(post.Title, out var tagNames))
+                    continue;
+
+                foreach (var tagName in tagNames)
+                {
+                    if (!tags.TryGetValue(tagName, out var tagId))
+                        continue;
+
+                    var key = $"{post.Id}:{tagId}";
+                    if (existingPairs.Contains(key))
+                        continue;
+
+                    _db.PostTags.Add(new PostTag { PostId = post.Id, TagId = tagId });
+                    existingPairs.Add(key);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+                await _db.SaveChangesAsync();
         }
 
         // ────────────────────────────────────────────────────────────────────

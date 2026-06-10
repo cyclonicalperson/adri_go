@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -29,7 +29,7 @@ export class SettingsComponent implements OnInit {
   settings!: TouristAppPreferences;
 
   activeSheet: SettingsSheet = null;
-  appVersion = 'v1.2.0';
+  appVersion = '1.0.0';
   savedMessage = '';
   private savedMessageTimer: ReturnType<typeof setTimeout> | null = null;
   notifPermission: NotificationPermission = 'default';
@@ -73,6 +73,7 @@ export class SettingsComponent implements OnInit {
     private userService: UserService,
     private analytics: TouristAnalyticsService,
     private notifications: TouristNotificationService,
+    private cdr: ChangeDetectorRef,
   ) {
     this.settings = this.preferences.useAccountScope(this.authService.touristId);
 
@@ -117,13 +118,13 @@ export class SettingsComponent implements OnInit {
 
   get connectedAccountsSummary(): string {
     if (this.authService.currentTourist?.authProvider === 'google') {
-      return 'Connected';
+      return this.t('Connected');
     }
 
     const linked = this.accountOptions
       .filter(option => this.settings.connectedAccounts[option.id])
       .map(option => option.label);
-    return linked.length > 0 ? linked.join(', ') : 'Not configured';
+    return linked.length > 0 ? linked.join(', ') : this.t('Not configured');
   }
 
   get isGoogleAccount(): boolean {
@@ -135,7 +136,7 @@ export class SettingsComponent implements OnInit {
     const enabled = this.contentOptions
       .filter(option => this.settings.contentPreferences.includes(option.id))
       .map(option => option.label);
-    return enabled.length > 0 ? enabled.join(', ') : 'Use general discovery mode';
+    return enabled.length > 0 ? enabled.map(label => this.t(label)).join(', ') : this.t('Use general discovery mode');
   }
 
   get passwordRulesVisible(): boolean {
@@ -214,6 +215,10 @@ export class SettingsComponent implements OnInit {
     window.history.back();
   }
 
+  t(value: string | null | undefined): string {
+    return this.translate.instant(value ?? '');
+  }
+
   saveChanges(message = '✓ Settings saved'): void {
     this.settings = this.preferences.update(this.settings);
     this.showSavedMessage(message);
@@ -235,7 +240,7 @@ export class SettingsComponent implements OnInit {
     }
 
     this.closeSheet();
-    this.showSavedMessage(`Language: ${this.translate.currentLanguageOption.label}`);
+    this.showSavedMessage(`${this.t('Language')}: ${this.translate.currentLanguageOption.label}`);
   }
 
   onAnalyticsToggle(): void {
@@ -263,33 +268,35 @@ export class SettingsComponent implements OnInit {
 
   get notificationPreferencesSummary(): string {
     if (this.notificationPreferences.length === 0) {
-      return 'Default delivery';
+      return this.t('Default delivery');
     }
 
     const activePush = this.notificationPreferences
       .filter(pref => pref.pushEnabled && pref.notificationType !== 'trip_digest')
       .length;
     const digest = this.notificationPreferences.find(pref => pref.notificationType === 'trip_digest')?.emailEnabled;
-    return digest ? `${activePush} push types, digest email` : `${activePush} push types`;
+    return digest
+      ? `${activePush} ${this.t('push types')}, ${this.t('digest email')}`
+      : `${activePush} ${this.t('push types')}`;
   }
 
   get activeSheetKicker(): string {
     switch (this.activeSheet) {
-      case 'accounts': return 'Accounts';
-      case 'content': return 'Content';
-      case 'language': return 'Language';
-      case 'notifications': return 'Notifications';
-      default: return 'Support';
+      case 'accounts': return this.t('Accounts');
+      case 'content': return this.t('Content');
+      case 'language': return this.t('Language');
+      case 'notifications': return this.t('Notifications');
+      default: return this.t('Support');
     }
   }
 
   get activeSheetTitle(): string {
     switch (this.activeSheet) {
-      case 'accounts': return 'Connected Accounts';
-      case 'content': return 'Content Preferences';
-      case 'language': return 'App Language';
-      case 'notifications': return 'Notification Preferences';
-      default: return 'Help & Support Center';
+      case 'accounts': return this.t('Connected Accounts');
+      case 'content': return this.t('Content Preferences');
+      case 'language': return this.t('App Language');
+      case 'notifications': return this.t('Notification Preferences');
+      default: return this.t('Help & Support Center');
     }
   }
 
@@ -376,6 +383,19 @@ export class SettingsComponent implements OnInit {
       ...this.settings,
       contentPreferences: this.toggleArrayValue(this.settings.contentPreferences, id),
     };
+    this.preferences.update(this.settings);
+
+    if (!this.authService.isLoggedIn) {
+      this.showSavedMessage('Content preferences saved locally');
+      return;
+    }
+
+    this.userService.updateProfile({
+      interests: [...this.settings.contentPreferences],
+    }).subscribe({
+      next: () => this.showSavedMessage('Content preferences updated'),
+      error: () => this.showSavedMessage('Content preferences saved locally')
+    });
   }
 
   toggleConnectedAccount(provider: 'google' | 'apple'): void {
@@ -413,7 +433,9 @@ export class SettingsComponent implements OnInit {
 
     const label = this.activeSheet === 'accounts'
       ? 'Connected account preferences updated'
-      : 'Settings saved';
+      : this.activeSheet === 'notifications'
+        ? 'Notification preferences updated'
+        : 'Settings saved';
 
     this.saveChanges(label);
     this.closeSheet();
@@ -565,12 +587,12 @@ export class SettingsComponent implements OnInit {
 
   notificationPreferenceStatus(pref: TouristNotificationPreference): string {
     const channels = [
-      pref.inAppEnabled ? 'In-app' : '',
-      pref.pushEnabled ? 'Push' : '',
-      pref.emailEnabled ? 'Email' : '',
+      pref.inAppEnabled ? this.t('In-app') : '',
+      pref.pushEnabled ? this.t('Push') : '',
+      pref.emailEnabled ? this.t('Email') : '',
     ].filter(Boolean);
 
-    return channels.length > 0 ? channels.join(' + ') : 'Muted';
+    return channels.length > 0 ? channels.join(' + ') : this.t('Muted');
   }
 
   toggleNotificationPreference(
@@ -600,6 +622,11 @@ export class SettingsComponent implements OnInit {
     if (pref.notificationType === 'trip_digest' && channel === 'emailEnabled') {
       this.settings = { ...this.settings, emailNotifications: nextValue };
       this.preferences.update(this.settings);
+    }
+
+    if (!this.authService.isLoggedIn) {
+      this.showSavedMessage('Notification preferences saved locally');
+      return;
     }
 
     this.saveNotificationPreferences([update]);
@@ -660,8 +687,9 @@ export class SettingsComponent implements OnInit {
     this.notifications.updatePreferences(updates).subscribe({
       next: preferences => {
         this.notificationPreferences = preferences;
+        this.showSavedMessage('Notification preferences updated');
       },
-      error: () => {}
+      error: () => this.showSavedMessage('Notification preferences saved locally')
     });
   }
 
@@ -676,10 +704,12 @@ export class SettingsComponent implements OnInit {
       clearTimeout(this.savedMessageTimer);
     }
 
-    this.savedMessage = message;
+    this.savedMessage = this.t(message);
+    this.cdr.markForCheck();
     this.savedMessageTimer = setTimeout(() => {
       this.savedMessage = '';
       this.savedMessageTimer = null;
+      this.cdr.markForCheck();
     }, 2600);
   }
 

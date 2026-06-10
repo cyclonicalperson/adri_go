@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { EMPTY, Observable } from 'rxjs';
+import { expand, map, reduce } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface Location {
@@ -82,6 +82,7 @@ export interface InteractionResponse {
 export class LocationService {
 
   private apiUrl = environment.apiUrl;
+  private readonly maxPageSize = 500;
 
   constructor(private http: HttpClient) {}
 
@@ -96,11 +97,21 @@ export class LocationService {
     );
   }
 
+  getAllLocations(type?: string, regionId?: number): Observable<Location[]> {
+    return this.getLocations(1, this.maxPageSize, type, regionId).pipe(
+      expand(res => res.page < res.totalPages
+        ? this.getLocations(res.page + 1, this.maxPageSize, type, regionId)
+        : EMPTY
+      ),
+      reduce((all, res) => [...all, ...res.data], [] as Location[])
+    );
+  }
+
   searchLocations(
     query: string,
     page = 1,
     pageSize = 20,
-    context?: { lat?: number | null; lng?: number | null; type?: string }
+    context?: { lat?: number | null; lng?: number | null; type?: string; country?: string }
   ): Observable<LocationsResponse> {
     let params = new HttpParams()
       .set('q', query)
@@ -108,6 +119,7 @@ export class LocationService {
       .set('pageSize', pageSize.toString());
 
     if (context?.type) params = params.set('type', context.type);
+    if (context?.country) params = params.set('country', context.country);
     if (context?.lat != null && context?.lng != null) {
       params = params
         .set('lat', context.lat.toString())
@@ -116,6 +128,19 @@ export class LocationService {
 
     return this.http.get<LocationsResponse>(`${this.apiUrl}/posts/search`, { params }).pipe(
       map(res => ({ ...res, data: res.data.map(loc => this.normalize(loc)) }))
+    );
+  }
+
+  searchAllLocations(
+    query: string,
+    context?: { lat?: number | null; lng?: number | null; type?: string; country?: string }
+  ): Observable<Location[]> {
+    return this.searchLocations(query, 1, this.maxPageSize, context).pipe(
+      expand(res => res.page < res.totalPages
+        ? this.searchLocations(query, res.page + 1, this.maxPageSize, context)
+        : EMPTY
+      ),
+      reduce((all, res) => [...all, ...res.data], [] as Location[])
     );
   }
 

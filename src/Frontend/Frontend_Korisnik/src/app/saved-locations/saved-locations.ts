@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { LocationService, Location } from '../services/location.service';
 import { AuthService } from '../services/auth.service';
 import { FilterStateService } from '../services/filter-state.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { TouristPreferencesService } from '../services/tourist-preferences.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
@@ -22,7 +22,7 @@ import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 })
 export class SavedLocationsComponent implements OnInit {
   activeFilter: string = 'All';
-  defaultImage: string = 'assets/plaza.jpg';
+  defaultImage: string = DEFAULT_LOCATION_IMAGE;
   isLoading: boolean = true;
   isGuest: boolean = false;
   showAuthPopup = false;

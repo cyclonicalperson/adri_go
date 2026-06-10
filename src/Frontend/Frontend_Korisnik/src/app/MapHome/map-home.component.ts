@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChi
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, forkJoin, of, Subscription } from 'rxjs';
+import { catchError, debounceTime, forkJoin, map as rxMap, of, Subject, Subscription, switchMap } from 'rxjs';
 import * as L from 'leaflet';
 import { MapRecommendationsPanelComponent } from './components/map-recommendations-panel/map-recommendations-panel.component';
 import { RouteDetoursPanelComponent } from './components/route-detours-panel/route-detours-panel.component';
@@ -32,7 +32,7 @@ import { TouristActivitiesService, TouristActivityItem } from '../services/touri
 import { TouristRouteItem, TouristRoutesService } from '../services/tourist-routes.service';
 import { formatPostType } from '../utils/post-type.utils';
 import { SiteTranslateService } from '../services/site-translate.service';
-import { resolveBackendAssetUrl } from '../utils/backend-url.utils';
+import { DEFAULT_LOCATION_IMAGE, resolveBackendAssetUrl } from '../utils/backend-url.utils';
 import { ChatPopupComponent } from '../chat-popup/chat-popup.component';
 import { DragScrollDirective } from '../directives/drag-scroll.directive';
 import { AuthRequiredModalComponent } from '../shared/auth-required-modal/auth-required-modal.component';
@@ -115,6 +115,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private routeMarkers: { route: TouristRouteItem; marker: L.Marker }[] = [];
   private markerClusterMarkers: L.Marker[] = [];
   private readonly markerClusterMaxZoom = 15;
+  private readonly defaultMapCenter: L.LatLngExpression = [42.2784, 18.8372];
+  private readonly defaultMapZoom = 10;
   private userMarker: L.Marker<any> | null = null;
   private routeStopMarkers: L.Marker[] = [];
   private latestQueryParams: Record<string, string> = {};
@@ -127,9 +129,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private mapResizeTimerId: ReturnType<typeof setTimeout> | null = null;
   private themeSubscription?: Subscription;
   private authSubscription?: Subscription;
+  private searchSubscription?: Subscription;
+  private readonly searchInput$ = new Subject<string>();
   private chatHintTimerId: ReturnType<typeof setTimeout> | null = null;
   private scenicDetourPopupTimerId: ReturnType<typeof setTimeout> | null = null;
   private lastScenicDetourPopupKey = '';
+  private lastFilterFitKey = '';
 
   showAuthPopup = false;
   showScenicDetourMapPopup = false;
@@ -144,7 +149,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchQuery = '';
   searchResults: SearchResult[] = [];
   searchIntentSummary = '';
+  searchFallbackActive = false;
   searchFocused = false;
+  searchLoading = false;
   globalRecommendations: LocationRecommendation[] = [];
   personalizedRecommendations: LocationRecommendation[] = [];
   activeRecommendationTab: RecommendationTab = 'personalized';
@@ -348,6 +355,16 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return Array.from(new Set(suggestions)).slice(0, 5);
   }
 
+  get hasActiveSearch(): boolean {
+    return this.parseSearchIntent(this.searchQuery).normalizedQuery.length > 0;
+  }
+
+  get showSearchFallbackNotice(): boolean {
+    return this.hasActiveSearch
+      && !this.searchLoading
+      && this.searchResults.length === 0;
+  }
+
   // ─── Category colors (used for map pins AND chip active state) ───────────
   readonly categoryColors: Record<string, { bg: string; icon: string }> = {
     accommodation:   { bg: '#3b82f6', icon: 'accommodation' },
@@ -406,6 +423,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.isDarkMode = this.themeService.isDarkMode;
+    this.setupSearchSubscription();
     this.themeSubscription = this.themeService.theme$.subscribe(theme => {
       this.isDarkMode = theme === 'dark';
     });
@@ -421,6 +439,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.syncPlannerStateFromServices();
     this.refreshSavedRoutes();
     this.showChatAssistantHint();
+    if (this.searchQuery.trim()) {
+      this.onSearchInput(this.searchQuery);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -460,6 +481,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.autoLocatePermissionStatus = null;
     this.themeSubscription?.unsubscribe();
     this.authSubscription?.unsubscribe();
+    this.searchSubscription?.unsubscribe();
     void this.releaseScreenWakeLock();
   }
 
@@ -546,14 +568,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadLocations(): void {
-    this.locationService.getLocations(1, 200).subscribe({
-      next: (res) => {
-        this.locationsList = res.data as MapLocation[];
+    this.locationService.getAllLocations().subscribe({
+      next: (locations) => {
+        this.locationsList = locations as MapLocation[];
         this.updateDistancesAndRecommendations();
         this.syncGuestSavedContext();
         this.syncAvailableSavedFilterIds();
         this.refreshRecommendations();
         this.addMarkers();
+        this.fitMapToSelectedFilterArea();
         this.tryHydratePlannerFromQuery();
         this.hydratePlannerFromStorage();
         this.cdr.detectChanges();
@@ -579,6 +602,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       next: routes => {
         this.publicRoutes = routes.filter(route => route.waypoints.length > 0);
         this.addRouteMarkers();
+        this.fitMapToSelectedFilterArea();
         this.cdr.detectChanges();
       },
       error: err => console.error('Failed to load public routes:', err),
@@ -724,11 +748,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getFirstImage(loc: any): string {
     if (loc.imageUrl) {
-      return resolveBackendAssetUrl(loc.imageUrl, 'assets/Budva.jpg');
+      return resolveBackendAssetUrl(loc.imageUrl, DEFAULT_LOCATION_IMAGE);
     }
 
     const imagesValue = loc.images;
-    if (!imagesValue) return 'assets/Budva.jpg';
+    if (!imagesValue) return DEFAULT_LOCATION_IMAGE;
 
     let firstImg = '';
     if (typeof imagesValue === 'string') {
@@ -742,8 +766,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       firstImg = imagesValue[0];
     }
 
-    if (!firstImg) return 'assets/Budva.jpg';
-    return resolveBackendAssetUrl(firstImg, 'assets/Budva.jpg');
+    if (!firstImg) return DEFAULT_LOCATION_IMAGE;
+    return resolveBackendAssetUrl(firstImg, DEFAULT_LOCATION_IMAGE);
   }
 
   /**
@@ -2399,6 +2423,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const visiblePins: VisiblePin[] = [];
     const renderBounds = this.map.getBounds().pad(0.35);
     const showOnlyPlannerStops = this.isNavigating || (this.focusedRouteMode && this.showRoutePanel);
+    const hasActiveSearch = this.hasActiveSearch;
     const focusedSuggestionIds = this.focusedRouteMode
       ? new Set(this.scenicSuggestions.map(suggestion => suggestion.location.id))
       : new Set<number>();
@@ -2416,7 +2441,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      if (this.passesFilters(loc) && renderBounds.contains(latLng)) {
+      if (this.passesFilters(loc) && this.locationMatchesSearchMapState(loc, hasActiveSearch) && renderBounds.contains(latLng)) {
         visiblePins.push({ kind: 'location', id: loc.id, loc, marker, latLng });
       }
     });
@@ -2424,6 +2449,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
       const visible = !showOnlyPlannerStops
+        && !hasActiveSearch
         && this.routePassesRadiusFilter(route)
         && this.routeMatchesExploreFilters(route)
         && renderBounds.contains(latLng);
@@ -2434,6 +2460,51 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.renderVisiblePins(visiblePins);
+  }
+
+  private locationMatchesSearchMapState(loc: MapLocation, hasActiveSearch: boolean): boolean {
+    if (!hasActiveSearch || this.searchLoading) return true;
+
+    if (this.searchResults.length > 0) {
+      return this.searchResults.some(result => result.id === loc.id);
+    }
+
+    if (!this.searchFallbackActive) return true;
+
+    const fallbackIds = this.getSearchFallbackRecommendationIds();
+    return fallbackIds.size === 0 ? true : fallbackIds.has(loc.id);
+  }
+
+  private getSearchFallbackRecommendationIds(): Set<number> {
+    const recommendations = this.recommendationCards.length > 0
+      ? this.recommendationCards
+      : this.buildNearbyCards();
+
+    const ids = recommendations
+      .map(recommendation => recommendation.location.id)
+      .filter(id => Number.isFinite(id));
+
+    return new Set(ids);
+  }
+
+  private fitMapToSearchFallbackRecommendations(): void {
+    if (!this.map) return;
+
+    const fallbackIds = this.getSearchFallbackRecommendationIds();
+    if (fallbackIds.size === 0) return;
+
+    const points = this.locationsList
+      .filter(location => fallbackIds.has(location.id))
+      .map(location => this.getLocationCoordinates(location))
+      .filter((coordinates): coordinates is UserPosition => !!coordinates)
+      .map(coordinates => [coordinates.lat, coordinates.lng] as [number, number]);
+
+    if (points.length === 0) return;
+
+    const bounds = L.latLngBounds(points);
+    if (bounds.isValid()) {
+      this.map.fitBounds(bounds.pad(0.18), { animate: true, maxZoom: 10 });
+    }
   }
 
   private renderVisiblePins(pins: VisiblePin[]): void {
@@ -2606,7 +2677,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private initMap(): void {
-    this.map = L.map('map', { zoomControl: false }).setView([42.2784, 18.8372], 10);
+    this.map = L.map('map', { zoomControl: false }).setView(this.defaultMapCenter, this.defaultMapZoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
@@ -3019,6 +3090,62 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     return { lat: Number(lat), lng: Number(lng) };
   }
 
+  private fitMapToSelectedFilterArea(): void {
+    if (!this.map || this.isNavigating || this.focusedRouteMode) return;
+
+    const countries = this.mapFilterContentType === 'routes'
+      ? this.filterRouteCountries
+      : this.filterDestinationCountries;
+    const regions = this.mapFilterContentType === 'routes'
+      ? this.filterRouteRegions
+      : this.filterDestinationRegions;
+    const key = `${this.mapFilterContentType}:${[...countries].sort().join('|')}:${[...regions].sort().join('|')}`;
+
+    if (countries.length === 0 && regions.length === 0) {
+      if (this.lastFilterFitKey) {
+        this.resetMapToDefaultView();
+      }
+      this.lastFilterFitKey = '';
+      return;
+    }
+    if (key === this.lastFilterFitKey) return;
+
+    const points: L.LatLngExpression[] = [];
+
+    if (this.mapFilterContentType === 'routes') {
+      this.publicRoutes
+        .filter(route => this.routeMatchesExploreFilters(route))
+        .forEach(route => {
+          route.waypoints.forEach(point => {
+            if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) {
+              points.push([point.lat, point.lng]);
+            }
+          });
+        });
+    } else {
+      this.locationsList
+        .filter(location => this.passesFilters(location))
+        .forEach(location => {
+          const coordinates = this.getLocationCoordinates(location);
+          if (coordinates) points.push([coordinates.lat, coordinates.lng]);
+        });
+    }
+
+    if (points.length === 0) return;
+
+    this.lastFilterFitKey = key;
+    const bounds = L.latLngBounds(points);
+    if (bounds.isValid()) {
+      this.map.fitBounds(bounds.pad(0.18), { animate: true, maxZoom: regions.length > 0 ? 12 : 9 });
+    }
+  }
+
+  private resetMapToDefaultView(): void {
+    if (!this.map) return;
+
+    this.map.flyTo(this.defaultMapCenter, this.defaultMapZoom, { animate: true, duration: 0.45 });
+  }
+
   closeLocationDetails(): void {
     this.selectedLocation = null;
   }
@@ -3035,22 +3162,114 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!intent.normalizedQuery) {
       this.searchResults = [];
       this.searchIntentSummary = '';
+      this.searchFallbackActive = false;
+      this.searchLoading = false;
+      this.applyMarkerFilter();
       return;
     }
 
-    const normalized = query.toLowerCase().trim();
+    this.searchLoading = true;
+    this.searchInput$.next(query.trim());
+  }
 
-    this.searchResults = this.locationsList
-      .map(loc => this.buildSearchMatch(loc, intent))
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(item => ({
-        ...item.loc,
-        searchReason: item.reason,
-        searchBadges: item.badges,
-      }))
-      .slice(0, 8);
-    this.searchIntentSummary = this.describeSearchIntent(intent, this.searchResults.length);
+  private setupSearchSubscription(): void {
+    this.searchSubscription = this.searchInput$.pipe(
+      debounceTime(250),
+      switchMap(query => {
+        const intent = this.parseSearchIntent(query);
+        if (!intent.normalizedQuery) {
+          return of({ query, intent, locations: [] as MapLocation[] });
+        }
+
+        return this.locationService.searchAllLocations(
+          this.buildBackendSearchQuery(intent),
+          this.buildBackendSearchContext(intent)
+        ).pipe(
+          rxMap(locations => ({
+            query,
+            intent,
+            locations: locations.map(location => this.decorateSearchLocation(location)),
+          })),
+          catchError(() => of({ query, intent, locations: [] as MapLocation[] }))
+        );
+      })
+    ).subscribe(({ query, intent, locations }) => {
+      if (query !== this.searchQuery.trim()) return;
+
+      this.searchLoading = false;
+      this.searchResults = locations
+        .map(loc => this.buildSearchMatch(loc, intent))
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(item => ({
+          ...item.loc,
+          searchReason: item.reason,
+          searchBadges: item.badges,
+        }))
+        .slice(0, 8);
+      this.searchFallbackActive = this.searchResults.length === 0;
+      this.searchIntentSummary = this.searchFallbackActive
+        ? ''
+        : this.describeSearchIntent(intent, this.searchResults.length);
+      if (this.searchResults.length === 0) {
+        this.fitMapToSearchFallbackRecommendations();
+      }
+      this.applyMarkerFilter();
+      this.cdr.markForCheck();
+    });
+  }
+
+  private buildBackendSearchContext(intent: SearchIntent): { lat?: number | null; lng?: number | null; type?: string } {
+    const context: { lat?: number | null; lng?: number | null; type?: string } = {};
+    if (intent.categoryKeys.length === 1 && !this.hasBeachIntent(intent)) {
+      context.type = intent.categoryKeys[0];
+    }
+
+    if (intent.nearMe && this.userPosition) {
+      context.lat = this.userPosition[0];
+      context.lng = this.userPosition[1];
+    }
+
+    return context;
+  }
+
+  private buildBackendSearchQuery(intent: SearchIntent): string {
+    return intent.terms
+      .filter(term => !this.isCategorySearchTerm(term, intent.categoryKeys))
+      .join(' ');
+  }
+
+  private isCategorySearchTerm(term: string, categoryKeys: string[]): boolean {
+    if (categoryKeys.length === 0) return false;
+
+    const categoryTerms: Record<string, string[]> = {
+      attraction: ['attraction'],
+      restaurant: ['restaurant', 'restaurants', 'restoran', 'restorani', 'food', 'hrana', 'dinner', 'lunch', 'cafe', 'kafa'],
+      cultural_site: ['culture', 'cultural', 'kultura', 'museum', 'museums', 'muzej', 'history', 'istorija'],
+      monument: ['monument', 'monuments', 'spomenik'],
+      club: ['nightlife', 'club', 'clubs', 'bar', 'party', 'nocni'],
+      sports_facility: ['sport', 'sports', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure'],
+      event: ['event', 'events', 'dogadjaj', 'festival', 'concert', 'koncert'],
+      accommodation: ['hotel', 'hotels', 'accommodation', 'smestaj', 'smjestaj', 'stay'],
+      shop: ['shop', 'shops', 'shopping', 'prodavnica', 'market'],
+      other: ['other', 'ostalo', 'misc', 'miscellaneous'],
+    };
+
+    return categoryKeys.some(key => (categoryTerms[key] ?? []).some(categoryTerm =>
+      term === categoryTerm || term.includes(categoryTerm) || categoryTerm.includes(term)
+    ));
+  }
+
+  private decorateSearchLocation(location: Location): MapLocation {
+    const mapLocation = { ...location } as MapLocation;
+    const coordinates = this.getLocationCoordinates(mapLocation);
+    if (this.userPosition && coordinates) {
+      mapLocation.distanceKm = this.geolocationService.haversineKm(
+        { lat: this.userPosition[0], lng: this.userPosition[1] },
+        coordinates
+      );
+    }
+    return mapLocation;
   }
 
   applySearchSuggestion(suggestion: string): void {
@@ -3071,7 +3290,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildSearchMatch(loc: MapLocation, intent: SearchIntent): { loc: MapLocation; score: number; reason: string; badges: string[] } {
-    const terms = intent.terms;
+    const terms = this.expandSearchTerms(intent.terms);
     const fields = [
       loc.title,
       loc.regionName,
@@ -3194,7 +3413,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     };
 
-    addCategory('attraction', 'beach', 'plaza', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
+    addCategory('attraction', 'beach', 'beaches', 'plaza', 'plaze', 'kupaliste', 'kupanje', 'more', 'nature', 'priroda', 'attraction', 'znamenitost', 'viewpoint', 'vidikovac');
     addCategory('restaurant', 'restaurant', 'restoran', 'food', 'hrana', 'dinner', 'lunch', 'kafa', 'cafe');
     addCategory('cultural_site', 'culture', 'cultural', 'kultura', 'museum', 'muzej', 'history', 'istorija');
     addCategory('monument', 'monument', 'spomenik');
@@ -3259,6 +3478,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getSearchReason(loc: MapLocation, intent: SearchIntent, badges: string[]): string {
+    if (this.hasBeachIntent(intent)) return 'Matched beach terms in the destination data.';
     if (badges.includes('Very close') || badges.includes('Nearby')) {
       return `${this.formatDistance(loc.distanceKm)} away, matched your nearby intent.`;
     }
@@ -3268,6 +3488,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (badges.includes('Top rated')) return `Rated ${(loc.avgRating || loc.rating || 0).toFixed(1)} by travelers.`;
     if (intent.categoryKeys.length > 0) return `Matches ${this.formatPostType(loc.postType || loc.category)}.`;
     return loc.regionName ? `Matched in ${loc.regionName}.` : 'Matched by name, description or tags.';
+  }
+
+  private hasBeachIntent(intent: SearchIntent): boolean {
+    return intent.terms.some(term => ['plaza', 'plaze', 'beach', 'beaches', 'kupaliste', 'kupanje'].includes(term));
   }
 
   private normalizeSearchText(value: string): string {
@@ -3300,8 +3524,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       food: ['restaurant', 'restoran', 'cafe'],
       eat: ['restaurant', 'food'],
       restoran: ['restaurant', 'food'],
-      plaza: ['beach', 'attraction'],
-      beach: ['plaza', 'attraction'],
+      plaza: ['beach', 'beaches', 'plaze', 'kupaliste', 'attraction'],
+      plaze: ['plaza', 'beach', 'beaches', 'kupaliste', 'attraction'],
+      beach: ['plaza', 'plaze', 'beaches', 'kupaliste', 'attraction'],
+      beaches: ['beach', 'plaza', 'plaze', 'kupaliste', 'attraction'],
+      kupaliste: ['plaza', 'beach', 'plaze', 'attraction'],
+      srbija: ['serbia'],
+      srbiji: ['serbia'],
+      serbia: ['srbija'],
       culture: ['cultural', 'monument'],
       kultura: ['cultural', 'monument'],
       history: ['cultural', 'monument'],
@@ -3332,8 +3562,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private dismissSearchMenu(): void {
-    this.searchResults = [];
-    this.searchIntentSummary = '';
     this.searchFocused = false;
   }
 
@@ -3341,13 +3569,30 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchQuery = loc.title;
     this.searchStateService.set(this.searchQuery);
     this.dismissSearchMenu();
+    this.ensureSearchLocationOnMap(loc);
     this.focusOnLocation(loc);
+  }
+
+  private ensureSearchLocationOnMap(loc: MapLocation): void {
+    if (this.locationsList.some(location => location.id === loc.id)) return;
+
+    this.locationsList = [...this.locationsList, loc];
+    this.updateDistancesAndRecommendations();
+    this.syncGuestSavedContext();
+    this.syncAvailableSavedFilterIds();
+    this.refreshRecommendations();
+    this.addMarkers();
   }
 
   clearSearch(): void {
     this.searchQuery = '';
     this.searchStateService.clear();
+    this.searchResults = [];
+    this.searchIntentSummary = '';
+    this.searchFallbackActive = false;
+    this.searchLoading = false;
     this.dismissSearchMenu();
+    this.applyMarkerFilter();
   }
 
   formatPostType(type?: string | null): string {
@@ -3420,6 +3665,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Reactive: called on every filter change while panel is open — panel stays open
     this.applyFilterState();
     this.applyMarkerFilter();
+    this.fitMapToSelectedFilterArea();
     this.refreshRecommendations();
     if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
     this.cdr.detectChanges();
@@ -3433,6 +3679,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedLocation = null;
     this.selectedPublicRoute = null;
     this.applyMarkerFilter();
+    this.fitMapToSelectedFilterArea();
     this.refreshRecommendations();
     if (this.searchQuery.trim()) this.onSearchInput(this.searchQuery);
     this.cdr.detectChanges();

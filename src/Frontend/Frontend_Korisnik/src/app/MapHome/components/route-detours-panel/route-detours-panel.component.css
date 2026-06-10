@@ -185,3 +185,13 @@
   background: #0f172a;
   color: #94a3b8;
 }
+
+:host-context(html[data-theme='dark']) .detour-add-btn {
+  background: var(--green-500);
+  color: #fff;
+}
+
+:host-context(html[data-theme='dark']) .detour-add-btn:hover {
+  background: var(--green-500);
+  opacity: 0.9;
+}

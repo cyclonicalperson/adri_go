@@ -48,6 +48,14 @@
           <svg viewBox="0 0 24 24"><path d="M20 5h-3.17l-1.84-2H9.01L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-8 13a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
           Take Photo
         </button>
+        <button
+          class="change-photo-btn remove-photo-btn"
+          *ngIf="hasProfilePhoto"
+          (click)="removeProfilePhoto()"
+          [disabled]="isUploadingPhoto">
+          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Remove Photo
+        </button>
       </div>
     </div>
 
