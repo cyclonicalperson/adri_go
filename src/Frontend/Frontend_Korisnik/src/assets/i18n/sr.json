@@ -377,6 +377,7 @@
   "Accounts": "Nalozi",
   "Content": "Sadr?aj",
   "Booking": "Booking",
+  "Buy ticket": "Kupi kartu",
   "Payments": "Plaćanja",
   "Support": "Podrška",
   "Choose which sign-in providers AdriGo should prioritize for this device.": "Izaberite koje načine prijave AdriGo treba da prioritizuje na ovom uređaju.",
@@ -1110,5 +1111,15 @@
   "Sign out of your AdriGo account.": "Odjavite se sa svog AdriGo naloga.",
   "Don't have an account and want to post a destination?": "Nemate nalog i želite da objavite destinaciju?",
   "Register as admin": "Registruj se kao admin",
-  "Create an account to post destinations and manage tourism content.": "Napravite nalog da objavljujete destinacije i upravljate turističkim sadržajem."
+  "Create an account to post destinations and manage tourism content.": "Napravite nalog da objavljujete destinacije i upravljate turističkim sadržajem.",
+  "Saved Destinations": "Sačuvane destinacije",
+  "Destinations": "Destinacije",
+  "Sort saved routes": "Sortiraj sačuvane rute",
+  "View on Map": "Prikaži na mapi",
+  "View all": "Prikaži sve",
+  "Scroll saved places left": "Pomeri sačuvana mesta ulevo",
+  "Scroll saved places right": "Pomeri sačuvana mesta udesno",
+  "Remove from saved": "Ukloni iz sačuvanih",
+  "Remove route from saved": "Ukloni rutu iz sačuvanih",
+  "Create a free account or log in to save and manage your favorite places.": "Napravite besplatan nalog ili se prijavite da čuvate i upravljate omiljenim mestima."
 }

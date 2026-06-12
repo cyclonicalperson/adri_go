@@ -714,7 +714,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private buildNearbyCards(): LocationRecommendation[] {
     const withDistance = this.locationsList
-      .filter(location => this.passesFilters(location))
+      .filter(location => this.passesFilters(location, { ignoreRoutesContentType: true }))
       .map(location => {
         const coordinates = this.getLocationCoordinates(location);
         const distanceKm = this.userPosition && coordinates
@@ -2507,8 +2507,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private passesFilters(loc: MapLocation): boolean {
-    if (this.mapFilterContentType === 'routes') {
+  private passesFilters(loc: MapLocation, options: { ignoreRoutesContentType?: boolean } = {}): boolean {
+    if (this.mapFilterContentType === 'routes' && !options.ignoreRoutesContentType) {
       return false;
     }
 
@@ -2638,12 +2638,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
+    const applyRouteFilters = this.mapFilterContentType === 'routes' || this.hasActiveRouteExploreFilters();
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
       const visible = !this.isNavigating
-        && this.mapFilterContentType === 'routes'
-        && this.routePassesRadiusFilter(route)
-        && this.routeMatchesExploreFilters(route)
+        && !showOnlyPlannerStops
+        && (!applyRouteFilters || (this.routePassesRadiusFilter(route) && this.routeMatchesExploreFilters(route)))
         && renderBounds.contains(latLng);
 
       if (visible) {
@@ -3417,7 +3417,30 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.searchLoading = true;
+    this.searchResults = this.locationsList
+      .map(loc => this.buildSearchMatch(loc, intent))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(item => ({
+        ...item.loc,
+        searchReason: item.reason,
+        searchBadges: item.badges,
+      }))
+      .slice(0, 8);
+    this.searchFallbackActive = this.searchResults.length === 0;
+    this.searchIntentSummary = this.searchResults.length > 0
+      ? this.describeSearchIntent(intent, this.searchResults.length)
+      : '';
+    this.applyMarkerFilter();
     this.searchInput$.next(query.trim());
+  }
+
+  private hasActiveRouteExploreFilters(): boolean {
+    return this.filterRouteDifficulties.length > 0
+      || this.filterRouteCountries.length > 0
+      || this.filterRouteRegions.length > 0
+      || !!this.filterRouteDistanceBand
+      || !!this.filterRouteDurationBand;
   }
 
   private setupSearchSubscription(): void {
@@ -3445,7 +3468,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (query !== this.searchQuery.trim()) return;
 
       this.searchLoading = false;
-      this.searchResults = locations
+      const backendResults = locations
         .map(loc => this.buildSearchMatch(loc, intent))
         .filter(item => item.score > 0)
         .sort((a, b) => b.score - a.score)
@@ -3455,6 +3478,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           searchBadges: item.badges,
         }))
         .slice(0, 8);
+      this.searchResults = backendResults.length > 0 ? backendResults : this.searchResults;
       this.searchFallbackActive = this.searchResults.length === 0;
       this.searchIntentSummary = this.searchFallbackActive
         ? ''

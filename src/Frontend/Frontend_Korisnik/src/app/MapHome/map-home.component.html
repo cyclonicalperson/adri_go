@@ -386,7 +386,7 @@
             type="button"
             [class.is-saved]="route.isSaved"
             (click)="toggleCuratedRouteSave(route, $event)">
-            {{ route.isSaved ? 'Saved' : 'Save to Saved' }}
+            {{ route.isSaved ? 'Saved' : 'Save' }}
           </button>
           <button class="rp-load" type="button" (click)="loadPreviewRoute(route)">
             Load route

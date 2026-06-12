@@ -148,13 +148,22 @@
     <div class="empty-state" *ngIf="locations.length === 0">
       <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor" style="opacity:.3;margin-bottom:12px"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
       <p>No destinations found for "{{ activeActivityFilterLabel }}".</p>
-      <button class="clear-search-link" (click)="clearSearch()">Show all locations</button>
+      <button class="activity-filter-back-btn" type="button" (click)="backToExplore()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Back to Explore
+      </button>
     </div>
     <div *ngIf="locations.length > 0">
-      <h2 class="section-title results-title">
-        Destinations for "{{ activeActivityFilterLabel }}"
-        <span class="result-count">{{ locations.length }}</span>
-      </h2>
+      <div class="activity-filter-heading">
+        <h2 class="section-title results-title">
+          Destinations for "{{ activeActivityFilterLabel }}"
+          <span class="result-count">{{ locations.length }}</span>
+        </h2>
+        <button class="activity-filter-back-btn activity-filter-back" type="button" (click)="backToExplore()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          Back to Explore
+        </button>
+      </div>
       <div class="grid-area">
         <div class="location-card" *ngFor="let loc of locations">
           <ng-container *ngTemplateOutlet="cardTpl; context: { loc: loc }"></ng-container>
@@ -449,7 +458,13 @@
         <span *ngIf="loc.distanceKm != null"> · {{ formatDistance(loc.distanceKm) }}</span>
       </div>
       <div class="activity-tags-row compact" *ngIf="getActivityTags(loc, 2).length > 0">
-        <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(loc, 2)">{{ tag }}</span>
+        <button
+          type="button"
+          class="activity-tag-chip"
+          *ngFor="let tag of getActivityTagItems(loc, 2)"
+          (click)="openActivityTag(tag, $event)">
+          {{ tag.label }}
+        </button>
       </div>
     </div>
   </ng-template>
@@ -512,7 +527,13 @@
         </span>
       </div>
       <div class="activity-tags-row" *ngIf="getActivityTags(loc).length > 0">
-        <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(loc)">{{ tag }}</span>
+        <button
+          type="button"
+          class="activity-tag-chip"
+          *ngFor="let tag of getActivityTagItems(loc)"
+          (click)="openActivityTag(tag, $event)">
+          {{ tag.label }}
+        </button>
       </div>
       <div class="divider"></div>
       <button class="view-details-btn">

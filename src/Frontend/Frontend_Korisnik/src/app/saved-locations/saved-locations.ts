@@ -16,7 +16,7 @@ import { AppHeaderComponent } from '../shared/app-header/app-header.component';
 import { DesktopFooterComponent } from '../shared/desktop-footer.component';
 import { MobileTouristNavComponent } from '../shared/mobile-tourist-nav.component';
 
-type SavedFilter = 'All' | 'Places' | 'Routes';
+type SavedFilter = 'All' | 'Destinations' | 'Routes';
 type SavedSectionKey = 'places' | 'routes';
 type SavedRouteStopBucket = 'all' | '1' | '2-3' | '4+';
 type SavedRouteDistanceSort = 'default' | 'distance-asc' | 'distance-desc';
@@ -121,16 +121,16 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
   readonly defaultImage = 'assets/plaza.jpg';
   readonly filters: SavedFilterItem[] = [
     { id: 'All', label: 'All' },
-    { id: 'Places', label: 'Places' },
+    { id: 'Destinations', label: 'Destinations' },
     { id: 'Routes', label: 'Routes' },
   ];
   readonly sectionMeta: SavedSectionMeta[] = [
     {
       key: 'places',
-      title: 'Saved Places',
+      title: 'Saved Destinations',
       emptyTitle: 'No saved places yet',
       emptyCopy: 'Places you save from the app will appear here.',
-      filter: 'Places',
+      filter: 'Destinations',
     },
     {
       key: 'routes',
@@ -225,6 +225,8 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
   loadErrorMessage = '';
   savedSearchQuery = '';
   savedFiltersOpen = false;
+  savedSortOpen = false;
+  savedSortValue: SavedRouteDistanceSort = 'default';
   editingRouteKey: string | null = null;
   editingRouteTitle = '';
   appliedSavedFilters: SavedMiniFilterState = createDefaultSavedFilters();
@@ -281,7 +283,7 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
     const filtered = this.routeItems.filter(route =>
       this.matchesSavedRoute(route, query, this.appliedSavedFilters),
     );
-    return this.sortSavedRoutes(filtered, this.appliedSavedFilters.routeDistanceSort);
+    return this.sortSavedRoutes(filtered, this.savedSortValue);
   }
 
   get hasActiveSavedFilters(): boolean {
@@ -289,7 +291,6 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
       || this.appliedSavedFilters.placeMinRating > 0
       || this.appliedSavedFilters.routeStopBucket !== 'all'
       || this.appliedSavedFilters.routeModes.length > 0
-      || this.appliedSavedFilters.routeDistanceSort !== 'default'
       || this.appliedSavedFilters.routeDistanceMin.trim().length > 0
       || this.appliedSavedFilters.routeDistanceMax.trim().length > 0;
   }
@@ -303,7 +304,7 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
   }
 
   get shouldShowRouteFilters(): boolean {
-    return this.activeFilter !== 'Places';
+    return this.activeFilter !== 'Destinations';
   }
 
   get visibleSections(): SavedSectionMeta[] {
@@ -323,6 +324,19 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
           .filter(Boolean),
       ),
     ).slice(0, limit);
+  }
+
+  openActivityTag(tag: string, event?: Event): void {
+    event?.stopPropagation();
+    const name = String(tag ?? '').trim();
+    if (!name) return;
+
+    this.router.navigate(['/location-list'], {
+      queryParams: {
+        type: 'destinations',
+        activityTag: name,
+      },
+    });
   }
 
   formatPostType(type?: string | null): string {
@@ -461,6 +475,15 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
     };
   }
 
+  setSavedSort(value: SavedRouteDistanceSort): void {
+    this.savedSortValue = value;
+    this.savedSortOpen = false;
+  }
+
+  getSavedSortLabel(): string {
+    return this.translateLabel(this.routeDistanceSortOptions.find(option => option.value === this.savedSortValue)?.label ?? 'Default order');
+  }
+
   setDraftRouteDistanceMax(value: string): void {
     this.draftSavedFilters = {
       ...this.draftSavedFilters,
@@ -474,6 +497,10 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
     this.activeFilter = meta.filter;
   }
 
+  getSectionTitle(section: SavedSectionMeta): string {
+    return section.title;
+  }
+
   shouldShowViewAll(section: SavedSectionMeta): boolean {
     return this.activeFilter === 'All' && this.getSectionCount(section.key) > 0;
   }
@@ -481,10 +508,14 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
   getSectionItems(section: SavedSectionKey): Array<SavedDisplayItem | SavedRouteLibraryItem> {
     switch (section) {
       case 'places':
-        return this.filteredPlaceItems;
+        return this.getVisiblePostItems();
       case 'routes':
         return this.filteredRouteItems;
     }
+  }
+
+  getVisiblePostItems(): SavedDisplayItem[] {
+    return this.filteredPlaceItems;
   }
 
   getSectionCount(section: SavedSectionKey): number {
@@ -495,7 +526,7 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
     switch (filter) {
       case 'All':
         return this.filteredPlaceItems.length + this.filteredRouteItems.length;
-      case 'Places':
+      case 'Destinations':
         return this.filteredPlaceItems.length;
       case 'Routes':
         return this.filteredRouteItems.length;

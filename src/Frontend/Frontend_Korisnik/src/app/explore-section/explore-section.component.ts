@@ -227,6 +227,19 @@ export class ExploreSectionComponent implements OnInit {
       .slice(0, limit);
   }
 
+  openActivityTag(tag: string, event?: Event): void {
+    event?.stopPropagation();
+    const name = String(tag ?? '').trim();
+    if (!name) return;
+
+    this.router.navigate(['/location-list'], {
+      queryParams: {
+        type: 'destinations',
+        activityTag: name,
+      },
+    });
+  }
+
   getFirstImage(loc: Partial<Location> & { images?: string | string[] }): string {
     if (!loc?.images) return DEFAULT_LOCATION_IMAGE;
     let firstImg = '';

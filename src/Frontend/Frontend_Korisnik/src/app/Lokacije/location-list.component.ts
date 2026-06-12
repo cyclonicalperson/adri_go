@@ -29,7 +29,7 @@ import { catchError, debounceTime, map as rxMap, of, Subject, Subscription, swit
 
 // Max cards shown per section row (prevents overcrowding)
 const SECTION_LIMIT = 10;
-const MIN_SEARCH_LENGTH = 2;
+const MIN_SEARCH_LENGTH = 1;
 type ExploreContentType = 'destinations' | 'activities' | 'routes';
 type SortOption = 'recommended' | 'rating-desc' | 'distance-asc' | 'name-asc' | 'name-desc' | 'newest' | 'popular';
 type ActivitySortOption = 'activity-name-asc' | 'activity-popular' | 'activity-category' | 'activity-difficulty';
@@ -67,6 +67,12 @@ type ExploreSearchResult = {
   rating?: number | null;
   reason?: string;
   raw: Location | TouristActivityItem | TouristRouteItem;
+};
+
+type ActivityTagItem = {
+  id: number | null;
+  name: string;
+  label: string;
 };
 
 interface PopularDestination {
@@ -374,6 +380,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.setupDestinationSearchSubscription();
     this.readContentTypeFromRoute();
     this.readActivityFilterFromRoute();
+    this.restoreDestinationFilters();
 
     // Back-to-top: slušaj scroll na window-u (stranica skroluje window, ne inner div)
     this.scrollListener = () => {
@@ -434,6 +441,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
         this.allLocations = this.locationState.applyKnownState(withGuestState);
         if (this.activeActivityFilter) {
           this.applyActivityFilter(this.activeActivityFilter);
+        } else if (this.activeFilterState && this.hasActiveDestinationFilter(this.activeFilterState)) {
+          this.filteredLocations = this.applyFiltersToLocations(this.allLocations, this.activeFilterState);
+          this.isFilterActive = true;
         } else {
           this.refreshVisibleContent();
         }
@@ -698,14 +708,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   onFiltersApplied(state: FilterState): void {
     this.activeFilterState = state;
-    const hasActiveFilter =
-      state.activeCategories.length > 0 ||
-      (state.destinationCountries?.length ?? 0) > 0 ||
-      (state.destinationRegions?.length ?? 0) > 0 ||
-      state.minRating > 0 ||
-      state.openNow ||
-      state.showOnlySaved ||
-      (state.radius > 0);
+    const hasActiveFilter = this.hasActiveDestinationFilter(state);
 
     if (hasActiveFilter) {
       this.filteredLocations = this.applyFiltersToLocations(this.allLocations, state);
@@ -820,16 +823,74 @@ export class LocationListComponent implements OnInit, OnDestroy {
   formatPostType(type?: string | null): string { return this.translateLabel(formatPostType(type)); }
 
   getActivityTags(loc: Partial<Location>, limit = 3): string[] {
-    const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? [];
+    return this.getActivityTagItems(loc, limit).map(tag => tag.label);
+  }
+
+  getActivityTagItems(loc: Partial<Location>, limit = 3): ActivityTagItem[] {
+    const rawTags = (loc as any).tagNames ?? (loc as any).TagNames ?? (loc as any).activityTagNames ?? (loc as any).activityTags ?? [];
+    const rawIds = (loc as any).tagIds ?? (loc as any).TagIds ?? (loc as any).activityTagIds ?? [];
     const tags = Array.isArray(rawTags)
       ? rawTags
       : String(rawTags || '').split(/[;,]/);
+    const ids = Array.isArray(rawIds)
+      ? rawIds
+      : String(rawIds || '').split(/[;,]/);
+    const seen = new Set<string>();
 
-    return Array.from(new Set(tags
-      .map(tag => String(tag).trim())
-      .filter(Boolean)))
-      .map(tag => this.formatDynamicTag(tag))
+    return tags
+      .map((tag, index) => {
+        const source = tag as any;
+        const name = String(
+          typeof source === 'string'
+            ? source
+            : (source?.name ?? source?.tagName ?? source?.title ?? '')
+        ).trim();
+        const id = Number(ids[index] ?? source?.id ?? source?.tagId ?? source?.activityId);
+        return {
+          id: Number.isFinite(id) ? id : null,
+          name,
+          label: this.formatDynamicTag(name),
+        };
+      })
+      .filter(tag => {
+        if (!tag.name) return false;
+        const key = tag.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .slice(0, limit);
+  }
+
+  openActivityTag(tag: ActivityTagItem, event?: Event): void {
+    event?.stopPropagation();
+    if (!tag.name) return;
+
+    this.activeContentType = 'destinations';
+    this.activeActivityFilter = { id: tag.id, name: tag.name };
+    this.applyActivityFilter(this.activeActivityFilter);
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { type: 'destinations', activityTagId: tag.id, activityTag: tag.name },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
+  }
+
+  backToExplore(): void {
+    this.searchQuery = '';
+    this.searchStateService.clear();
+    this.resetSearchState();
+    this.clearActivityFilterState();
+    this.activeContentType = 'destinations';
+    this.activeSectionView = null;
+    this.refreshVisibleContent();
+    this.router.navigate(['/location-list'], {
+      queryParams: { type: 'destinations' },
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
   }
 
   getTagList(tags?: string | null): string[] {
@@ -1024,6 +1085,32 @@ export class LocationListComponent implements OnInit, OnDestroy {
       id: Number.isFinite(parsedId) ? parsedId : null,
       name,
     };
+    this.searchStateService.clear();
+  }
+
+  private restoreDestinationFilters(): void {
+    if (this.activeActivityFilter) return;
+
+    const state = this.filterStateService.get();
+    if (!this.hasActiveDestinationFilter(state)) return;
+
+    this.activeContentType = 'destinations';
+    this.activeFilterState = state;
+    this.isFilterActive = true;
+    this.activeSectionView = null;
+    this.searchQuery = '';
+    this.searchStateService.clear();
+    this.resetSearchState();
+  }
+
+  private hasActiveDestinationFilter(state: FilterState): boolean {
+    return state.activeCategories.length > 0
+      || (state.destinationCountries?.length ?? 0) > 0
+      || (state.destinationRegions?.length ?? 0) > 0
+      || state.minRating > 0
+      || state.openNow
+      || !!state.showOnlySaved
+      || state.radius > 0;
   }
 
   private applyActivityFilter(filter: { id: number | null; name: string }): void {
@@ -1361,10 +1448,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
     ).subscribe(({ query, results }) => {
       if (query !== this.searchQuery.trim() || this.activeContentType !== 'destinations') return;
 
+      const nextResults = results.length > 0 ? results : this.getDestinationSearchResults(query);
       this.destinationSearchLoading = false;
-      this.searchResults = results;
-      this.searchIntentSummary = this.describeSearchForCurrentType(query, results.length);
-      this.showDropdown = this.searchFocused && results.length > 0;
+      this.searchResults = nextResults;
+      this.searchIntentSummary = this.describeSearchForCurrentType(query, nextResults.length);
+      this.showDropdown = this.searchFocused && nextResults.length > 0;
       this.refreshVisibleContent();
       this.updateBackToTopVisibility();
       this.cdr.markForCheck();
@@ -1372,11 +1460,16 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   private queueDestinationSearch(query: string): void {
+    const localResults = this.getDestinationSearchResults(query);
     this.destinationSearchLoading = true;
-    this.searchResults = [];
-    this.searchIntentSummary = '';
-    this.showDropdown = false;
-    this.locations = [];
+    this.searchResults = localResults;
+    this.searchIntentSummary = localResults.length > 0
+      ? this.describeSearchForCurrentType(query, localResults.length)
+      : '';
+    this.showDropdown = this.searchFocused && localResults.length > 0;
+    this.locations = this.applySort(localResults
+      .filter(result => result.kind === 'destinations')
+      .map(result => result.raw as Location));
     this.destinationSearchInput$.next(query);
   }
 

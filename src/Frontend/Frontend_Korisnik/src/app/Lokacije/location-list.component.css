@@ -743,6 +743,7 @@
 
 .activity-tag-chip {
   max-width: 100%;
+  border: 0;
   border-radius: var(--radius-pill);
   background: #ecfdf5;
   color: #047857;
@@ -753,11 +754,68 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.activity-tag-chip:hover {
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .activity-tags-row.compact .activity-tag-chip {
   font-size: 10px;
   padding: 3px 7px;
+}
+
+.activity-filter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.activity-filter-heading .results-title {
+  margin-bottom: 0;
+}
+
+.activity-filter-back {
+  margin: 0 0 18px;
+  white-space: nowrap;
+}
+
+.activity-filter-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 1px solid rgba(34, 197, 94, 0.24);
+  border-radius: var(--radius-pill);
+  background: var(--green-500);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.24);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.activity-filter-back-btn:hover {
+  background: var(--green-600);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(22, 163, 74, 0.28);
+}
+
+.activity-filter-back-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+  flex-shrink: 0;
 }
 
 .divider { height: 1px; background: var(--gray-100); margin: 12px 0; }

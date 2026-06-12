@@ -79,7 +79,7 @@
       </div>
 
       <!-- Unlimited toggle -->
-      <div class="toggle-card" [class.active]="!radiusActive" style="--filter-color: #0ea5e9; margin-bottom: 12px;">
+      <div class="toggle-card distance-toggle-card" [class.active]="!radiusActive">
         <div class="toggle-text">
           <h3>Unlimited</h3>
           <p>Show locations at any distance</p>
@@ -91,7 +91,7 @@
       </div>
 
       <!-- Slider — prikazan samo kad je radius aktivan -->
-      <div *ngIf="radiusActive" class="slider-box active" style="--filter-color: #0ea5e9;">
+      <div *ngIf="radiusActive" class="slider-box distance-slider-box active">
         <div class="slider-labels">
           <span>Radius</span>
           <span class="highlight">{{ radiusLabel }}</span>
