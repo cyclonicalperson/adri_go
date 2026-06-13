@@ -75,6 +75,10 @@ type ActivityTagItem = {
   label: string;
 };
 
+type DestinationTagSuggestion = ActivityTagItem & {
+  matchCount: number;
+};
+
 interface PopularDestination {
   name: string;
   placeCount: number;
@@ -99,7 +103,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
   isMenuOpen = false;
   sortMenuOpen = false;
   isFiltersOpen = false;
-  isTypeFiltersOpen = false;
   activeContentType: ExploreContentType = 'destinations';
   locations: Location[] = [];
   private allLocations: Location[] = [];
@@ -144,6 +147,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   submittedSearchQuery = '';
   isSearchActive = false;
   searchResults: ExploreSearchResult[] = [];
+  tagSuggestions: DestinationTagSuggestion[] = [];
   searchIntentSummary = '';
   searchFocused = false;
   showDropdown = false;
@@ -153,7 +157,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   readonly contentTypeTabs: { value: ExploreContentType; label: string }[] = [
     { value: 'destinations', label: 'Destinations' },
-    { value: 'activities', label: 'Activities' },
     { value: 'routes', label: 'Routes' },
   ];
 
@@ -211,7 +214,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     switch (this.activeContentType) {
       case 'activities': return this.translateLabel('Search activities...');
       case 'routes': return this.translateLabel('Search routes...');
-      default: return this.translateLabel('Search locations...');
+      default: return this.translateLabel('Search destinations or tags...');
     }
   }
 
@@ -225,12 +228,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   get hasActiveTypeFilters(): boolean {
     if (this.activeContentType === 'destinations') {
-      return this.isFilterActive || this.filterStateService.isActive();
-    }
-    if (this.activeContentType === 'activities') {
-      return this.activityFilters.categories.length > 0
-        || this.activityFilters.difficulties.length > 0
-        || this.activityFilters.linkedOnly;
+      return this.isFilterActive || this.hasActiveDestinationFilter(this.filterStateService.get());
     }
     return this.routeFilters.difficulties.length > 0
       || this.routeFilters.countries.length > 0
@@ -317,7 +315,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   get activeActivityFilterLabel(): string {
-    return this.activeActivityFilter?.name || 'Activity';
+    return this.activeActivityFilter?.name || 'Tag';
   }
 
   get searchNoResultsMessage(): string {
@@ -459,29 +457,6 @@ export class LocationListComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadActivities(): void {
-    this.activitiesErrorMessage = '';
-    this.activitiesService.getActivities().subscribe({
-      next: (activities) => {
-        this.allActivities = activities;
-        this.refreshVisibleContent();
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        if (err.status === 403 || err.status === 401) {
-          this.activitiesErrorMessage = 'Activities require a registered account.';
-        } else if (err.status === 404) {
-          this.activitiesErrorMessage = 'Activities are not available on this server.';
-        } else {
-          this.activitiesErrorMessage = 'Could not load activities.';
-        }
-        this.allActivities = [];
-        this.refreshVisibleContent();
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
   loadRoutes(): void {
     this.routesErrorMessage = '';
     this.routesService.getRoutes().subscribe({
@@ -499,12 +474,28 @@ export class LocationListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Called on every keystroke — updates live dropdown */
+  loadActivities(): void {
+    this.activitiesErrorMessage = '';
+    this.activitiesService.getActivities().subscribe({
+      next: (activities) => {
+        this.allActivities = activities;
+        if (this.activeFilterState && this.hasActiveDestinationFilter(this.activeFilterState)) {
+          this.filteredLocations = this.applyFiltersToLocations(this.allLocations, this.activeFilterState);
+          this.isFilterActive = true;
+        }
+        this.refreshVisibleContent();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.activitiesErrorMessage = 'Could not load activities.';
+        this.allActivities = [];
+        this.refreshVisibleContent();
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
   retryActiveLoad(): void {
-    if (this.activeContentType === 'activities') {
-      this.loadActivities();
-      return;
-    }
     if (this.activeContentType === 'routes') {
       this.loadRoutes();
       return;
@@ -512,6 +503,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.loadLocations();
   }
 
+  /** Called on every keystroke — updates live dropdown */
   onSearchInput(): void {
     const query = this.searchQuery.trim();
     if (!query) {
@@ -689,24 +681,30 @@ export class LocationListComponent implements OnInit, OnDestroy {
   goToNotifications(): void { this.router.navigate(['/notifications']); }
   goToMap(): void { this.router.navigate(['/map-home']); }
   openFilters(): void {
-    if (this.activeContentType !== 'destinations') {
-      this.isTypeFiltersOpen = true;
-      this.setPageScrollLock(true);
-      this.cdr.markForCheck();
-      return;
-    }
     this.isFiltersOpen = true;
     this.setPageScrollLock(true);
     this.cdr.markForCheck();
   }
   closeFilters(): void {
     this.isFiltersOpen = false;
-    this.isTypeFiltersOpen = false;
     this.setPageScrollLock(false);
     this.cdr.markForCheck();
   }
 
   onFiltersApplied(state: FilterState): void {
+    if (this.activeContentType === 'routes' || state.activeContentType === 'routes') {
+      this.routeFilters = {
+        difficulties: [...(state.routeDifficulties ?? [])],
+        countries: [...(state.routeCountries ?? [])],
+        regions: [...(state.routeRegions ?? [])],
+        distanceBand: state.routeDistanceBand ?? '',
+        durationBand: state.routeDurationBand ?? '',
+      };
+      this.refreshVisibleContent();
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.activeFilterState = state;
     const hasActiveFilter = this.hasActiveDestinationFilter(state);
 
@@ -747,6 +745,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if ((state.destinationRegions?.length ?? 0) > 0 && !state.destinationRegions!.includes(loc.regionName || '')) {
         return false;
       }
+      if (this.hasActiveActivityDestinationFilters(state) && !this.locationPassesActivityDestinationFilters(loc, state)) {
+        return false;
+      }
       if (state.minRating > 0 && (loc.avgRating || 0) < state.minRating) return false;
       if (state.openNow && !this.isLocationOpen(loc)) return false;
       if (state.showOnlySaved && state.savedPostIds?.length && !state.savedPostIds.includes(loc.id)) return false;
@@ -759,6 +760,29 @@ export class LocationListComponent implements OnInit, OnDestroy {
       }
       return true;
     }));
+  }
+
+  private hasActiveActivityDestinationFilters(state: FilterState): boolean {
+    return (state.activityCategories?.length ?? 0) > 0
+      || (state.activityDifficulties?.length ?? 0) > 0
+      || !!state.activityLinkedOnly;
+  }
+
+  private locationPassesActivityDestinationFilters(loc: Location, state: FilterState): boolean {
+    const linkedActivities = this.allActivities.filter(activity =>
+      activity.postId === loc.id || (activity.postIds ?? []).includes(loc.id));
+
+    if (linkedActivities.length === 0) return false;
+
+    return linkedActivities.some(activity => {
+      if ((state.activityCategories?.length ?? 0) > 0 && !state.activityCategories!.includes(activity.category)) {
+        return false;
+      }
+      if ((state.activityDifficulties?.length ?? 0) > 0 && !state.activityDifficulties!.includes(activity.difficulty || '')) {
+        return false;
+      }
+      return true;
+    });
   }
 
   onSortChanged(): void {
@@ -871,11 +895,22 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.applyActivityFilter(this.activeActivityFilter);
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { type: 'destinations', activityTagId: tag.id, activityTag: tag.name },
+      queryParams: {
+        type: 'destinations',
+        tagId: tag.id,
+        tag: tag.name,
+        activityTagId: null,
+        activityTag: null,
+      },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
     this.cdr.markForCheck();
+  }
+
+  selectTagSuggestion(tag: DestinationTagSuggestion, event?: Event): void {
+    event?.stopPropagation();
+    this.openActivityTag(tag, event);
   }
 
   backToExplore(): void {
@@ -1075,8 +1110,8 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   private readActivityFilterFromRoute(): void {
     const params = this.route.snapshot.queryParamMap;
-    const name = (params.get('activityTag') || '').trim();
-    const idParam = params.get('activityTagId');
+    const name = (params.get('tag') || params.get('activityTag') || '').trim();
+    const idParam = params.get('tagId') ?? params.get('activityTagId');
     const parsedId = idParam != null ? Number(idParam) : NaN;
     if (!name && !Number.isFinite(parsedId)) return;
 
@@ -1107,6 +1142,9 @@ export class LocationListComponent implements OnInit, OnDestroy {
     return state.activeCategories.length > 0
       || (state.destinationCountries?.length ?? 0) > 0
       || (state.destinationRegions?.length ?? 0) > 0
+      || (state.activityCategories?.length ?? 0) > 0
+      || (state.activityDifficulties?.length ?? 0) > 0
+      || !!state.activityLinkedOnly
       || state.minRating > 0
       || state.openNow
       || !!state.showOnlySaved
@@ -1119,6 +1157,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.isSearchActive = false;
     this.showDropdown = false;
     this.searchResults = [];
+    this.tagSuggestions = [];
     this.searchIntentSummary = '';
     this.searchFocused = false;
     this.isFilterActive = false;
@@ -1151,7 +1190,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { activityTagId: null, activityTag: null },
+      queryParams: { tagId: null, tag: null, activityTagId: null, activityTag: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
@@ -1194,12 +1233,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   setActiveContentType(type: ExploreContentType): void {
+    if (type === 'activities') type = 'destinations';
     if (this.activeContentType === type) return;
 
     this.activeContentType = type;
     this.activeSectionView = null;
     this.isFiltersOpen = false;
-    this.isTypeFiltersOpen = false;
     this.sortMenuOpen = false;
     this.setPageScrollLock(false);
     this.ensureSortForActiveType();
@@ -1262,9 +1301,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
   }
 
   clearTypeFilters(): void {
-    if (this.activeContentType === 'activities') {
-      this.activityFilters = { categories: [], difficulties: [], linkedOnly: false };
-    } else if (this.activeContentType === 'routes') {
+    if (this.activeContentType === 'routes') {
       this.routeFilters = { difficulties: [], countries: [], regions: [], distanceBand: '', durationBand: '' };
     }
     this.refreshVisibleContent();
@@ -1277,7 +1314,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.applyActivityFilter(this.activeActivityFilter);
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { type: 'destinations', activityTagId: activity.id, activityTag: activity.name },
+      queryParams: {
+        type: 'destinations',
+        tagId: activity.id,
+        tag: activity.name,
+        activityTagId: null,
+        activityTag: null,
+      },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
@@ -1386,9 +1429,17 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   private readContentTypeFromRoute(): void {
     const type = this.route.snapshot.queryParamMap.get('type');
-    if (type === 'activities' || type === 'routes' || type === 'destinations') {
+    if (type === 'routes' || type === 'destinations') {
       this.activeContentType = type;
       this.ensureSortForActiveType();
+    } else if (type === 'activities') {
+      this.activeContentType = 'destinations';
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { type: 'destinations' },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
     }
   }
 
@@ -1396,9 +1447,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     const allowed = this.sortOptions.map(option => option.value);
     if (allowed.includes(this.sortOption)) return;
 
-    this.sortOption = this.activeContentType === 'activities'
-      ? 'activity-name-asc'
-      : this.activeContentType === 'routes'
+    this.sortOption = this.activeContentType === 'routes'
         ? 'route-newest'
         : 'recommended';
   }
@@ -1407,6 +1456,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.submittedSearchQuery = '';
     this.isSearchActive = false;
     this.searchResults = [];
+    this.tagSuggestions = [];
     this.searchIntentSummary = '';
     this.showDropdown = false;
     this.destinationSearchLoading = false;
@@ -1416,6 +1466,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     this.submittedSearchQuery = '';
     this.isSearchActive = false;
     this.searchResults = [];
+    this.tagSuggestions = [];
     this.searchIntentSummary = '';
     this.showDropdown = false;
     this.destinationSearchLoading = false;
@@ -1449,10 +1500,11 @@ export class LocationListComponent implements OnInit, OnDestroy {
       if (query !== this.searchQuery.trim() || this.activeContentType !== 'destinations') return;
 
       const nextResults = results.length > 0 ? results : this.getDestinationSearchResults(query);
+      this.tagSuggestions = this.getDestinationTagSuggestions(query);
       this.destinationSearchLoading = false;
       this.searchResults = nextResults;
       this.searchIntentSummary = this.describeSearchForCurrentType(query, nextResults.length);
-      this.showDropdown = this.searchFocused && nextResults.length > 0;
+      this.showDropdown = this.searchFocused && (nextResults.length > 0 || this.tagSuggestions.length > 0);
       this.refreshVisibleContent();
       this.updateBackToTopVisibility();
       this.cdr.markForCheck();
@@ -1461,12 +1513,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   private queueDestinationSearch(query: string): void {
     const localResults = this.getDestinationSearchResults(query);
+    this.tagSuggestions = this.getDestinationTagSuggestions(query);
     this.destinationSearchLoading = true;
     this.searchResults = localResults;
     this.searchIntentSummary = localResults.length > 0
       ? this.describeSearchForCurrentType(query, localResults.length)
       : '';
-    this.showDropdown = this.searchFocused && localResults.length > 0;
+    this.showDropdown = this.searchFocused && (localResults.length > 0 || this.tagSuggestions.length > 0);
     this.locations = this.applySort(localResults
       .filter(result => result.kind === 'destinations')
       .map(result => result.raw as Location));
@@ -1518,7 +1571,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
       cultural_site: ['culture', 'cultural', 'kultura', 'museum', 'museums', 'muzej', 'history', 'istorija'],
       monument: ['monument', 'monuments', 'spomenik'],
       club: ['nightlife', 'club', 'clubs', 'bar', 'party', 'nocni'],
-      sports_facility: ['sport', 'sports', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure'],
+      sports_facility: ['sport', 'sports', 'sports facility'],
       event: ['event', 'events', 'dogadjaj', 'festival', 'concert', 'koncert'],
       accommodation: ['hotel', 'hotels', 'accommodation', 'smestaj', 'smjestaj', 'stay'],
       shop: ['shop', 'shops', 'shopping', 'prodavnica', 'market'],
@@ -1570,11 +1623,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
     }
 
     if (this.activeContentType === 'destinations') {
-      this.showDropdown = this.searchFocused && this.searchResults.length > 0;
+      this.tagSuggestions = this.getDestinationTagSuggestions(query);
+      this.showDropdown = this.searchFocused && (this.searchResults.length > 0 || this.tagSuggestions.length > 0);
       return;
     }
 
     this.searchResults = this.buildSearchResults(query);
+    this.tagSuggestions = [];
     this.searchIntentSummary = this.describeSearchForCurrentType(query, this.searchResults.length);
     this.showDropdown = this.searchFocused && this.searchResults.length > 0;
   }
@@ -1702,6 +1757,46 @@ export class LocationListComponent implements OnInit, OnDestroy {
       }));
   }
 
+  private getDestinationTagSuggestions(query: string): DestinationTagSuggestion[] {
+    const intent = this.parseSearchIntent(query);
+    if (!intent.normalizedQuery) return [];
+
+    const tagMap = new Map<string, DestinationTagSuggestion & { score: number }>();
+    for (const loc of this.getDestinationFilterBase()) {
+      for (const tag of this.getActivityTagItems(loc, 20)) {
+        const normalized = this.normalizeSearchText(tag.name);
+        if (!normalized) continue;
+
+        let score = 0;
+        if (normalized === intent.normalizedQuery) score += 140;
+        else if (normalized.startsWith(intent.normalizedQuery)) score += 95;
+        else if (normalized.includes(intent.normalizedQuery)) score += 60;
+
+        for (const term of intent.terms) {
+          if (normalized === term) score += 90;
+          else if (normalized.split(/\s+/).some(part => part.startsWith(term))) score += 45;
+          else if (normalized.includes(term)) score += 25;
+        }
+
+        if (score <= 0) continue;
+
+        const key = normalized;
+        const existing = tagMap.get(key);
+        if (existing) {
+          existing.matchCount += 1;
+          existing.score += score;
+        } else {
+          tagMap.set(key, { ...tag, matchCount: 1, score });
+        }
+      }
+    }
+
+    return Array.from(tagMap.values())
+      .sort((a, b) => b.score - a.score || b.matchCount - a.matchCount || a.label.localeCompare(b.label))
+      .slice(0, 6)
+      .map(({ score, ...tag }) => tag);
+  }
+
   private getActivitySearchResults(query: string): ExploreSearchResult[] {
     const terms = this.expandSearchTerms(this.tokenizeSearch(query));
     if (terms.length === 0) return [];
@@ -1779,6 +1874,10 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
   private buildDestinationSearchMatch(loc: Location, intent: SearchIntent): { loc: Location; score: number; reason: string; badges: string[] } {
     const terms = intent.terms;
+    const tagItems = this.getActivityTagItems(loc, 20);
+    const normalizedTags = tagItems
+      .map(tag => ({ ...tag, normalized: this.normalizeSearchText(tag.name) }))
+      .filter(tag => !!tag.normalized);
     const fields = [
       loc.title,
       loc.regionName,
@@ -1787,12 +1886,13 @@ export class LocationListComponent implements OnInit, OnDestroy {
       loc.description,
       loc.postType,
       loc.category,
-      ...this.getActivityTags(loc, 20),
+      ...tagItems.map(tag => tag.name),
     ].filter(Boolean).map(value => this.normalizeSearchText(String(value)));
 
     let textScore = 0;
     let score = 0;
     const badges: string[] = [];
+    let matchedTagLabel = '';
     const title = this.normalizeSearchText(loc.title || '');
     const typeKey = this.normalizeTypeKey(loc.postType || loc.category || '');
     const rating = Number(loc.avgRating || loc.rating || 0);
@@ -1816,6 +1916,30 @@ export class LocationListComponent implements OnInit, OnDestroy {
 
       if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) textScore += 25;
       if (fields.some(field => field.includes(term))) textScore += 15;
+
+      const tagMatch = normalizedTags.find(tag =>
+        tag.normalized === term ||
+        tag.normalized.startsWith(term) ||
+        tag.normalized.split(/\s+/).some(part => part.startsWith(term))
+      );
+      if (tagMatch) {
+        matchedTagLabel ||= tagMatch.label;
+        if (tagMatch.normalized === term) textScore += 100;
+        else if (tagMatch.normalized.startsWith(term)) textScore += 75;
+        else textScore += 45;
+      }
+    }
+
+    const phraseTagMatch = normalizedTags.find(tag =>
+      tag.normalized === intent.normalizedQuery ||
+      tag.normalized.startsWith(intent.normalizedQuery) ||
+      tag.normalized.includes(intent.normalizedQuery)
+    );
+    if (phraseTagMatch) {
+      matchedTagLabel = phraseTagMatch.label;
+      if (phraseTagMatch.normalized === intent.normalizedQuery) textScore += 180;
+      else if (phraseTagMatch.normalized.startsWith(intent.normalizedQuery)) textScore += 120;
+      else textScore += 70;
     }
 
     const hasPrimaryMatch = textScore > 0
@@ -1883,10 +2007,16 @@ export class LocationListComponent implements OnInit, OnDestroy {
     score += Math.min(10, rating);
 
     const uniqueBadges = Array.from(new Set(badges.filter(Boolean))).slice(0, 3);
+    if (matchedTagLabel && !uniqueBadges.includes(matchedTagLabel)) {
+      uniqueBadges.unshift(matchedTagLabel);
+      uniqueBadges.splice(3);
+    }
     return {
       loc,
       score,
-      reason: this.getSearchReason(loc, intent, uniqueBadges),
+      reason: matchedTagLabel
+        ? `Matched tag: ${matchedTagLabel}.`
+        : this.getSearchReason(loc, intent, uniqueBadges),
       badges: uniqueBadges,
     };
   }
@@ -1909,7 +2039,7 @@ export class LocationListComponent implements OnInit, OnDestroy {
     addCategory('cultural_site', 'culture', 'cultural', 'kultura', 'museum', 'muzej', 'history', 'istorija');
     addCategory('monument', 'monument', 'spomenik');
     addCategory('club', 'nightlife', 'club', 'bar', 'party', 'nocni', 'nocu');
-    addCategory('sports_facility', 'sport', 'activity', 'aktivnost', 'hike', 'walk', 'cycling', 'adventure');
+    addCategory('sports_facility', 'sport', 'sports', 'sports facility');
     addCategory('event', 'event', 'dogadjaj', 'festival', 'concert', 'koncert', 'tonight', 'veceras', 'weekend', 'vikend');
     addCategory('accommodation', 'hotel', 'accommodation', 'smestaj', 'smjestaj', 'stay');
     addCategory('shop', 'shop', 'shopping', 'prodavnica', 'market');

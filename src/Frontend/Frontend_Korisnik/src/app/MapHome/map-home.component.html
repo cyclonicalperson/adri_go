@@ -263,14 +263,6 @@
             My Planner Routes<span *ngIf="savedRouteCount > 0"> ({{ savedRouteCount }})</span>
           </ng-template>
         </button>
-        <p class="saved-routes-helper-text">
-          <ng-container *ngIf="authService.isLoggedIn; else guestPlannerRoutesHelper">
-            Planner routes you save are stored in your account and appear in Saved Routes.
-          </ng-container>
-          <ng-template #guestPlannerRoutesHelper>
-            Routes you created in the planner are stored only in this browser.
-          </ng-template>
-        </p>
       </div>
 
       <app-route-detours-panel

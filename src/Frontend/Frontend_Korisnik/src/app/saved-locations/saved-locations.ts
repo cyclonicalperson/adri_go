@@ -334,7 +334,7 @@ export class SavedLocationsComponent implements OnInit, OnDestroy {
     this.router.navigate(['/location-list'], {
       queryParams: {
         type: 'destinations',
-        activityTag: name,
+        tag: name,
       },
     });
   }

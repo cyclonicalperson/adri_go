@@ -235,7 +235,7 @@ export class ExploreSectionComponent implements OnInit {
     this.router.navigate(['/location-list'], {
       queryParams: {
         type: 'destinations',
-        activityTag: name,
+        tag: name,
       },
     });
   }

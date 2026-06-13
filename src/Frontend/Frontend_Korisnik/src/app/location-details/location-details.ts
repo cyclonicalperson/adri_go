@@ -472,8 +472,9 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
   openActivity(item: { id?: number; name: string }): void {
     this.router.navigate(['/location-list'], {
       queryParams: {
-        activityTagId: item.id ?? null,
-        activityTag: item.name,
+        type: 'destinations',
+        tagId: item.id ?? null,
+        tag: item.name,
       },
     });
   }
