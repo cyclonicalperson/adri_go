@@ -31,6 +31,7 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   @Input() travelMode: TravelMode = 'driving';
   @Input() totalDistanceKm = 0;
   @Input() totalDurationMin = 0;
+  @Input() previewMode = false;
 
   /** Emits updated user position so map-home can redraw the user dot */
   @Output() positionUpdated = new EventEmitter<[number, number]>();
@@ -111,6 +112,22 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
     return this.t(this.travelModes.find(option => option.mode === this.travelMode)?.label ?? 'Car');
   }
 
+  get summaryDistanceKm(): number {
+    return this.previewMode ? this.totalDistanceKm : this.remainingDistanceKm;
+  }
+
+  get summaryDurationMin(): number {
+    return this.previewMode ? this.totalDurationMin : this.remainingMin;
+  }
+
+  get summaryEtaString(): string {
+    if (!this.previewMode) return this.etaString;
+    if (this.totalDurationMin <= 0) return '';
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + this.totalDurationMin);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
   /** CSS rotation (degrees) for the arrow SVG based on the current maneuver. */
   maneuverRotation(step: NavigationStep | null): number {
     if (!step) return 0;
@@ -160,11 +177,26 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   ngOnInit(): void {
     this.remainingDistanceKm = this.totalDistanceKm;
     this.remainingMin = this.totalDurationMin;
-    this.startWatching();
-    this.startHeadingWatch();
+    if (!this.previewMode) {
+      this.startWatching();
+      this.startHeadingWatch();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['previewMode'] && !changes['previewMode'].firstChange) {
+      if (this.previewMode) {
+        this.stopWatching();
+        this.stopHeadingWatch();
+        this.locationDenied = false;
+        this.userPosition = null;
+        this.speedKmh = null;
+      } else {
+        this.startWatching();
+        this.startHeadingWatch();
+      }
+    }
+
     if (changes['steps'] || changes['routeGeometry'] || changes['travelMode']) {
       this.resetNavigationProgress();
       return;
@@ -213,6 +245,8 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   }
 
   private startHeadingWatch(): void {
+    if (this.previewMode) return;
+
     // DeviceOrientationEvent gives us compass heading on mobile
     const handler = (event: DeviceOrientationEvent) => {
       // webkitCompassHeading is available on iOS, alpha on Android (needs to be inverted)
@@ -264,6 +298,8 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
   }
 
   private startWatching(): void {
+    if (this.previewMode) return;
+
     if (!navigator.geolocation) {
       this.locationDenied = true;
       this.cdr.markForCheck();
@@ -552,22 +588,41 @@ export class MapNavigationPanelComponent implements OnInit, OnDestroy, OnChanges
       }
     }
 
+    let remainingCurrentStepM = distToDest;
+    let remainingCurrentStepSec = 0;
+
     // Distance to the current step's exit point (next step's entry)
     if (this.currentStepIndex < this.steps.length - 1) {
+      const currentStep = this.steps[this.currentStepIndex];
       const nextPos = this.steps[this.currentStepIndex + 1].position;
       this.distanceToNextM = this.haversineM(lat, lng, nextPos[0], nextPos[1]);
+
+      const currentPos = currentStep.position;
+      const directStepM = this.haversineM(currentPos[0], currentPos[1], nextPos[0], nextPos[1]);
+      const remainingRatio = directStepM > 0
+        ? Math.max(0, Math.min(1, this.distanceToNextM / directStepM))
+        : 1;
+
+      remainingCurrentStepM = Math.min(
+        currentStep.distanceM,
+        Math.max(0, currentStep.distanceM * remainingRatio),
+      );
+      remainingCurrentStepSec = Math.max(0, currentStep.durationSec * remainingRatio);
     } else {
+      const currentStep = this.steps[this.currentStepIndex];
       this.distanceToNextM = distToDest;
+      remainingCurrentStepM = Math.min(currentStep?.distanceM ?? distToDest, distToDest);
+      remainingCurrentStepSec = currentStep?.durationSec ?? 0;
     }
 
-    // Remaining: sum of all steps ahead
-    const remainingM = this.steps
-      .slice(this.currentStepIndex)
+    // Remaining: partial current step plus all future steps.
+    const remainingM = remainingCurrentStepM + this.steps
+      .slice(this.currentStepIndex + 1)
       .reduce((acc, s) => acc + s.distanceM, 0);
     this.remainingDistanceKm = Math.round((remainingM / 1000) * 10) / 10;
 
-    const remainingSec = this.steps
-      .slice(this.currentStepIndex)
+    const remainingSec = remainingCurrentStepSec + this.steps
+      .slice(this.currentStepIndex + 1)
       .reduce((acc, s) => acc + s.durationSec, 0);
     this.remainingMin = Math.round(remainingSec / 60);
   }

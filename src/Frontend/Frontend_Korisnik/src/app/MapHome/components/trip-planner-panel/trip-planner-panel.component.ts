@@ -33,6 +33,7 @@ export class TripPlannerPanelComponent {
   @Input() plannerMessage = '';
   @Input() isRenderingRoute = false;
   @Input() isSavingTrip = false;
+  @Input() navigationActionLabel = 'Start Navigation';
 
   @Output() travelModeSelected = new EventEmitter<TravelMode>();
   @Output() scenicModeToggled = new EventEmitter<void>();

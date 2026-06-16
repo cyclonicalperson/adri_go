@@ -508,8 +508,6 @@ namespace TouristGuide.Api.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.HasIndex("PostId", "CreatedAt");
-
                     b.HasIndex("TouristId");
 
                     b.ToTable("direction_request");
@@ -877,6 +875,14 @@ namespace TouristGuide.Api.Migrations
                     b.HasIndex("AdminId");
 
                     b.HasIndex("RegionId");
+
+                    b.HasIndex("Lat", "Lng");
+
+                    b.HasIndex("Status", "Country");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.HasIndex("Status", "PostType", "RegionId");
 
                     b.ToTable("post");
                 });

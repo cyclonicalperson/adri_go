@@ -391,11 +391,11 @@
 
 @media (min-width: 900px) {
   .bottom-sheet-overlay {
-    /* Desktop: center in the map area (right of the 380px sidebar) */
+    /* Desktop: center in the currently visible map area. */
     bottom: 32px;
-    left: calc(380px + (100vw - 380px) / 2);
-    width: min(360px, calc(100vw - 380px - 32px));
-    /* Keep translateX(-50%) so the card stays centered in the map area */
+    left: calc(var(--map-visible-sidebar-width, 380px) + (100vw - var(--map-visible-sidebar-width, 380px)) / 2);
+    width: min(360px, calc(100vw - var(--map-visible-sidebar-width, 380px) - 32px));
+    /* Keep translateX(-50%) so the card stays centered in the map area. */
   }
 
   .location-details-card {

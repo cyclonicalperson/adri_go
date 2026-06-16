@@ -182,6 +182,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ─── Navigation state ────────────────────────────────────────────────────
   isNavigating = false;
+  isRoutePreviewing = false;
   navigationSteps: NavigationStep[] = [];
   navigationRouteGeometry: [number, number][] = [];
 
@@ -302,7 +303,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get showScenicDetourPinNotice(): boolean {
-    return this.showScenicDetourMapPopup && !this.isNavigating && this.scenicSuggestions.length > 0;
+    return this.showScenicDetourMapPopup && !this.isNavigating && !this.isRoutePreviewing && this.scenicSuggestions.length > 0;
+  }
+
+  get navigationActionLabel(): string {
+    return this.routeStartsFromCurrentLocation ? 'Start Navigation' : 'Explore Route';
+  }
+
+  get routeStartsFromCurrentLocation(): boolean {
+    return !this.fromOverride || this.isCurrentLocationStop(this.fromOverride);
   }
 
   get scenicDetourPinCount(): number {
@@ -630,8 +639,14 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private syncPlannerStateFromServices(): void {
     const plan = this.routePlanner.snapshot;
+    const fromOverride = this.isCurrentLocationStop(plan.fromOverride)
+      ? null
+      : plan.fromOverride;
+    if (plan.fromOverride && !fromOverride) {
+      this.routePlanner.setFromOverride(null);
+    }
     this.plannerStops = plan.stops;
-    this.fromOverride = plan.fromOverride;
+    this.fromOverride = fromOverride;
     this.plannerMode = plan.plannerMode;
     this.scenicMode = plan.scenicMode;
     this.travelMode = plan.travelMode || this.preferences.snapshot.preferredTravelMode;
@@ -823,10 +838,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private flyToVisibleMapCenter(latLng: L.LatLngExpression, zoom: number): void {
+  private flyToVisibleMapCenter(latLng: L.LatLngExpression, zoom: number, animate = true): void {
     if (!this.map) return;
 
-    this.map.flyTo(latLng, zoom, { animate: true, duration: 0.55 });
+    this.map.flyTo(latLng, zoom, { animate, duration: animate ? 0.55 : 0 });
   }
 
   focusOnPlannerStop(stop: PlannerStop): void {
@@ -1076,6 +1091,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
+  private isCurrentLocationStop(stop: PlannerStop | null | undefined): boolean {
+    if (!stop) return false;
+    return stop.postType === 'current_location'
+      || (stop.id === -1 && stop.title.trim().toLowerCase() === 'your location');
+  }
+
   /**
    * Swaps the start and end of the route. Only meaningful when there are
    * exactly two points total (From + To, no intermediate stops).
@@ -1217,7 +1238,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   async changeNavigationMode(mode: TravelMode): Promise<void> {
     if (this.travelMode === mode) return;
 
-    if (!this.isNavigating) {
+    if (!this.isNavigating && !this.isRoutePreviewing) {
       this.setTravelMode(mode);
       return;
     }
@@ -1254,8 +1275,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       };
       this.routeDestTitle = this.getRouteTitle();
       this.replaceNavigationRouteOverlay(result.geometry);
-      if (this.navFollowMode) {
+      if (this.isNavigating && this.navFollowMode) {
         this.centerNavigationOnUser(false);
+      } else {
+        this.fitRouteGeometry(result.geometry, false);
       }
     } catch (error) {
       this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
@@ -1578,13 +1601,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         // suggestDetours requires 2+ stops; for single-stop, keep the nearby suggestions set earlier
         if (this.plannerStops.length >= 2) {
           this.scenicSuggestions = this.scenicMode
-            ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
+            ? this.filterScenicSuggestionsAlreadyInRoute(this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
                 contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
                   ? this.preferences.snapshot.contentPreferences
                   : (this.userProfile?.interests ?? []),
                 userPosition: this.userPosition,
                 limit: 4,
-              })
+              }))
             : [];
 
           if (this.scenicMode && this.scenicSuggestions.length === 0) {
@@ -1624,9 +1647,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildNearbyStopSuggestions(stop: PlannerStop): RouteDetourSuggestion[] {
-    const plannedStopIds = new Set(this.plannerStops.map(item => item.id));
     return this.locationsList
-      .filter(location => !plannedStopIds.has(location.id))
+      .filter(location => !this.isLocationAlreadyInRoute(location))
       .map(location => {
         const coordinates = this.getLocationCoordinates(location);
         if (!coordinates) return null;
@@ -1647,6 +1669,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .filter((item): item is RouteDetourSuggestion => !!item && item.distanceToRouteKm <= 12)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
+  }
+
+  private filterScenicSuggestionsAlreadyInRoute(suggestions: RouteDetourSuggestion[]): RouteDetourSuggestion[] {
+    return suggestions.filter(suggestion => !this.isLocationAlreadyInRoute(suggestion.location));
+  }
+
+  private isLocationAlreadyInRoute(location: Location): boolean {
+    const coordinates = this.getLocationCoordinates(location);
+    const routePoints = [
+      ...(this.fromOverride ? [this.fromOverride] : []),
+      ...this.plannerStops,
+    ];
+
+    return routePoints.some(point => {
+      if (point.id === location.id) return true;
+      return !!coordinates
+        && Math.abs(point.lat - coordinates.lat) < 0.0001
+        && Math.abs(point.lng - coordinates.lng) < 0.0001;
+    });
   }
 
   private clearRouteVisuals(): void {
@@ -1714,7 +1755,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private getRouteCoordinates(): [number, number][] {
     const coordinates = this.plannerStops.map(stop => [stop.lat, stop.lng] as [number, number]);
 
-    if (this.fromOverride) {
+    if (this.fromOverride && !this.isCurrentLocationStop(this.fromOverride)) {
       return [[this.fromOverride.lat, this.fromOverride.lng], ...coordinates];
     }
 
@@ -2000,6 +2041,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   async startNavigation(): Promise<void> {
     this.showClearRouteConfirm = false;
     this.dismissSearchMenu();
+
+    if (!this.routeStartsFromCurrentLocation) {
+      await this.startRoutePreview();
+      return;
+    }
+
     await this.ensureUserPosition();
 
     const coordinates = this.getRouteCoordinates();
@@ -2029,6 +2076,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         stopCount: this.plannerStops.length,
       };
       this.isNavigating = true;
+      this.isRoutePreviewing = false;
       this.plannerMode = false;
       this.routePlanner.setPlannerMode(false);
       this.showRoutePanel = false;
@@ -2039,6 +2087,56 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.replaceNavigationRouteOverlay(result.geometry);
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
+      this.sheetExpanded = false;
+      this.applyMarkerFilter();
+      this.cdr.detectChanges();
+    } catch (error) {
+      this.routeIsRoutable = false;
+      this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 2400);
+    }
+  }
+
+  private async startRoutePreview(): Promise<void> {
+    const coordinates = this.getRouteCoordinates();
+    if (coordinates.length < 2) {
+      this.plannerMessage = this.plannerStops.length === 0
+        ? 'Add at least one stop to explore.'
+        : 'Add a destination to explore this route.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
+      return;
+    }
+    if (!this.routeIsRoutable) {
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3200);
+      return;
+    }
+
+    try {
+      const result = await this.routingService.computeRouteForNavigation(
+        coordinates,
+        this.travelMode,
+        { viewport: this.getRouteViewportMode(), allowFallback: false },
+      );
+      this.navigationSteps = result.steps ?? [];
+      this.navigationRouteGeometry = result.geometry;
+      this.routeSummary = {
+        distanceKm: result.distanceKm,
+        durationMin: result.durationMin,
+        stopCount: this.plannerStops.length,
+      };
+      this.isRoutePreviewing = true;
+      this.isNavigating = false;
+      this.plannerMode = false;
+      this.routePlanner.setPlannerMode(false);
+      this.showRoutePanel = false;
+      this.selectedLocation = null;
+      this.selectedPublicRoute = null;
+      this.clearPlannerRouteOverlay();
+      this.clearRouteStopMarkers();
+      this.replaceNavigationRouteOverlay(result.geometry);
+      this.fitRouteGeometry(result.geometry, false);
       this.sheetExpanded = false;
       this.applyMarkerFilter();
       this.cdr.detectChanges();
@@ -2108,6 +2206,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.showRoutePanel = false;
     this.isRenderingRoute = false;
     this.isNavigating = false;
+    this.isRoutePreviewing = false;
     this.navigationSteps = [];
     this.navigationRouteGeometry = [];
     this.selectedLocation = null;
@@ -2366,6 +2465,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      if (this.isRoutePreviewing && this.navigationRouteGeometry.length >= 2) {
+        this.fitRouteGeometry(this.navigationRouteGeometry, false);
+        return;
+      }
+
       if (!this.isNavigating && this.plannerRouteGeometry.length >= 2) {
         this.fitRouteGeometry(this.plannerRouteGeometry, false);
       }
@@ -2458,14 +2562,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const bounds = L.latLngBounds(geometry);
     if (this.getRouteViewportMode() === 'mobile') {
       this.map.fitBounds(bounds, {
-        paddingTopLeft: [42, 150],
-        paddingBottomRight: [42, 160],
+        paddingTopLeft: [56, 170],
+        paddingBottomRight: [56, 180],
+        maxZoom: 15,
         animate,
       });
       return;
     }
 
-    this.map.fitBounds(bounds, { padding: [60, 60], animate });
+    this.map.fitBounds(bounds, {
+      paddingTopLeft: [92, 130],
+      paddingBottomRight: [92, 130],
+      maxZoom: 14,
+      animate,
+    });
   }
 
   /**
@@ -2863,7 +2973,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const visiblePins: VisiblePin[] = [];
     const renderBounds = this.map.getBounds().pad(0.35);
-    const showOnlyPlannerStops = this.isNavigating || (this.focusedRouteMode && this.showRoutePanel);
+    const showOnlyPlannerStops = this.isNavigating || this.isRoutePreviewing || (this.focusedRouteMode && this.showRoutePanel);
     const hasActiveSearch = this.hasActiveSearch;
     const focusedSuggestionIds = this.focusedRouteMode
       ? new Set(this.scenicSuggestions.map(suggestion => suggestion.location.id))
@@ -4142,8 +4252,39 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Let Leaflet know the map container resized
     setTimeout(() => {
       this.map?.invalidateSize();
+      this.recenterAfterMapViewportChange();
     }, 380);
     this.cdr.detectChanges();
+  }
+
+  private recenterAfterMapViewportChange(): void {
+    if (!this.map) return;
+
+    const selectedCoordinates = this.selectedLocation
+      ? this.getLocationCoordinates(this.selectedLocation)
+      : null;
+    if (selectedCoordinates) {
+      this.flyToVisibleMapCenter(
+        [selectedCoordinates.lat, selectedCoordinates.lng],
+        Math.max(this.map.getZoom(), 15),
+        false,
+      );
+      return;
+    }
+
+    if (this.isNavigating && this.navFollowMode) {
+      this.centerNavigationOnUser(false);
+      return;
+    }
+
+    if (this.isRoutePreviewing && this.navigationRouteGeometry.length >= 2) {
+      this.fitRouteGeometry(this.navigationRouteGeometry, false);
+      return;
+    }
+
+    if (this.plannerRouteGeometry.length >= 2) {
+      this.fitRouteGeometry(this.plannerRouteGeometry, false);
+    }
   }
 
   openFilters(): void {

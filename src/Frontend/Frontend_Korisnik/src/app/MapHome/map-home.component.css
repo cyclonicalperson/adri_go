@@ -953,6 +953,10 @@
 
 /* ── LOCATION CARD POPUP ─────────────────────────────────────── */
 /* Kartica je fixed i pozicionirana u location-details-card.css */
+.map-wrapper {
+  --map-visible-sidebar-width: 0px;
+}
+
 app-location-details-card {
   z-index: 9999 !important;
   display: block;
@@ -1006,7 +1010,14 @@ app-location-details-card {
    ============================================================ */
 @media (min-width: 900px) {
 
-  .map-wrapper { flex-direction: row; }
+  .map-wrapper {
+    --map-visible-sidebar-width: 380px;
+    flex-direction: row;
+  }
+
+  .map-wrapper.sidebar-is-collapsed {
+    --map-visible-sidebar-width: 0px;
+  }
 
   /* ── Fixed left sidebar ────────────────────────────────── */
   .app-header {
@@ -2152,13 +2163,16 @@ app-location-details-card {
   }
 
   .map-wrapper.sidebar-is-collapsed .app-header,
-  .map-wrapper.sidebar-is-collapsed .app-footer,
-  .map-wrapper.sidebar-is-collapsed app-location-details-card {
+  .map-wrapper.sidebar-is-collapsed .app-footer {
     transform: translateX(-380px);
   }
 
   .map-wrapper.sidebar-is-collapsed .map-container {
     left: 0 !important;
     width: 100vw !important;
+  }
+
+  .map-wrapper.sidebar-is-collapsed .route-pill {
+    left: 50%;
   }
 }

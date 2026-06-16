@@ -126,6 +126,10 @@
   letter-spacing: 0;
 }
 
+.nav-preview-title {
+  font-size: 24px;
+}
+
 .nav-street-label {
   font-size: 16px;
   font-weight: 600;

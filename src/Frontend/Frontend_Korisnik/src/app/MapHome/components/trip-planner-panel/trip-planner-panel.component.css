@@ -360,7 +360,7 @@
   flex-shrink: 0;
   width: 32px;
   height: 32px;
-  margin-top: 2px;
+  margin-top: 46px;
   border-radius: 50%;
   border: 1px solid var(--gray-200);
   background: var(--gray-100);
@@ -371,6 +371,10 @@
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.route-builder-has-from-override .swap-btn {
+  margin-top: 58px;
 }
 
 .swap-btn:hover {

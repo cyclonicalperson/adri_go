@@ -1,4 +1,4 @@
-﻿<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating" [class.sidebar-is-collapsed]="sidebarCollapsed">
+﻿<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating || isRoutePreviewing" [class.sidebar-is-collapsed]="sidebarCollapsed">
 
   <div class="app-header">
     <button type="button" class="header-left logo-button" (click)="goHome()" aria-label="AdriGo home">
@@ -236,6 +236,7 @@
         [plannerMessage]="plannerMessage"
         [isRenderingRoute]="isRenderingRoute"
         [isSavingTrip]="isSavingTrip"
+        [navigationActionLabel]="navigationActionLabel"
         (travelModeSelected)="setTravelMode($event)"
         (scenicModeToggled)="toggleScenicMode()"
         (stopFocused)="focusOnPlannerStop($event)"
@@ -293,7 +294,7 @@
 
   <!-- ── CHAT FAB ── -->
   <div class="chat-fab-wrap"
-       [class.chat-fab-hidden]="isNavigating || sheetExpanded || isFiltersOpen || isChatOpen">
+       [class.chat-fab-hidden]="isNavigating || isRoutePreviewing || sheetExpanded || isFiltersOpen || isChatOpen">
     <div class="chat-fab-hint" *ngIf="showChatHint">
       <button type="button"
               class="chat-hint-close"
@@ -317,7 +318,7 @@
   <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
-          [class.locate-hidden]="isNavigating || sheetExpanded || isFiltersOpen"
+          [class.locate-hidden]="isNavigating || isRoutePreviewing || sheetExpanded || isFiltersOpen"
           [class.locate-refollow]="isNavigating && !navFollowMode"
           (click)="locateMeOrRefollow()"
           aria-label="Show my location">
@@ -396,12 +397,13 @@
   </div>
 
   <app-map-navigation-panel
-    *ngIf="isNavigating"
+    *ngIf="isNavigating || isRoutePreviewing"
     [steps]="navigationSteps"
     [routeGeometry]="navigationRouteGeometry"
     [travelMode]="travelMode"
     [totalDistanceKm]="routeSummary.distanceKm"
     [totalDurationMin]="routeSummary.durationMin"
+    [previewMode]="isRoutePreviewing"
     (positionUpdated)="onNavigationPositionUpdated($event)"
     (mapRotationUpdated)="onNavigationMapRotation($event)"
     (routeTrailUpdated)="onNavigationRouteTrailUpdated($event)"

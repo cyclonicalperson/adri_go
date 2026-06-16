@@ -55,6 +55,9 @@
       <div class="nav-dist-label" *ngIf="distanceToNextM > 0 && userPosition">
         {{ formatDistance(distanceToNextM) }}
       </div>
+      <div class="nav-dist-label nav-preview-title" *ngIf="previewMode">
+        {{ t('Route overview') }}
+      </div>
       <div class="nav-street-label">
         {{ nextLabel(nextStep) }}
         <ng-container *ngIf="nextStep?.streetName"> {{ t('onto') }} {{ nextStep!.streetName }}</ng-container>
@@ -71,7 +74,7 @@
   </div>
 
   <!-- THEN: the turn AFTER the next one -->
-  <div class="nav-then-bar" *ngIf="nextNextStep && userPosition">
+  <div class="nav-then-bar" *ngIf="nextNextStep && (userPosition || previewMode)">
     <svg
       class="nav-then-arrow"
       viewBox="0 0 24 24"
@@ -86,7 +89,7 @@
   </div>
 
   <!-- Fallback: show current step info when nextNextStep not available but nextStep exists -->
-  <div class="nav-then-bar nav-then-current" *ngIf="!nextNextStep && currentStep && userPosition">
+  <div class="nav-then-bar nav-then-current" *ngIf="!nextNextStep && currentStep && (userPosition || previewMode)">
     <svg
       class="nav-then-arrow"
       viewBox="0 0 24 24"
@@ -99,7 +102,7 @@
   </div>
 
   <!-- GPS acquiring indicator (shown instead of "then" while waiting) -->
-  <div class="nav-acquiring" *ngIf="!userPosition">
+  <div class="nav-acquiring" *ngIf="!userPosition && !previewMode">
     <div class="nav-acquiring-spinner"></div>
     <span>{{ t('Acquiring GPS signal...') }}</span>
   </div>
@@ -134,13 +137,13 @@
   <!-- DESKTOP-ONLY: summary inside panel -->
   <div class="nav-panel-summary nav-desktop-only">
     <div class="nav-panel-summary-item">
-      <span class="nav-sum-kicker">{{ t('Remaining') }}</span>
-      <strong>{{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : '–' }}</strong>
+      <span class="nav-sum-kicker">{{ previewMode ? t('Trip time') : t('Remaining') }}</span>
+      <strong>{{ previewMode ? formatDuration(summaryDurationMin) : (remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : '–') }}</strong>
     </div>
     <div class="nav-sum-divider"></div>
     <div class="nav-panel-summary-item">
       <span class="nav-sum-kicker">ETA</span>
-      <strong>{{ etaString || '–' }}</strong>
+      <strong>{{ summaryEtaString || '–' }}</strong>
     </div>
     <div class="nav-sum-divider"></div>
     <div class="nav-panel-summary-item">
@@ -176,10 +179,10 @@
       </svg>
     </button>
     <div class="nav-bottom-info">
-      <span class="nav-bottom-eta">{{ etaString }}</span>
+      <span class="nav-bottom-eta">{{ summaryEtaString }}</span>
       <span class="nav-bottom-meta">
-        {{ remainingDistanceKm > 0 ? remainingDistanceKm + ' km' : totalDistanceKm + ' km' }}
-        <ng-container *ngIf="remainingMin > 0"> · {{ formatDuration(remainingMin) }}</ng-container>
+        {{ summaryDistanceKm > 0 ? summaryDistanceKm + ' km' : totalDistanceKm + ' km' }}
+        <ng-container *ngIf="summaryDurationMin > 0"> · {{ formatDuration(summaryDurationMin) }}</ng-container>
       </span>
     </div>
     <div class="nav-bottom-mode-switch" [attr.aria-label]="t('Navigation mode')">

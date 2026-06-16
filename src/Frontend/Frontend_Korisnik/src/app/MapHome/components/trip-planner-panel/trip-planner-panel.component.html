@@ -11,7 +11,7 @@
   </p>
 
   <!-- From / Stops / To with connector rail -->
-  <div class="route-builder">
+  <div class="route-builder" [class.route-builder-has-from-override]="fromOverride">
     <div class="route-rows">
       <div class="rail-line" aria-hidden="true"></div>
 
@@ -165,7 +165,7 @@
     <!-- Primary: Navigate — full-width hero button -->
     <button type="button" class="action-navigate" (click)="navigationStarted.emit()">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 3.41 1.97 6.36 4.86 7.72L12 22l2.14-5.28C17.03 15.36 19 12.41 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-      Start Navigation
+      {{ navigationActionLabel }}
     </button>
 
     <!-- Secondary row: Optimize + Save -->
