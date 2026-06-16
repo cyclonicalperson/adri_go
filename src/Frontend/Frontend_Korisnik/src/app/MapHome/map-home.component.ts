@@ -63,6 +63,12 @@ type SearchResult = MapLocation & {
   searchBadges?: string[];
 };
 
+type DestinationTagItem = {
+  id: number | null;
+  name: string;
+  label: string;
+};
+
 type LocationPin = {
   kind: 'location';
   id: number;
@@ -135,6 +141,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private scenicDetourPopupTimerId: ReturnType<typeof setTimeout> | null = null;
   private lastScenicDetourPopupKey = '';
   private lastFilterFitKey = '';
+  private readonly searchDropdownLimit = 8;
+  private searchMatchedLocationIds = new Set<number>();
+  private searchMatchedRouteIds = new Set<number>();
+  private searchTotalMatchCount = 0;
 
   showAuthPopup = false;
   showScenicDetourMapPopup = false;
@@ -375,7 +385,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   get showSearchFallbackNotice(): boolean {
     return this.hasActiveSearch
       && !this.searchLoading
-      && this.searchResults.length === 0;
+      && !this.hasSearchMatches;
+  }
+
+  get hasSearchMatches(): boolean {
+    return this.searchMatchedLocationIds.size > 0 || this.searchMatchedRouteIds.size > 0;
   }
 
   /** Human-readable label for the route field currently waiting for a selection. */
@@ -603,6 +617,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.syncAvailableSavedFilterIds();
         this.refreshRecommendations();
         this.addMarkers();
+        if (this.searchQuery.trim()) {
+          this.onSearchInput(this.searchQuery);
+        }
         this.fitMapToSelectedFilterArea();
         this.tryHydratePlannerFromQuery();
         this.hydratePlannerFromStorage();
@@ -630,6 +647,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.publicRoutes = routes.filter(route => route.waypoints.length > 0);
         this.refreshCuratedRouteSavedState();
         this.addRouteMarkers();
+        if (this.searchQuery.trim()) {
+          this.refreshRouteSearchMatches(this.parseSearchIntent(this.searchQuery));
+          this.applyMarkerFilter();
+        }
         this.fitMapToSelectedFilterArea();
         this.cdr.detectChanges();
       },
@@ -746,7 +767,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private buildNearbyCards(): LocationRecommendation[] {
     const withDistance = this.locationsList
-      .filter(location => this.passesFilters(location))
+      .filter(location => this.passesFilters(location, { ignoreRoutesContentType: true }))
       .map(location => {
         const coordinates = this.getLocationCoordinates(location);
         const distanceKm = this.userPosition && coordinates
@@ -2805,7 +2826,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterEventToDate = state.eventToDate ?? '';
     // Vrati zapamćeni content type ako postoji
     if (state.activeContentType) {
-      this.mapFilterContentType = state.activeContentType;
+      this.mapFilterContentType = state.activeContentType === 'activities' ? 'destinations' : state.activeContentType;
     }
     this.categories.forEach(c => {
       c.active = state.activeCategories.includes(c.key);
@@ -2866,12 +2887,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private passesFilters(loc: MapLocation): boolean {
-    if (this.mapFilterContentType === 'routes') {
+  private passesFilters(loc: MapLocation, options: { ignoreRoutesContentType?: boolean } = {}): boolean {
+    if (this.mapFilterContentType === 'routes' && !options.ignoreRoutesContentType) {
       return false;
     }
 
-    if (this.mapFilterContentType === 'activities' && !this.locationPassesActivityContent(loc)) {
+    if (this.hasActiveActivityDestinationFilters() && !this.locationPassesActivityContent(loc)) {
       return false;
     }
 
@@ -2905,6 +2926,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return true;
+  }
+
+  private hasActiveActivityDestinationFilters(): boolean {
+    return this.filterActivityCategories.length > 0
+      || this.filterActivityDifficulties.length > 0
+      || this.filterActivityLinkedOnly;
   }
 
   private locationPassesEventDateFilter(loc: MapLocation): boolean {
@@ -2997,12 +3024,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
+    const applyRouteFilters = this.mapFilterContentType === 'routes' || this.hasActiveRouteExploreFilters();
     this.routeMarkers.forEach(({ route, marker }) => {
       const latLng = marker.getLatLng();
       const visible = !this.isNavigating
-        && this.mapFilterContentType === 'routes'
-        && this.routePassesRadiusFilter(route)
-        && this.routeMatchesExploreFilters(route)
+        && !showOnlyPlannerStops
+        && (!applyRouteFilters || (this.routePassesRadiusFilter(route) && this.routeMatchesExploreFilters(route)))
+        && this.routeMatchesSearchMapState(route, hasActiveSearch)
         && renderBounds.contains(latLng);
 
       if (visible) {
@@ -3014,16 +3042,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private locationMatchesSearchMapState(loc: MapLocation, hasActiveSearch: boolean): boolean {
-    if (!hasActiveSearch || this.searchLoading) return true;
+    if (!hasActiveSearch) return true;
 
-    if (this.searchResults.length > 0) {
-      return this.searchResults.some(result => result.id === loc.id);
+    if (this.searchMatchedLocationIds.size > 0) {
+      return this.searchMatchedLocationIds.has(loc.id);
     }
 
+    if (this.searchLoading) return true;
     if (!this.searchFallbackActive) return true;
 
     const fallbackIds = this.getSearchFallbackRecommendationIds();
     return fallbackIds.size === 0 ? true : fallbackIds.has(loc.id);
+  }
+
+  private routeMatchesSearchMapState(route: TouristRouteItem, hasActiveSearch: boolean): boolean {
+    if (!hasActiveSearch) return true;
+    if (this.searchMatchedRouteIds.size > 0) {
+      return this.searchMatchedRouteIds.has(route.id);
+    }
+    return this.searchLoading && this.searchMatchedLocationIds.size === 0;
   }
 
   private getSearchFallbackRecommendationIds(): Set<number> {
@@ -3774,12 +3811,59 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchIntentSummary = '';
       this.searchFallbackActive = false;
       this.searchLoading = false;
+      this.resetSearchMapMatches();
       this.applyMarkerFilter();
       return;
     }
 
     this.searchLoading = true;
+    const locationMatches = this.locationsList
+      .map(loc => this.buildSearchMatch(loc, intent))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const routeMatches = this.publicRoutes
+      .map(route => this.buildRouteSearchMatch(route, intent))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    this.searchMatchedLocationIds = new Set(locationMatches.map(item => item.loc.id));
+    this.searchMatchedRouteIds = new Set(routeMatches.map(item => item.route.id));
+    this.searchTotalMatchCount = this.searchMatchedLocationIds.size + this.searchMatchedRouteIds.size;
+    this.searchResults = locationMatches
+      .map(item => ({
+        ...item.loc,
+        searchReason: item.reason,
+        searchBadges: item.badges,
+      }))
+      .slice(0, this.searchDropdownLimit);
+    this.searchFallbackActive = !this.hasSearchMatches;
+    this.searchIntentSummary = this.hasSearchMatches
+      ? this.describeSearchIntent(intent, this.searchTotalMatchCount)
+      : '';
+    this.applyMarkerFilter();
     this.searchInput$.next(query.trim());
+  }
+
+  private hasActiveRouteExploreFilters(): boolean {
+    return this.filterRouteDifficulties.length > 0
+      || this.filterRouteCountries.length > 0
+      || this.filterRouteRegions.length > 0
+      || !!this.filterRouteDistanceBand
+      || !!this.filterRouteDurationBand;
+  }
+
+  private refreshRouteSearchMatches(intent: SearchIntent): void {
+    if (!intent.normalizedQuery) {
+      this.searchMatchedRouteIds = new Set<number>();
+      this.searchTotalMatchCount = this.searchMatchedLocationIds.size;
+      return;
+    }
+
+    const routeMatches = this.publicRoutes
+      .map(route => this.buildRouteSearchMatch(route, intent))
+      .filter(item => item.score > 0);
+    this.searchMatchedRouteIds = new Set(routeMatches.map(item => item.route.id));
+    this.searchTotalMatchCount = this.searchMatchedLocationIds.size + this.searchMatchedRouteIds.size;
   }
 
   private setupSearchSubscription(): void {
@@ -3807,21 +3891,26 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (query !== this.searchQuery.trim()) return;
 
       this.searchLoading = false;
-      this.searchResults = locations
+      const backendMatches = locations
         .map(loc => this.buildSearchMatch(loc, intent))
         .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .map(item => ({
-          ...item.loc,
-          searchReason: item.reason,
-          searchBadges: item.badges,
-        }))
-        .slice(0, 8);
-      this.searchFallbackActive = this.searchResults.length === 0;
+        .sort((a, b) => b.score - a.score);
+      if (backendMatches.length > 0) {
+        this.searchMatchedLocationIds = new Set(backendMatches.map(item => item.loc.id));
+        this.searchTotalMatchCount = this.searchMatchedLocationIds.size + this.searchMatchedRouteIds.size;
+        this.searchResults = backendMatches
+          .map(item => ({
+            ...item.loc,
+            searchReason: item.reason,
+            searchBadges: item.badges,
+          }))
+          .slice(0, this.searchDropdownLimit);
+      }
+      this.searchFallbackActive = !this.hasSearchMatches;
       this.searchIntentSummary = this.searchFallbackActive
         ? ''
-        : this.describeSearchIntent(intent, this.searchResults.length);
-      if (this.searchResults.length === 0) {
+        : this.describeSearchIntent(intent, this.searchTotalMatchCount);
+      if (!this.hasSearchMatches) {
         this.fitMapToSearchFallbackRecommendations();
       }
       this.applyMarkerFilter();
@@ -3901,18 +3990,24 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private buildSearchMatch(loc: MapLocation, intent: SearchIntent): { loc: MapLocation; score: number; reason: string; badges: string[] } {
     const terms = this.expandSearchTerms(intent.terms);
+    const tagItems = this.getDestinationTagItems(loc, 20);
+    const normalizedTags = tagItems
+      .map(tag => ({ ...tag, normalized: this.normalizeSearchText(tag.name) }))
+      .filter(tag => !!tag.normalized);
     const fields = [
       loc.title,
       loc.regionName,
+      loc.country,
       loc.address,
       loc.description,
       loc.postType,
       loc.category,
-      ...(Array.isArray((loc as any).tagNames) ? (loc as any).tagNames : []),
+      ...tagItems.map(tag => tag.name),
     ].filter(Boolean).map(value => this.normalizeSearchText(String(value)));
 
     let score = 0;
     const badges: string[] = [];
+    let matchedTagLabel = '';
     const title = this.normalizeSearchText(loc.title || '');
     const typeKey = this.getSelectableCategoryKey(loc);
     const savedIds = new Set([
@@ -3927,6 +4022,30 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
       if (fields.some(field => field.includes(term))) score += 15;
+
+      const tagMatch = normalizedTags.find(tag =>
+        tag.normalized === term ||
+        tag.normalized.startsWith(term) ||
+        tag.normalized.split(/\s+/).some(part => part.startsWith(term))
+      );
+      if (tagMatch) {
+        matchedTagLabel ||= tagMatch.label;
+        if (tagMatch.normalized === term) score += 100;
+        else if (tagMatch.normalized.startsWith(term)) score += 75;
+        else score += 45;
+      }
+    }
+
+    const phraseTagMatch = normalizedTags.find(tag =>
+      tag.normalized === intent.normalizedQuery ||
+      tag.normalized.startsWith(intent.normalizedQuery) ||
+      tag.normalized.includes(intent.normalizedQuery)
+    );
+    if (phraseTagMatch) {
+      matchedTagLabel = phraseTagMatch.label;
+      if (phraseTagMatch.normalized === intent.normalizedQuery) score += 180;
+      else if (phraseTagMatch.normalized.startsWith(intent.normalizedQuery)) score += 120;
+      else score += 70;
     }
 
     if (intent.categoryKeys.includes(typeKey)) {
@@ -3991,6 +4110,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
+    if (score <= 0) {
+      return { loc, score: 0, reason: '', badges: [] };
+    }
+
     const activeKeys = this.categories.filter(c => c.active).map(c => c.key);
     if (activeKeys.includes(typeKey)) score += 8;
     if (this.userProfile?.interests?.some(interest => fields.some(field => field.includes(this.normalizeSearchText(interest))))) score += 6;
@@ -4002,12 +4125,92 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const uniqueBadges = Array.from(new Set(badges.filter(Boolean))).slice(0, 3);
+    if (matchedTagLabel && !uniqueBadges.includes(matchedTagLabel)) {
+      uniqueBadges.unshift(matchedTagLabel);
+      uniqueBadges.splice(3);
+    }
     return {
       loc,
       score,
-      reason: this.getSearchReason(loc, intent, uniqueBadges),
+      reason: matchedTagLabel
+        ? `Matched tag: ${matchedTagLabel}.`
+        : this.getSearchReason(loc, intent, uniqueBadges),
       badges: uniqueBadges,
     };
+  }
+
+  private buildRouteSearchMatch(route: TouristRouteItem, intent: SearchIntent): { route: TouristRouteItem; score: number } {
+    const terms = this.expandSearchTerms(intent.terms);
+    if (terms.length === 0) return { route, score: 0 };
+
+    const title = this.normalizeSearchValue(route.name);
+    const fields = [
+      route.name,
+      route.description,
+      route.difficulty,
+      route.countryName,
+      route.regionName,
+      'route routes ruta rute trail staza itinerary',
+      ...route.waypoints.map(point => point.name || ''),
+    ].map(value => this.normalizeSearchValue(value));
+
+    let score = 0;
+    for (const term of terms) {
+      if (title === term) score += 120;
+      else if (title.startsWith(term)) score += 80;
+      else if (title.includes(term)) score += 55;
+      if (fields.some(field => field.split(/\s+/).some(part => part.startsWith(term)))) score += 25;
+      if (fields.some(field => field.includes(term))) score += 15;
+    }
+
+    if (score <= 0) return { route, score: 0 };
+    return {
+      route,
+      score: score + Math.max(0, 20 - (route.distanceKm || 0) / 2),
+    };
+  }
+
+  private getDestinationTagItems(loc: Partial<MapLocation>, limit = 3): DestinationTagItem[] {
+    const rawTags = (loc as any).tagNames
+      ?? (loc as any).TagNames
+      ?? (loc as any).activityTagNames
+      ?? (loc as any).activityTags
+      ?? (loc as any).tags
+      ?? (loc as any).activities
+      ?? (loc as any).linkedActivities
+      ?? [];
+    const rawIds = (loc as any).tagIds ?? (loc as any).TagIds ?? (loc as any).activityTagIds ?? [];
+    const tags = Array.isArray(rawTags)
+      ? rawTags
+      : String(rawTags || '').split(/[;,]/);
+    const ids = Array.isArray(rawIds)
+      ? rawIds
+      : String(rawIds || '').split(/[;,]/);
+    const seen = new Set<string>();
+
+    return tags
+      .map((tag, index) => {
+        const source = tag as any;
+        const name = String(
+          typeof source === 'string'
+            ? source
+            : (source?.name ?? source?.tagName ?? source?.title ?? '')
+        ).trim();
+        const id = Number(ids[index] ?? source?.id ?? source?.tagId ?? source?.activityId);
+        return {
+          id: Number.isFinite(id) ? id : null,
+          name,
+          label: name,
+        };
+      })
+      .filter(tag => {
+        if (!tag.name) return false;
+        const key = tag.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit);
   }
 
   private parseSearchIntent(query: string): SearchIntent {
@@ -4213,8 +4416,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchIntentSummary = '';
     this.searchFallbackActive = false;
     this.searchLoading = false;
+    this.resetSearchMapMatches();
     this.dismissSearchMenu();
     this.applyMarkerFilter();
+  }
+
+  private resetSearchMapMatches(): void {
+    this.searchMatchedLocationIds = new Set<number>();
+    this.searchMatchedRouteIds = new Set<number>();
+    this.searchTotalMatchCount = 0;
   }
 
   formatPostType(type?: string | null): string {
@@ -4292,7 +4502,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Sinhronizuj aktuelni content type iz stanja pre otvaranja filtera
     const state = this.filterStateService.get();
     if (state.activeContentType) {
-      this.mapFilterContentType = state.activeContentType;
+      this.mapFilterContentType = state.activeContentType === 'activities' ? 'destinations' : state.activeContentType;
     }
     this.applyFilterState();
     this.applyMarkerFilter();
@@ -4325,6 +4535,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onMapFilterContentTypeChanged(type: FilterContentType): void {
+    if (type === 'activities') type = 'destinations';
     this.mapFilterContentType = type;
     // Sačuvaj u FilterStateService da se ne izgubi pri ponovnom otvaranju filtera
     const state = this.filterStateService.get();

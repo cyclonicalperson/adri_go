@@ -1408,19 +1408,13 @@ app-location-details-card {
    SAVED ROUTES TOGGLE BUTTON
    ============================================================ */
 .saved-routes-toggle-row { padding: 0 14px; }
-.saved-routes-helper-text {
-  margin: 8px 2px 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #64748b;
-}
 .saved-routes-toggle-btn {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 0;
+  padding: 9px 0;
   background: var(--green-500, #22c55e);
   border: none;
   border-radius: 14px;
@@ -2131,10 +2125,6 @@ app-location-details-card {
 :host-context(html[data-theme='dark']) .route-mode-badge {
   background: rgba(59, 130, 246, 0.18) !important;
   color: #bfdbfe !important;
-}
-
-:host-context(html[data-theme='dark']) .saved-routes-helper-text {
-  color: #94a3b8;
 }
 
 :host-context(html[data-theme='dark']) .rp-save {

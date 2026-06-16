@@ -87,7 +87,14 @@
         </span>
       </div>
       <div class="activity-tags-row" *ngIf="getActivityTags(loc).length > 0">
-        <span class="activity-tag-chip" *ngFor="let tag of getActivityTags(loc)">{{ tag }}</span>
+        <button
+          type="button"
+          class="activity-tag-chip"
+          *ngFor="let tag of getActivityTags(loc)"
+          (mousedown)="$event.stopPropagation()"
+          (click)="openActivityTag(tag, $event)">
+          {{ tag }}
+        </button>
       </div>
       <div class="divider"></div>
       <button class="view-details-btn">

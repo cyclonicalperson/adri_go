@@ -571,8 +571,10 @@ input::placeholder { color: var(--gray-400); }
 /* TERMS */
 .terms-text {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   text-align: center;
   font-size: 12px;
   color: var(--gray-400);
@@ -585,6 +587,16 @@ input::placeholder { color: var(--gray-400); }
   min-height: 36px;
   padding-inline: 12px;
   box-sizing: border-box;
+}
+
+.terms-text a {
+  color: var(--green-600);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.terms-text a:hover {
+  text-decoration: underline;
 }
 
 /* ============================
@@ -620,6 +632,10 @@ input::placeholder { color: var(--gray-400); }
 :host-context(html[data-theme='dark']) .terms-text,
 :host-context(html[data-theme='dark']) .social-loading-row {
   color: #94a3b8;
+}
+
+:host-context(html[data-theme='dark']) .terms-text a {
+  color: #86efac;
 }
 
 :host-context(html[data-theme='dark']) label {

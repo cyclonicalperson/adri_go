@@ -41,14 +41,18 @@
           <div class="field">
             <label class="label">Početak *</label>
             <input class="input" type="datetime-local"
+                   max="9999-12-31T23:59"
                    [class.invalid]="f('startAt').invalid && f('startAt').touched"
-                   formControlName="startAt" />
+                   formControlName="startAt"
+                   (input)="onDateTimeInput('startAt')" />
           </div>
           <div class="field">
             <label class="label">Kraj *</label>
             <input class="input" type="datetime-local"
+                   max="9999-12-31T23:59"
                    [class.invalid]="f('endAt').invalid && f('endAt').touched"
-                   formControlName="endAt" />
+                   formControlName="endAt"
+                   (input)="onDateTimeInput('endAt')" />
           </div>
         </div>
 

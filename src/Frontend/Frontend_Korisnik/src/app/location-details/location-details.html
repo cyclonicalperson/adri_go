@@ -140,24 +140,28 @@
       <!-- Action buttons — 2-column grid: stable layout regardless of translation length -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
         <button (click)="onLike()"
-          [style.background]="location.isLiked ? '#fef2f2' : '#f0fdf4'"
-          [style.color]="location.isLiked ? '#dc2626' : '#15803d'"
-          [style.border]="location.isLiked ? '1.5px solid #fecaca' : '1.5px solid #dcfce7'"
+          [style.background]="location.isLiked ? '#fef2f2' : '#f8fafc'"
+          [style.color]="location.isLiked ? '#dc2626' : '#475569'"
+          [style.border]="location.isLiked ? '1.5px solid #fecaca' : '1.5px solid #e2e8f0'"
           style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap;overflow:hidden;min-width:0;">
           <svg viewBox="0 0 24 24" style="width:16px;height:16px;flex-shrink:0;"
-            [style.fill]="location.isLiked ? '#dc2626' : '#ef4444'">
+            [attr.fill]="location.isLiked ? '#ef4444' : 'none'"
+            [attr.stroke]="location.isLiked ? '#ef4444' : 'currentColor'"
+            stroke-width="2">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
           {{ location.isLiked ? 'Liked' : 'Like' }}
         </button>
 
         <button (click)="onSave()"
-          [style.background]="$any(location).isSaved ? '#eff6ff' : '#f0fdf4'"
-          [style.color]="$any(location).isSaved ? '#1d4ed8' : '#15803d'"
-          [style.border]="$any(location).isSaved ? '1.5px solid #bfdbfe' : '1.5px solid #dcfce7'"
+          [style.background]="$any(location).isSaved ? '#eff6ff' : '#f8fafc'"
+          [style.color]="$any(location).isSaved ? '#1d4ed8' : '#475569'"
+          [style.border]="$any(location).isSaved ? '1.5px solid #bfdbfe' : '1.5px solid #e2e8f0'"
           style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap;overflow:hidden;min-width:0;">
           <svg viewBox="0 0 24 24" style="width:16px;height:16px;flex-shrink:0;"
-            [style.fill]="$any(location).isSaved ? '#3b82f6' : '#16a34a'">
+            [attr.fill]="$any(location).isSaved ? '#3b82f6' : 'none'"
+            [attr.stroke]="$any(location).isSaved ? '#3b82f6' : 'currentColor'"
+            stroke-width="2">
             <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
           </svg>
           {{ $any(location).isSaved ? 'Saved' : 'Save' }}
@@ -173,7 +177,7 @@
         <button *ngIf="location.externalUrl" (click)="openExternalLink()"
           style="display:flex;align-items:center;justify-content:center;gap:6px;background:#eef2ff;color:#4338ca;border:1.5px solid #c7d2fe;padding:10px 14px;border-radius:100px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;white-space:nowrap;overflow:hidden;min-width:0;">
           <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#4338ca;flex-shrink:0;"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></svg>
-          {{ 'Booking' }}
+          {{ externalActionLabel }}
         </button>
 
         <button (click)="openCalendarScheduler()"
@@ -202,6 +206,31 @@
           {{ showFullDescription ? 'View less' : 'View more...' }}
         </button>
       </section>
+
+      <section class="activities-section" *ngIf="activityItems.length > 0">
+        <div class="section-header compact">
+          <h3>Tags</h3>
+        </div>
+        <div class="activity-list">
+          <button
+            class="activity-item"
+            type="button"
+            *ngFor="let activity of activityItems"
+            (click)="openActivity(activity)">
+            <span class="activity-item-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13.5 5.5A2.5 2.5 0 1 0 11 3a2.5 2.5 0 0 0 2.5 2.5zm-3.64 15.3 1.23-5.13 2.35 2.23V22h2v-5.27l-2.27-2.18.63-3.06a5.94 5.94 0 0 0 4.7 2.28v-2a3.97 3.97 0 0 1-3.37-1.87l-1-1.58a2 2 0 0 0-2.47-.78L7 9.5V14h2v-3.14l1.54-.56-1.48 6.17L4.8 15.6l-.4 1.96 5.46 1.24z"/>
+              </svg>
+            </span>
+            <span class="activity-item-name" data-no-translate="true">{{ activity.name }}</span>
+            <svg class="activity-item-arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <div class="section-divider" *ngIf="activityItems.length > 0"></div>
 
       <!-- Info Grid -->
       <div class="info-grid">

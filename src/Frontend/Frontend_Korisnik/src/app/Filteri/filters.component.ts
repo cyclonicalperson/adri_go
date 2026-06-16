@@ -170,7 +170,6 @@ export class FiltersComponent implements OnInit, OnChanges {
   destinationRegionsLoading = false;
   readonly contentTypeTabs: { value: FilterContentType; label: string }[] = [
     { value: 'destinations', label: 'Destinations' },
-    { value: 'activities', label: 'Activities' },
     { value: 'routes', label: 'Routes' },
   ];
 
@@ -245,9 +244,10 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.loadDestinationFilterOptions();
     if (this.showContentFilters) {
       const savedType = state.activeContentType;
-      if (savedType && savedType !== this.activeContentType) {
-        this.activeContentType = savedType;
-        Promise.resolve().then(() => this.activeContentTypeChange.emit(savedType));
+      const normalizedType = savedType === 'activities' ? 'destinations' : savedType;
+      if (this.showContentTypeTabs && normalizedType && normalizedType !== this.activeContentType) {
+        this.activeContentType = normalizedType;
+        Promise.resolve().then(() => this.activeContentTypeChange.emit(normalizedType));
       }
       this.ensureContentFilterOptions();
     }
@@ -323,7 +323,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   }
 
   get showActivityFilters(): boolean {
-    return this.showContentFilters && this.activeContentType === 'activities';
+    return false;
   }
 
   get showRouteFilters(): boolean {
@@ -331,6 +331,7 @@ export class FiltersComponent implements OnInit, OnChanges {
   }
 
   setActiveContentType(type: FilterContentType): void {
+    if (type === 'activities') type = 'destinations';
     if (this.activeContentType === type) return;
 
     this.activeContentType = type;

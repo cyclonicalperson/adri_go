@@ -74,7 +74,7 @@ export class AccountComponent implements OnInit, OnDestroy {
             stats: {
               saved: profile.stats?.saved ?? 0,
               reviews: profile.stats?.reviews ?? 0,
-              upcoming: (calendar as any[]).length,
+              upcoming: this.countUpcomingCalendarItems(calendar as any[]),
             }
           };
         } else {
@@ -85,7 +85,7 @@ export class AccountComponent implements OnInit, OnDestroy {
               emailOrPhone: tourist.email,
               language: 'en',
               interests: [],
-              stats: { saved: 0, reviews: 0, upcoming: (calendar as any[]).length }
+              stats: { saved: 0, reviews: 0, upcoming: this.countUpcomingCalendarItems(calendar as any[]) }
             };
           }
         }
@@ -151,4 +151,30 @@ export class AccountComponent implements OnInit, OnDestroy {
   closeLoginPopup(): void  { this.showLoginPopup = false; }
   showGuestPopup(): void   { this.showLoginPopup = true; }
   goToReviews(): void      { this.router.navigate(['/location-list']); }
+
+  private countUpcomingCalendarItems(calendar: Array<{ date?: string | null; scheduledTime?: string | null }>): number {
+    const now = new Date();
+    return calendar.filter(item => {
+      const date = this.calendarItemDate(item);
+      return !!date && date >= now;
+    }).length;
+  }
+
+  private calendarItemDate(item: { date?: string | null; scheduledTime?: string | null }): Date | null {
+    const rawDate = (item.date ?? '').trim();
+    if (!rawDate) return null;
+
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const time = (item.scheduledTime ?? '').trim();
+    const match = time.match(/^(\d{1,2}):(\d{2})/);
+    if (match) {
+      date.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    } else if (!rawDate.includes('T')) {
+      date.setHours(23, 59, 59, 999);
+    }
+
+    return date;
+  }
 }

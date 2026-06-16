@@ -449,8 +449,99 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     return this.siteTranslate.instant(formatPostType(type));
   }
 
+  get activityItems(): Array<{ id?: number; name: string }> {
+    const loc = this.location as any;
+    const names = this.readActivityNames(loc);
+    const ids = this.readActivityIds(loc);
+    const seen = new Set<string>();
+
+    return names
+      .map((name, index) => ({
+        id: ids[index],
+        name: String(name ?? '').trim(),
+      }))
+      .filter(item => {
+        if (!item.name) return false;
+        const key = item.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  openActivity(item: { id?: number; name: string }): void {
+    this.router.navigate(['/location-list'], {
+      queryParams: {
+        type: 'destinations',
+        tagId: item.id ?? null,
+        tag: item.name,
+      },
+    });
+  }
+
+  private readActivityNames(loc: any): string[] {
+    const directNames = loc?.tagNames ?? loc?.TagNames ?? loc?.activityTagNames ?? loc?.activityTags;
+    const directList = this.toStringList(directNames);
+    if (directList.length > 0) return directList;
+
+    const nested = [loc?.tags, loc?.activities, loc?.linkedActivities]
+      .find(value => Array.isArray(value));
+
+    return Array.isArray(nested)
+      ? nested
+          .map(item => typeof item === 'string' ? item : (item?.name ?? item?.tagName ?? item?.title))
+          .map(value => String(value ?? '').trim())
+          .filter(Boolean)
+      : [];
+  }
+
+  private readActivityIds(loc: any): Array<number | undefined> {
+    const directIds = loc?.tagIds ?? loc?.TagIds ?? loc?.activityTagIds;
+    const ids = Array.isArray(directIds)
+      ? directIds
+      : String(directIds ?? '').split(/[;,]/);
+
+    if (ids.length > 0) {
+      return ids.map(id => {
+        const value = Number(id);
+        return Number.isFinite(value) ? value : undefined;
+      });
+    }
+
+    const nested = [loc?.tags, loc?.activities, loc?.linkedActivities]
+      .find(value => Array.isArray(value));
+
+    return Array.isArray(nested)
+      ? nested.map(item => {
+          const value = Number(item?.id ?? item?.tagId ?? item?.activityId);
+          return Number.isFinite(value) ? value : undefined;
+        })
+      : [];
+  }
+
+  private toStringList(value: unknown): string[] {
+    const items = Array.isArray(value)
+      ? value
+      : String(value ?? '').split(/[;,]/);
+
+    return items
+      .map(item => {
+        const source = item as any;
+        return String(
+          typeof source === 'string'
+            ? source
+            : (source?.name ?? source?.tagName ?? source?.title ?? '')
+        ).trim();
+      })
+      .filter(Boolean);
+  }
+
   get isEvent(): boolean {
     return (this.location?.postType || '').toLowerCase() === 'event';
+  }
+
+  get externalActionLabel(): string {
+    return this.siteTranslate.instant(this.isEvent ? 'Buy ticket' : 'Booking');
   }
 
   private touchStartX = 0;
@@ -561,7 +652,14 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
-  goBack(): void { window.history.back(); }
+  goBack(): void {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    this.router.navigate(['/location-list']);
+  }
 
   getDirections(): void {
     if (!this.location) {
