@@ -56,12 +56,20 @@ export class FilterStateService {
   get(): FilterState {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? { ...this.getDefault(), ...JSON.parse(stored) } : this.getDefault();
+      const state = stored ? { ...this.getDefault(), ...JSON.parse(stored) } : this.getDefault();
+      if (state.activeContentType === 'activities') {
+        state.activeContentType = 'destinations';
+      }
+      return state;
     } catch { return this.getDefault(); }
   }
 
   set(state: FilterState): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+    const normalizedState: FilterState = {
+      ...state,
+      activeContentType: state.activeContentType === 'activities' ? 'destinations' : state.activeContentType,
+    };
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(normalizedState));
   }
 
   clear(): void {

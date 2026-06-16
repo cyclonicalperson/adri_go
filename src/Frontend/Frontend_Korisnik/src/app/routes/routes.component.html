@@ -39,7 +39,7 @@
           class="secondary-btn route-save-btn"
           [class.is-saved]="route.isSaved"
           (click)="toggleSavedRoute(route, $event)">
-          {{ route.isSaved ? 'Saved' : 'Save to Saved' }}
+          {{ route.isSaved ? 'Saved' : 'Save' }}
         </button>
         <button class="primary-btn" (click)="openOnMap(route)" [disabled]="route.waypoints.length === 0">
           Open on map

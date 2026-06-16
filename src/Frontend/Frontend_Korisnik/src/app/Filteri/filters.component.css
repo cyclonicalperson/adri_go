@@ -116,7 +116,7 @@
 
 .content-type-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
   padding: 12px 20px;
   border-bottom: 1px solid var(--gray-100);
@@ -284,9 +284,9 @@ section { margin-bottom: 24px; }
   border-radius: var(--radius-lg);
 }
 .slider-box.active {
-  border-color: var(--filter-color, #0ea5e9);
-  background: color-mix(in srgb, var(--filter-color, #0ea5e9) 12%, #fff);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, #0ea5e9) 18%, transparent);
+  border-color: var(--gray-200);
+  background: #fff;
+  box-shadow: none;
 }
 
 .slider-labels {
@@ -361,6 +361,11 @@ section { margin-bottom: 24px; }
   background: color-mix(in srgb, var(--filter-color, var(--green-500)) 14%, #fff);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, var(--green-500)) 20%, transparent);
 }
+
+.distance-toggle-card {
+  margin-bottom: 12px;
+}
+
 .toggle-card.active .toggle-text h3 {
   color: var(--filter-color, var(--green-700));
 }
@@ -517,11 +522,16 @@ input:checked + .slider:before { transform: translateX(21px); }
 }
 
 :host-context(html[data-theme='dark']) .toggle-card.active,
-:host-context(html[data-theme='dark']) .date-input.active,
-:host-context(html[data-theme='dark']) .slider-box.active {
+:host-context(html[data-theme='dark']) .date-input.active {
   background: color-mix(in srgb, var(--filter-color, #22c55e) 22%, #111827) !important;
   border-color: var(--filter-color, #22c55e);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--filter-color, #22c55e) 24%, transparent);
+}
+
+:host-context(html[data-theme='dark']) .slider-box.active {
+  background: #111827 !important;
+  border-color: #334155;
+  box-shadow: none;
 }
 
 :host-context(html[data-theme='dark']) .toggle-card.active .toggle-text h3 {

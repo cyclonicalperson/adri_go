@@ -17,7 +17,7 @@ namespace TouristGuide.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/images")]
-    [Authorize]
+    [Authorize(Roles = "admin,superadmin")]
     public class ImageUploadController : ControllerBase
     {
         private readonly ICloudinaryService _cloudinaryService;

@@ -72,6 +72,56 @@
       </select>
     </section>
 
+    <section *ngIf="activityCategoryOptions.length > 0">
+      <div class="section-header">
+        <h2>Activity Categories</h2>
+      </div>
+      <div class="filter-chip-grid">
+        <button
+          type="button"
+          class="filter-chip"
+          *ngFor="let category of activityCategoryOptions"
+          [class.active]="activityFilters.categories.includes(category)"
+          [style.--filter-color]="getActivityCategoryColor(category)"
+          (click)="toggleActivityFilter('categories', category)">
+          {{ formatActivityCategory(category) }}
+        </button>
+      </div>
+    </section>
+
+    <section *ngIf="activityDifficultyOptions.length > 0">
+      <div class="section-header">
+        <h2>Activity Difficulty</h2>
+      </div>
+      <div class="filter-chip-grid">
+        <button
+          type="button"
+          class="filter-chip"
+          *ngFor="let difficulty of activityDifficultyOptions"
+          [class.active]="activityFilters.difficulties.includes(difficulty)"
+          [style.--filter-color]="getDifficultyFilterColor(difficulty)"
+          (click)="toggleActivityFilter('difficulties', difficulty)">
+          {{ formatRouteDifficulty(difficulty) }}
+        </button>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <h2>Activity Links</h2>
+      </div>
+      <div class="toggle-card" [class.active]="activityFilters.linkedOnly" style="--filter-color: #14b8a6;">
+        <div class="toggle-text">
+          <h3>Linked Only</h3>
+          <p>Show destinations that have activities attached</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" [checked]="activityFilters.linkedOnly" (change)="toggleLinkedActivitiesOnly()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </section>
+
     <!-- DISTANCE -->
     <section>
       <div class="section-header">
@@ -79,7 +129,7 @@
       </div>
 
       <!-- Unlimited toggle -->
-      <div class="toggle-card" [class.active]="!radiusActive" style="--filter-color: #0ea5e9; margin-bottom: 12px;">
+      <div class="toggle-card distance-toggle-card" [class.active]="!radiusActive" style="--filter-color: #14b8a6;">
         <div class="toggle-text">
           <h3>Unlimited</h3>
           <p>Show locations at any distance</p>
@@ -91,7 +141,7 @@
       </div>
 
       <!-- Slider — prikazan samo kad je radius aktivan -->
-      <div *ngIf="radiusActive" class="slider-box active" style="--filter-color: #0ea5e9;">
+      <div *ngIf="radiusActive" class="slider-box distance-slider-box active">
         <div class="slider-labels">
           <span>Radius</span>
           <span class="highlight">{{ radiusLabel }}</span>
@@ -185,59 +235,6 @@
         </label>
       </div>
     </section>
-
-    </ng-container>
-
-    <ng-container *ngIf="showActivityFilters">
-      <section *ngIf="activityCategoryOptions.length > 0">
-        <div class="section-header">
-          <h2>Activity Categories</h2>
-        </div>
-        <div class="filter-chip-grid">
-            <button
-              type="button"
-              class="filter-chip"
-              *ngFor="let category of activityCategoryOptions"
-              [class.active]="activityFilters.categories.includes(category)"
-              [style.--filter-color]="getActivityCategoryColor(category)"
-              (click)="toggleActivityFilter('categories', category)">
-              {{ formatActivityCategory(category) }}
-            </button>
-        </div>
-      </section>
-
-      <section *ngIf="activityDifficultyOptions.length > 0">
-        <div class="section-header">
-          <h2>Activity Difficulty</h2>
-        </div>
-        <div class="filter-chip-grid">
-          <button
-            type="button"
-              class="filter-chip"
-              *ngFor="let difficulty of activityDifficultyOptions"
-              [class.active]="activityFilters.difficulties.includes(difficulty)"
-              [style.--filter-color]="getDifficultyFilterColor(difficulty)"
-              (click)="toggleActivityFilter('difficulties', difficulty)">
-              {{ formatRouteDifficulty(difficulty) }}
-            </button>
-        </div>
-      </section>
-
-      <section>
-        <div class="section-header">
-          <h2>Activity Links</h2>
-        </div>
-        <div class="toggle-card" [class.active]="activityFilters.linkedOnly" style="--filter-color: #14b8a6;">
-          <div class="toggle-text">
-            <h3>Linked Only</h3>
-            <p>Show destinations that have activities attached</p>
-          </div>
-          <label class="switch">
-            <input type="checkbox" [checked]="activityFilters.linkedOnly" (change)="toggleLinkedActivitiesOnly()">
-            <span class="slider round"></span>
-          </label>
-        </div>
-      </section>
 
     </ng-container>
 

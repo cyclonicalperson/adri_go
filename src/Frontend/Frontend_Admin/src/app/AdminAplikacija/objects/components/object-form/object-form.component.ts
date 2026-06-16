@@ -244,7 +244,7 @@ export class ObjectFormComponent implements OnInit {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`);
       if (!response.ok) return;
       const data = await response.json();
-      const address = typeof data?.display_name === 'string' ? data.display_name : '';
+      const address = this.buildShortAddress(data);
       if (address) this.form.patchValue({ address });
       this.tryAutoSelectRegion(lat, lng, data);
     } catch {
@@ -289,6 +289,39 @@ export class ObjectFormComponent implements OnInit {
     if (nearest && nearest.distanceKm <= 75) {
       this.form.patchValue({ regionId: nearest.region.regionId });
     }
+  }
+
+  private buildShortAddress(geocoded: any): string {
+    const address = geocoded?.address ?? {};
+    const street = [
+      address.road,
+      address.pedestrian,
+      address.footway,
+      address.path,
+      address.cycleway,
+      address.neighbourhood,
+    ].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    const houseNumber = typeof address.house_number === 'string' ? address.house_number.trim() : '';
+    const locality = [
+      address.city,
+      address.town,
+      address.village,
+      address.municipality,
+      address.suburb,
+      address.county,
+    ].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+    const streetLine = [street, houseNumber].filter(Boolean).join(' ').trim();
+    const parts = [streetLine, locality]
+      .filter((part): part is string => typeof part === 'string')
+      .map(part => part.trim())
+      .filter((part, index, arr) => part && arr.indexOf(part) === index);
+
+    if (parts.length > 0) return parts.join(', ');
+
+    return typeof geocoded?.display_name === 'string'
+      ? geocoded.display_name.split(',').map((part: string) => part.trim()).filter(Boolean).slice(0, 2).join(', ')
+      : '';
   }
 
   private normalizeText(value: string): string {

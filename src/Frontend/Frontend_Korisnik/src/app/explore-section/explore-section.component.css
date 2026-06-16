@@ -172,6 +172,8 @@
 .info-item svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
 
 .activity-tags-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -180,6 +182,7 @@
 
 .activity-tag-chip {
   max-width: 100%;
+  border: 0;
   border-radius: var(--radius-pill);
   background: #ecfdf5;
   color: #047857;
@@ -190,6 +193,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  font-family: inherit;
+  pointer-events: auto;
+}
+
+.activity-tag-chip:hover {
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .divider { height: 1px; background: var(--gray-100); margin: 12px 0; }

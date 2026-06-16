@@ -358,6 +358,10 @@ namespace TouristGuide.Api.Controllers
                 if (!await _db.Regions.AnyAsync(r => r.Id == dto.RegionId.Value))
                     return BadRequest(new { message = $"Regija sa ID={dto.RegionId} ne postoji." });
 
+                if (!IsSuperAdmin() &&
+                    !await _permissionService.HasPermissionAsync("manage_own_posts", dto.RegionId.Value))
+                    return Forbid();
+
                 route.RegionId = dto.RegionId;
                 route.ProposedRegionName = null;
             }

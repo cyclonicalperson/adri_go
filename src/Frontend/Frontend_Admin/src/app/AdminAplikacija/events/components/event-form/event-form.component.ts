@@ -148,6 +148,16 @@ export class EventFormComponent implements OnInit {
 
   f(name: string) { return this.form.get(name)!; }
 
+  onDateTimeInput(controlName: 'startAt' | 'endAt'): void {
+    const control = this.form.get(controlName);
+    const value = String(control?.value ?? '');
+    const normalized = this.normalizeDateTimeValue(value);
+
+    if (normalized !== value) {
+      control?.setValue(normalized, { emitEvent: false });
+    }
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -266,5 +276,14 @@ export class EventFormComponent implements OnInit {
 
     const regionId = event.regionId ?? event.region?.regionId;
     return typeof regionId === 'number' && regionId > 0 ? regionId : undefined;
+  }
+
+  private normalizeDateTimeValue(value: string): string {
+    const match = value.match(/^(\d{5,})(-\d{2}-\d{2}T\d{2}:\d{2}.*)$/);
+    if (match) {
+      return `${match[1].slice(0, 4)}${match[2]}`;
+    }
+
+    return value;
   }
 }
