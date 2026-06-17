@@ -127,12 +127,26 @@
               </label>
               @if (isWorkingDayEnabled(day.key)) {
               <div class="time-range">
-                <input class="input time-input" type="time" formControlName="open" />
+                <input
+                  class="input time-input"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="5"
+                  [placeholder]="timePlaceholder"
+                  formControlName="open"
+                  (blur)="normalizeWorkingTime(day.key, 'open')" />
                 <span class="time-separator">-</span>
-                <input class="input time-input" type="time" formControlName="close" />
+                <input
+                  class="input time-input"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="5"
+                  [placeholder]="timePlaceholder"
+                  formControlName="close"
+                  (blur)="normalizeWorkingTime(day.key, 'close')" />
               </div>
               } @else {
-              <span class="closed-label">Closed</span>
+              <span class="closed-label">Zatvoreno</span>
               }
             </div>
             }

@@ -35,15 +35,17 @@ export class ObjectFormComponent implements OnInit {
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
   readonly countries = WORLD_COUNTRIES;
+  readonly timePlaceholder = 'HH:mm';
   readonly workingDayOptions: { key: WorkingDayKey; label: string }[] = [
-    { key: 'mon', label: 'Monday' },
-    { key: 'tue', label: 'Tuesday' },
-    { key: 'wed', label: 'Wednesday' },
-    { key: 'thu', label: 'Thursday' },
-    { key: 'fri', label: 'Friday' },
-    { key: 'sat', label: 'Saturday' },
-    { key: 'sun', label: 'Sunday' },
+    { key: 'mon', label: 'Ponedeljak' },
+    { key: 'tue', label: 'Utorak' },
+    { key: 'wed', label: 'Sreda' },
+    { key: 'thu', label: 'Četvrtak' },
+    { key: 'fri', label: 'Petak' },
+    { key: 'sat', label: 'Subota' },
+    { key: 'sun', label: 'Nedelja' },
   ];
+  private readonly timeValidator = Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/);
   private originalCategory: ObjectCategory | null = null;
   resolvingAddress = false;
   submitted = false;
@@ -206,6 +208,14 @@ export class ObjectFormComponent implements OnInit {
         close: source.close || '17:00',
       });
     });
+  }
+
+  normalizeWorkingTime(day: WorkingDayKey, field: 'open' | 'close'): void {
+    const control = this.workingDayGroup(day).get(field);
+    const normalized = this.normalizeTimeInput(control?.value);
+    if (normalized) {
+      control?.setValue(normalized);
+    }
   }
 
   clearWorkingHours(): void {
@@ -399,8 +409,8 @@ export class ObjectFormComponent implements OnInit {
     const controls = this.workingDayOptions.reduce((acc, day) => {
       acc[day.key] = this.fb.group({
         enabled: [false],
-        open: ['09:00'],
-        close: ['17:00'],
+        open: ['09:00', [this.timeValidator]],
+        close: ['17:00', [this.timeValidator]],
       });
       return acc;
     }, {} as Record<WorkingDayKey, FormGroup>);
@@ -415,10 +425,25 @@ export class ObjectFormComponent implements OnInit {
     return this.workingDayOptions.reduce((schedule, day) => {
       const group = this.workingDayGroup(day.key).getRawValue();
       schedule[day.key] = group.enabled
-        ? `${group.open || '09:00'}-${group.close || '17:00'}`
+        ? `${this.normalizeTimeInput(group.open) || '09:00'}-${this.normalizeTimeInput(group.close) || '17:00'}`
         : 'closed';
       return schedule;
     }, {} as Record<string, string>);
+  }
+
+  private normalizeTimeInput(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const cleaned = value.trim().replace('.', ':');
+    const match = cleaned.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+    if (hours === 24 && minutes === 0) return '24:00';
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
   private patchWorkingHours(value: unknown): void {

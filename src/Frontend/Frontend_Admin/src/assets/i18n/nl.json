@@ -671,5 +671,16 @@
   "Univerzalna lozinka je podešena kroz konfiguraciju i ne može se prikazati. Kada je promeniš ovde, biće sačuvana kao zaštićena vrednost u bazi i moći će da se vidi na ovom ekranu.": "Het universele wachtwoord is via configuratie ingesteld en kan niet worden weergegeven. Als je het hier wijzigt, wordt het als beveiligde waarde in de database opgeslagen en kan het op dit scherm worden getoond.",
   "Univerzalna lozinka još nije podešena.": "Het universele wachtwoord is nog niet ingesteld.",
   "Greška pri učitavanju univerzalne lozinke.": "Fout bij het laden van het universele wachtwoord.",
-  "Greška pri promeni univerzalne lozinke.": "Fout bij het wijzigen van het universele wachtwoord."
+  "Greška pri promeni univerzalne lozinke.": "Fout bij het wijzigen van het universele wachtwoord.",
+  "Radno vreme po danima": "Openingstijden per dag",
+  "Kopiraj ponedeljak": "Maandag kopiëren",
+  "Ponedeljak": "Maandag",
+  "Utorak": "Dinsdag",
+  "Sreda": "Woensdag",
+  "Cetvrtak": "Donderdag",
+  "Petak": "Vrijdag",
+  "Subota": "Zaterdag",
+  "Nedelja": "Zondag",
+  "Zatvoreno": "Gesloten",
+  "HH:mm": "HH:mm"
 }
