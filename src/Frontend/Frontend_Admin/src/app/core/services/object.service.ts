@@ -14,6 +14,7 @@ import {
   TouristObject,
   CreateObjectRequest,
   UpdateObjectRequest,
+  OpeningHoursSchedule,
 } from '../models/object.model';
 import {
   ApiResponse,
@@ -62,6 +63,54 @@ function parseJsonField(val: any): any {
 
 function normalizeProposedRegionName(value: string | null | undefined): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function normalizeOpeningHoursPayload(value: string | OpeningHoursSchedule | null | undefined): OpeningHoursSchedule | { text: string } | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (!text) return null;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as OpeningHoursSchedule;
+      }
+    } catch {
+      // Legacy one-line value.
+    }
+    return { text };
+  }
+
+  const entries = Object.entries(value)
+    .filter(([, hours]) => typeof hours === 'string' && hours.trim())
+    .map(([day, hours]) => [day, hours.trim()]);
+
+  return entries.length > 0 ? Object.fromEntries(entries) as OpeningHoursSchedule : null;
+}
+
+function normalizeOpeningHoursSchedule(value: any): OpeningHoursSchedule | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || typeof value.text === 'string') {
+    return null;
+  }
+
+  const entries = Object.entries(value)
+    .filter(([, hours]) => typeof hours === 'string' && hours.trim())
+    .map(([day, hours]) => [day, String(hours).trim()]);
+
+  return entries.length > 0 ? Object.fromEntries(entries) as OpeningHoursSchedule : null;
+}
+
+function formatOpeningHoursSummary(raw: any, schedule: OpeningHoursSchedule | null): string {
+  if (raw?.text) return String(raw.text);
+  if (!schedule) return '';
+
+  const firstOpen = Object.values(schedule).find(hours => hours && hours !== 'closed');
+  if (!firstOpen) return 'Closed';
+
+  const openDays = Object.values(schedule).filter(hours => hours && hours !== 'closed');
+  return openDays.every(hours => hours === firstOpen)
+    ? `Every day ${firstOpen}`
+    : `${openDays.length} days configured`;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -129,7 +178,7 @@ export class ObjectService {
       lat: payload.latitude,
       lng: payload.longitude,
       externalUrl: payload.website ?? null,
-      openingHours: payload.workingHours ? { text: payload.workingHours } : null,
+      openingHours: normalizeOpeningHoursPayload(payload.workingHours),
       details: payload.phone ? { phone: payload.phone, website: payload.website ?? null } : null,
       images: (payload.media ?? [])
         .filter(m => m.url && (m.url.startsWith('http://') || m.url.startsWith('https://')))
@@ -151,7 +200,7 @@ export class ObjectService {
     if (payload.latitude !== undefined) body['lat'] = payload.latitude;
     if (payload.longitude !== undefined) body['lng'] = payload.longitude;
     if (payload.website !== undefined) body['externalUrl'] = payload.website;
-    if (payload.workingHours !== undefined) body['openingHours'] = payload.workingHours ? { text: payload.workingHours } : null;
+    if (payload.workingHours !== undefined) body['openingHours'] = normalizeOpeningHoursPayload(payload.workingHours);
     if (payload.phone !== undefined) body['details'] = payload.phone ? { phone: payload.phone } : null;
     if (payload.media !== undefined) body['images'] = payload.media
       .filter(m => m.url && (m.url.startsWith('http://') || m.url.startsWith('https://')))
@@ -186,6 +235,7 @@ function postToObject(p: any): TouristObject {
   // KRITIČNO: backend vraca openingHours i details kao JSON string
   const oh = parseJsonField(p.openingHours);
   const det = parseJsonField(p.details);
+  const workingHoursSchedule = normalizeOpeningHoursSchedule(oh);
 
   const regionData = p.region ?? null;
   // Backend šalje regionName i regionId kao flat polja u PostDto
@@ -214,7 +264,8 @@ function postToObject(p: any): TouristObject {
     longitude: p.lng ?? p.longitude ?? 0,
     phone: det?.phone ?? '',
     website: p.externalUrl ?? det?.website ?? '',
-    workingHours: oh?.text ?? '',
+    workingHours: formatOpeningHoursSummary(oh, workingHoursSchedule),
+    workingHoursSchedule,
     createdBy: p.adminId ?? p.adminId ?? 0,
     createdAt: p.createdAt ?? '',
     destination: regionName ? { destinationId: regionId, name: regionName } : null,

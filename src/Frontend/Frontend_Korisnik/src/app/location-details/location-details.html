@@ -207,30 +207,54 @@
         </button>
       </section>
 
-      <section class="activities-section" *ngIf="activityItems.length > 0">
+      <section class="activities-section" *ngIf="tagItems.length > 0">
         <div class="section-header compact">
           <h3>Tags</h3>
         </div>
-        <div class="activity-list">
-          <button
-            class="activity-item"
-            type="button"
-            *ngFor="let activity of activityItems"
-            (click)="openActivity(activity)">
-            <span class="activity-item-icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M13.5 5.5A2.5 2.5 0 1 0 11 3a2.5 2.5 0 0 0 2.5 2.5zm-3.64 15.3 1.23-5.13 2.35 2.23V22h2v-5.27l-2.27-2.18.63-3.06a5.94 5.94 0 0 0 4.7 2.28v-2a3.97 3.97 0 0 1-3.37-1.87l-1-1.58a2 2 0 0 0-2.47-.78L7 9.5V14h2v-3.14l1.54-.56-1.48 6.17L4.8 15.6l-.4 1.96 5.46 1.24z"/>
+        <div class="tag-group" *ngIf="amenityItems.length > 0">
+          <h4>Amenities</h4>
+          <div class="activity-list">
+            <button
+              class="activity-item"
+              type="button"
+              *ngFor="let amenity of amenityItems"
+              (click)="openActivity(amenity)">
+              <span class="activity-item-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2 4 5v6c0 5.05 3.41 9.76 8 11 4.59-1.24 8-5.95 8-11V5l-8-3zm3.7 7.3-4.4 4.4-2-2-1.4 1.4 3.4 3.4 5.8-5.8-1.4-1.4z"/>
+                </svg>
+              </span>
+              <span class="activity-item-name">{{ translateTagLabel(amenity.name) }}</span>
+              <svg class="activity-item-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
               </svg>
-            </span>
-            <span class="activity-item-name" data-no-translate="true">{{ activity.name }}</span>
-            <svg class="activity-item-arrow" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
-            </svg>
-          </button>
+            </button>
+          </div>
+        </div>
+
+        <div class="tag-group" *ngIf="activityItems.length > 0">
+          <h4>Activities</h4>
+          <div class="activity-list">
+            <button
+              class="activity-item"
+              type="button"
+              *ngFor="let activity of activityItems"
+              (click)="openActivity(activity)">
+              <span class="activity-item-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M13.5 5.5A2.5 2.5 0 1 0 11 3a2.5 2.5 0 0 0 2.5 2.5zm-3.64 15.3 1.23-5.13 2.35 2.23V22h2v-5.27l-2.27-2.18.63-3.06a5.94 5.94 0 0 0 4.7 2.28v-2a3.97 3.97 0 0 1-3.37-1.87l-1-1.58a2 2 0 0 0-2.47-.78L7 9.5V14h2v-3.14l1.54-.56-1.48 6.17L4.8 15.6l-.4 1.96 5.46 1.24z"/>
+                </svg>
+              </span>
+              <span class="activity-item-name">{{ translateTagLabel(activity.name) }}</span>
+              <svg class="activity-item-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </section>
 
-      <div class="section-divider" *ngIf="activityItems.length > 0"></div>
+      <div class="section-divider" *ngIf="tagItems.length > 0"></div>
 
       <!-- Info Grid -->
       <div class="info-grid">

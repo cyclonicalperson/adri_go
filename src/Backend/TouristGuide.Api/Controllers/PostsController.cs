@@ -1358,6 +1358,15 @@ namespace TouristGuide.Api.Controllers
             UpdatedAt = post.UpdatedAt,
             TagIds = visibleTags.Select(pt => pt.TagId).ToList(),
             TagNames = visibleTags.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList(),
+            TagItems = visibleTags
+                .Where(pt => pt.Tag != null)
+                .Select(pt => new PostTagDto
+                {
+                    Id = pt.TagId,
+                    Name = pt.Tag!.Name,
+                    Category = pt.Tag.Category
+                })
+                .ToList(),
             IsLiked = isLiked,
             IsSaved = isSaved
             };

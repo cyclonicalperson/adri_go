@@ -41,11 +41,21 @@ namespace TouristGuide.Api.DTOs
         /// <summary>Nazivi vezanih aktivnosti (tag.name) — za prikaz u detalju</summary>
         public List<string> TagNames { get; set; } = new();
 
+        /// <summary>Tagovi sa kategorijom, za razdvajanje aktivnosti, pogodnosti i ostalih oznaka.</summary>
+        public List<PostTagDto> TagItems { get; set; } = new();
+
         /// <summary>Da li je prijavljeni turista lajkovao ovu objavu (null = nepoznato/nije prijavljen)</summary>
         public bool? IsLiked { get; set; }
 
         /// <summary>Da li je prijavljeni turista sacuvao ovu objavu (null = nepoznato/nije prijavljen)</summary>
         public bool? IsSaved { get; set; }
+    }
+
+    public class PostTagDto
+    {
+        public uint Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Category { get; set; }
     }
 
     public class AddCalendarItemDto

@@ -144,6 +144,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly searchDropdownLimit = 8;
   private searchMatchedLocationIds = new Set<number>();
   private searchMatchedRouteIds = new Set<number>();
+  private lastRenderedLocationPinIds = new Set<number>();
+  private lastRenderedRoutePinIds = new Set<number>();
+  private searchLoadingLocationPinIds = new Set<number>();
+  private searchLoadingRoutePinIds = new Set<number>();
+  private searchLoadingSnapshotActive = false;
   private searchTotalMatchCount = 0;
 
   showAuthPopup = false;
@@ -3044,6 +3049,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private locationMatchesSearchMapState(loc: MapLocation, hasActiveSearch: boolean): boolean {
     if (!hasActiveSearch) return true;
 
+    if (this.searchLoading && this.searchLoadingSnapshotActive) {
+      return this.searchLoadingLocationPinIds.has(loc.id);
+    }
+
     if (this.searchMatchedLocationIds.size > 0) {
       return this.searchMatchedLocationIds.has(loc.id);
     }
@@ -3057,10 +3066,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private routeMatchesSearchMapState(route: TouristRouteItem, hasActiveSearch: boolean): boolean {
     if (!hasActiveSearch) return true;
+    if (this.searchLoading && this.searchLoadingSnapshotActive) {
+      return this.searchLoadingRoutePinIds.has(route.id);
+    }
     if (this.searchMatchedRouteIds.size > 0) {
       return this.searchMatchedRouteIds.has(route.id);
     }
-    return this.searchLoading && this.searchMatchedLocationIds.size === 0;
+    return this.searchLoading;
   }
 
   private getSearchFallbackRecommendationIds(): Set<number> {
@@ -3097,6 +3109,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private renderVisiblePins(pins: VisiblePin[]): void {
     if (!this.map) return;
+
+    this.lastRenderedLocationPinIds = new Set(
+      pins.filter((pin): pin is LocationPin => pin.kind === 'location').map(pin => pin.id)
+    );
+    this.lastRenderedRoutePinIds = new Set(
+      pins.filter((pin): pin is RoutePin => pin.kind === 'route').map(pin => pin.id)
+    );
 
     this.clearRenderedPinLayers();
 
@@ -3811,11 +3830,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchIntentSummary = '';
       this.searchFallbackActive = false;
       this.searchLoading = false;
+      this.clearSearchLoadingSnapshot();
       this.resetSearchMapMatches();
       this.applyMarkerFilter();
       return;
     }
 
+    this.captureSearchLoadingSnapshot();
     this.searchLoading = true;
     const locationMatches = this.locationsList
       .map(loc => this.buildSearchMatch(loc, intent))
@@ -3826,9 +3847,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    this.searchMatchedLocationIds = new Set(locationMatches.map(item => item.loc.id));
-    this.searchMatchedRouteIds = new Set(routeMatches.map(item => item.route.id));
-    this.searchTotalMatchCount = this.searchMatchedLocationIds.size + this.searchMatchedRouteIds.size;
+    const immediateMatchCount = locationMatches.length + routeMatches.length;
+    if (immediateMatchCount > 0) {
+      this.searchMatchedLocationIds = new Set(locationMatches.map(item => item.loc.id));
+      this.searchMatchedRouteIds = new Set(routeMatches.map(item => item.route.id));
+      this.searchTotalMatchCount = immediateMatchCount;
+    }
     this.searchResults = locationMatches
       .map(item => ({
         ...item.loc,
@@ -3836,9 +3860,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         searchBadges: item.badges,
       }))
       .slice(0, this.searchDropdownLimit);
-    this.searchFallbackActive = !this.hasSearchMatches;
-    this.searchIntentSummary = this.hasSearchMatches
-      ? this.describeSearchIntent(intent, this.searchTotalMatchCount)
+    this.searchFallbackActive = false;
+    this.searchIntentSummary = immediateMatchCount > 0
+      ? this.describeSearchIntent(intent, immediateMatchCount)
       : '';
     this.applyMarkerFilter();
     this.searchInput$.next(query.trim());
@@ -3891,6 +3915,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (query !== this.searchQuery.trim()) return;
 
       this.searchLoading = false;
+      this.clearSearchLoadingSnapshot();
       const backendMatches = locations
         .map(loc => this.buildSearchMatch(loc, intent))
         .filter(item => item.score > 0)
@@ -3905,6 +3930,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
             searchBadges: item.badges,
           }))
           .slice(0, this.searchDropdownLimit);
+      } else {
+        this.searchMatchedLocationIds = new Set<number>();
+        this.searchMatchedRouteIds = new Set<number>();
+        this.searchTotalMatchCount = 0;
+        this.searchResults = [];
       }
       this.searchFallbackActive = !this.hasSearchMatches;
       this.searchIntentSummary = this.searchFallbackActive
@@ -4171,7 +4201,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getDestinationTagItems(loc: Partial<MapLocation>, limit = 3): DestinationTagItem[] {
-    const rawTags = (loc as any).tagNames
+    const rawTags = (loc as any).tagItems
+      ?? (loc as any).TagItems
+      ?? (loc as any).tagNames
       ?? (loc as any).TagNames
       ?? (loc as any).activityTagNames
       ?? (loc as any).activityTags
@@ -4416,9 +4448,23 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchIntentSummary = '';
     this.searchFallbackActive = false;
     this.searchLoading = false;
+    this.clearSearchLoadingSnapshot();
     this.resetSearchMapMatches();
     this.dismissSearchMenu();
     this.applyMarkerFilter();
+  }
+
+  private captureSearchLoadingSnapshot(): void {
+    this.searchLoadingLocationPinIds = new Set(this.lastRenderedLocationPinIds);
+    this.searchLoadingRoutePinIds = new Set(this.lastRenderedRoutePinIds);
+    this.searchLoadingSnapshotActive = this.searchLoadingLocationPinIds.size > 0
+      || this.searchLoadingRoutePinIds.size > 0;
+  }
+
+  private clearSearchLoadingSnapshot(): void {
+    this.searchLoadingLocationPinIds = new Set<number>();
+    this.searchLoadingRoutePinIds = new Set<number>();
+    this.searchLoadingSnapshotActive = false;
   }
 
   private resetSearchMapMatches(): void {
