@@ -155,8 +155,9 @@ export class CalendarComponent implements OnInit, OnDestroy {
   }
 
   private get rangeEndDay(): Date | null {
-    if (!this.eventEndFull) return null;
-    const d = new Date(this.eventEndFull); d.setHours(0, 0, 0, 0); return d;
+    const source = this.eventEndFull || this.eventStartFull;
+    if (!source) return null;
+    const d = new Date(source); d.setHours(0, 0, 0, 0); return d;
   }
 
   /** Whether a day can be chosen while scheduling (no past days, event range). */
@@ -169,6 +170,8 @@ export class CalendarComponent implements OnInit, OnDestroy {
     const re = this.rangeEndDay;
     if (rs && d < rs) return false;
     if (re && d > re) return false;
+    const bounds = this.scheduleBoundsForDay(d);
+    if (bounds.min > bounds.max) return false;
     return true;
   }
 
@@ -184,6 +187,7 @@ export class CalendarComponent implements OnInit, OnDestroy {
     this.scheduleDay   = new Date(date);
     this.scheduleError = '';
     this.scheduleTime  = this.defaultScheduleTime();
+    this.clampScheduleTime();
     this.showTimePicker = true;
     this.setBodyScrollLock(true);
   }
@@ -202,19 +206,70 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   get scheduleTimeMin(): string {
     if (!this.scheduleDay) return '';
-    let min: Date | null = null;
-    const now = new Date();
-    if (this.sameDay(this.scheduleDay, now)) min = now;
-    if (this.eventStartFull && this.sameDay(this.scheduleDay, this.eventStartFull)) {
-      if (!min || this.eventStartFull > min) min = this.eventStartFull;
-    }
-    return min ? this.toTimeString(min) : '';
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    return bounds.hasMinConstraint ? this.minutesToTime(bounds.min) : '';
   }
 
   get scheduleTimeMax(): string {
-    if (!this.scheduleDay || !this.eventEndFull) return '';
-    if (this.sameDay(this.scheduleDay, this.eventEndFull)) return this.toTimeString(this.eventEndFull);
-    return '';
+    if (!this.scheduleDay) return '';
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    return bounds.hasMaxConstraint ? this.minutesToTime(bounds.max) : '';
+  }
+
+  get scheduleHour(): string {
+    return (this.scheduleTime || '00:00').split(':')[0]?.padStart(2, '0') ?? '00';
+  }
+
+  get scheduleMinute(): string {
+    return (this.scheduleTime || '00:00').split(':')[1]?.padStart(2, '0') ?? '00';
+  }
+
+  get scheduleHourOptions(): string[] {
+    if (!this.scheduleDay) return [];
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    if (bounds.min > bounds.max) return [];
+    const startHour = Math.floor(bounds.min / 60);
+    const endHour = Math.floor(bounds.max / 60);
+    return Array.from({ length: endHour - startHour + 1 }, (_, index) =>
+      String(startHour + index).padStart(2, '0')
+    );
+  }
+
+  get scheduleMinuteOptions(): string[] {
+    if (!this.scheduleDay) return [];
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    if (bounds.min > bounds.max) return [];
+    const hour = Number(this.scheduleHour);
+    let minMinute = 0;
+    let maxMinute = 59;
+    if (hour === Math.floor(bounds.min / 60)) minMinute = bounds.min % 60;
+    if (hour === Math.floor(bounds.max / 60)) maxMinute = bounds.max % 60;
+    return Array.from({ length: maxMinute - minMinute + 1 }, (_, index) =>
+      String(minMinute + index).padStart(2, '0')
+    );
+  }
+
+  get scheduleTimeRangeLabel(): string {
+    if (!this.scheduleDay) return '';
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    if (bounds.min > bounds.max) return this.t('No available time for this day.');
+    return `${this.minutesToTime(bounds.min)} - ${this.minutesToTime(bounds.max)}`;
+  }
+
+  get canConfirmSchedule(): boolean {
+    return !this.isSavingSchedule && !!this.scheduleDay && this.isScheduleTimeInsideBounds();
+  }
+
+  setScheduleHour(hour: string): void {
+    this.scheduleTime = `${hour}:${this.scheduleMinute}`;
+    this.clampScheduleTime();
+    this.scheduleError = '';
+  }
+
+  setScheduleMinute(minute: string): void {
+    this.scheduleTime = `${this.scheduleHour}:${minute}`;
+    this.clampScheduleTime();
+    this.scheduleError = '';
   }
 
   private defaultScheduleTime(): string {
@@ -227,6 +282,11 @@ export class CalendarComponent implements OnInit, OnDestroy {
   confirmSchedule(): void {
     if (this.isSavingSchedule || !this.schedulingItem || !this.scheduleDay) return;
     if (!this.scheduleTime) { this.scheduleError = this.t('Choose a time.'); return; }
+    this.clampScheduleTime();
+    if (!this.isScheduleTimeInsideBounds()) {
+      this.scheduleError = this.t('Choose a time within the event schedule.');
+      return;
+    }
 
     const [h, m] = this.scheduleTime.split(':').map(Number);
     const dt = new Date(this.scheduleDay);
@@ -291,6 +351,62 @@ export class CalendarComponent implements OnInit, OnDestroy {
 
   private toTimeString(d: Date): string {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  private scheduleBoundsForDay(day: Date): { min: number; max: number; hasMinConstraint: boolean; hasMaxConstraint: boolean } {
+    let min = 0;
+    let max = 23 * 60 + 59;
+    let hasMinConstraint = false;
+    let hasMaxConstraint = false;
+
+    const now = new Date();
+    if (this.sameDay(day, now)) {
+      min = Math.min(max, now.getHours() * 60 + now.getMinutes() + 1);
+      hasMinConstraint = true;
+    }
+
+    if (this.eventStartFull && this.sameDay(day, this.eventStartFull)) {
+      min = Math.max(min, this.eventStartFull.getHours() * 60 + this.eventStartFull.getMinutes());
+      hasMinConstraint = true;
+    }
+
+    if (this.eventEndFull && this.sameDay(day, this.eventEndFull)) {
+      max = Math.min(max, this.eventEndFull.getHours() * 60 + this.eventEndFull.getMinutes());
+      hasMaxConstraint = true;
+    }
+
+    return { min, max, hasMinConstraint, hasMaxConstraint };
+  }
+
+  private clampScheduleTime(): void {
+    if (!this.scheduleDay) return;
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    if (bounds.min > bounds.max) return;
+    const current = this.timeToMinutes(this.scheduleTime);
+    const next = Math.min(bounds.max, Math.max(bounds.min, current ?? bounds.min));
+    this.scheduleTime = this.minutesToTime(next);
+  }
+
+  private isScheduleTimeInsideBounds(): boolean {
+    if (!this.scheduleDay || !this.scheduleTime) return false;
+    const current = this.timeToMinutes(this.scheduleTime);
+    if (current === null) return false;
+    const bounds = this.scheduleBoundsForDay(this.scheduleDay);
+    return current >= bounds.min && current <= bounds.max;
+  }
+
+  private timeToMinutes(value: string): number | null {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(value || '');
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  private minutesToTime(value: number): string {
+    const clamped = Math.max(0, Math.min(23 * 60 + 59, value));
+    return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`;
   }
 
   private toDateTimeLocal(d: Date): string {

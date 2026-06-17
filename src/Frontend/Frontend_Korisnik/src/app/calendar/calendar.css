@@ -1089,7 +1089,14 @@
   color: var(--gray-500);
 }
 
-.time-picker-input {
+.time-picker-selects {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-picker-select {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid #d7e0ea;
@@ -1101,10 +1108,28 @@
   background: #fff;
 }
 
-.time-picker-input:focus {
+.time-picker-select:focus {
   outline: none;
   border-color: #16a34a;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+}
+
+.time-picker-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.time-picker-separator {
+  color: var(--gray-700);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.time-picker-range {
+  margin: 8px 0 0;
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .time-picker-error {
@@ -1601,10 +1626,15 @@
   color: #cbd5e1;
 }
 
-:host-context(html[data-theme='dark']) .time-picker-input {
+:host-context(html[data-theme='dark']) .time-picker-select {
   background: #111827;
   border-color: #334155;
   color: #f1f5f9;
+}
+
+:host-context(html[data-theme='dark']) .time-picker-separator,
+:host-context(html[data-theme='dark']) .time-picker-range {
+  color: #cbd5e1;
 }
 
 :host-context(html[data-theme='dark']) .time-picker-error {

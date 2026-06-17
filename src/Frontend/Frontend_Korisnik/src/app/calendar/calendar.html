@@ -249,15 +249,27 @@
       </div>
       <p class="time-picker-day">{{ scheduleDayLabel }}</p>
       <label class="time-picker-label" for="scheduleTime">{{ t('Time') }}</label>
-      <input id="scheduleTime" class="time-picker-input" type="time"
-             [(ngModel)]="scheduleTime"
-             [min]="scheduleTimeMin || null"
-             [max]="scheduleTimeMax || null">
+      <div class="time-picker-selects" id="scheduleTime">
+        <select class="time-picker-select"
+                [ngModel]="scheduleHour"
+                (ngModelChange)="setScheduleHour($event)"
+                [disabled]="scheduleHourOptions.length === 0">
+          <option *ngFor="let hour of scheduleHourOptions" [value]="hour">{{ hour }}</option>
+        </select>
+        <span class="time-picker-separator">:</span>
+        <select class="time-picker-select"
+                [ngModel]="scheduleMinute"
+                (ngModelChange)="setScheduleMinute($event)"
+                [disabled]="scheduleMinuteOptions.length === 0">
+          <option *ngFor="let minute of scheduleMinuteOptions" [value]="minute">{{ minute }}</option>
+        </select>
+      </div>
+      <p class="time-picker-range">{{ scheduleTimeRangeLabel }}</p>
       <div *ngIf="scheduleError" class="time-picker-error">{{ scheduleError }}</div>
       <div class="time-picker-actions">
         <button class="time-picker-cancel" type="button" (click)="closeTimePicker()">{{ t('Cancel') }}</button>
         <button class="time-picker-confirm" type="button"
-                [disabled]="isSavingSchedule" (click)="confirmSchedule()">
+                [disabled]="!canConfirmSchedule" (click)="confirmSchedule()">
           {{ isSavingSchedule ? t('Adding...') : t('Add to calendar') }}
         </button>
       </div>

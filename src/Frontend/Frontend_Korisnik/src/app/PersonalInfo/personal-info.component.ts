@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -14,7 +14,7 @@ import { DesktopFooterComponent } from '../shared/desktop-footer.component';
   templateUrl: './personal-info.component.html',
   styleUrls: ['./personal-info.component.css']
 })
-export class PersonalInfoComponent implements OnInit {
+export class PersonalInfoComponent implements OnInit, OnDestroy {
 
   userData: UserProfile | null = null;
   loading    = true;
@@ -24,6 +24,12 @@ export class PersonalInfoComponent implements OnInit {
   saveSuccess = false;
   saveError   = '';
   saveInfo    = '';
+  showCameraModal = false;
+  cameraError = '';
+  private cameraStream: MediaStream | null = null;
+
+  @ViewChild('cameraPreview') cameraPreview?: ElementRef<HTMLVideoElement>;
+  @ViewChild('cameraCanvas') cameraCanvas?: ElementRef<HTMLCanvasElement>;
 
   form = {
     fullName: '',
@@ -79,6 +85,10 @@ export class PersonalInfoComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopCameraStream();
   }
 
   private populateForm(data: UserProfile): void {
@@ -175,8 +185,15 @@ export class PersonalInfoComponent implements OnInit {
   onProfilePhotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file || this.isUploadingPhoto) return;
+    if (!file || this.isUploadingPhoto) {
+      input.value = '';
+      return;
+    }
 
+    this.uploadProfilePhoto(file, () => { input.value = ''; });
+  }
+
+  private uploadProfilePhoto(file: File, onDone?: () => void): void {
     const previousProfilePic = this.userData?.profilePic;
     this.isUploadingPhoto = true;
     this.saveError = '';
@@ -193,7 +210,7 @@ export class PersonalInfoComponent implements OnInit {
             this.authService.updateCurrentTourist({ profileImage: this.userData?.profilePic ?? url });
             this.isUploadingPhoto = false;
             this.saveSuccess = true;
-            input.value = '';
+            onDone?.();
             setTimeout(() => (this.saveSuccess = false), 2500);
             this.cdr.detectChanges();
           },
@@ -202,7 +219,7 @@ export class PersonalInfoComponent implements OnInit {
               this.userData.profilePic = previousProfilePic;
             }
             this.isUploadingPhoto = false;
-            input.value = '';
+            onDone?.();
             this.saveError = err?.error?.message || 'Photo uploaded, but the profile could not be updated.';
             this.cdr.detectChanges();
           }
@@ -210,11 +227,88 @@ export class PersonalInfoComponent implements OnInit {
       },
       error: () => {
         this.isUploadingPhoto = false;
-        input.value = '';
+        onDone?.();
         this.saveError = 'Could not upload profile photo. Please try another image.';
         this.cdr.detectChanges();
       }
     });
+  }
+
+  async openCamera(): Promise<void> {
+    if (this.isUploadingPhoto) return;
+    this.cameraError = '';
+    this.showCameraModal = true;
+    this.cdr.detectChanges();
+
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera API is not available.');
+      }
+
+      this.cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const video = this.cameraPreview?.nativeElement;
+      if (!video) throw new Error('Camera preview is not ready.');
+      video.srcObject = this.cameraStream;
+      await video.play();
+    } catch {
+      this.cameraError = 'Camera is not available or permission was denied.';
+      this.stopCameraStream();
+      this.cdr.detectChanges();
+    }
+  }
+
+  closeCamera(): void {
+    if (this.isUploadingPhoto) return;
+    this.showCameraModal = false;
+    this.cameraError = '';
+    this.stopCameraStream();
+  }
+
+  captureCameraPhoto(): void {
+    if (this.isUploadingPhoto) return;
+    const video = this.cameraPreview?.nativeElement;
+    const canvas = this.cameraCanvas?.nativeElement;
+    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) {
+      this.cameraError = 'Camera preview is not ready yet.';
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.cameraError = 'Could not capture photo.';
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(blob => {
+      if (!blob) {
+        this.cameraError = 'Could not capture photo.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      const file = new File([blob], `profile-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      this.uploadProfilePhoto(file, () => {
+        this.stopCameraStream();
+        this.showCameraModal = false;
+        this.cameraError = '';
+      });
+    }, 'image/jpeg', 0.9);
+  }
+
+  private stopCameraStream(): void {
+    this.cameraStream?.getTracks().forEach(track => track.stop());
+    this.cameraStream = null;
+    if (this.cameraPreview?.nativeElement) {
+      this.cameraPreview.nativeElement.srcObject = null;
+    }
   }
 
   removeProfilePhoto(): void {
