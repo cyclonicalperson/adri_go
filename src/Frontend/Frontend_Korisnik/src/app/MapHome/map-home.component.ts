@@ -1505,7 +1505,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hydratePlannerFromCuratedRoute(routeId: number): void {
-    this.focusedRouteMode = false;
+    this.focusedRouteMode = this.latestQueryParams['focusRoute'] === '1' || this.latestQueryParams['routeId'] === String(routeId);
     this.dismissScenicDetourMapPopup(true);
     this.touristRoutesService.getRouteById(routeId).subscribe({
       next: (route) => {
@@ -1533,7 +1533,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hydratePlannerFromTouristRoute(touristRouteId: number): void {
-    this.focusedRouteMode = false;
+    this.focusedRouteMode = this.latestQueryParams['focusRoute'] === '1';
     this.dismissScenicDetourMapPopup(true);
     this.userService.getTouristRoute(touristRouteId).subscribe({
       next: (route) => {
@@ -1606,10 +1606,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeProblem = 'none';
     const renderToken = ++this.plannerRenderToken;
 
-    this.routingService.computeRoute(routeCoordinates, this.travelMode, {
-      viewport: this.getRouteViewportMode(),
-      allowFallback: false,
-    })
+    this.computePlannerPreviewRoute(routeCoordinates)
       .then(route => {
         if (renderToken !== this.plannerRenderToken || !this.map) {
           return;
@@ -1670,6 +1667,98 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.isRenderingRoute = false;
         this.cdr.detectChanges();
       });
+  }
+
+  private computePlannerPreviewRoute(routeCoordinates: [number, number][]): Promise<ComputedRoute> {
+    if (this.shouldUseCuratedMixedRoute()) {
+      return this.computeCuratedMixedRoute();
+    }
+
+    return this.routingService.computeRoute(routeCoordinates, this.travelMode, {
+      viewport: this.getRouteViewportMode(),
+      allowFallback: this.focusedRouteMode,
+    });
+  }
+
+  private shouldUseCuratedMixedRoute(): boolean {
+    const snapshot = this.routePlanner.snapshot;
+    return this.focusedRouteMode
+      && snapshot.sourceRouteId != null
+      && snapshot.sourceTouristRouteId == null
+      && this.plannerStops.length >= 2;
+  }
+
+  private async computeCuratedMixedRoute(): Promise<ComputedRoute> {
+    const stopCoordinates = this.plannerStops.map(stop => [stop.lat, stop.lng] as [number, number]);
+    const routeSegments: ComputedRoute[] = [];
+    const startCoordinate = this.getRouteStartCoordinate();
+
+    if (startCoordinate && !this.sameCoordinate(startCoordinate, stopCoordinates[0])) {
+      routeSegments.push(await this.routingService.computeRoute(
+        [startCoordinate, stopCoordinates[0]],
+        this.travelMode,
+        { viewport: this.getRouteViewportMode(), allowFallback: true },
+      ));
+    }
+
+    if (stopCoordinates.length >= 2) {
+      routeSegments.push(await this.routingService.computeRoute(
+        stopCoordinates,
+        'walking',
+        { viewport: this.getRouteViewportMode(), allowFallback: true },
+      ));
+    }
+
+    return this.mergeComputedRouteSegments(routeSegments, stopCoordinates);
+  }
+
+  private getRouteStartCoordinate(): [number, number] | null {
+    if (this.fromOverride && !this.isCurrentLocationStop(this.fromOverride)) {
+      return [this.fromOverride.lat, this.fromOverride.lng];
+    }
+
+    return this.preferences.snapshot.locationSharing && this.userPosition
+      ? this.userPosition
+      : null;
+  }
+
+  private mergeComputedRouteSegments(segments: ComputedRoute[], fallbackStops: [number, number][]): ComputedRoute {
+    if (segments.length === 0) {
+      return {
+        geometry: [...fallbackStops],
+        distanceKm: this.routingService.estimateStraightDistanceKm(fallbackStops),
+        durationMin: this.routingService.estimateFallbackDurationMin(
+          this.routingService.estimateStraightDistanceKm(fallbackStops),
+          'walking',
+        ),
+        usedFallback: true,
+      };
+    }
+
+    const geometry: [number, number][] = [];
+    let distanceKm = 0;
+    let durationMin = 0;
+    let usedFallback = false;
+
+    segments.forEach(segment => {
+      if (segment.geometry.length > 0) {
+        geometry.push(...(geometry.length > 0 ? segment.geometry.slice(1) : segment.geometry));
+      }
+      distanceKm += segment.distanceKm;
+      durationMin += segment.durationMin;
+      usedFallback = usedFallback || segment.usedFallback;
+    });
+
+    return {
+      geometry,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      durationMin: Math.max(1, Math.round(durationMin)),
+      usedFallback,
+    };
+  }
+
+  private sameCoordinate(a: [number, number], b: [number, number]): boolean {
+    return Math.abs(a[0] - b[0]) < 0.00001 && Math.abs(a[1] - b[1]) < 0.00001;
   }
 
   private buildNearbyStopSuggestions(stop: PlannerStop): RouteDetourSuggestion[] {
@@ -3650,6 +3739,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (route.waypoints.length === 0) return;
 
     this.selectedPublicRoute = null;
+    this.focusedRouteMode = true;
+    this.dismissScenicDetourMapPopup(true);
     this.routePlanner.replaceStops(
       this.touristRoutesService.routeToPlannerStops(route),
       {

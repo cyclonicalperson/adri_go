@@ -110,15 +110,23 @@
       <div class="section-header">
         <h2>Activity Links</h2>
       </div>
-      <div class="toggle-card" [class.active]="activityFilters.linkedOnly" style="--filter-color: #14b8a6;">
+      <div
+        class="toggle-card"
+        role="switch"
+        tabindex="0"
+        [attr.aria-checked]="activityFilters.linkedOnly"
+        [class.active]="activityFilters.linkedOnly"
+        style="--filter-color: #14b8a6;"
+        (click)="toggleLinkedActivitiesOnly()"
+        (keydown.enter)="toggleLinkedActivitiesOnly()"
+        (keydown.space)="$event.preventDefault(); toggleLinkedActivitiesOnly()">
         <div class="toggle-text">
           <h3>Linked Only</h3>
           <p>Show destinations that have activities attached</p>
         </div>
-        <label class="switch">
-          <input type="checkbox" [checked]="activityFilters.linkedOnly" (change)="toggleLinkedActivitiesOnly()">
+        <button type="button" class="switch" [class.checked]="activityFilters.linkedOnly" (click)="$event.stopPropagation(); toggleLinkedActivitiesOnly()" aria-label="Linked only">
           <span class="slider round"></span>
-        </label>
+        </button>
       </div>
     </section>
 
@@ -129,15 +137,23 @@
       </div>
 
       <!-- Unlimited toggle -->
-      <div class="toggle-card distance-toggle-card" [class.active]="!radiusActive" style="--filter-color: #14b8a6;">
+      <div
+        class="toggle-card distance-toggle-card"
+        role="switch"
+        tabindex="0"
+        [attr.aria-checked]="!radiusActive"
+        [class.active]="!radiusActive"
+        style="--filter-color: #14b8a6;"
+        (click)="toggleRadiusActive()"
+        (keydown.enter)="toggleRadiusActive()"
+        (keydown.space)="$event.preventDefault(); toggleRadiusActive()">
         <div class="toggle-text">
           <h3>Unlimited</h3>
           <p>Show locations at any distance</p>
         </div>
-        <label class="switch">
-          <input type="checkbox" [checked]="!radiusActive" (change)="toggleRadiusActive()">
+        <button type="button" class="switch" [class.checked]="!radiusActive" (click)="$event.stopPropagation(); toggleRadiusActive()" aria-label="Unlimited distance">
           <span class="slider round"></span>
-        </label>
+        </button>
       </div>
 
       <!-- Slider — prikazan samo kad je radius aktivan -->
@@ -181,15 +197,23 @@
       <div class="section-header">
         <h2>Availability</h2>
       </div>
-      <div class="toggle-card" [class.active]="openNow" style="--filter-color: #22c55e;">
+      <div
+        class="toggle-card"
+        role="switch"
+        tabindex="0"
+        [attr.aria-checked]="openNow"
+        [class.active]="openNow"
+        style="--filter-color: #22c55e;"
+        (click)="openNow = !openNow; onAnyChange()"
+        (keydown.enter)="openNow = !openNow; onAnyChange()"
+        (keydown.space)="$event.preventDefault(); openNow = !openNow; onAnyChange()">
         <div class="toggle-text">
           <h3>Open Now</h3>
           <p>Show only places open right now</p>
         </div>
-        <label class="switch">
-          <input type="checkbox" [(ngModel)]="openNow" (ngModelChange)="onAnyChange()">
+        <button type="button" class="switch" [class.checked]="openNow" (click)="$event.stopPropagation(); openNow = !openNow; onAnyChange()" aria-label="Open now">
           <span class="slider round"></span>
-        </label>
+        </button>
       </div>
     </section>
 
@@ -199,17 +223,21 @@
         <h2>Period (for Events)</h2>
       </div>
       <div class="date-picker-row">
-        <div class="date-input" [class.active]="!!fromDate" style="--filter-color: #8b5cf6;">
+        <div class="date-input" [class.active]="!!fromDate" style="--filter-color: #8b5cf6;" (click)="openDatePicker(fromDateInput)">
           <label>FROM</label>
+          <span class="date-display">{{ formatDateForDisplay(fromDate) }}</span>
           <input
+            #fromDateInput
             type="date"
             [ngModel]="fromDate"
             [attr.max]="maxEventFromDate || null"
             (ngModelChange)="onFromDateChange($event)">
         </div>
-        <div class="date-input" [class.active]="!!toDate" style="--filter-color: #8b5cf6;">
+        <div class="date-input" [class.active]="!!toDate" style="--filter-color: #8b5cf6;" (click)="openDatePicker(toDateInput)">
           <label>TO</label>
+          <span class="date-display">{{ formatDateForDisplay(toDate) }}</span>
           <input
+            #toDateInput
             type="date"
             [ngModel]="toDate"
             [attr.min]="minEventToDate || null"
@@ -224,15 +252,23 @@
       <div class="section-header">
         <h2>Saved Locations</h2>
       </div>
-      <div class="toggle-card" [class.active]="showOnlySaved" style="--filter-color: #3b82f6;">
+      <div
+        class="toggle-card"
+        role="switch"
+        tabindex="0"
+        [attr.aria-checked]="showOnlySaved"
+        [class.active]="showOnlySaved"
+        style="--filter-color: #3b82f6;"
+        (click)="showOnlySaved = !showOnlySaved; onAnyChange()"
+        (keydown.enter)="showOnlySaved = !showOnlySaved; onAnyChange()"
+        (keydown.space)="$event.preventDefault(); showOnlySaved = !showOnlySaved; onAnyChange()">
         <div class="toggle-text">
           <h3>Show Only Saved</h3>
           <p>Display only your {{ savedPostIds.length }} saved destinations</p>
         </div>
-        <label class="switch">
-          <input type="checkbox" [(ngModel)]="showOnlySaved" (ngModelChange)="onAnyChange()">
+        <button type="button" class="switch" [class.checked]="showOnlySaved" (click)="$event.stopPropagation(); showOnlySaved = !showOnlySaved; onAnyChange()" aria-label="Show only saved">
           <span class="slider round"></span>
-        </label>
+        </button>
       </div>
     </section>
 

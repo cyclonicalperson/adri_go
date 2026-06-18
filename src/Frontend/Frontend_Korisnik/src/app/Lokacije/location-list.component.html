@@ -1,11 +1,7 @@
 ﻿<div class="list-container" 
      [class.filters-open]="isFiltersOpen"
      #scrollContainer
-     (mousedown)="onMouseDown($event)"
-     (mouseup)="onMouseUp()"
-     (mouseleave)="onMouseLeave()"
-     (mousemove)="onMouseMove($event)"
-     appDragScroll axis="y-window">
+     >
 
   <div class="sticky-top">
     <div class="header-bar">
@@ -513,7 +509,7 @@
   <button
     type="button"
     class="back-to-top-btn"
-    *ngIf="showBackToTop"
+    [class.visible]="showBackToTop"
     (click)="scrollToTop()"
     [attr.aria-label]="translateLabel('Back to Top')"
     [attr.title]="translateLabel('Back to Top')">

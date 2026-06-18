@@ -1339,7 +1339,12 @@ export class LocationListComponent implements OnInit, OnDestroy {
         sourceRouteId: route.id,
       },
     );
-    this.router.navigate(['/map-home']);
+    this.router.navigate(['/map-home'], {
+      queryParams: {
+        routeId: route.id,
+        focusRoute: '1',
+      },
+    });
   }
 
   getRouteFirstImage(route: TouristRouteItem): string {

@@ -507,6 +507,25 @@ export class FiltersComponent implements OnInit, OnChanges {
     this.onAnyChange();
   }
 
+  openDatePicker(input: HTMLInputElement): void {
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker();
+        return;
+      } catch {
+        // Fallback below covers browsers that reject showPicker in edge cases.
+      }
+    }
+    input.focus();
+    input.click();
+  }
+
+  formatDateForDisplay(value: string): string {
+    const date = this.parseDateOnly(value);
+    if (!date) return 'dd.mm.yyyy.';
+    return `${date.getDate()}. ${date.getMonth() + 1}. ${date.getFullYear()}.`;
+  }
+
   formatActivityCategory(value?: string | null): string {
     if (!value) return this.translateLabel('Other');
     const readable = value

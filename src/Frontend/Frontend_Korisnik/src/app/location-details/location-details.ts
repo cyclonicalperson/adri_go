@@ -141,6 +141,71 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     return this.siteTranslate.currentLanguage;
   }
 
+  get displayAddress(): string {
+    const address = (this.location?.address || '').trim();
+    const region = (this.location?.regionName || '').trim();
+    if (!address) return region;
+
+    const parts = address
+      .split(',')
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 0) return region;
+
+    const ignored = new Set([
+      'city of kragujevac',
+      'grad kragujevac',
+      'sumadijski upravni okrug',
+      'šumadijski upravni okrug',
+      'srbija',
+      'serbia',
+      'crna gora',
+      'montenegro',
+    ]);
+    const cleaned = parts.filter(part => {
+      const normalized = part.toLowerCase();
+      return !ignored.has(normalized) && !/^\d{4,6}$/.test(normalized);
+    });
+
+    const houseNumberIndex = cleaned.findIndex(part => this.looksLikeHouseNumber(part));
+    let street = '';
+    let houseNumber = '';
+
+    if (houseNumberIndex >= 0) {
+      houseNumber = cleaned[houseNumberIndex];
+      street = cleaned[houseNumberIndex + 1] || cleaned[houseNumberIndex - 1] || '';
+    } else {
+      street = cleaned[0] || '';
+      const inlineMatch = street.match(/^(.+?)\s+(\d+[A-Za-zА-Яа-я]?(?:\/\d+)?)$/);
+      if (inlineMatch) {
+        street = inlineMatch[1].trim();
+        houseNumber = inlineMatch[2].trim();
+      }
+    }
+
+    const city = region || this.findCityPart(cleaned, street, houseNumber);
+    const displayParts = [street, houseNumber, city]
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    return displayParts.length > 0
+      ? Array.from(new Set(displayParts)).join(', ')
+      : cleaned.slice(0, 3).join(', ');
+  }
+
+  private looksLikeHouseNumber(value: string): boolean {
+    return /^\d+[A-Za-zА-Яа-я]?(?:\/\d+)?$/.test(value.trim());
+  }
+
+  private findCityPart(parts: string[], street: string, houseNumber: string): string {
+    const excluded = new Set([street.toLowerCase(), houseNumber.toLowerCase()].filter(Boolean));
+    return parts.find(part => {
+      const normalized = part.toLowerCase();
+      return !excluded.has(normalized) && !this.looksLikeHouseNumber(part);
+    }) || '';
+  }
+
   ngAfterViewInit(): void {
     // Mapa se inicijalizuje tek kad se dobiju koordinate (via timeout u ngOnInit)
   }

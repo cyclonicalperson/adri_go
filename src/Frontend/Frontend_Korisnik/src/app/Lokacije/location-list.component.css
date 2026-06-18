@@ -360,8 +360,16 @@
   color: #fff;
   box-shadow: 0 4px 16px rgba(34, 197, 94, 0.45);
   cursor: pointer;
-  transform: none;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(22px) scale(0.86);
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.back-to-top-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
 }
 
 @media (min-width: 600px) {
@@ -395,13 +403,13 @@
 }
 
 .back-to-top-btn:hover {
-  transform: translateY(-3px);
+  transform: translateY(-3px) scale(1);
   background: #16a34a;
   box-shadow: 0 8px 24px rgba(22, 163, 74, 0.5);
 }
 
 .back-to-top-btn:active {
-  transform: scale(0.93);
+  transform: translateY(0) scale(0.93);
 }
 
 .auth-modal-overlay {
@@ -704,7 +712,7 @@
 }
 .location-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
-.image-wrapper { position: relative; height: 200px; cursor: pointer; }
+.image-wrapper { position: relative; height: 200px; cursor: pointer; touch-action: manipulation; }
 .image-wrapper img { width: 100%; height: 100%; object-fit: cover; }
 
 .image-gradient {
@@ -752,7 +760,7 @@
 .action-btn:hover { transform: scale(1.08); background: #fff; }
 .action-btn svg { width: 16px; height: 16px; }
 
-.card-content { padding: 16px; cursor: pointer; }
+.card-content { padding: 16px; cursor: pointer; touch-action: manipulation; }
 
 .title-row {
   display: flex;
@@ -987,12 +995,15 @@
   scroll-snap-align: start;
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  touch-action: manipulation;
 }
 .h-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
 .h-image-wrapper {
   position: relative;
   height: 140px;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .h-image-wrapper img {
   width: 100%;
@@ -1052,6 +1063,8 @@
 
 .h-card-content {
   padding: 10px 12px 12px;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .h-card-title {
