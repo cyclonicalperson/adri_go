@@ -1,4 +1,4 @@
-﻿<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating" [class.sidebar-is-collapsed]="sidebarCollapsed">
+﻿<div class="map-wrapper" [class.filters-open]="isFiltersOpen" [class.navigating]="isNavigating || isRoutePreviewing" [class.sidebar-is-collapsed]="sidebarCollapsed">
 
   <div class="app-header">
     <button type="button" class="header-left logo-button" (click)="goHome()" aria-label="AdriGo home">
@@ -89,6 +89,7 @@
             </svg>
           </span>
           <input
+            #searchInputRef
             type="text"
             class="search-input"
             placeholder="Search locations..."
@@ -109,6 +110,12 @@
             <span>Filters</span>
             <span class="filter-badge" *ngIf="hasActiveFilters"></span>
           </button>
+        </div>
+
+        <div class="pending-route-field-banner" *ngIf="pendingRouteTarget">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <span>Search or tap a pin to set <strong>{{ pendingRouteFieldLabel }}</strong></span>
+          <button type="button" class="pending-route-field-cancel" (click)="cancelPendingRouteField()">Cancel</button>
         </div>
 
         <div class="search-suggestions" *ngIf="searchFocused && !searchQuery && searchPromptSuggestions.length > 0">
@@ -181,17 +188,6 @@
           {{ translateLabel(cat.label) }}
         </button>
       </div>
-
-      <button
-        class="builder-mode-pill"
-        *ngIf="!isNavigating && (plannerMode || showRoutePanel)"
-        [class.builder-off]="!plannerMode"
-        [class.builder-hidden]="sheetExpanded || isFiltersOpen"
-        (click)="togglePlannerMode()">
-        <span class="builder-mode-dot"></span>
-        Route builder {{ plannerMode ? 'on' : 'off' }}
-        <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17-1.42 1.42A6.92 6.92 0 0 1 19 12a7 7 0 1 1-11.41-5.41L6.17 5.17A9 9 0 1 0 21 12a8.94 8.94 0 0 0-3.17-6.83z"/></svg>
-      </button>
     </div>
 
     <div class="top-ui-layer" 
@@ -231,20 +227,24 @@
 
       <app-trip-planner-panel
         [isNavigating]="isNavigating"
-        [plannerMode]="plannerMode"
         [plannerStops]="plannerStops"
+        [fromOverride]="fromOverride"
+        [activeFieldTarget]="pendingRouteTarget"
         [scenicMode]="scenicMode"
         [travelMode]="travelMode"
         [routeSummary]="routeSummary"
         [plannerMessage]="plannerMessage"
         [isRenderingRoute]="isRenderingRoute"
         [isSavingTrip]="isSavingTrip"
-        (plannerModeToggled)="togglePlannerMode()"
+        [navigationActionLabel]="navigationActionLabel"
         (travelModeSelected)="setTravelMode($event)"
         (scenicModeToggled)="toggleScenicMode()"
         (stopFocused)="focusOnPlannerStop($event)"
-        (stopMoved)="movePlannerStop($event.index, $event.direction)"
+        (routePointMoved)="moveRoutePoint($event.index, $event.direction)"
         (stopRemoved)="removePlannerStop($event)"
+        (fromRemoved)="removeFromOverride()"
+        (endsSwapped)="swapRouteEnds()"
+        (fieldActivated)="activateRouteField($event)"
         (plannerOptimized)="optimizePlannerStops()"
         (tripSaved)="saveTripToCalendar()"
         (tripShared)="shareTrip()"
@@ -286,7 +286,7 @@
 
   <!-- ── CHAT FAB ── -->
   <div class="chat-fab-wrap"
-       [class.chat-fab-hidden]="isNavigating || sheetExpanded || isFiltersOpen || isChatOpen">
+       [class.chat-fab-hidden]="isNavigating || isRoutePreviewing || sheetExpanded || isFiltersOpen || isChatOpen">
     <div class="chat-fab-hint" *ngIf="showChatHint">
       <button type="button"
               class="chat-hint-close"
@@ -310,7 +310,7 @@
   <!-- ── LOCATE-ME FAB ── -->
   <button class="locate-btn"
           [class.locate-loading]="isLocating"
-          [class.locate-hidden]="isNavigating || sheetExpanded || isFiltersOpen"
+          [class.locate-hidden]="isNavigating || isRoutePreviewing || sheetExpanded || isFiltersOpen"
           [class.locate-refollow]="isNavigating && !navFollowMode"
           (click)="locateMeOrRefollow()"
           aria-label="Show my location">
@@ -389,12 +389,13 @@
   </div>
 
   <app-map-navigation-panel
-    *ngIf="isNavigating"
+    *ngIf="isNavigating || isRoutePreviewing"
     [steps]="navigationSteps"
     [routeGeometry]="navigationRouteGeometry"
     [travelMode]="travelMode"
     [totalDistanceKm]="routeSummary.distanceKm"
     [totalDurationMin]="routeSummary.durationMin"
+    [previewMode]="isRoutePreviewing"
     (positionUpdated)="onNavigationPositionUpdated($event)"
     (mapRotationUpdated)="onNavigationMapRotation($event)"
     (routeTrailUpdated)="onNavigationRouteTrailUpdated($event)"

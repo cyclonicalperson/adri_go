@@ -11,6 +11,8 @@ export type ObjectCategory =
   | 'NATURE'
   | 'OTHER';
 
+export type OpeningHoursSchedule = Record<string, string>;
+
 export interface TouristObject {
   objectId: number;
   // DB uses region_id — destinationId kept for backward compatibility
@@ -28,6 +30,7 @@ export interface TouristObject {
   phone: string;
   website: string;
   workingHours: string;
+  workingHoursSchedule?: OpeningHoursSchedule | null;
   createdBy: number;
   createdAt: string;
   // API may return either destination (old) or region (new DB)
@@ -52,7 +55,7 @@ export interface CreateObjectRequest {
   longitude: number;
   phone?: string;
   website?: string;
-  workingHours?: string;
+  workingHours?: string | OpeningHoursSchedule | null;
   activityIds?: number[];
   media?: Media[];
 }

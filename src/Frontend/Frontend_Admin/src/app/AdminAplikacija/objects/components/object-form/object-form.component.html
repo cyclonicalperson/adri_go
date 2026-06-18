@@ -91,7 +91,7 @@
           }
         </div>
 
-        <div class="row-3">
+        <div class="row-2">
           <div class="field">
             <label class="label">Telefon</label>
             <input class="input" [class.invalid]="f('phone').invalid && f('phone').touched"
@@ -108,12 +108,47 @@
             <div class="field-error">URL mora počinjati sa https:// ili http://</div>
             }
           </div>
-          <div class="field">
-            <label class="label">Radno vreme</label>
-            <input class="input" [class.invalid]="f('workingHours').invalid && f('workingHours').touched"
-                   formControlName="workingHours" placeholder="08:00–22:00" />
-            @if (f('workingHours').hasError('pattern') && f('workingHours').touched) {
-            <div class="field-error">Format: 08:00–22:00 ili Non-stop</div>
+        </div>
+
+        <div class="field working-hours-field" formGroupName="workingHours">
+          <div class="working-hours-head">
+            <label class="label">Radno vreme po danima</label>
+            <div class="working-hours-actions">
+              <button type="button" class="mini-action" (click)="applyMondayHoursToAll()">Kopiraj ponedeljak</button>
+              <button type="button" class="mini-action danger" (click)="clearWorkingHours()">Obrisi</button>
+            </div>
+          </div>
+          <div class="working-hours-grid">
+            @for (day of workingDayOptions; track day.key) {
+            <div class="working-day-row" [formGroupName]="day.key">
+              <label class="day-toggle">
+                <input type="checkbox" formControlName="enabled" />
+                <span>{{ day.label }}</span>
+              </label>
+              @if (isWorkingDayEnabled(day.key)) {
+              <div class="time-range">
+                <input
+                  class="input time-input"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="5"
+                  [placeholder]="timePlaceholder"
+                  formControlName="open"
+                  (blur)="normalizeWorkingTime(day.key, 'open')" />
+                <span class="time-separator">-</span>
+                <input
+                  class="input time-input"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="5"
+                  [placeholder]="timePlaceholder"
+                  formControlName="close"
+                  (blur)="normalizeWorkingTime(day.key, 'close')" />
+              </div>
+              } @else {
+              <span class="closed-label">Zatvoreno</span>
+              }
+            </div>
             }
           </div>
         </div>

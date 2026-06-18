@@ -1,17 +1,125 @@
-<div class="planner-panel" [class.builder-mode]="plannerMode">
+<div class="planner-panel">
   <div class="planner-header">
     <div>
       <span class="planner-label">Trip planner</span>
-      <h3>Build a route from real destination pins</h3>
+      <h3>Build a route, stop by stop</h3>
     </div>
-    <button *ngIf="!isNavigating" type="button" class="planner-toggle" [class.active]="plannerMode" (click)="plannerModeToggled.emit()">
-      {{ plannerMode ? 'Builder on' : 'Tap pins' }}
-    </button>
   </div>
 
-  <p class="planner-subtitle" *ngIf="plannerStops.length === 0">
-    Activate the builder and tap destinations on the map to add them as ordered stops.
+  <p class="planner-subtitle" *ngIf="plannerStops.length === 0 && !fromOverride">
+    Search a destination above, tap <strong>Add stop</strong> on a location card, or use the fields below to plan your route.
   </p>
+
+  <!-- From / Stops / To with connector rail -->
+  <div class="route-builder" [class.route-builder-has-from-override]="fromOverride">
+    <div class="route-rows">
+      <div class="rail-line" aria-hidden="true"></div>
+
+      <!-- FROM -->
+      <div class="route-row">
+        <span class="rail-icon">
+          <span class="from-dot" *ngIf="!fromOverride" aria-hidden="true"></span>
+          <span class="stop-number from-number" *ngIf="fromOverride">A</span>
+        </span>
+        <button
+          type="button"
+          class="route-field route-field-button"
+          [class.route-field-active]="isFromActive"
+          (click)="fieldActivated.emit({ kind: 'from' })">
+          <ng-container *ngIf="!fromOverride">
+            <span class="route-field-title route-field-placeholder-text">Your location</span>
+          </ng-container>
+          <ng-container *ngIf="fromOverride as from">
+            <span class="route-field-title">{{ from.title }}</span>
+            <span class="route-field-meta" *ngIf="formatPostType(from.postType) || from.regionName">
+              {{ formatPostType(from.postType) || 'Destination' }}<ng-container *ngIf="from.regionName"> &middot; {{ from.regionName }}</ng-container>
+            </span>
+          </ng-container>
+        </button>
+        <div class="route-field-actions">
+          <button type="button" *ngIf="fromOverride" class="danger" (click)="fromRemoved.emit(); $event.stopPropagation()" aria-label="Remove starting point">&#10005;</button>
+          <ng-container *ngIf="showMoveButtons">
+            <button type="button" disabled aria-label="Move up">&#8593;</button>
+            <button type="button" (click)="routePointMoved.emit({ index: 0, direction: 'down' }); $event.stopPropagation()" aria-label="Move down">&#8595;</button>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- INTERMEDIATE STOPS -->
+      <div class="route-row" *ngFor="let stop of intermediateStops; let i = index; trackBy: trackByStopId">
+        <span class="rail-icon">
+          <span class="stop-number">{{ i + 1 }}</span>
+        </span>
+        <button
+          type="button"
+          class="route-field route-field-button"
+          [class.route-field-active]="isStopActive(stop.id)"
+          (click)="fieldActivated.emit({ kind: 'stop', stopId: stop.id })">
+          <span class="route-field-title">{{ stop.title }}</span>
+          <span class="route-field-meta" *ngIf="formatPostType(stop.postType) || stop.regionName">
+            {{ formatPostType(stop.postType) || 'Destination' }}<ng-container *ngIf="stop.regionName"> &middot; {{ stop.regionName }}</ng-container>
+          </span>
+        </button>
+        <div class="route-field-actions">
+          <ng-container *ngIf="showMoveButtons">
+            <button type="button" (click)="routePointMoved.emit({ index: i + 1, direction: 'up' }); $event.stopPropagation()" aria-label="Move up">&#8593;</button>
+            <button type="button" (click)="routePointMoved.emit({ index: i + 1, direction: 'down' }); $event.stopPropagation()" aria-label="Move down">&#8595;</button>
+          </ng-container>
+          <button type="button" class="danger" (click)="stopRemoved.emit(stop.id); $event.stopPropagation()" aria-label="Remove stop">&#10005;</button>
+        </div>
+      </div>
+
+      <!-- ADD A STOP -->
+      <div class="route-row" *ngIf="destinationStop">
+        <span class="rail-icon">
+          <span class="add-stop-icon" aria-hidden="true">+</span>
+        </span>
+        <button
+          type="button"
+          class="route-field route-field-button route-field-add-stop"
+          [class.route-field-active]="isNewStopActive"
+          (click)="fieldActivated.emit({ kind: 'new-stop' })">
+          <span class="route-field-title route-field-placeholder-text">Add a stop</span>
+        </button>
+      </div>
+
+      <!-- TO (destination) -->
+      <div class="route-row">
+        <span class="rail-icon">
+          <svg class="to-pin" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </span>
+        <button
+          type="button"
+          class="route-field route-field-button route-field-destination"
+          [class.route-field-active]="isToActive"
+          (click)="fieldActivated.emit({ kind: 'to' })">
+          <ng-container *ngIf="destinationStop as stop; else noDestination">
+            <span class="route-field-title">{{ stop.title }}</span>
+            <span class="route-field-meta" *ngIf="formatPostType(stop.postType) || stop.regionName">
+              {{ formatPostType(stop.postType) || 'Destination' }}<ng-container *ngIf="stop.regionName"> &middot; {{ stop.regionName }}</ng-container>
+            </span>
+          </ng-container>
+          <ng-template #noDestination>
+            <span class="route-field-title route-field-placeholder-text">Choose destination</span>
+          </ng-template>
+        </button>
+        <div class="route-field-actions">
+          <ng-container *ngIf="showMoveButtons">
+            <button type="button" (click)="routePointMoved.emit({ index: plannerStops.length, direction: 'up' }); $event.stopPropagation()" aria-label="Move up">&#8593;</button>
+            <button type="button" disabled aria-label="Move down">&#8595;</button>
+          </ng-container>
+          <button type="button" *ngIf="destinationStop as stop" class="danger" (click)="stopRemoved.emit(stop.id); $event.stopPropagation()" aria-label="Remove destination">&#10005;</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SWAP -->
+    <button type="button" class="swap-btn" *ngIf="canSwapEnds" (click)="endsSwapped.emit()" aria-label="Swap start and end of route" title="Swap From and To">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-1v-3H22V8h-7.01V5L11 9l3.99 4z"/></svg>
+    </button>
+  </div>
 
   <div class="planner-controls">
     <div class="travel-mode-switch">
@@ -53,29 +161,11 @@
     Updating your route...
   </div>
 
-  <div class="planner-stop-list" *ngIf="plannerStops.length > 0">
-    <div class="planner-stop-card" *ngFor="let stop of plannerStops; let i = index; trackBy: trackByStopId">
-      <button type="button" class="stop-order" (click)="stopFocused.emit(stop)">{{ i + 1 }}</button>
-      <div class="stop-info">
-        <div class="stop-title">{{ stop.title }}</div>
-        <div class="stop-meta">
-          <span>{{ formatPostType(stop.postType) || 'Destination' }}</span>
-          <span *ngIf="stop.regionName">&middot; {{ stop.regionName }}</span>
-        </div>
-      </div>
-      <div class="stop-actions">
-        <button type="button" (click)="stopMoved.emit({ index: i, direction: 'up' })" [disabled]="i === 0">&#8593;</button>
-        <button type="button" (click)="stopMoved.emit({ index: i, direction: 'down' })" [disabled]="i === plannerStops.length - 1">&#8595;</button>
-        <button type="button" class="danger" (click)="stopRemoved.emit(stop.id)">&#10005;</button>
-      </div>
-    </div>
-  </div>
-
   <div class="planner-actions" *ngIf="plannerStops.length > 0">
     <!-- Primary: Navigate — full-width hero button -->
     <button type="button" class="action-navigate" (click)="navigationStarted.emit()">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 3.41 1.97 6.36 4.86 7.72L12 22l2.14-5.28C17.03 15.36 19 12.41 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-      Start Navigation
+      {{ navigationActionLabel }}
     </button>
 
     <!-- Secondary row: Optimize + Save -->

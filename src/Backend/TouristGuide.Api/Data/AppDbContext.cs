@@ -126,6 +126,18 @@ namespace TouristGuide.Api.Data
             modelBuilder.Entity<Region>()
                 .HasIndex(x => new { x.Name, x.Country });
 
+            modelBuilder.Entity<Post>()
+                .HasIndex(x => new { x.Status, x.PostType, x.RegionId });
+
+            modelBuilder.Entity<Post>()
+                .HasIndex(x => new { x.Status, x.Country });
+
+            modelBuilder.Entity<Post>()
+                .HasIndex(x => new { x.Status, x.CreatedAt });
+
+            modelBuilder.Entity<Post>()
+                .HasIndex(x => new { x.Lat, x.Lng });
+
             // ════════════════════════════════════════════════════════════════
             //  PostTag — kompozitni PK (bez surrogate ključa)
             // ════════════════════════════════════════════════════════════════

@@ -4,6 +4,12 @@ import { EMPTY, Observable } from 'rxjs';
 import { expand, map, reduce } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
+export interface LocationTagItem {
+  id: number;
+  name: string;
+  category?: string | null;
+}
+
 export interface Location {
   id: number;
   adminId: number;
@@ -44,6 +50,7 @@ export interface Location {
   distanceKm?: number | null;
   tagIds?: number[];
   tagNames?: string[];
+  tagItems?: LocationTagItem[];
 }
 
 export interface LocationsResponse {

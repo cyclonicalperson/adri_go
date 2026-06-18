@@ -11,6 +11,8 @@ import { ActivitiesSelectorComponent } from '../activities-selector/activities-s
 import { PostImagePickerComponent } from '@shared/components/post-image-picker/post-image-picker.component';
 import { DEFAULT_COUNTRY, WORLD_COUNTRIES } from '@shared/data/world-countries';
 
+type WorkingDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
 @Component({
   selector: 'app-object-form',
   imports: [
@@ -33,6 +35,17 @@ export class ObjectFormComponent implements OnInit {
   selectedActivityIds: number[] = [];
   formImages: string[] = [];
   readonly countries = WORLD_COUNTRIES;
+  readonly timePlaceholder = 'HH:mm';
+  readonly workingDayOptions: { key: WorkingDayKey; label: string }[] = [
+    { key: 'mon', label: 'Ponedeljak' },
+    { key: 'tue', label: 'Utorak' },
+    { key: 'wed', label: 'Sreda' },
+    { key: 'thu', label: 'Četvrtak' },
+    { key: 'fri', label: 'Petak' },
+    { key: 'sat', label: 'Subota' },
+    { key: 'sun', label: 'Nedelja' },
+  ];
+  private readonly timeValidator = Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/);
   private originalCategory: ObjectCategory | null = null;
   resolvingAddress = false;
   submitted = false;
@@ -73,7 +86,7 @@ export class ObjectFormComponent implements OnInit {
       longitude: [null, [Validators.required, Validators.min(-180), Validators.max(180)]],
       phone: ['', [Validators.pattern(/^(\+?[0-9\s\-\(\)]{6,20})?$/)]],
       website: ['', [Validators.pattern(/^(https?:\/\/[^\s]+)?$/)]],
-      workingHours: ['', [Validators.pattern(/^([0-2]?[0-9]:[0-5][0-9]\s*[–\-]\s*[0-2]?[0-9]:[0-5][0-9]|Non[\-\s]stop|Nonstop|24\/7)?$/i)]],
+      workingHours: this.buildWorkingHoursForm(),
     });
 
     this.destService.getAll({ page: 1, pageSize: 200 }).subscribe(res => {
@@ -112,8 +125,8 @@ export class ObjectFormComponent implements OnInit {
           longitude: o.longitude,
           phone: o.phone,
           website: o.website,
-          workingHours: o.workingHours,
         });
+        this.patchWorkingHours((o as any).workingHoursSchedule ?? o.workingHours);
         this.selectedActivityIds = o.activities?.map((a: any) => a.activityId) ?? [];
         this.formImages = (o.media ?? []).map(m => m.url).filter(url => !!url);
       });
@@ -138,14 +151,15 @@ export class ObjectFormComponent implements OnInit {
       return;
     }
 
-    const proposedRegionName = this.normalizeProposedRegionName(this.form.value.proposedRegionName);
-    if (this.form.value.regionId && proposedRegionName) {
+    const formValue = this.form.getRawValue();
+    const proposedRegionName = this.normalizeProposedRegionName(formValue.proposedRegionName);
+    if (formValue.regionId && proposedRegionName) {
       this.error = 'Ne mozete istovremeno izabrati region i poslati predlog novog regiona.';
       return;
     }
     const scopeRegionId = proposedRegionName ? undefined : this.selectedRegionIdForPermission;
     if (!this.auth.hasPermission('manage_own_posts', scopeRegionId) ||
-        !this.canUseCategory(this.form.value.category, scopeRegionId)) {
+        !this.canUseCategory(formValue.category, scopeRegionId)) {
       this.error = 'Nemate dozvolu za kreiranje ili promenu ove kategorije u izabranom regionu.';
       return;
     }
@@ -154,10 +168,12 @@ export class ObjectFormComponent implements OnInit {
     this.error = null;
 
     const media = this.formImages.map((url, idx) => ({ mediaId: idx + 1, url, sortOrder: idx, caption: undefined }));
+    const { workingHours, ...payloadValues } = formValue;
     const payload = {
-      ...this.form.value,
-      regionId: proposedRegionName ? null : this.form.value.regionId,
+      ...payloadValues,
+      regionId: proposedRegionName ? null : formValue.regionId,
       proposedRegionName,
+      workingHours: this.buildWorkingHoursPayload(),
       activityIds: this.selectedActivityIds,
       media,
     };
@@ -174,6 +190,43 @@ export class ObjectFormComponent implements OnInit {
 
   cancel(): void { this.router.navigate(['/admin/lokacije']); }
   f(name: string) { return this.form.get(name)!; }
+
+  workingDayGroup(key: WorkingDayKey): FormGroup {
+    return this.form.get(['workingHours', key]) as FormGroup;
+  }
+
+  isWorkingDayEnabled(key: WorkingDayKey): boolean {
+    return !!this.workingDayGroup(key).get('enabled')?.value;
+  }
+
+  applyMondayHoursToAll(): void {
+    const source = this.workingDayGroup('mon').getRawValue();
+    this.workingDayOptions.forEach(day => {
+      this.workingDayGroup(day.key).patchValue({
+        enabled: source.enabled,
+        open: source.open || '09:00',
+        close: source.close || '17:00',
+      });
+    });
+  }
+
+  normalizeWorkingTime(day: WorkingDayKey, field: 'open' | 'close'): void {
+    const control = this.workingDayGroup(day).get(field);
+    const normalized = this.normalizeTimeInput(control?.value);
+    if (normalized) {
+      control?.setValue(normalized);
+    }
+  }
+
+  clearWorkingHours(): void {
+    this.workingDayOptions.forEach(day => {
+      this.workingDayGroup(day.key).patchValue({
+        enabled: false,
+        open: '09:00',
+        close: '17:00',
+      });
+    });
+  }
 
   canUseCategory(category: ObjectCategory, regionId?: number | null): boolean {
     if (this.auth.isSuperAdmin) {
@@ -350,6 +403,107 @@ export class ObjectFormComponent implements OnInit {
 
   private normalizeProposedRegionName(value: unknown): string | null {
     return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private buildWorkingHoursForm(): FormGroup {
+    const controls = this.workingDayOptions.reduce((acc, day) => {
+      acc[day.key] = this.fb.group({
+        enabled: [false],
+        open: ['09:00', [this.timeValidator]],
+        close: ['17:00', [this.timeValidator]],
+      });
+      return acc;
+    }, {} as Record<WorkingDayKey, FormGroup>);
+
+    return this.fb.group(controls);
+  }
+
+  private buildWorkingHoursPayload(): Record<string, string> | null {
+    const hasAnyOpenDay = this.workingDayOptions.some(day => this.isWorkingDayEnabled(day.key));
+    if (!hasAnyOpenDay) return null;
+
+    return this.workingDayOptions.reduce((schedule, day) => {
+      const group = this.workingDayGroup(day.key).getRawValue();
+      schedule[day.key] = group.enabled
+        ? `${this.normalizeTimeInput(group.open) || '09:00'}-${this.normalizeTimeInput(group.close) || '17:00'}`
+        : 'closed';
+      return schedule;
+    }, {} as Record<string, string>);
+  }
+
+  private normalizeTimeInput(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const cleaned = value.trim().replace('.', ':');
+    const match = cleaned.match(/^(\d{1,2}):(\d{1,2})$/);
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+    if (hours === 24 && minutes === 0) return '24:00';
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  private patchWorkingHours(value: unknown): void {
+    const schedule = this.parseWorkingHoursSchedule(value);
+    if (!schedule) {
+      this.clearWorkingHours();
+      return;
+    }
+
+    this.workingDayOptions.forEach(day => {
+      const hours = schedule[day.key];
+      if (!hours || hours === 'closed') {
+        this.workingDayGroup(day.key).patchValue({ enabled: false });
+        return;
+      }
+
+      const [open, close] = hours.split('-').map(part => part.trim());
+      this.workingDayGroup(day.key).patchValue({
+        enabled: true,
+        open: open || '09:00',
+        close: close || '17:00',
+      });
+    });
+  }
+
+  private parseWorkingHoursSchedule(value: unknown): Record<string, string> | null {
+    if (!value) return null;
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const source = value as Record<string, unknown>;
+      if (typeof source['text'] === 'string') return this.buildScheduleFromLegacyText(source['text']);
+      return Object.fromEntries(
+        Object.entries(source)
+          .filter(([, hours]) => typeof hours === 'string' && hours.trim())
+          .map(([day, hours]) => [day, String(hours).trim()])
+      );
+    }
+
+    if (typeof value === 'string') {
+      const text = value.trim();
+      if (!text) return null;
+      try {
+        return this.parseWorkingHoursSchedule(JSON.parse(text));
+      } catch {
+        return this.buildScheduleFromLegacyText(text);
+      }
+    }
+
+    return null;
+  }
+
+  private buildScheduleFromLegacyText(text: string): Record<string, string> | null {
+    const normalized = text.trim();
+    if (!normalized) return null;
+
+    const hours = /^(non[\-\s]?stop|24\/7)$/i.test(normalized)
+      ? '00:00-24:00'
+      : normalized.replace(/\s*[–-]\s*/g, '-');
+
+    if (!/^\d{1,2}:\d{2}-\d{1,2}:\d{2}$/.test(hours)) return null;
+    return Object.fromEntries(this.workingDayOptions.map(day => [day.key, hours]));
   }
 
   private createPermissionForCategory(category: ObjectCategory): string | null {

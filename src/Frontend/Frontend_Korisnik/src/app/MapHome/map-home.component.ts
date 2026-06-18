@@ -17,7 +17,7 @@ import { FilterStateService, FilterState, FilterContentType } from '../services/
 import { SearchStateService } from '../services/search-state.service';
 import { GeolocationService, UserPosition } from '../services/geolocation.service';
 import { UserService, CalendarItem, UserProfile, ServerPreferences, PendingSchedule } from '../services/user.service';
-import { PlannerStop, RoutePlannerService } from '../services/route-planner.service';
+import { PlannerStop, RoutePlannerService, RouteFieldTarget } from '../services/route-planner.service';
 import { ComputedRoute, NavigationStep, RoutingService, RouteSummary, isRoutingUnavailableError } from '../services/routing.service';
 import { TravelMode, TouristPreferencesService } from '../services/tourist-preferences.service';
 import { TouristAnalyticsService } from '../services/tourist-analytics.service';
@@ -144,6 +144,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly searchDropdownLimit = 8;
   private searchMatchedLocationIds = new Set<number>();
   private searchMatchedRouteIds = new Set<number>();
+  private lastRenderedLocationPinIds = new Set<number>();
+  private lastRenderedRoutePinIds = new Set<number>();
+  private searchLoadingLocationPinIds = new Set<number>();
+  private searchLoadingRoutePinIds = new Set<number>();
+  private searchLoadingSnapshotActive = false;
   private searchTotalMatchCount = 0;
 
   showAuthPopup = false;
@@ -169,6 +174,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   activitiesList: TouristActivityItem[] = [];
   publicRoutes: TouristRouteItem[] = [];
   plannerStops: PlannerStop[] = [];
+  /** Custom "From" location override; null = route starts from the user's GPS. */
+  fromOverride: PlannerStop | null = null;
+  /** Which From/Stop/To field is currently waiting for a search/pin selection. */
+  pendingRouteTarget: RouteFieldTarget | null = null;
   scenicSuggestions: RouteDetourSuggestion[] = [];
   plannerMessage = '';
   plannerMode = false;
@@ -188,6 +197,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ─── Navigation state ────────────────────────────────────────────────────
   isNavigating = false;
+  isRoutePreviewing = false;
   navigationSteps: NavigationStep[] = [];
   navigationRouteGeometry: [number, number][] = [];
 
@@ -308,7 +318,15 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get showScenicDetourPinNotice(): boolean {
-    return this.showScenicDetourMapPopup && !this.isNavigating && this.scenicSuggestions.length > 0;
+    return this.showScenicDetourMapPopup && !this.isNavigating && !this.isRoutePreviewing && this.scenicSuggestions.length > 0;
+  }
+
+  get navigationActionLabel(): string {
+    return this.routeStartsFromCurrentLocation ? 'Start Navigation' : 'Explore Route';
+  }
+
+  get routeStartsFromCurrentLocation(): boolean {
+    return !this.fromOverride || this.isCurrentLocationStop(this.fromOverride);
   }
 
   get scenicDetourPinCount(): number {
@@ -377,6 +395,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get hasSearchMatches(): boolean {
     return this.searchMatchedLocationIds.size > 0 || this.searchMatchedRouteIds.size > 0;
+  }
+
+  /** Human-readable label for the route field currently waiting for a selection. */
+  get pendingRouteFieldLabel(): string {
+    if (!this.pendingRouteTarget) return '';
+    switch (this.pendingRouteTarget.kind) {
+      case 'from': return 'your starting point';
+      case 'to': return 'your destination';
+      case 'new-stop': return 'a new stop';
+      case 'stop': return 'this stop';
+      default: return '';
+    }
   }
 
   // ─── Category colors (used for map pins AND chip active state) ───────────
@@ -635,11 +665,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private syncPlannerStateFromServices(): void {
     const plan = this.routePlanner.snapshot;
+    const fromOverride = this.isCurrentLocationStop(plan.fromOverride)
+      ? null
+      : plan.fromOverride;
+    if (plan.fromOverride && !fromOverride) {
+      this.routePlanner.setFromOverride(null);
+    }
     this.plannerStops = plan.stops;
+    this.fromOverride = fromOverride;
     this.plannerMode = plan.plannerMode;
     this.scenicMode = plan.scenicMode;
     this.travelMode = plan.travelMode || this.preferences.snapshot.preferredTravelMode;
-    this.showRoutePanel = this.plannerStops.length > 0;
+    this.showRoutePanel = this.plannerStops.length > 0 || !!this.fromOverride;
     this.routeDestTitle = this.getRouteTitle();
   }
 
@@ -827,10 +864,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private flyToVisibleMapCenter(latLng: L.LatLngExpression, zoom: number): void {
+  private flyToVisibleMapCenter(latLng: L.LatLngExpression, zoom: number, animate = true): void {
     if (!this.map) return;
 
-    this.map.flyTo(latLng, zoom, { animate: true, duration: 0.55 });
+    this.map.flyTo(latLng, zoom, { animate, duration: animate ? 0.55 : 0 });
   }
 
   focusOnPlannerStop(stop: PlannerStop): void {
@@ -941,11 +978,239 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderPlannerRoute();
   }
 
-  movePlannerStop(index: number, direction: 'up' | 'down'): void {
+  /**
+   * Clears the custom "From" location. Per the route-builder rules, the
+   * first remaining stop (if any) is promoted to become the new starting
+   * point, so the route keeps a valid origin without falling back to GPS.
+   */
+  removeFromOverride(): void {
     this.focusedRouteMode = false;
     this.dismissScenicDetourMapPopup(true);
+
+    if (this.plannerStops.length > 0) {
+      const [promoted, ...rest] = this.plannerStops;
+      this.routePlanner.replaceStops(rest, {
+        plannerMode: true,
+        scenicMode: this.scenicMode,
+        travelMode: this.travelMode,
+        fromOverride: promoted,
+      });
+    } else {
+      this.routePlanner.setFromOverride(null);
+    }
+
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+  }
+
+  /**
+   * Activates a From/Stop/To field for editing: focuses the main search bar
+   * so the user can type a query, and remembers which field a search result
+   * or map-pin tap should be applied to.
+   */
+  activateRouteField(target: RouteFieldTarget): void {
+    this.pendingRouteTarget = target;
+    this.searchFocused = true;
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      const input = this.searchInputRef?.nativeElement;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 0);
+  }
+
+  /** Cancels the pending route-field selection without changing the route. */
+  cancelPendingRouteField(): void {
+    this.pendingRouteTarget = null;
+    this.dismissSearchMenu();
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Applies a chosen location (from search or a map pin) to whichever
+   * From/Stop/To field is currently pending, per the active RouteFieldTarget.
+   */
+  private applyLocationToRouteField(location: Location, target: RouteFieldTarget): void {
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
+
+    switch (target.kind) {
+      case 'from': {
+        this.routePlanner.setFromOverride(location);
+        this.plannerMessage = `${location.title} set as starting point.`;
+        break;
+      }
+      case 'to': {
+        if (this.plannerStops.length > 0) {
+          // Replace the current destination (last stop) with the new one.
+          const withoutLast = this.plannerStops.slice(0, -1);
+          this.routePlanner.replaceStops([...withoutLast, location], {
+            plannerMode: true,
+            scenicMode: this.scenicMode,
+            travelMode: this.travelMode,
+            fromOverride: this.fromOverride,
+          });
+        } else {
+          this.routePlanner.addStop(location);
+        }
+        this.plannerMessage = `${location.title} set as destination.`;
+        break;
+      }
+      case 'stop': {
+        const index = this.plannerStops.findIndex(stop => stop.id === target.stopId);
+        if (index === -1) {
+          this.routePlanner.addStop(location);
+        } else {
+          const next = [...this.plannerStops];
+          next.splice(index, 1, location as unknown as PlannerStop);
+          this.routePlanner.replaceStops(next, {
+            plannerMode: true,
+            scenicMode: this.scenicMode,
+            travelMode: this.travelMode,
+            fromOverride: this.fromOverride,
+          });
+        }
+        this.plannerMessage = `Stop updated to ${location.title}.`;
+        break;
+      }
+      case 'new-stop': {
+        // Insert before the destination (last stop) so the new stop becomes
+        // an intermediate waypoint rather than replacing the destination.
+        const insertAfterIndex = this.plannerStops.length > 1
+          ? this.plannerStops.length - 2
+          : undefined;
+        this.routePlanner.addStop(location, { insertAfterIndex });
+        this.plannerMessage = `${location.title} added to your trip.`;
+        break;
+      }
+    }
+
+    this.routePlanner.setPlannerMode(true);
+    this.pendingRouteTarget = null;
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.plannerMessage = '';
+      this.cdr.detectChanges();
+    }, 2800);
+  }
+
+  /**
+   * Creates a snapshot "Your location" stop from the user's current GPS
+   * position, used when "Your location" needs to become a concrete point in
+   * the route (e.g. after a swap or reorder pushes it out of the From slot).
+   */
+  private createYourLocationStop(): PlannerStop | null {
+    if (!this.userPosition) {
+      return null;
+    }
+    return {
+      id: -1,
+      title: 'Your location',
+      postType: 'current_location',
+      lat: this.userPosition[0],
+      lng: this.userPosition[1],
+    };
+  }
+
+  private isCurrentLocationStop(stop: PlannerStop | null | undefined): boolean {
+    if (!stop) return false;
+    return stop.postType === 'current_location'
+      || (stop.id === -1 && stop.title.trim().toLowerCase() === 'your location');
+  }
+
+  /**
+   * Swaps the start and end of the route. Only meaningful when there are
+   * exactly two points total (From + To, no intermediate stops).
+   *
+   * - If "From" is a custom location (fromOverride), it swaps directly with
+   *   the single stop ("To").
+   * - If "From" is "Your location" (GPS), the current position is snapshot
+   *   into a stop that becomes the new "To", and the old single stop becomes
+   *   the new "From" (fromOverride).
+   */
+  swapRouteEnds(): void {
+    if (this.plannerStops.length !== 1) {
+      return;
+    }
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
+
+    const onlyStop = this.plannerStops[0];
+
+    if (this.fromOverride) {
+      this.routePlanner.replaceStops([this.fromOverride], {
+        plannerMode: true,
+        scenicMode: this.scenicMode,
+        travelMode: this.travelMode,
+        fromOverride: onlyStop,
+      });
+    } else {
+      const yourLocationStop = this.createYourLocationStop();
+      if (!yourLocationStop) {
+        return;
+      }
+      this.routePlanner.replaceStops([yourLocationStop], {
+        plannerMode: true,
+        scenicMode: this.scenicMode,
+        travelMode: this.travelMode,
+        fromOverride: onlyStop,
+      });
+    }
+
+    this.syncPlannerStateFromServices();
+    this.renderPlannerRoute();
+  }
+
+  /**
+   * Reorders the whole route (From, intermediate stops, To) by moving the
+   * point at the given virtual index up or down by one position.
+   *
+   * Virtual indices: 0 = From, 1..plannerStops.length = stops (last = To).
+   * The virtual array is [from-or-snapshot, ...plannerStops]; after the move,
+   * position 0 becomes the new fromOverride (or null if it's still the
+   * "Your location" placeholder — which only happens if nothing moved), and
+   * the rest becomes plannerStops.
+   */
+  moveRoutePoint(index: number, direction: 'up' | 'down'): void {
+    const total = 1 + this.plannerStops.length;
     const target = direction === 'up' ? index - 1 : index + 1;
-    this.routePlanner.moveStop(index, target);
+    if (index < 0 || index >= total || target < 0 || target >= total) {
+      return;
+    }
+
+    this.focusedRouteMode = false;
+    this.dismissScenicDetourMapPopup(true);
+
+    // Build the virtual array. Position 0 is either the custom fromOverride
+    // or a snapshot of "Your location" (so it can participate in reordering).
+    const fromPoint = this.fromOverride ?? this.createYourLocationStop();
+    if (!fromPoint) {
+      return;
+    }
+    const virtual: PlannerStop[] = [fromPoint, ...this.plannerStops];
+    const wasSnapshot = !this.fromOverride;
+
+    [virtual[index], virtual[target]] = [virtual[target], virtual[index]];
+
+    // If position 0 is still the GPS snapshot we just created (i.e. "Your
+    // location" never moved out of the From slot), keep using live GPS
+    // instead of freezing it as a fromOverride.
+    const newFromIsStillSnapshot = wasSnapshot && virtual[0] === fromPoint;
+    const newFrom = newFromIsStillSnapshot ? null : virtual[0];
+    const newStops = virtual.slice(1);
+
+    this.routePlanner.replaceStops(newStops, {
+      plannerMode: true,
+      scenicMode: this.scenicMode,
+      travelMode: this.travelMode,
+      fromOverride: newFrom,
+    });
+
     this.syncPlannerStateFromServices();
     this.renderPlannerRoute();
   }
@@ -999,7 +1264,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   async changeNavigationMode(mode: TravelMode): Promise<void> {
     if (this.travelMode === mode) return;
 
-    if (!this.isNavigating) {
+    if (!this.isNavigating && !this.isRoutePreviewing) {
       this.setTravelMode(mode);
       return;
     }
@@ -1036,8 +1301,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       };
       this.routeDestTitle = this.getRouteTitle();
       this.replaceNavigationRouteOverlay(result.geometry);
-      if (this.navFollowMode) {
+      if (this.isNavigating && this.navFollowMode) {
         this.centerNavigationOnUser(false);
+      } else {
+        this.fitRouteGeometry(result.geometry, false);
       }
     } catch (error) {
       this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
@@ -1238,7 +1505,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hydratePlannerFromCuratedRoute(routeId: number): void {
-    this.focusedRouteMode = false;
+    this.focusedRouteMode = this.latestQueryParams['focusRoute'] === '1' || this.latestQueryParams['routeId'] === String(routeId);
     this.dismissScenicDetourMapPopup(true);
     this.touristRoutesService.getRouteById(routeId).subscribe({
       next: (route) => {
@@ -1266,7 +1533,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private hydratePlannerFromTouristRoute(touristRouteId: number): void {
-    this.focusedRouteMode = false;
+    this.focusedRouteMode = this.latestQueryParams['focusRoute'] === '1';
     this.dismissScenicDetourMapPopup(true);
     this.userService.getTouristRoute(touristRouteId).subscribe({
       next: (route) => {
@@ -1299,7 +1566,6 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearRouteVisuals();
     this.syncPlannerStateFromServices();
     this.syncStopMarkers();
-    this.showRoutePanel = this.plannerStops.length > 0;
     this.routeDestTitle = this.getRouteTitle();
     this.routeSummary = {
       distanceKm: 0,
@@ -1340,10 +1606,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeProblem = 'none';
     const renderToken = ++this.plannerRenderToken;
 
-    this.routingService.computeRoute(routeCoordinates, this.travelMode, {
-      viewport: this.getRouteViewportMode(),
-      allowFallback: false,
-    })
+    this.computePlannerPreviewRoute(routeCoordinates)
       .then(route => {
         if (renderToken !== this.plannerRenderToken || !this.map) {
           return;
@@ -1361,13 +1624,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         // suggestDetours requires 2+ stops; for single-stop, keep the nearby suggestions set earlier
         if (this.plannerStops.length >= 2) {
           this.scenicSuggestions = this.scenicMode
-            ? this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
+            ? this.filterScenicSuggestionsAlreadyInRoute(this.recommendationService.suggestDetours(this.plannerStops, route.geometry, this.locationsList, {
                 contentPreferences: this.preferences.snapshot.contentPreferences.length > 0
                   ? this.preferences.snapshot.contentPreferences
                   : (this.userProfile?.interests ?? []),
                 userPosition: this.userPosition,
                 limit: 4,
-              })
+              }))
             : [];
 
           if (this.scenicMode && this.scenicSuggestions.length === 0) {
@@ -1406,10 +1669,101 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
+  private computePlannerPreviewRoute(routeCoordinates: [number, number][]): Promise<ComputedRoute> {
+    if (this.shouldUseCuratedMixedRoute()) {
+      return this.computeCuratedMixedRoute();
+    }
+
+    return this.routingService.computeRoute(routeCoordinates, this.travelMode, {
+      viewport: this.getRouteViewportMode(),
+      allowFallback: this.focusedRouteMode,
+    });
+  }
+
+  private shouldUseCuratedMixedRoute(): boolean {
+    const snapshot = this.routePlanner.snapshot;
+    return this.focusedRouteMode
+      && snapshot.sourceRouteId != null
+      && snapshot.sourceTouristRouteId == null
+      && this.plannerStops.length >= 2;
+  }
+
+  private async computeCuratedMixedRoute(): Promise<ComputedRoute> {
+    const stopCoordinates = this.plannerStops.map(stop => [stop.lat, stop.lng] as [number, number]);
+    const routeSegments: ComputedRoute[] = [];
+    const startCoordinate = this.getRouteStartCoordinate();
+
+    if (startCoordinate && !this.sameCoordinate(startCoordinate, stopCoordinates[0])) {
+      routeSegments.push(await this.routingService.computeRoute(
+        [startCoordinate, stopCoordinates[0]],
+        this.travelMode,
+        { viewport: this.getRouteViewportMode(), allowFallback: true },
+      ));
+    }
+
+    if (stopCoordinates.length >= 2) {
+      routeSegments.push(await this.routingService.computeRoute(
+        stopCoordinates,
+        'walking',
+        { viewport: this.getRouteViewportMode(), allowFallback: true },
+      ));
+    }
+
+    return this.mergeComputedRouteSegments(routeSegments, stopCoordinates);
+  }
+
+  private getRouteStartCoordinate(): [number, number] | null {
+    if (this.fromOverride && !this.isCurrentLocationStop(this.fromOverride)) {
+      return [this.fromOverride.lat, this.fromOverride.lng];
+    }
+
+    return this.preferences.snapshot.locationSharing && this.userPosition
+      ? this.userPosition
+      : null;
+  }
+
+  private mergeComputedRouteSegments(segments: ComputedRoute[], fallbackStops: [number, number][]): ComputedRoute {
+    if (segments.length === 0) {
+      return {
+        geometry: [...fallbackStops],
+        distanceKm: this.routingService.estimateStraightDistanceKm(fallbackStops),
+        durationMin: this.routingService.estimateFallbackDurationMin(
+          this.routingService.estimateStraightDistanceKm(fallbackStops),
+          'walking',
+        ),
+        usedFallback: true,
+      };
+    }
+
+    const geometry: [number, number][] = [];
+    let distanceKm = 0;
+    let durationMin = 0;
+    let usedFallback = false;
+
+    segments.forEach(segment => {
+      if (segment.geometry.length > 0) {
+        geometry.push(...(geometry.length > 0 ? segment.geometry.slice(1) : segment.geometry));
+      }
+      distanceKm += segment.distanceKm;
+      durationMin += segment.durationMin;
+      usedFallback = usedFallback || segment.usedFallback;
+    });
+
+    return {
+      geometry,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      durationMin: Math.max(1, Math.round(durationMin)),
+      usedFallback,
+    };
+  }
+
+  private sameCoordinate(a: [number, number], b: [number, number]): boolean {
+    return Math.abs(a[0] - b[0]) < 0.00001 && Math.abs(a[1] - b[1]) < 0.00001;
+  }
+
   private buildNearbyStopSuggestions(stop: PlannerStop): RouteDetourSuggestion[] {
-    const plannedStopIds = new Set(this.plannerStops.map(item => item.id));
     return this.locationsList
-      .filter(location => !plannedStopIds.has(location.id))
+      .filter(location => !this.isLocationAlreadyInRoute(location))
       .map(location => {
         const coordinates = this.getLocationCoordinates(location);
         if (!coordinates) return null;
@@ -1430,6 +1784,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .filter((item): item is RouteDetourSuggestion => !!item && item.distanceToRouteKm <= 12)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
+  }
+
+  private filterScenicSuggestionsAlreadyInRoute(suggestions: RouteDetourSuggestion[]): RouteDetourSuggestion[] {
+    return suggestions.filter(suggestion => !this.isLocationAlreadyInRoute(suggestion.location));
+  }
+
+  private isLocationAlreadyInRoute(location: Location): boolean {
+    const coordinates = this.getLocationCoordinates(location);
+    const routePoints = [
+      ...(this.fromOverride ? [this.fromOverride] : []),
+      ...this.plannerStops,
+    ];
+
+    return routePoints.some(point => {
+      if (point.id === location.id) return true;
+      return !!coordinates
+        && Math.abs(point.lat - coordinates.lat) < 0.0001
+        && Math.abs(point.lng - coordinates.lng) < 0.0001;
+    });
   }
 
   private clearRouteVisuals(): void {
@@ -1496,6 +1869,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getRouteCoordinates(): [number, number][] {
     const coordinates = this.plannerStops.map(stop => [stop.lat, stop.lng] as [number, number]);
+
+    if (this.fromOverride && !this.isCurrentLocationStop(this.fromOverride)) {
+      return [[this.fromOverride.lat, this.fromOverride.lng], ...coordinates];
+    }
+
     const allowUserStart = this.preferences.snapshot.locationSharing && !!this.userPosition;
     return allowUserStart && this.userPosition
       ? [this.userPosition, ...coordinates]
@@ -1778,6 +2156,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   async startNavigation(): Promise<void> {
     this.showClearRouteConfirm = false;
     this.dismissSearchMenu();
+
+    if (!this.routeStartsFromCurrentLocation) {
+      await this.startRoutePreview();
+      return;
+    }
+
     await this.ensureUserPosition();
 
     const coordinates = this.getRouteCoordinates();
@@ -1807,6 +2191,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         stopCount: this.plannerStops.length,
       };
       this.isNavigating = true;
+      this.isRoutePreviewing = false;
       this.plannerMode = false;
       this.routePlanner.setPlannerMode(false);
       this.showRoutePanel = false;
@@ -1817,6 +2202,56 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.replaceNavigationRouteOverlay(result.geometry);
       this.setNavigationMapLock(true);
       void this.requestScreenWakeLock();
+      this.sheetExpanded = false;
+      this.applyMarkerFilter();
+      this.cdr.detectChanges();
+    } catch (error) {
+      this.routeIsRoutable = false;
+      this.routeProblem = isRoutingUnavailableError(error) ? 'service-unavailable' : 'not-routable';
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 2400);
+    }
+  }
+
+  private async startRoutePreview(): Promise<void> {
+    const coordinates = this.getRouteCoordinates();
+    if (coordinates.length < 2) {
+      this.plannerMessage = this.plannerStops.length === 0
+        ? 'Add at least one stop to explore.'
+        : 'Add a destination to explore this route.';
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3000);
+      return;
+    }
+    if (!this.routeIsRoutable) {
+      this.plannerMessage = this.getRouteProblemMessage();
+      setTimeout(() => { this.plannerMessage = ''; this.cdr.detectChanges(); }, 3200);
+      return;
+    }
+
+    try {
+      const result = await this.routingService.computeRouteForNavigation(
+        coordinates,
+        this.travelMode,
+        { viewport: this.getRouteViewportMode(), allowFallback: false },
+      );
+      this.navigationSteps = result.steps ?? [];
+      this.navigationRouteGeometry = result.geometry;
+      this.routeSummary = {
+        distanceKm: result.distanceKm,
+        durationMin: result.durationMin,
+        stopCount: this.plannerStops.length,
+      };
+      this.isRoutePreviewing = true;
+      this.isNavigating = false;
+      this.plannerMode = false;
+      this.routePlanner.setPlannerMode(false);
+      this.showRoutePanel = false;
+      this.selectedLocation = null;
+      this.selectedPublicRoute = null;
+      this.clearPlannerRouteOverlay();
+      this.clearRouteStopMarkers();
+      this.replaceNavigationRouteOverlay(result.geometry);
+      this.fitRouteGeometry(result.geometry, false);
       this.sheetExpanded = false;
       this.applyMarkerFilter();
       this.cdr.detectChanges();
@@ -1875,6 +2310,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.focusedRouteMode = false;
     this.dismissScenicDetourMapPopup(true);
     this.plannerStops = [];
+    this.fromOverride = null;
+    this.pendingRouteTarget = null;
     this.plannerMode = false;
     this.scenicMode = true;
     this.scenicSuggestions = [];
@@ -1884,6 +2321,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.showRoutePanel = false;
     this.isRenderingRoute = false;
     this.isNavigating = false;
+    this.isRoutePreviewing = false;
     this.navigationSteps = [];
     this.navigationRouteGeometry = [];
     this.selectedLocation = null;
@@ -2142,6 +2580,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      if (this.isRoutePreviewing && this.navigationRouteGeometry.length >= 2) {
+        this.fitRouteGeometry(this.navigationRouteGeometry, false);
+        return;
+      }
+
       if (!this.isNavigating && this.plannerRouteGeometry.length >= 2) {
         this.fitRouteGeometry(this.plannerRouteGeometry, false);
       }
@@ -2234,14 +2677,20 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const bounds = L.latLngBounds(geometry);
     if (this.getRouteViewportMode() === 'mobile') {
       this.map.fitBounds(bounds, {
-        paddingTopLeft: [42, 150],
-        paddingBottomRight: [42, 160],
+        paddingTopLeft: [56, 170],
+        paddingBottomRight: [56, 180],
+        maxZoom: 15,
         animate,
       });
       return;
     }
 
-    this.map.fitBounds(bounds, { padding: [60, 60], animate });
+    this.map.fitBounds(bounds, {
+      paddingTopLeft: [92, 130],
+      paddingBottomRight: [92, 130],
+      maxZoom: 14,
+      animate,
+    });
   }
 
   /**
@@ -2259,9 +2708,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.map || geometry.length < 2) return;
 
     const totalDistanceM = this.geometryDistanceM(geometry);
-    const maxDots = isNav ? 120 : 180;
-    const minSpacingM = isNav ? 18 : 24;
-    const SPACING_M = Math.max(minSpacingM, Math.ceil(totalDistanceM / maxDots));
+    // Fixed, Google-Maps-style spacing in metres so dots stay evenly
+    // distributed regardless of zoom level or route length. A higher cap on
+    // maxDots lets long routes still use this fixed spacing; only extremely
+    // long routes fall back to a wider spacing to avoid excessive markers.
+    const fixedSpacingM = isNav ? 7 : 8;
+    const maxDots = isNav ? 2000 : 3000;
+    const SPACING_M = Math.max(fixedSpacingM, Math.ceil(totalDistanceM / maxDots));
     const color = '#22c55e';
     const dotSize = isNav ? 7 : 8;
 
@@ -2641,7 +3094,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const visiblePins: VisiblePin[] = [];
     const renderBounds = this.map.getBounds().pad(0.35);
-    const showOnlyPlannerStops = this.isNavigating || (this.focusedRouteMode && this.showRoutePanel);
+    const showOnlyPlannerStops = this.isNavigating || this.isRoutePreviewing || (this.focusedRouteMode && this.showRoutePanel);
     const hasActiveSearch = this.hasActiveSearch;
     const focusedSuggestionIds = this.focusedRouteMode
       ? new Set(this.scenicSuggestions.map(suggestion => suggestion.location.id))
@@ -2685,6 +3138,10 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private locationMatchesSearchMapState(loc: MapLocation, hasActiveSearch: boolean): boolean {
     if (!hasActiveSearch) return true;
 
+    if (this.searchLoading && this.searchLoadingSnapshotActive) {
+      return this.searchLoadingLocationPinIds.has(loc.id);
+    }
+
     if (this.searchMatchedLocationIds.size > 0) {
       return this.searchMatchedLocationIds.has(loc.id);
     }
@@ -2698,10 +3155,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private routeMatchesSearchMapState(route: TouristRouteItem, hasActiveSearch: boolean): boolean {
     if (!hasActiveSearch) return true;
+    if (this.searchLoading && this.searchLoadingSnapshotActive) {
+      return this.searchLoadingRoutePinIds.has(route.id);
+    }
     if (this.searchMatchedRouteIds.size > 0) {
       return this.searchMatchedRouteIds.has(route.id);
     }
-    return this.searchLoading && this.searchMatchedLocationIds.size === 0;
+    return this.searchLoading;
   }
 
   private getSearchFallbackRecommendationIds(): Set<number> {
@@ -2738,6 +3198,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private renderVisiblePins(pins: VisiblePin[]): void {
     if (!this.map) return;
+
+    this.lastRenderedLocationPinIds = new Set(
+      pins.filter((pin): pin is LocationPin => pin.kind === 'location').map(pin => pin.id)
+    );
+    this.lastRenderedRoutePinIds = new Set(
+      pins.filter((pin): pin is RoutePin => pin.kind === 'route').map(pin => pin.id)
+    );
 
     this.clearRenderedPinLayers();
 
@@ -3205,22 +3672,25 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
           postType: loc.postType,
           regionName: loc.regionName,
         });
-        if (this.plannerMode) {
-          const focusedSuggestion = this.focusedRouteMode
-            ? this.scenicSuggestions.find(suggestion => suggestion.location.id === loc.id)
-            : undefined;
-          const isFocusedRouteStop = this.focusedRouteMode && this.plannerStops.some(stop => stop.id === loc.id);
 
-          if (focusedSuggestion) {
-            this.applyDetourSuggestion(focusedSuggestion);
-          } else if (isFocusedRouteStop) {
-            this.focusOnPlannerStop(this.plannerStops.find(stop => stop.id === loc.id)!);
-          } else {
-            // U planner mode: samo dodaj stajaliste, ne otvara karticu
-            this.addLocationToPlanner(loc, true);
-          }
+        if (this.pendingRouteTarget) {
+          const target = this.pendingRouteTarget;
+          this.applyLocationToRouteField(loc, target);
+          this.cdr.detectChanges();
+          return;
+        }
+
+        const focusedSuggestion = this.focusedRouteMode
+          ? this.scenicSuggestions.find(suggestion => suggestion.location.id === loc.id)
+          : undefined;
+        const isFocusedRouteStop = this.focusedRouteMode && this.plannerStops.some(stop => stop.id === loc.id);
+
+        if (focusedSuggestion) {
+          this.applyDetourSuggestion(focusedSuggestion);
+        } else if (isFocusedRouteStop) {
+          this.focusOnPlannerStop(this.plannerStops.find(stop => stop.id === loc.id)!);
         } else {
-          // Van planner mode: otvori karticu objave i centriraj pin
+          // Open the location card; "Add stop" on the card adds it to the route.
           this.selectedPublicRoute = null;
           this.focusOnLocation(loc);
         }
@@ -3269,6 +3739,8 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (route.waypoints.length === 0) return;
 
     this.selectedPublicRoute = null;
+    this.focusedRouteMode = true;
+    this.dismissScenicDetourMapPopup(true);
     this.routePlanner.replaceStops(
       this.touristRoutesService.routeToPlannerStops(route),
       {
@@ -3449,11 +3921,13 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchIntentSummary = '';
       this.searchFallbackActive = false;
       this.searchLoading = false;
+      this.clearSearchLoadingSnapshot();
       this.resetSearchMapMatches();
       this.applyMarkerFilter();
       return;
     }
 
+    this.captureSearchLoadingSnapshot();
     this.searchLoading = true;
     const locationMatches = this.locationsList
       .map(loc => this.buildSearchMatch(loc, intent))
@@ -3464,9 +3938,12 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    this.searchMatchedLocationIds = new Set(locationMatches.map(item => item.loc.id));
-    this.searchMatchedRouteIds = new Set(routeMatches.map(item => item.route.id));
-    this.searchTotalMatchCount = this.searchMatchedLocationIds.size + this.searchMatchedRouteIds.size;
+    const immediateMatchCount = locationMatches.length + routeMatches.length;
+    if (immediateMatchCount > 0) {
+      this.searchMatchedLocationIds = new Set(locationMatches.map(item => item.loc.id));
+      this.searchMatchedRouteIds = new Set(routeMatches.map(item => item.route.id));
+      this.searchTotalMatchCount = immediateMatchCount;
+    }
     this.searchResults = locationMatches
       .map(item => ({
         ...item.loc,
@@ -3474,9 +3951,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
         searchBadges: item.badges,
       }))
       .slice(0, this.searchDropdownLimit);
-    this.searchFallbackActive = !this.hasSearchMatches;
-    this.searchIntentSummary = this.hasSearchMatches
-      ? this.describeSearchIntent(intent, this.searchTotalMatchCount)
+    this.searchFallbackActive = false;
+    this.searchIntentSummary = immediateMatchCount > 0
+      ? this.describeSearchIntent(intent, immediateMatchCount)
       : '';
     this.applyMarkerFilter();
     this.searchInput$.next(query.trim());
@@ -3529,6 +4006,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (query !== this.searchQuery.trim()) return;
 
       this.searchLoading = false;
+      this.clearSearchLoadingSnapshot();
       const backendMatches = locations
         .map(loc => this.buildSearchMatch(loc, intent))
         .filter(item => item.score > 0)
@@ -3543,6 +4021,11 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
             searchBadges: item.badges,
           }))
           .slice(0, this.searchDropdownLimit);
+      } else {
+        this.searchMatchedLocationIds = new Set<number>();
+        this.searchMatchedRouteIds = new Set<number>();
+        this.searchTotalMatchCount = 0;
+        this.searchResults = [];
       }
       this.searchFallbackActive = !this.hasSearchMatches;
       this.searchIntentSummary = this.searchFallbackActive
@@ -3809,7 +4292,9 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getDestinationTagItems(loc: Partial<MapLocation>, limit = 3): DestinationTagItem[] {
-    const rawTags = (loc as any).tagNames
+    const rawTags = (loc as any).tagItems
+      ?? (loc as any).TagItems
+      ?? (loc as any).tagNames
       ?? (loc as any).TagNames
       ?? (loc as any).activityTagNames
       ?? (loc as any).activityTags
@@ -4017,6 +4502,18 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectSearchResult(loc: MapLocation): void {
+    if (this.pendingRouteTarget) {
+      const target = this.pendingRouteTarget;
+      this.searchQuery = '';
+      this.searchStateService.clear();
+      this.searchResults = [];
+      this.searchIntentSummary = '';
+      this.dismissSearchMenu();
+      this.ensureSearchLocationOnMap(loc);
+      this.applyLocationToRouteField(loc, target);
+      return;
+    }
+
     this.searchQuery = loc.title;
     this.searchStateService.set(this.searchQuery);
     this.dismissSearchMenu();
@@ -4042,9 +4539,23 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchIntentSummary = '';
     this.searchFallbackActive = false;
     this.searchLoading = false;
+    this.clearSearchLoadingSnapshot();
     this.resetSearchMapMatches();
     this.dismissSearchMenu();
     this.applyMarkerFilter();
+  }
+
+  private captureSearchLoadingSnapshot(): void {
+    this.searchLoadingLocationPinIds = new Set(this.lastRenderedLocationPinIds);
+    this.searchLoadingRoutePinIds = new Set(this.lastRenderedRoutePinIds);
+    this.searchLoadingSnapshotActive = this.searchLoadingLocationPinIds.size > 0
+      || this.searchLoadingRoutePinIds.size > 0;
+  }
+
+  private clearSearchLoadingSnapshot(): void {
+    this.searchLoadingLocationPinIds = new Set<number>();
+    this.searchLoadingRoutePinIds = new Set<number>();
+    this.searchLoadingSnapshotActive = false;
   }
 
   private resetSearchMapMatches(): void {
@@ -4088,8 +4599,39 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Let Leaflet know the map container resized
     setTimeout(() => {
       this.map?.invalidateSize();
+      this.recenterAfterMapViewportChange();
     }, 380);
     this.cdr.detectChanges();
+  }
+
+  private recenterAfterMapViewportChange(): void {
+    if (!this.map) return;
+
+    const selectedCoordinates = this.selectedLocation
+      ? this.getLocationCoordinates(this.selectedLocation)
+      : null;
+    if (selectedCoordinates) {
+      this.flyToVisibleMapCenter(
+        [selectedCoordinates.lat, selectedCoordinates.lng],
+        Math.max(this.map.getZoom(), 15),
+        false,
+      );
+      return;
+    }
+
+    if (this.isNavigating && this.navFollowMode) {
+      this.centerNavigationOnUser(false);
+      return;
+    }
+
+    if (this.isRoutePreviewing && this.navigationRouteGeometry.length >= 2) {
+      this.fitRouteGeometry(this.navigationRouteGeometry, false);
+      return;
+    }
+
+    if (this.plannerRouteGeometry.length >= 2) {
+      this.fitRouteGeometry(this.plannerRouteGeometry, false);
+    }
   }
 
   openFilters(): void {
@@ -4216,6 +4758,7 @@ export class MapHomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('chipsContainer') chipsContainer!: ElementRef;
   @ViewChild('sidebarContainer') sidebarContainer!: ElementRef;
+  @ViewChild('searchInputRef') searchInputRef?: ElementRef<HTMLInputElement>;
 
   // Promenljive za horizontalni skrol (kategorije)
   isDraggingChips = false;

@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +34,13 @@ namespace TouristGuide.Api.Controllers
         {
             "draft", "published", "archived"
         };
+
+        private enum SearchTextMatchMode
+        {
+            Exact,
+            StartsWith,
+            Contains
+        }
 
         public PostsController(
             AppDbContext context,
@@ -98,9 +106,12 @@ namespace TouristGuide.Api.Controllers
                         (p.Description != null && p.Description.Contains(search)) ||
                         (p.Address != null && p.Address.Contains(search)) ||
                         (p.Region != null && p.Region.Name.Contains(search)));
+
+                sortBy ??= "search";
+                sortDir ??= "desc";
             }
 
-            return Ok(await BuildPagedPostsResponse(query!, page, pageSize, sortBy, sortDir));
+            return Ok(await BuildPagedPostsResponse(query!, page, pageSize, sortBy, sortDir, SplitSearchTerms(search ?? "")));
         }
 
         [HttpGet("public")]
@@ -208,8 +219,9 @@ namespace TouristGuide.Api.Controllers
                 query,
                 page,
                 pageSize,
-                isRegionSearch ? "rating" : "createdat",
-                "desc"));
+                "search",
+                "desc",
+                remainingTerms.Count > 0 ? remainingTerms : searchTerms));
         }
 
         [HttpGet("{id:int}")]
@@ -954,7 +966,8 @@ namespace TouristGuide.Api.Controllers
 
         private async Task<object> BuildPagedPostsResponse(
             IQueryable<Post> query, int page, int pageSize,
-            string? sortBy = null, string? sortDir = null)
+            string? sortBy = null, string? sortDir = null,
+            IReadOnlyCollection<string>? searchTerms = null)
         {
             if (page < 1) page = 1;
             pageSize = NormalizePageSize(pageSize);
@@ -965,6 +978,7 @@ namespace TouristGuide.Api.Controllers
             query = (sortBy?.ToLower(), sortDir?.ToLower()) switch
             {
                 ("distance", _) => query,
+                ("search", _) when searchTerms is { Count: > 0 } => ApplySearchOrdering(query, searchTerms),
                 ("title" or "name", "asc") => query.OrderBy(p => p.Title),
                 ("title" or "name", _) => query.OrderByDescending(p => p.Title),
                 ("viewcount", "asc") => query.OrderBy(p => p.ViewCount),
@@ -1062,6 +1076,110 @@ namespace TouristGuide.Api.Controllers
                     ((p.Lat!.Value - lat) * 111.32m * (p.Lat.Value - lat) * 111.32m) +
                     ((p.Lng!.Value - lng) * lngKmFactor * (p.Lng.Value - lng) * lngKmFactor))
                 .ThenByDescending(p => p.AvgRating ?? 0);
+        }
+
+        private static IQueryable<Post> ApplySearchOrdering(IQueryable<Post> query, IReadOnlyCollection<string> terms)
+        {
+            var variants = terms
+                .SelectMany(ExpandSearchTermVariants)
+                .Select(value => value.Trim().ToLowerInvariant())
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(32)
+                .ToList();
+
+            if (variants.Count == 0)
+                return query.OrderByDescending(p => p.CreatedAt);
+
+            var primaryTerm = variants[0];
+
+            return query
+                .OrderByDescending(BuildTitleSearchPredicate(variants, SearchTextMatchMode.Exact))
+                .ThenByDescending(BuildTitleSearchPredicate(variants, SearchTextMatchMode.StartsWith))
+                .ThenByDescending(BuildTitleSearchPredicate(variants, SearchTextMatchMode.Contains))
+                .ThenByDescending(p => p.PostTags.Any(pt => pt.Tag != null && pt.Tag.Name.ToLower().Contains(primaryTerm)))
+                .ThenByDescending(p => p.AvgRating ?? 0)
+                .ThenByDescending(p => p.SaveCount)
+                .ThenByDescending(p => p.CreatedAt);
+        }
+
+        private static Expression<Func<Post, bool>> BuildTitleSearchPredicate(
+            IReadOnlyList<string> terms,
+            SearchTextMatchMode matchMode)
+        {
+            var post = Expression.Parameter(typeof(Post), "p");
+            var title = Expression.Property(post, nameof(Post.Title));
+            var loweredTitle = Expression.Call(title, nameof(string.ToLower), Type.EmptyTypes);
+            Expression? predicate = null;
+
+            foreach (var term in terms)
+            {
+                var termConstant = Expression.Constant(term);
+                Expression match = matchMode switch
+                {
+                    SearchTextMatchMode.Exact => Expression.Equal(loweredTitle, termConstant),
+                    SearchTextMatchMode.StartsWith => Expression.Call(loweredTitle, nameof(string.StartsWith), Type.EmptyTypes, termConstant),
+                    _ => Expression.Call(loweredTitle, nameof(string.Contains), Type.EmptyTypes, termConstant)
+                };
+
+                predicate = predicate is null ? match : Expression.OrElse(predicate, match);
+            }
+
+            return Expression.Lambda<Func<Post, bool>>(predicate ?? Expression.Constant(false), post);
+        }
+
+        private static IReadOnlyCollection<string> ExpandSearchTermVariants(string term)
+        {
+            var variants = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { term };
+
+            if (string.Equals(term, "plaza", StringComparison.OrdinalIgnoreCase))
+                variants.Add("pla\u017ea");
+            if (string.Equals(term, "plaze", StringComparison.OrdinalIgnoreCase))
+                variants.Add("pla\u017ee");
+            if (string.Equals(term, "beach", StringComparison.OrdinalIgnoreCase))
+                variants.UnionWith(["pla\u017ea", "plaza"]);
+            if (string.Equals(term, "beaches", StringComparison.OrdinalIgnoreCase))
+                variants.UnionWith(["pla\u017ee", "plaze"]);
+            if (string.Equals(term, "srbija", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "srbiji", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "srbiju", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(term, "serbian", StringComparison.OrdinalIgnoreCase))
+                variants.Add("serbia");
+            if (term.Contains("dj", StringComparison.OrdinalIgnoreCase))
+                variants.Add(term.Replace("dj", "\u0111", StringComparison.OrdinalIgnoreCase));
+            if (term.Contains('\u0111'))
+                variants.Add(term.Replace("\u0111", "dj", StringComparison.OrdinalIgnoreCase));
+
+            foreach (var variant in GenerateSerbianDiacriticVariants(term))
+                variants.Add(variant);
+
+            return variants.Where(value => !string.IsNullOrWhiteSpace(value)).Take(16).ToList();
+        }
+
+        private static IEnumerable<string> GenerateSerbianDiacriticVariants(string term)
+        {
+            var variants = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { term };
+            foreach (var replacement in new (string Plain, string Marked)[]
+            {
+                ("c", "\u010d"),
+                ("c", "\u0107"),
+                ("s", "\u0161"),
+                ("z", "\u017e"),
+            })
+            {
+                if (!term.Contains(replacement.Plain, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                foreach (var existing in variants.ToList())
+                {
+                    if (variants.Count >= 16)
+                        break;
+
+                    variants.Add(existing.Replace(replacement.Plain, replacement.Marked, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+
+            return variants;
         }
 
         private static IQueryable<Post> ApplyPostSearchTerms(IQueryable<Post> query, IReadOnlyCollection<string> terms)
@@ -1170,7 +1288,11 @@ namespace TouristGuide.Api.Controllers
         private static string NormalizeSearchText(string value)
         {
             // Normalizujemo unos korisnika i nazive regiona u uporedive termine.
-            var normalized = value.ToLowerInvariant().Normalize(NormalizationForm.FormD);
+            var normalized = value
+                .ToLowerInvariant()
+                .Replace("\u0111", "dj")
+                .Replace("\u00f0", "dj")
+                .Normalize(NormalizationForm.FormD);
             var builder = new StringBuilder(normalized.Length);
 
             foreach (var character in normalized)
@@ -1236,6 +1358,15 @@ namespace TouristGuide.Api.Controllers
             UpdatedAt = post.UpdatedAt,
             TagIds = visibleTags.Select(pt => pt.TagId).ToList(),
             TagNames = visibleTags.Where(pt => pt.Tag != null).Select(pt => pt.Tag!.Name).ToList(),
+            TagItems = visibleTags
+                .Where(pt => pt.Tag != null)
+                .Select(pt => new PostTagDto
+                {
+                    Id = pt.TagId,
+                    Name = pt.Tag!.Name,
+                    Category = pt.Tag.Category
+                })
+                .ToList(),
             IsLiked = isLiked,
             IsSaved = isSaved
             };

@@ -571,9 +571,9 @@ export class RoutingService {
 
   private resolveRoutingProfiles(travelMode: TravelMode): string[] {
     switch (travelMode) {
-      case 'walking':  return ['foot-osm', 'driving', 'driving-project'];
-      case 'cycling':  return ['bike-osm', 'driving', 'driving-project'];
-      // driving: try Geofabrik first, then OSRM demo as fallback
+      case 'walking':  return ['foot-osm'];
+      case 'cycling':  return ['bike-osm'];
+      // Driving can use both car endpoints because both return car metrics.
       default:         return ['driving', 'driving-project'];
     }
   }

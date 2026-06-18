@@ -711,5 +711,16 @@
   "Univerzalna lozinka je podešena kroz konfiguraciju i ne može se prikazati. Kada je promeniš ovde, biće sačuvana kao zaštićena vrednost u bazi i moći će da se vidi na ovom ekranu.": "Универсальный пароль задан в конфигурации и не может быть показан. Если изменить его здесь, он будет сохранён в базе как защищённое значение и сможет отображаться на этом экране.",
   "Univerzalna lozinka još nije podešena.": "Универсальный пароль ещё не настроен.",
   "Greška pri učitavanju univerzalne lozinke.": "Ошибка при загрузке универсального пароля.",
-  "Greška pri promeni univerzalne lozinke.": "Ошибка при изменении универсального пароля."
+  "Greška pri promeni univerzalne lozinke.": "Ошибка при изменении универсального пароля.",
+  "Radno vreme po danima": "Часы работы по дням",
+  "Kopiraj ponedeljak": "Скопировать понедельник",
+  "Ponedeljak": "Понедельник",
+  "Utorak": "Вторник",
+  "Sreda": "Среда",
+  "Cetvrtak": "Четверг",
+  "Petak": "Пятница",
+  "Subota": "Суббота",
+  "Nedelja": "Воскресенье",
+  "Zatvoreno": "Закрыто",
+  "HH:mm": "HH:mm"
 }

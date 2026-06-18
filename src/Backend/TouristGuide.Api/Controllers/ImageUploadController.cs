@@ -17,7 +17,6 @@ namespace TouristGuide.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/images")]
-    [Authorize(Roles = "admin,superadmin")]
     public class ImageUploadController : ControllerBase
     {
         private readonly ICloudinaryService _cloudinaryService;
@@ -33,13 +32,15 @@ namespace TouristGuide.Api.Controllers
         /// Upload jedne slike za objavu.
         /// Returns: { url: "https://res.cloudinary.com/..." }
         /// </summary>
+        [Authorize(Roles = "admin,superadmin")]
         [HttpPost("upload")]
         public async Task<IActionResult> UploadPostImage(IFormFile file)
             => await UploadToFolder(file, "posts");
 
         /// <summary>
-        /// Upload profilne slike za admina.
+        /// Upload profilne slike za admina ili turistu.
         /// </summary>
+        [Authorize(Roles = "admin,superadmin,tourist")]
         [HttpPost("upload/profile")]
         public async Task<IActionResult> UploadProfileImage(IFormFile file)
             => await UploadToFolder(file, "profiles");
@@ -47,6 +48,7 @@ namespace TouristGuide.Api.Controllers
         /// <summary>
         /// Upload cover slike za regiju.
         /// </summary>
+        [Authorize(Roles = "admin,superadmin")]
         [HttpPost("upload/region")]
         public async Task<IActionResult> UploadRegionImage(IFormFile file)
             => await UploadToFolder(file, "regions");
@@ -55,6 +57,7 @@ namespace TouristGuide.Api.Controllers
         /// Upload više slika odjednom (do 10).
         /// Returns: { urls: ["https://res.cloudinary.com/...", ...] }
         /// </summary>
+        [Authorize(Roles = "admin,superadmin")]
         [HttpPost("upload/multiple")]
         public async Task<IActionResult> UploadMultiple(List<IFormFile> files)
         {

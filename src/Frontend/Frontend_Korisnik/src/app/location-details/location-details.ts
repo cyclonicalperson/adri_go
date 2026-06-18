@@ -16,6 +16,12 @@ import { formatPostType } from '../utils/post-type.utils';
 
 import * as L from 'leaflet';
 
+type DetailTagItem = {
+  id?: number;
+  name: string;
+  category?: string | null;
+};
+
 @Component({
   selector: 'app-location-details',
   standalone: true,
@@ -133,6 +139,71 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
 
   get currentLanguage(): string {
     return this.siteTranslate.currentLanguage;
+  }
+
+  get displayAddress(): string {
+    const address = (this.location?.address || '').trim();
+    const region = (this.location?.regionName || '').trim();
+    if (!address) return region;
+
+    const parts = address
+      .split(',')
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 0) return region;
+
+    const ignored = new Set([
+      'city of kragujevac',
+      'grad kragujevac',
+      'sumadijski upravni okrug',
+      'šumadijski upravni okrug',
+      'srbija',
+      'serbia',
+      'crna gora',
+      'montenegro',
+    ]);
+    const cleaned = parts.filter(part => {
+      const normalized = part.toLowerCase();
+      return !ignored.has(normalized) && !/^\d{4,6}$/.test(normalized);
+    });
+
+    const houseNumberIndex = cleaned.findIndex(part => this.looksLikeHouseNumber(part));
+    let street = '';
+    let houseNumber = '';
+
+    if (houseNumberIndex >= 0) {
+      houseNumber = cleaned[houseNumberIndex];
+      street = cleaned[houseNumberIndex + 1] || cleaned[houseNumberIndex - 1] || '';
+    } else {
+      street = cleaned[0] || '';
+      const inlineMatch = street.match(/^(.+?)\s+(\d+[A-Za-zА-Яа-я]?(?:\/\d+)?)$/);
+      if (inlineMatch) {
+        street = inlineMatch[1].trim();
+        houseNumber = inlineMatch[2].trim();
+      }
+    }
+
+    const city = region || this.findCityPart(cleaned, street, houseNumber);
+    const displayParts = [street, houseNumber, city]
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    return displayParts.length > 0
+      ? Array.from(new Set(displayParts)).join(', ')
+      : cleaned.slice(0, 3).join(', ');
+  }
+
+  private looksLikeHouseNumber(value: string): boolean {
+    return /^\d+[A-Za-zА-Яа-я]?(?:\/\d+)?$/.test(value.trim());
+  }
+
+  private findCityPart(parts: string[], street: string, houseNumber: string): string {
+    const excluded = new Set([street.toLowerCase(), houseNumber.toLowerCase()].filter(Boolean));
+    return parts.find(part => {
+      const normalized = part.toLowerCase();
+      return !excluded.has(normalized) && !this.looksLikeHouseNumber(part);
+    }) || '';
   }
 
   ngAfterViewInit(): void {
@@ -410,6 +481,9 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     if (!raw) return [];
     try {
       const obj = JSON.parse(raw);
+      if (typeof obj?.text === 'string') {
+        return [{ day: '', hours: obj.text }];
+      }
       const dayNames: Record<string, string> = {
         mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday',
         thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'
@@ -429,7 +503,7 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
       const obj = JSON.parse(this.location.openingHours);
       const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
       const todayKey = dayKeys[new Date().getDay()];
-      const hours: string = obj[todayKey];
+      const hours: string = obj[todayKey] ?? obj.text;
       if (!hours || hours === 'closed') return false;
       if (hours === '00:00-24:00' || hours === '0:00-24:00') return true;
       const [openStr, closeStr] = hours.split('-');
@@ -449,27 +523,54 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
     return this.siteTranslate.instant(formatPostType(type));
   }
 
-  get activityItems(): Array<{ id?: number; name: string }> {
-    const loc = this.location as any;
-    const names = this.readActivityNames(loc);
-    const ids = this.readActivityIds(loc);
-    const seen = new Set<string>();
-
-    return names
-      .map((name, index) => ({
-        id: ids[index],
-        name: String(name ?? '').trim(),
-      }))
-      .filter(item => {
-        if (!item.name) return false;
-        const key = item.name.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+  translateTagLabel(value: string | null | undefined): string {
+    const label = String(value ?? '').trim();
+    if (!label) return '';
+    const translatedRaw = this.siteTranslate.instant(label);
+    if (translatedRaw !== label) return translatedRaw;
+    const readable = label
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, char => char.toUpperCase());
+    return this.siteTranslate.instant(readable);
   }
 
-  openActivity(item: { id?: number; name: string }): void {
+  get tagItems(): DetailTagItem[] {
+    const loc = this.location as any;
+    const structuredTags = loc?.tagItems ?? loc?.TagItems ?? loc?.tags;
+    const directItems = Array.isArray(structuredTags)
+      ? structuredTags.map((tag, index) => this.toDetailTagItem(tag, index))
+      : [];
+    const fallbackItems = directItems.length > 0 ? directItems : this.readLegacyTagItems(loc);
+    const seen = new Set<string>();
+
+    return fallbackItems.filter(item => {
+      if (!item.name) return false;
+      const key = item.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  get amenityItems(): DetailTagItem[] {
+    if (!this.hasTagGrouping) return [];
+    return this.tagItems.filter(item => this.isAmenityTag(item));
+  }
+
+  get activityItems(): DetailTagItem[] {
+    if (!this.hasTagGrouping) return this.tagItems;
+    return this.tagItems.filter(item => this.isActivityTag(item));
+  }
+
+  get hasTagGrouping(): boolean {
+    return this.tagItems.some(item => !!this.normalizeTagCategory(item.category)
+      || this.isKnownAmenityTag(item)
+      || this.isKnownActivityTag(item));
+  }
+
+  openActivity(item: DetailTagItem): void {
     this.router.navigate(['/location-list'], {
       queryParams: {
         type: 'destinations',
@@ -477,6 +578,123 @@ export class LocationDetailsComponent implements OnInit, AfterViewInit, OnDestro
         tag: item.name,
       },
     });
+  }
+
+  private readLegacyTagItems(loc: any): DetailTagItem[] {
+    const names = this.readActivityNames(loc);
+    const ids = this.readActivityIds(loc);
+    return names
+      .map((name, index) => ({
+        id: ids[index],
+        name: String(name ?? '').trim(),
+      }))
+      .filter(item => !!item.name);
+  }
+
+  private toDetailTagItem(tag: unknown, index: number): DetailTagItem {
+    const source = tag as any;
+    const ids = this.readActivityIds(this.location as any);
+    const id = Number(
+      typeof source === 'string'
+        ? ids[index]
+        : (source?.id ?? source?.tagId ?? source?.activityId ?? ids[index])
+    );
+    const name = String(
+      typeof source === 'string'
+        ? source
+        : (source?.name ?? source?.tagName ?? source?.title ?? '')
+    ).trim();
+
+    return {
+      id: Number.isFinite(id) ? id : undefined,
+      name,
+      category: typeof source === 'string' ? null : (source?.category ?? source?.Category ?? null),
+    };
+  }
+
+  private normalizeTagCategory(category?: string | null): string {
+    return String(category ?? '').trim().toLowerCase();
+  }
+
+  private isActivityTag(item: DetailTagItem): boolean {
+    const category = this.normalizeTagCategory(item.category);
+    if (category) {
+      return category === 'aktivnost' || category === 'activity' || category === 'activities';
+    }
+
+    return this.isKnownActivityTag(item);
+  }
+
+  private isAmenityTag(item: DetailTagItem): boolean {
+    const category = this.normalizeTagCategory(item.category);
+    if (category) return !this.isActivityTag(item);
+    return this.isKnownAmenityTag(item);
+  }
+
+  private isKnownAmenityTag(item: DetailTagItem): boolean {
+    const name = this.normalizeSearchLabel(item.name);
+    return [
+      'wifi',
+      'wi fi',
+      'parking',
+      'restaurant',
+      'restoran',
+      'cafe',
+      'kafic',
+      'bar',
+      'pool',
+      'bazen',
+      'spa',
+      'wellness',
+      'kitchen',
+      'kuhinja',
+      'bbq',
+      'breakfast',
+      'dorucak',
+      'pet friendly',
+      'pets',
+      'ljubimci',
+    ].includes(name);
+  }
+
+  private isKnownActivityTag(item: DetailTagItem): boolean {
+    const name = this.normalizeSearchLabel(item.name);
+    return [
+      'pjesacenje',
+      'pesacenje',
+      'hiking',
+      'biciklizam',
+      'cycling',
+      'plivanje',
+      'swimming',
+      'nocni zivot',
+      'sport',
+      'adrenalin',
+      'priroda',
+      'muzika',
+      'gastronomija',
+      'outdoor',
+      'rafting',
+      'skijanje',
+      'ronjenje',
+      'kultura',
+      'razgledanje',
+      'fotografija',
+      'shopping',
+      'yoga',
+      'paraglajding',
+    ].includes(name);
+  }
+
+  private normalizeSearchLabel(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'dj')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private readActivityNames(loc: any): string[] {

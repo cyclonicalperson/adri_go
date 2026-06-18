@@ -10,11 +10,6 @@
   pointer-events: auto;
 }
 
-.planner-panel.builder-mode {
-  border: 1px solid #bbf7d0;
-  box-shadow: 0 14px 36px rgba(34, 197, 94, 0.12);
-}
-
 .planner-header {
   display: flex;
   align-items: flex-start;
@@ -38,24 +33,6 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--green-600);
-}
-
-.planner-toggle {
-  border: none;
-  border-radius: 999px;
-  background: var(--gray-100);
-  color: var(--gray-600);
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-}
-
-.planner-toggle.active {
-  background: var(--green-500);
-  color: #fff;
 }
 
 .planner-subtitle {
@@ -186,42 +163,150 @@
   }
 }
 
-.planner-stop-list {
+/* ── ROUTE BUILDER (From / Stops / To) ───────────────────────── */
+.route-builder {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   margin-top: 16px;
 }
 
-.planner-stop-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #fff;
-  border: 1px solid var(--gray-100);
-  border-radius: 16px;
-  padding: 12px;
-}
-
-.stop-order {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--gray-900);
-  color: #fff;
-  border: none;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.stop-info {
+.route-rows {
   flex: 1;
   min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.stop-title {
+/* Dotted connector line running through the rail icons */
+.rail-line {
+  position: absolute;
+  pointer-events: none;
+  left: 11px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background-image: radial-gradient(circle, var(--gray-300) 1px, transparent 1px);
+  background-size: 2px 6px;
+  background-repeat: repeat-y;
+}
+
+.route-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rail-icon {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--planner-bg, #fff);
+  border-radius: 50%;
+}
+
+.from-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--info);
+  background: #fff;
+}
+
+.to-pin {
+  color: var(--danger);
+}
+
+.stop-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--green-500);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
+.route-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-family: inherit;
+}
+
+.route-field-static {
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.route-field-button {
+  background: var(--gray-100);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.route-field-button:hover {
+  border-color: var(--green-500);
+  background: var(--green-50);
+}
+
+.route-field-active {
+  border-color: var(--green-500) !important;
+  background: var(--green-50) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.14);
+}
+
+.route-field-placeholder-text {
+  color: var(--gray-400);
+  font-weight: 700;
+}
+
+.route-field-add-stop {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+.add-stop-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--gray-300);
+  color: var(--gray-400);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.from-number {
+  background: var(--info);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+.route-field-title {
   font-size: 14px;
   font-weight: 800;
   color: var(--gray-900);
@@ -230,44 +315,72 @@
   text-overflow: ellipsis;
 }
 
-.stop-meta {
-  margin-top: 3px;
-  font-size: 12px;
+.route-field-meta {
+  font-size: 11px;
   color: var(--gray-400);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
   text-transform: capitalize;
 }
 
-.stop-actions {
+.route-field-destination .route-field-title {
+  color: var(--gray-900);
+}
+
+.route-field-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.stop-actions button {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+.route-field-actions button {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   border: none;
   background: var(--gray-100);
   color: var(--gray-600);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  font-family: inherit;
 }
 
-.stop-actions button:disabled {
-  opacity: 0.45;
+.route-field-actions button:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.stop-actions button.danger,
-.planner-actions button.danger {
+.route-field-actions button.danger {
   background: #fef2f2;
   color: #dc2626;
+}
+
+/* Swap From/To button */
+.swap-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  margin-top: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-100);
+  color: var(--gray-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.route-builder-has-from-override .swap-btn {
+  margin-top: 58px;
+}
+
+.swap-btn:hover {
+  border-color: var(--green-500);
+  color: var(--green-600);
+  background: var(--green-50);
 }
 
 /* ── PLANNER ACTIONS ─────────────────────────────────────────── */
@@ -367,34 +480,20 @@
   background: #1f2937;
   border: 1px solid #334155;
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.34);
-}
-
-:host-context(html[data-theme='dark']) .planner-panel.builder-mode {
-  border-color: rgba(34, 197, 94, 0.45);
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(34, 197, 94, 0.14);
+  --planner-bg: #1f2937;
 }
 
 :host-context(html[data-theme='dark']) .planner-header h3,
 :host-context(html[data-theme='dark']) .summary-card strong,
-:host-context(html[data-theme='dark']) .stop-title {
+:host-context(html[data-theme='dark']) .route-field-title {
   color: #f8fafc;
 }
 
 :host-context(html[data-theme='dark']) .planner-subtitle,
-:host-context(html[data-theme='dark']) .stop-meta,
+:host-context(html[data-theme='dark']) .route-field-meta,
 :host-context(html[data-theme='dark']) .summary-kicker,
 :host-context(html[data-theme='dark']) .planner-loading {
   color: #94a3b8;
-}
-
-:host-context(html[data-theme='dark']) .planner-toggle {
-  background: #111827;
-  color: #e5edf6;
-}
-
-:host-context(html[data-theme='dark']) .planner-toggle.active {
-  background: var(--green-500);
-  color: #fff;
 }
 
 :host-context(html[data-theme='dark']) .travel-mode-switch {
@@ -424,9 +523,43 @@
 }
 
 :host-context(html[data-theme='dark']) .summary-card,
-:host-context(html[data-theme='dark']) .planner-stop-card {
+:host-context(html[data-theme='dark']) .route-field-static,
+:host-context(html[data-theme='dark']) .route-field-button {
   background: #111827;
   border: 1px solid #334155;
+}
+
+:host-context(html[data-theme='dark']) .route-field-static {
+  color: #cbd5e1;
+  border-color: transparent;
+}
+
+:host-context(html[data-theme='dark']) .route-field-button:hover {
+  border-color: var(--green-500);
+  background: color-mix(in srgb, var(--green-500, #22c55e) 14%, #111827);
+}
+
+:host-context(html[data-theme='dark']) .route-field-active {
+  border-color: var(--green-500) !important;
+  background: color-mix(in srgb, var(--green-500, #22c55e) 18%, #111827) !important;
+}
+
+:host-context(html[data-theme='dark']) .route-field-placeholder-text {
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .add-stop-icon {
+  border-color: #475569;
+  color: #64748b;
+}
+
+:host-context(html[data-theme='dark']) .rail-line {
+  background-image: radial-gradient(circle, #475569 1px, transparent 1px);
+}
+
+:host-context(html[data-theme='dark']) .from-dot {
+  background: #1f2937;
+  border-color: #60a5fa;
 }
 
 :host-context(html[data-theme='dark']) .planner-message {
@@ -435,18 +568,24 @@
   color: #bfdbfe;
 }
 
-:host-context(html[data-theme='dark']) .stop-order {
+:host-context(html[data-theme='dark']) .stop-number {
   background: var(--green-500);
   color: #fff;
 }
 
-:host-context(html[data-theme='dark']) .stop-actions button {
+:host-context(html[data-theme='dark']) .route-field-actions button,
+:host-context(html[data-theme='dark']) .swap-btn {
   background: #1f2937;
   color: #e5edf6;
   border: 1px solid #334155;
 }
 
-:host-context(html[data-theme='dark']) .stop-actions button.danger,
+:host-context(html[data-theme='dark']) .swap-btn:hover {
+  border-color: var(--green-500);
+  color: var(--green-500);
+}
+
+:host-context(html[data-theme='dark']) .route-field-actions button.danger,
 :host-context(html[data-theme='dark']) .planner-actions button.danger {
   background: #451a1a;
   color: #fecaca;

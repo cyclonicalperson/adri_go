@@ -147,5 +147,16 @@
   "Univerzalna lozinka je podešena kroz konfiguraciju i ne može se prikazati. Kada je promeniš ovde, biće sačuvana kao zaštićena vrednost u bazi i moći će da se vidi na ovom ekranu.": "Univerzalna lozinka je podešena kroz konfiguraciju i ne može se prikazati. Kada je promeniš ovde, biće sačuvana kao zaštićena vrednost u bazi i moći će da se vidi na ovom ekranu.",
   "Univerzalna lozinka još nije podešena.": "Univerzalna lozinka još nije podešena.",
   "Greška pri učitavanju univerzalne lozinke.": "Greška pri učitavanju univerzalne lozinke.",
-  "Greška pri promeni univerzalne lozinke.": "Greška pri promeni univerzalne lozinke."
+  "Greška pri promeni univerzalne lozinke.": "Greška pri promeni univerzalne lozinke.",
+  "Radno vreme po danima": "Radno vreme po danima",
+  "Kopiraj ponedeljak": "Kopiraj ponedeljak",
+  "Ponedeljak": "Ponedeljak",
+  "Utorak": "Utorak",
+  "Sreda": "Sreda",
+  "Cetvrtak": "Četvrtak",
+  "Petak": "Petak",
+  "Subota": "Subota",
+  "Nedelja": "Nedelja",
+  "Zatvoreno": "Zatvoreno",
+  "HH:mm": "HH:mm"
 }

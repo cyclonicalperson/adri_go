@@ -11,6 +11,19 @@
   justify-content: space-around;
   z-index: var(--z-footer, 10900);
   padding: 0 4px var(--mobile-footer-safe-bottom);
+  overflow: visible;
+  transform: translateZ(0);
+}
+
+.app-footer::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -34px;
+  height: 34px;
+  background: inherit;
+  pointer-events: none;
 }
 
 .footer-btn {

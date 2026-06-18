@@ -13,11 +13,27 @@ export interface PlannerStop {
   avgRating?: number;
 }
 
+/**
+ * Identifies a slot in the From / Stops / To route builder that the user has
+ * activated for editing via the main search bar or a map pin click.
+ */
+export type RouteFieldTarget =
+  | { kind: 'from' }
+  | { kind: 'stop'; stopId: number }
+  | { kind: 'to' }
+  | { kind: 'new-stop' };
+
 export interface PlannerState {
   stops: PlannerStop[];
   plannerMode: boolean;
   scenicMode: boolean;
   travelMode: TravelMode;
+  /**
+   * Custom override for the route's starting point ("From"). When null, the
+   * route starts from the user's GPS position (default behaviour). When set,
+   * GPS is ignored for this route and the route starts here instead.
+   */
+  fromOverride: PlannerStop | null;
   // Id of the curated route this planner currently mirrors, or null when the
   // stops were assembled some other way (manual taps, optimization, saved trip).
   sourceRouteId: number | null;
@@ -34,6 +50,7 @@ const DEFAULT_STATE: PlannerState = {
   plannerMode: false,
   scenicMode: true,
   travelMode: 'driving',
+  fromOverride: null,
   sourceRouteId: null,
   sourcePrivateRouteId: null,
   sourceTouristRouteId: null,
@@ -58,6 +75,20 @@ export class RoutePlannerService {
 
   setTravelMode(mode: TravelMode): PlannerState {
     return this.persist({ ...this.snapshot, travelMode: mode });
+  }
+
+  /**
+   * Sets or clears the custom "From" location. Pass null to fall back to the
+   * user's GPS position.
+   */
+  setFromOverride(location: Location | PlannerStop | null): PlannerState {
+    const state = this.snapshot;
+    return this.persist({
+      ...state,
+      fromOverride: location ? this.normalizeStop(location) : null,
+      sourceRouteId: null,
+      sourcePrivateRouteId: null,
+    });
   }
 
   addStop(location: Location | PlannerStop, options: { insertAfterIndex?: number } = {}): PlannerState {
@@ -93,6 +124,9 @@ export class RoutePlannerService {
       ...options,
       plannerMode: options.plannerMode ?? true,
       stops: stops.map(stop => this.normalizeStop(stop)),
+      fromOverride: options.fromOverride !== undefined
+        ? (options.fromOverride ? this.normalizeStop(options.fromOverride) : null)
+        : this.snapshot.fromOverride,
       sourceRouteId: options.sourceRouteId ?? null,
       sourcePrivateRouteId: options.sourcePrivateRouteId ?? null,
       sourceTouristRouteId: options.sourceTouristRouteId ?? null,
@@ -133,7 +167,7 @@ export class RoutePlannerService {
 
   clear(): PlannerState {
     localStorage.removeItem(this.storageKey);
-    return { ...DEFAULT_STATE, stops: [] };
+    return { ...DEFAULT_STATE, stops: [], fromOverride: null };
   }
 
   serializeTripQuery(): string {
@@ -172,6 +206,14 @@ export class RoutePlannerService {
       }
 
       const parsed = JSON.parse(raw) as Partial<PlannerState>;
+      const fromOverrideRaw = parsed.fromOverride as Partial<PlannerStop> | null | undefined;
+      const fromOverride = fromOverrideRaw
+        && typeof fromOverrideRaw.id === 'number'
+        && typeof fromOverrideRaw.lat === 'number'
+        && typeof fromOverrideRaw.lng === 'number'
+        ? (fromOverrideRaw as PlannerStop)
+        : null;
+
       return {
         plannerMode: !!parsed.plannerMode,
         scenicMode: parsed.scenicMode ?? DEFAULT_STATE.scenicMode,
@@ -181,6 +223,7 @@ export class RoutePlannerService {
         stops: Array.isArray(parsed.stops)
           ? parsed.stops.filter(stop => typeof stop?.id === 'number' && typeof stop?.lat === 'number' && typeof stop?.lng === 'number')
           : [],
+        fromOverride,
         sourceRouteId: typeof parsed.sourceRouteId === 'number' ? parsed.sourceRouteId : null,
         sourcePrivateRouteId: typeof parsed.sourcePrivateRouteId === 'string' ? parsed.sourcePrivateRouteId : null,
         sourceTouristRouteId: typeof parsed.sourceTouristRouteId === 'number' ? parsed.sourceTouristRouteId : null,

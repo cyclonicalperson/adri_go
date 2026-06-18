@@ -756,5 +756,16 @@
   "Univerzalna lozinka je podešena kroz konfiguraciju i ne može se prikazati. Kada je promeniš ovde, biće sačuvana kao zaštićena vrednost u bazi i moći će da se vidi na ovom ekranu.": "The universal password is configured through settings and cannot be shown. Once you change it here, it will be saved as a protected database value and can be revealed on this screen.",
   "Univerzalna lozinka još nije podešena.": "The universal password has not been configured yet.",
   "Greška pri učitavanju univerzalne lozinke.": "Error loading the universal password.",
-  "Greška pri promeni univerzalne lozinke.": "Error changing the universal password."
+  "Greška pri promeni univerzalne lozinke.": "Error changing the universal password.",
+  "Radno vreme po danima": "Working hours by day",
+  "Kopiraj ponedeljak": "Copy Monday",
+  "Ponedeljak": "Monday",
+  "Utorak": "Tuesday",
+  "Sreda": "Wednesday",
+  "Cetvrtak": "Thursday",
+  "Petak": "Friday",
+  "Subota": "Saturday",
+  "Nedelja": "Sunday",
+  "Zatvoreno": "Closed",
+  "HH:mm": "HH:mm"
 }

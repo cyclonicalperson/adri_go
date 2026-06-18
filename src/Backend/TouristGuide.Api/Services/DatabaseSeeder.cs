@@ -2052,13 +2052,13 @@ namespace TouristGuide.Api.Services
                     .Select(r => new SeedRegion(r.Id, r.Name, r.Country, r.Lat!.Value, r.Lng!.Value))
                     .ToListAsync();
 
-                var tagIds = await _db.Tags
+                var tagsByName = await _db.Tags
                     .AsNoTracking()
-                    .OrderBy(t => t.Id)
-                    .Select(t => t.Id)
-                    .ToListAsync();
+                    .OrderBy(t => t.Name)
+                    .Select(t => new { t.Name, t.Id })
+                    .ToDictionaryAsync(t => t.Name, t => t.Id);
 
-                if (adminIds.Count == 0 || regions.Count == 0 || tagIds.Count == 0)
+                if (adminIds.Count == 0 || regions.Count == 0 || tagsByName.Count == 0)
                 {
                     _logger.LogWarning("[Seed] Load-test seed preskocen jer fale admini, regije ili tagovi.");
                     return;
@@ -2076,13 +2076,7 @@ namespace TouristGuide.Api.Services
                 var generatedPosts = BuildLoadTestPosts(adminIds, regions, random, now).ToList();
                 await AddInBatchesAsync(generatedPosts, 200);
 
-                var generatedPostIds = generatedPosts
-                    .Where(p => p.Id != 0)
-                    .OrderBy(p => p.Id)
-                    .Select(p => p.Id)
-                    .ToList();
-
-                await SeedLoadTestPostTagsAsync(generatedPostIds, tagIds, random);
+                await SeedLoadTestPostTagsAsync(generatedPosts, tagsByName, random);
                 await AddInBatchesAsync(BuildLoadTestRoutes(adminIds, regions, random, now).ToList(), 100);
 
                 var allPublishedPostIds = await _db.Posts
@@ -2355,23 +2349,45 @@ namespace TouristGuide.Api.Services
             _db.ChangeTracker.Clear();
         }
 
-        private async Task SeedLoadTestPostTagsAsync(IReadOnlyList<uint> postIds, IReadOnlyList<uint> tagIds, Random random)
+        private async Task SeedLoadTestPostTagsAsync(IReadOnlyList<Post> posts, IReadOnlyDictionary<string, uint> tagIdsByName, Random random)
         {
-            var postTags = new List<PostTag>(postIds.Count * 4);
-            foreach (var postId in postIds)
+            var postTags = new List<PostTag>(posts.Count * 4);
+            foreach (var post in posts.Where(post => post.Id != 0))
             {
                 var used = new HashSet<uint>();
-                var tagCount = 2 + random.Next(0, 4);
+                var allowedTagNames = LoadTestTagNamesForPostType(post.PostType)
+                    .Where(tagIdsByName.ContainsKey)
+                    .ToList();
+
+                if (allowedTagNames.Count == 0)
+                    continue;
+
+                var tagCount = Math.Min(allowedTagNames.Count, 2 + random.Next(0, 3));
                 for (var i = 0; i < tagCount; i++)
                 {
-                    var tagId = tagIds[(int)((postId + (uint)random.Next(tagIds.Count) + (uint)i) % (uint)tagIds.Count)];
+                    var tagName = allowedTagNames[(random.Next(allowedTagNames.Count) + i) % allowedTagNames.Count];
+                    var tagId = tagIdsByName[tagName];
                     if (used.Add(tagId))
-                        postTags.Add(new PostTag { PostId = postId, TagId = tagId });
+                        postTags.Add(new PostTag { PostId = post.Id, TagId = tagId });
                 }
             }
 
             await AddInBatchesAsync(postTags, 1000);
         }
+
+        private static IReadOnlyList<string> LoadTestTagNamesForPostType(string postType) => postType switch
+        {
+            "accommodation" => ["Parking", "WiFi", "Wellness", "Porodično"],
+            "restaurant" => ["Gastronomija", "Restoran", "Kafić", "Porodično", "Romantično"],
+            "club" => ["Noćni život", "Muzika"],
+            "cultural_site" => ["Kultura", "Kulturno", "Historijsko", "Razgledanje", "Fotografija"],
+            "monument" => ["Historijsko", "UNESCO", "Razgledanje", "Fotografija", "Besplatno"],
+            "sports_facility" => ["Sport", "Adrenalin", "Outdoor", "Pješačenje", "Biciklizam"],
+            "event" => ["Muzika", "Noćni život", "Kultura", "Gastronomija"],
+            "attraction" => ["Priroda", "Razgledanje", "Fotografija", "Besplatno", "Porodično"],
+            "shop" => ["Shopping", "Kafić"],
+            _ => ["Razgledanje", "Fotografija", "Porodično"],
+        };
 
         private async Task SeedLoadTestInteractionsAsync(IReadOnlyList<uint> touristIds, IReadOnlyList<uint> postIds, Random random, DateTime now)
         {

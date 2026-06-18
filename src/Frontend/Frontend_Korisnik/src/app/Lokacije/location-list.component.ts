@@ -1339,11 +1339,28 @@ export class LocationListComponent implements OnInit, OnDestroy {
         sourceRouteId: route.id,
       },
     );
-    this.router.navigate(['/map-home']);
+    this.router.navigate(['/map-home'], {
+      queryParams: {
+        routeId: route.id,
+        focusRoute: '1',
+      },
+    });
   }
 
   getRouteFirstImage(route: TouristRouteItem): string {
-    return this.getFirstImage({ images: route.images || [] });
+    const routeImage = this.getFirstImage({ images: route.images || [] });
+    return routeImage !== DEFAULT_LOCATION_IMAGE ? routeImage : this.getRouteFallbackImage(route);
+  }
+
+  private getRouteFallbackImage(route: TouristRouteItem): string {
+    const text = `${route.name || ''} ${route.regionName || ''}`.toLowerCase();
+    if (text.includes('kotor')) return 'assets/Kotor.jpg';
+    if (text.includes('budva') || text.includes('sveti stefan')) return 'assets/Budva.jpg';
+    if (text.includes('tara') || text.includes('kanjon')) {
+      return resolveBackendAssetUrl('https://res.cloudinary.com/dtnx7nnbc/image/upload/v1776817713/tara_zv8hpn.jpg', DEFAULT_LOCATION_IMAGE);
+    }
+    if (text.includes('durmitor') || text.includes('bobotov') || text.includes('crno')) return 'assets/Durmitor.jpg';
+    return 'assets/pexels-apasaric-1285625.jpg';
   }
 
   getActivityColor(activity: TouristActivityItem): string {
