@@ -119,29 +119,6 @@ dotnet run
 
 Pri pokretanju backend automatski primenjuje migracije i seeduje podatke kroz `DatabaseSeeder`.
 
-## Dev kredencijali
-
-Superadmin:
-
-| Email | Lozinka |
-| --- | --- |
-| `superadmin@touristguide.me` | `***REMOVED***` |
-
-Admin nalozi:
-
-| Email | Lozinka | Napomena |
-| --- | --- | --- |
-| `ana.kovacevic@zabljak.travel` | `***REMOVED***` | aktivan |
-| `nikola.djuric@npdurmitor.me` | `***REMOVED***` | aktivan |
-| `marija.p@touristguide.me` | `***REMOVED***` | aktivan |
-| `dragana.m@tozabljak.me` | `***REMOVED***` | aktivan |
-| `stefan.v@skidurmitor.me` | `***REMOVED***` | aktivan |
-| `ivana.j@budva.travel` | `***REMOVED***` | aktivan |
-| `aleksandar.b@kotor.travel` | `***REMOVED***` | aktivan |
-| `dragan.lazovic@outdoorme.me` | `***REMOVED***` | suspendovan, login treba da bude odbijen |
-
-Turisticki nalozi se mogu kreirati kroz registracionu formu na korisnickom frontendu.
-
 ## Struktura
 
 ```text
