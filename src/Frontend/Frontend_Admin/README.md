@@ -53,34 +53,6 @@ Relevantni fajlovi:
 
 Za mock mod promeniti `useMocks` na `true` u environment fajlu koji se koristi.
 
-## Login kredencijali
-
-Superadmin:
-
-| Email | Lozinka |
-| --- | --- |
-| `superadmin@touristguide.me` | `Admin123!` |
-
-Admin nalozi:
-
-| Email | Lozinka | Napomena |
-| --- | --- | --- |
-| `ana.kovacevic@zabljak.travel` | `Admin123!` | aktivan |
-| `nikola.djuric@npdurmitor.me` | `Admin123!` | aktivan |
-| `marija.p@touristguide.me` | `Admin123!` | aktivan |
-| `dragana.m@tozabljak.me` | `Admin123!` | aktivan |
-| `stefan.v@skidurmitor.me` | `Admin123!` | aktivan |
-| `ivana.j@budva.travel` | `Admin123!` | aktivan |
-| `aleksandar.b@kotor.travel` | `Admin123!` | aktivan |
-| `dragan.lazovic@outdoorme.me` | `Admin123!` | suspendovan, login treba da bude odbijen |
-
-Mock kredencijali:
-
-| Email | Lozinka | Uloga |
-| --- | --- | --- |
-| `superadmin@adrigo.rs` | `admin123` | superadmin |
-| `admin@kopaonik.rs` | `admin123` | admin |
-
 ## Reset backend baze
 
 Pokrenuti iz `src/Backend/TouristGuide.Api`:
