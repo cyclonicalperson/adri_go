@@ -1,114 +1,90 @@
 # AdriGo
 
-Digitalna turisticka mapa Crne Gore sa odvojenim aplikacijama za turiste i administratore, .NET backendom, PostgreSQL bazom i MCP/Gemini chat slojem.
+A digital tourist map of Montenegro, built as separate applications for tourists and administrators, with a .NET backend, a PostgreSQL database, and an MCP/Gemini chat layer.
 
-## Hostovane verzije
+<p align="center">
+  <img width="1920" height="873" alt="image" src="https://github.com/user-attachments/assets/fce1ee04-1a22-476f-8de2-212a89a4c1b5">
+  <img width="1920" height="873" alt="image" src="https://github.com/user-attachments/assets/2f20411e-8223-4798-ac56-a2a97a2008d0" />
+</p>
 
-| Deo sistema | URL |
+## Hosted Versions
+
+| Component | URL |
 | --- | --- |
-| Korisnicki frontend | https://softeng.pmf.kg.ac.rs:10187 |
-| Admin frontend | https://softeng.pmf.kg.ac.rs:10188 |
+| Tourist Frontend | https://softeng.pmf.kg.ac.rs:10187 |
+| Admin Frontend | https://softeng.pmf.kg.ac.rs:10188 |
 | Backend API | https://softeng.pmf.kg.ac.rs:10185/api |
-| MCP / chat servis | https://softeng.pmf.kg.ac.rs:10186 |
+| MCP / Chat Service | https://softeng.pmf.kg.ac.rs:10186 |
 
-## Stack
+## Tech Stack
 
-| Sloj | Tehnologije |
+| Layer | Technologies |
 | --- | --- |
 | Backend | ASP.NET Core 8, Entity Framework Core 8, PostgreSQL, SignalR |
-| Admin frontend | Angular 21, TypeScript, SCSS, Leaflet, Chart.js, SignalR |
-| Korisnicki frontend | Angular 21, TypeScript, Leaflet, Swiper, SignalR |
-| AI/MCP | .NET MCP servis, Gemini chat proxy |
-| Upload i mail | Cloudinary, SMTP email servis |
+| Admin Frontend | Angular 21, TypeScript, SCSS, Leaflet, Chart.js, SignalR |
+| Tourist Frontend | Angular 21, TypeScript, Leaflet, Swiper, SignalR |
+| AI / MCP | .NET MCP service, Gemini chat proxy |
+| Uploads & Mail | Cloudinary, SMTP email service |
 
-## Glavne funkcionalnosti
+## Requirements
 
-Korisnicki frontend:
-- registracija, login, email verifikacija i Google prijava
-- interaktivna mapa, lokacije, aktivnosti, rute i dogadjaji
-- detalji sadrzaja, recenzije, lajkovi, cuvanje i deljenje
-- planer putovanja, personalizovane preporuke i obavestenja
-- Gemini chat kroz MCP/backend proxy
+- **.NET 8 SDK**
+- **Node.js 20+** and npm
+- **Angular CLI 21+**
+- **PostgreSQL 15+**
+- **EF Core CLI**: `dotnet tool install --global dotnet-ef`
 
-Admin frontend:
-- dashboard sa statistikama i analitikom
-- upravljanje lokacijama, aktivnostima, rutama, dogadjajima i objavama
-- moderacija recenzija i pregled turista
-- registracioni workflow za admin naloge
-- upravljanje adminima, dozvolama, regionima i organizacijama
-- real-time notifikacije preko SignalR-a
+## Features
+
+Tourist Frontend:
+- **Account Management**: registration, login, email verification, and Google sign-in.
+- **Interactive Map**: locations, activities, routes, and events.
+- **Content Details**: reviews, likes, saving, and sharing.
+- **Trip Planner**: personalized recommendations and notifications.
+- **AI Chat**: Gemini-powered chat through the MCP/backend proxy.
+
+Admin Frontend:
+- **Dashboard**: statistics and analytics overview.
+- **Content Management**: locations, activities, routes, events, and posts.
+- **Moderation**: review moderation and tourist overview.
+- **Admin Onboarding**: registration workflow for new admin accounts.
+- **Access Control**: management of admins, permissions, regions, and organizations.
+- **Real-Time Updates**: live notifications via SignalR.
 
 Backend:
-- JWT autentifikacija i role: `superadmin`, `admin`, `tourist`
-- EF Core migracije, seeding podataka i PostgreSQL advisory lock pri migracijama
-- indeksi i zastite za konkurentne upise, posebno za recenzije/interakcije
-- response compression, EF Core DbContext pooling i globalni rate limiter
-- Cloudinary upload, email linkovi i SignalR hubovi
+- **Authentication**: JWT-based auth with `superadmin`, `admin`, and `tourist` roles.
+- **Database**: EF Core migrations, data seeding, and a PostgreSQL advisory lock during migrations.
+- **Data Integrity**: indexes and safeguards for concurrent writes, especially for reviews/interactions.
+- **Performance**: response compression, EF Core `DbContext` pooling, and a global rate limiter.
+- **Integrations**: Cloudinary uploads, email links, and SignalR hubs.
 
-## Lokalni URL-ovi
+## Usage
 
-| Deo sistema | Lokalni URL |
+Each part of the system runs as a separate process and they are designed to work together: the backend exposes the REST API and database, the admin and tourist frontends consume that API, and the MCP service brokers the Gemini-powered chat instead of calling the Gemini API directly from the browser.
+
+### - Local URLs -
+
+| Component | Local URL |
 | --- | --- |
 | Backend API | http://localhost:5125/api |
 | Swagger | http://localhost:5125/swagger |
-| MCP / chat servis | http://localhost:5200 |
-| Admin frontend | http://localhost:4200 |
-| Korisnicki frontend | http://localhost:4201 |
+| MCP / Chat Service | http://localhost:5200 |
+| Admin Frontend | http://localhost:4200 |
+| Tourist Frontend | http://localhost:4201 |
 
-## Preduslovi
+### - Configuration -
 
-- .NET 8 SDK
-- Node.js 20+ i npm
-- Angular CLI 21+
-- PostgreSQL 15+
-- EF Core CLI: `dotnet tool install --global dotnet-ef`
-
-## Pokretanje
-
-Backend:
-
-```bash
-cd src/Backend/TouristGuide.Api
-dotnet ef database update
-dotnet run
-```
-
-Admin frontend:
-
-```bash
-cd src/Frontend/Frontend_Admin
-npm install
-npm start
-```
-
-Korisnicki frontend:
-
-```bash
-cd src/Frontend/Frontend_Korisnik
-npm install
-npm start
-```
-
-MCP/chat servis, ako je potreban korisnickom chatu:
-
-```bash
-cd src/MCP
-dotnet run
-```
-
-## Konfiguracija
-
-Najvaznije vrednosti su u:
+The most important settings live in:
 - `src/Backend/TouristGuide.Api/appsettings.json`
 - `src/Frontend/Frontend_Admin/src/environments/environment*.ts`
 - `src/Frontend/Frontend_Korisnik/src/environments/environment*.ts`
 - `src/MCP/appsettings*.json`
 
-Za lokalni razvoj backend koristi `http://localhost:5125`, admin `http://localhost:4200`, korisnicki frontend `http://localhost:4201`, a MCP/chat `http://localhost:5200`.
+For local development, the backend runs on `http://localhost:5125`, the admin frontend on `http://localhost:4200`, the tourist frontend on `http://localhost:4201`, and the MCP/chat service on `http://localhost:5200`.
 
-Za produkcioni build frontend environment fajlovi vec ciljaju hostovane URL-ove sa `softeng.pmf.kg.ac.rs` domena.
+For production builds, the frontend environment files already point to the hosted URLs on the `softeng.pmf.kg.ac.rs` domain.
 
-## Reset baze
+### - Resetting the Database -
 
 ```bash
 cd src/Backend/TouristGuide.Api
@@ -117,25 +93,70 @@ dotnet ef database update
 dotnet run
 ```
 
-Pri pokretanju backend automatski primenjuje migracije i seeduje podatke kroz `DatabaseSeeder`.
+On startup, the backend automatically applies migrations and seeds data through `DatabaseSeeder`.
 
-## Struktura
+## FAQ
 
-```text
-globecode/
-  src/
-    Backend/TouristGuide.Api/       .NET 8 REST API, EF Core, SignalR
-    Frontend/Frontend_Admin/        Angular admin panel
-    Frontend/Frontend_Korisnik/     Angular turisticki portal
-    MCP/                            MCP i Gemini chat servis
-    Recommended/                    preporuke linkovane u backend build
-    Shared/                         deljeni DTO/contract fajlovi
-    Database/                       beleske i SQL materijali
-  docs/                             dodatna dokumentacija
-  sandbox/                          studentski/demo projekti
+**- Why does the chat go through an MCP service instead of calling Gemini directly?**  
+The browser never talks to the Gemini API directly. All chat requests are routed through the local/hosted MCP service, which keeps API keys server-side and lets the chat layer call backend tools on the user's behalf.
+
+**- Which environment files do I need to edit for a local setup?**  
+Only the `appsettings.json` / `environment*.ts` files listed under [Configuration](#--configuration--); the production files already target the hosted domain and don't need to be touched for local development.
+
+## Installation
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/cyclonicalperson/adri_go.git
+cd adri_go
 ```
 
-## Korisne komande
+2. **Set up PostgreSQL**
+
+Make sure a PostgreSQL 15+ instance is running and reachable with the connection string configured in `src/Backend/TouristGuide.Api/appsettings.json`.
+
+3. **Run the backend**
+
+```bash
+cd src/Backend/TouristGuide.Api
+dotnet ef database update
+dotnet run
+```
+
+4. **Run the admin frontend**
+
+```bash
+cd src/Frontend/Frontend_Admin
+npm install
+npm start
+```
+
+5. **Run the tourist frontend**
+
+```bash
+cd src/Frontend/Frontend_Korisnik
+npm install
+npm start
+```
+
+6. **Run the MCP/chat service** (required for the in-app AI chat)
+
+```bash
+cd src/MCP
+dotnet run
+```
+
+**Quick Start (After Initial Setup):**
+
+```bash
+cd path\to\adri_go\src\Backend\TouristGuide.Api && dotnet run
+cd path\to\adri_go\src\Frontend\Frontend_Admin && npm start
+cd path\to\adri_go\src\Frontend\Frontend_Korisnik && npm start
+cd path\to\adri_go\src\MCP && dotnet run
+```
+
+## Useful Commands
 
 ```bash
 dotnet build src/Backend/TouristGuide.Api/TouristGuide.Api.csproj
@@ -143,9 +164,30 @@ npm run build --prefix src/Frontend/Frontend_Admin
 npm run build --prefix src/Frontend/Frontend_Korisnik
 ```
 
-## Napomene
+## Directory Structure
 
-- Backend je izvor istine za API i migracije.
-- Produkcioni frontend URL-ovi su vec upisani u production environment fajlove.
-- Chat ne ide direktno iz browsera ka Gemini API-ju, vec kroz lokalni/hostovani MCP servis.
-- Cloudinary i email konfiguracija moraju biti validni za upload i email tokove.
+```
+adri_go/
+├── docs/                              # Additional project documentation
+├── src/
+│   ├── Backend/TouristGuide.Api/      # .NET 8 REST API, EF Core, SignalR
+│   ├── Frontend/Frontend_Admin/       # Angular admin panel
+│   ├── Frontend/Frontend_Korisnik/    # Angular tourist portal
+│   ├── MCP/                           # MCP and Gemini chat service
+│   ├── Recommended/                   # Recommendations linked into the backend build
+│   ├── Shared/                        # Shared DTO/contract files
+│   └── Database/                      # Notes and SQL materials
+├── logo.png                           # Project logo
+└── logo-full-size.png                 # Full-size project logo
+```
+
+## Notes
+
+- The backend is the source of truth for the API and database migrations.
+- Production frontend URLs are already written into the production environment files.
+- Chat requests never go straight from the browser to the Gemini API; they always pass through the local/hosted MCP service.
+- Cloudinary and email configuration must be valid for upload and email flows to work.
+
+## Contributing
+
+Feel free to open issues or submit pull requests for improvements or bug fixes.
